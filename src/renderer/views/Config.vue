@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col gap-16" :class="{ 'hidden': !maxNumCores }">
+    <div class="flex flex-col gap-10" :class="{ 'hidden': !maxNumCores }">
         <div>
             <x-label class="mb-4 text-neutral-300">Resources</x-label>
             <div class="flex flex-col gap-4">
@@ -69,6 +69,42 @@
             </div>
         </div>
         <div>
+            <x-label class="mb-4 text-neutral-300">General</x-label>
+            <div class="flex flex-col gap-4">
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="uil:scaling-right"></Icon>
+                            <h1 class="text-lg my-0 font-semibold">
+                                Display Scaling
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Controls how large the display scaling is. This applies for both the desktop view and applications.
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-select class="w-20" @change="(e: any) => scale = Number(e.detail.newValue)">
+                            <x-menu>
+                                <x-menuitem value="100" :toggled="scale === 100">
+                                    <x-label>100%</x-label>
+                                </x-menuitem>
+
+                                <x-menuitem value="140" :toggled="scale === 140">
+                                    <x-label>140%</x-label>
+                                </x-menuitem>
+
+                                <x-menuitem value="180" :toggled="scale === 180">
+                                    <x-label>180%</x-label>
+                                </x-menuitem>
+                            </x-menu>
+                        </x-select>
+                    </div>
+                </x-card>
+            </div>
+        </div>
+        <div>
             <x-label class="mb-4 text-neutral-300">Danger Zone</x-label>
             <x-card class="flex flex-col w-full py-3 my-0 bg-red-500/10 backdrop-brightness-150 backdrop-blur-xl mb-6">
                 <h1 class="my-0 font-normal text-lg text-red-300">
@@ -96,14 +132,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Winboat } from '../lib/winboat';
 import { type ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
+import { WinboatConfig } from '../lib/config';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 const winboat = new Winboat();
+
+// For Resources
 const compose = ref<ComposeConfig | null>(null);
 const numCores = ref(0);
 const origNumCores = ref(0);
@@ -115,8 +154,17 @@ const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 
+// For General
+const wbConfig = new WinboatConfig();
+const scale = ref(100);
+
 onMounted(async () => {
     await assignValues();
+    scale.value = wbConfig.config.scale;
+
+    watch(scale, (newVal, _) => {
+        wbConfig.config.scale = newVal;
+    })
 })
 
 async function assignValues() {

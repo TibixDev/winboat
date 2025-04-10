@@ -7,6 +7,7 @@ import YAML from 'yaml';
 import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { WinboatConfig } from "./config";
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
@@ -67,6 +68,7 @@ export class Winboat {
             percentage: 0
         }
     })
+    #wbConfig: WinboatConfig | null = null
 
     constructor() {
         if (instance) return instance;
@@ -91,6 +93,8 @@ export class Winboat {
             if (!this.isOnline.value) return;
             this.metrics.value = await this.getMetrics();
         }, 1000);
+
+        this.#wbConfig = new WinboatConfig();
 
         instance = this;
 
@@ -242,11 +246,23 @@ export class Winboat {
 
     async resetWinboat() {
         console.info("Resetting Winboat...");
+
+        // 1. Stop container
         await this.stopContainer();
-        console.info("Stopped container")
+        console.info("Stopped container");
+        
+        // 2. Remove the container
+        await execAsync("docker rm WinBoat")
+        console.info("Removed container")
+
+        // 3. Remove the container volume
         await execAsync("docker volume rm winboat_data");
         console.info("Removed volume");
+        
+        // 4. Close logger
         logger.close();
+
+        // 5. Remove WinBoat directory
         fs.unlinkSync(WINBOAT_DIR);
         console.info(`Removed ${WINBOAT_DIR}`);
         console.info("So long and thanks for all the fish!");
@@ -272,6 +288,7 @@ export class Winboat {
         /microphone:sys:pulse\
         /floatbar\
         /compression\
+        /scale:${this.#wbConfig?.config.scale ?? 100}\
         /wm-class:"${app.Name}"\
         /app:program:"${app.Path}",name:"${app.Name}" &`;
 
@@ -285,6 +302,7 @@ export class Winboat {
                 /sound:sys:pulse\
                 /microphone:sys:pulse\
                 /floatbar\
+                /scale:${this.#wbConfig?.config.scale ?? 100}\
                 /compression &`;
         }
 
