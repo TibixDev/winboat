@@ -4,6 +4,26 @@ const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const execAsync = promisify(exec);
 
+export function satisfiesPrequisites(specs: Specs) {
+    return specs.dockerInstalled && 
+        specs.freeRDPInstalled &&
+        specs.ipTablesLoaded &&
+        specs.iptableNatLoaded &&
+        specs.ramGB >= 4
+        specs.cpuThreads >= 2
+}
+
+export const defaultSpecs = { 
+    cpuThreads: 0,
+    ramGB: 0,
+    diskSpaceGB: 0,
+    kvmEnabled: false,
+    dockerInstalled: false,
+    freeRDPInstalled: false,
+    ipTablesLoaded: false,
+    iptableNatLoaded: false
+}
+
 export async function getSpecs() {
     const specs = {
         cpuThreads: os.cpus().length,
@@ -11,6 +31,7 @@ export async function getSpecs() {
         diskSpaceGB: 0,
         kvmEnabled: false,
         dockerInstalled: false,
+        freeRDPInstalled: false,
         ipTablesLoaded: false,
         iptableNatLoaded: false,
     };
@@ -39,6 +60,13 @@ export async function getSpecs() {
         const { stdout: dockerOutput } = await execAsync('docker --version');
         specs.dockerInstalled = !!dockerOutput;
     } catch (e) { }
+
+    try {
+        const freeRDPAliases = ["xfreerdp", "xfreerdp3", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];
+        for(const alias of freeRDPAliases) {
+            specs.freeRDPInstalled ||= !!(await execAsync(`${alias} || exit 0`)).stdout;
+        }
+    } catch(e) {}
 
     try {
         const { stdout: ipTablesOutput } = await execAsync('lsmod | grep ip_tables');

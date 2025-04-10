@@ -6,6 +6,7 @@ import { AppIcons } from "../data/appicons";
 import YAML from 'yaml';
 import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
+import { getFreeRDP } from "../utils/getFreeRDP";
 import { WinboatConfig } from "./config";
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const path: typeof import('path') = require('path');
@@ -272,8 +273,12 @@ export class Winboat {
 
         const { username, password } = this.getCredentials();
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
+        
+        const freeRDPBin = await getFreeRDP();
 
-        let cmd = `xfreerdp /u:"${username}"\
+        logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
+
+        let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
         /cert:ignore\
@@ -288,7 +293,7 @@ export class Winboat {
         /app:program:"${app.Path}",name:"${app.Name}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
-            cmd = `xfreerdp /u:"${username}"\
+            cmd = `${freeRDPBin} /u:"${username}"\
                 /p:"${password}"\
                 /v:127.0.0.1\
                 /cert:ignore\
