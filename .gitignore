@@ -4,6 +4,8 @@ build
 
 .vscode
 .idea
+
+package-lock.json
 # src/renderer/public/*
 
 # Custom

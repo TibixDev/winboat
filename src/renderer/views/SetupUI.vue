@@ -74,13 +74,19 @@
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 KVM enabled
-                                <a href="https://linux-kvm.org/page/FAQ" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://linux-kvm.org/page/FAQ" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 Docker installed
-                                <a href="https://docs.docker.com/get-docker/" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://docs.docker.com/get-docker/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span v-if="specs.freeRDPInstalled" class="text-green-500">✔</span>
+                                <span v-else class="text-red-500">✘</span>
+                                FreeRDP installed
+                                <a href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.ipTablesLoaded && specs.iptableNatLoaded" class="text-green-500">✔</span>
@@ -96,7 +102,7 @@
                                 toggled 
                                 class="px-6" 
                                 @click="currentStepIdx++" 
-                                :disabled="!(specs.ramGB >= 4 && specs.cpuThreads >= 2 && specs.kvmEnabled && specs.dockerInstalled && specs.ipTablesLoaded && specs.iptableNatLoaded)"
+                                :disabled="!satisfiesPrequisites(specs)"
                             >
                                 Next
                             </x-button>
@@ -330,7 +336,7 @@
                     <!-- Installation -->
                     <div v-if="currentStep.id === StepID.INSTALL" class="step-block">
                         <h1 class="text-3xl font-semibold">Installation</h1>
-                        <p class="text-lg text-gray-400">
+                        <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour.
                             In the meantime you can grab coffee and check the status <a href="http://127.0.0.1:8006" @click="openAnchorLink">in your browser</a>.
                         </p>
@@ -375,7 +381,7 @@ import { Icon } from '@iconify/vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { InstallConfiguration, Specs } from '../../types';
-import { getSpecs } from '../lib/specs';
+import { getSpecs, defaultSpecs, satisfiesPrequisites } from '../lib/specs';
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
@@ -453,15 +459,7 @@ const MIN_DISK_GB = 32;
 
 const $router = useRouter();
 const license = ref("");
-const specs = ref<Specs>({
-    cpuThreads: 0,
-    ramGB: 0,
-    diskSpaceGB: 0,
-    kvmEnabled: false,
-    dockerInstalled: false,
-    ipTablesLoaded: false,
-    iptableNatLoaded: false
-})
+const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
 const windowsVersion = ref<WindowsVersionKey>("11");

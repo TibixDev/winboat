@@ -6,6 +6,7 @@ export type Specs = {
     diskSpaceGB: number;
     kvmEnabled: boolean;
     dockerInstalled: boolean;
+    freeRDPInstalled: boolean;
     ipTablesLoaded: boolean;
     iptableNatLoaded: boolean;
 }
