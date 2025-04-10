@@ -37,18 +37,18 @@
 
             <!-- Buttons -->
             <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
-                <button class="generic-hover" v-if="
+                <button title="Start" class="generic-hover" v-if="
                     winboat.containerStatus.value === ContainerStatus.Exited ||
                     winboat.containerStatus.value === ContainerStatus.Dead
                 " @click="winboat.startContainer()">
                     <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
                 </button>
-                <button class="generic-hover" v-if="winboat.containerStatus.value === ContainerStatus.Running"
+                <button title="Stop" class="generic-hover" v-if="winboat.containerStatus.value === ContainerStatus.Running"
                     @click="winboat.stopContainer()">
                     <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
                 </button>
 
-                <button class="generic-hover"
+                <button title="Pause / Unpause" class="generic-hover"
                     v-if="winboat.containerStatus.value === ContainerStatus.Running || winboat.containerStatus.value === ContainerStatus.Paused"
                     @click="winboat.containerStatus.value === ContainerStatus.Paused ? winboat.unpauseContainer() : winboat.pauseContainer()">
                     <Icon class="w-20 h-20 text-yellow-100" icon="mingcute:pause-line"></Icon>
