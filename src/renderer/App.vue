@@ -75,12 +75,12 @@ const appVer = import.meta.env.VITE_APP_VERSION;
 onMounted(async () => {
     console.log("WinBoat app path:", path.join(remote.app.getAppPath(), "..", ".."));
     const winboatInstalled = await isInstalled();
-    // if (!winboatInstalled) {
-    //     console.log("Not installed, redirecting to setup...")
-    //     $router.push('/setup');
-    // } else {
-    //     $router.push('/home');
-    // }
+    if (!winboatInstalled) {
+        console.log("Not installed, redirecting to setup...")
+        $router.push('/setup');
+    } else {
+        $router.push('/home');
+    }
 })
 
 function handleMinimize() {
