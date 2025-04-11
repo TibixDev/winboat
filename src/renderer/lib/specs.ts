@@ -9,8 +9,10 @@ export function satisfiesPrequisites(specs: Specs) {
         specs.freeRDPInstalled &&
         specs.ipTablesLoaded &&
         specs.iptableNatLoaded &&
+        specs.kvmEnabled &&
         specs.ramGB >= 4 &&
-        specs.cpuThreads >= 2
+        specs.cpuThreads >= 2 &&
+        specs.diskSpaceGB >= 32
 }
 
 export const defaultSpecs = { 
