@@ -9,7 +9,7 @@ import Blank from './views/Blank.vue'
 import Config from './views/Config.vue'
 
 export const routes: RouteRecordRaw[] = [
-    { path: '/', name: "Blank", component: Blank, meta: { icon: 'fluent:home-32-filled' } },
+    { path: '/', name: "Loading", component: Blank, meta: { icon: 'line-md:loading-loop' } },
     { path: '/home', name: "Home", component: Home, meta: { icon: 'fluent:home-32-filled' } },
     { path: '/setup', name: "SetupUI", component: SetupUI, meta: { icon: 'fluent-mdl2:install-to-drive' } },
     // { path: '/adblock', name: "Reklámvédelem", component: Adblock, meta: { icon: 'fluent:shield-32-filled' } },

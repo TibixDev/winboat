@@ -273,6 +273,12 @@ export class InstallManager {
 
 export async function isInstalled() {
     // Check if a docker container named WinBoat exists
-    const { stdout: res } = await execAsync('docker ps -a --filter "name=WinBoat" --format "{{.Names}}"');
-    return res.includes('WinBoat');
+    try {
+        const { stdout: res } = await execAsync('docker ps -a --filter "name=WinBoat" --format "{{.Names}}"');
+        return res.includes('WinBoat');
+    } catch(e) {
+        logger.error("Failed to get WinBoat status, is Docker installed?");
+        logger.error(e);
+        return false;
+    }
 }
