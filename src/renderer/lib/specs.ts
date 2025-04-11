@@ -9,7 +9,7 @@ export function satisfiesPrequisites(specs: Specs) {
         specs.freeRDPInstalled &&
         specs.ipTablesLoaded &&
         specs.iptableNatLoaded &&
-        specs.ramGB >= 4
+        specs.ramGB >= 4 &&
         specs.cpuThreads >= 2
 }
 

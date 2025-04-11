@@ -44,7 +44,11 @@
                         {{ useRoute().name }}
                     </h1>
                 </div>
-                <RouterView />
+                <router-view v-slot="{ Component }">
+                    <transition mode="out-in" name="fade">
+                        <component :is="Component" />
+                    </transition>
+                </router-view>
             </div>
         </div>
 
@@ -124,5 +128,20 @@ function handleTitleBarEvent(e: CustomEvent) {
 .blob-anim {
     animation: blob 5s linear infinite;
     animation-direction: alternate-reverse;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: all 0.2s ease;
+}
+
+.fade-enter-from {
+    opacity: 0;
+    /* transform: translateX(20vw); */
+}
+
+.fade-leave-to {
+    opacity: 0;
+    /* transform: translateX(-20vw); */
 }
 </style>
