@@ -73,14 +73,14 @@
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                KVM enabled
-                                <a href="https://linux-kvm.org/page/FAQ" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                Virtualization (KVM) enabled
+                                <a href="https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 Docker installed
-                                <a href="https://docs.docker.com/get-docker/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://docs.docker.com/engine/install/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDPInstalled" class="text-green-500">✔</span>
@@ -93,7 +93,7 @@
                                 <span v-else class="text-red-500">✘</span>
                                 <span class="font-mono bg-neutral-700 rounded-md px-0.5">iptables</span> and 
                                 <span class="font-mono bg-neutral-700 rounded-md px-0.5">iptable_nat</span> modules loaded
-                                <a href="https://docs.docker.com/get-docker/" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://rentry.org/rmfq2e5e" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>                            
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
