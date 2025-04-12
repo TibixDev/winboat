@@ -15,7 +15,7 @@ export function satisfiesPrequisites(specs: Specs) {
         specs.diskSpaceGB >= 32
 }
 
-export const defaultSpecs = { 
+export const defaultSpecs: Specs = { 
     cpuThreads: 0,
     ramGB: 0,
     diskSpaceGB: 0,
@@ -27,17 +27,12 @@ export const defaultSpecs = {
 }
 
 export async function getSpecs() {
-    const specs = {
-        cpuThreads: os.cpus().length,
-        ramGB: 0,
-        diskSpaceGB: 0,
-        kvmEnabled: false,
-        dockerInstalled: false,
-        freeRDPInstalled: false,
-        ipTablesLoaded: false,
-        iptableNatLoaded: false,
-    };
+    const specs: Specs = { ...defaultSpecs };
 
+    specs.cpuThreads = os.cpus().length;
+
+    // TODO: These commands might silently fail
+    // But if they do, it means something wasn't right to begin with
     try {
         const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
         const totalMemLine = memInfo.split('\n').find(line => line.startsWith('MemTotal'));
