@@ -8,6 +8,7 @@ import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { WinboatConfig } from "./config";
+import { app } from "electron";
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
@@ -18,19 +19,22 @@ const execAsync = promisify(exec);
 
 let instance: Winboat | null = null;
 const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
+const USAGE_PATH = path.join(WINBOAT_DIR, 'appUsage.json');
 
 const presetApps: WinApp[] = [
     {
         Name: "⚙️ Windows Desktop",
         Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
         Source: "internal",
-        Path: InternalApps.WINDOWS_DESKTOP
+        Path: InternalApps.WINDOWS_DESKTOP,
+        Usage: 0 
     },
     {
         Name: "⚙️ Windows Explorer",
         Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
         Source: "internal",
-        Path: "%windir%\\explorer.exe"
+        Path: "%windir%\\explorer.exe",
+        Usage: 0
     }
 ]
 
@@ -44,6 +48,57 @@ export const ContainerStatus = {
 } as const;
 
 type ContainerStatusValue = typeof ContainerStatus[keyof typeof ContainerStatus];
+
+class AppManager {
+    appCache: WinApp[] = []
+    appUsageCache: { [key: string]: number } = {};
+    
+    constructor() {
+        if(!fs.existsSync(USAGE_PATH)) {
+            fs.writeFileSync(USAGE_PATH, "{}");
+        }
+        this.getApps()
+    }
+
+    async updateAppUsage(options: { forceRead: boolean } = { forceRead: false }) {
+        const res = await nodeFetch(`${WINBOAT_GUEST_API}/apps`);
+        const newApps = await res.json() as WinApp[];
+        newApps.push(...presetApps);
+
+        if(this.appCache.values.length == newApps.length && !options.forceRead) return
+
+        for(const appIdx in newApps) {
+            newApps[appIdx].Usage = this.appCache.find((app) => app.Name == newApps[appIdx].Name)?.Usage || 0;
+            this.appUsageCache[newApps[appIdx].Name] = newApps[appIdx].Usage;
+        }
+
+        this.appCache = newApps;
+    }
+
+    async getApps(): Promise<WinApp[]> {
+        if(this.appCache.length > 0) return this.appCache;
+
+        const fsUsage = Object.entries(JSON.parse(fs.readFileSync(USAGE_PATH, 'utf-8'))) as any[]; // get the usage object that's on the disk
+        this.appCache = Array(fsUsage.length).fill(Object.create(presetApps[0]));
+        for(const i in fsUsage) {
+            this.appCache[i].Name = fsUsage[i][0];
+            this.appCache[i].Usage = fsUsage[i][1];
+        }
+
+        await this.updateAppUsage({ forceRead: true });
+
+        return this.appCache;
+    }
+
+    incrementAppUsage(app: WinApp) {
+        app.Usage++;
+        this.appUsageCache[app.Name]++;
+    }
+
+    async writeToDisk() {
+        fs.writeFileSync(USAGE_PATH, JSON.stringify(this.appUsageCache));
+    }
+}
 
 export class Winboat {
     #healthInterval: NodeJS.Timeout | null = null;
@@ -69,6 +124,7 @@ export class Winboat {
         }
     })
     #wbConfig: WinboatConfig | null = null
+    #appMgr: AppManager | null = null
 
     constructor() {
         if (instance) return instance;
@@ -96,6 +152,8 @@ export class Winboat {
 
         this.#wbConfig = new WinboatConfig();
 
+        this.#appMgr = new AppManager();
+
         instance = this;
 
         return instance;
@@ -111,16 +169,13 @@ export class Winboat {
         }
     }
 
+    async getApps() {
+        return this.#appMgr?.getApps() || [];
+    }
+
     async getContainerStatus() {
         const { stdout: _containerStatus } = await execAsync(`docker inspect --format="{{.State.Status}}" WinBoat`);
         return _containerStatus.trim() as ContainerStatusValue;
-    }
-
-    async getApps() {
-        const res = await nodeFetch(`${WINBOAT_GUEST_API}/apps`);
-        const apps = await res.json() as WinApp[];
-        apps.push(...presetApps);
-        return apps;
     }
 
     async getMetrics() {
@@ -308,6 +363,8 @@ export class Winboat {
 
         // Multiple spaces become one
         cmd = cmd.replace(/\s+/g, " ");
+        this.#appMgr?.incrementAppUsage(app);
+        this.#appMgr?.writeToDisk();
 
         logger.info(`Launch command:\n${cmd}`);
 

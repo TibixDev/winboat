@@ -2,32 +2,44 @@
     <div>
         <div class="flex items-center justify-between mb-6">
             <x-label class="text-neutral-300">Apps</x-label>
-            <x-input
-                id="select-username"
-                class="w-64 max-w-64"
-                type="text"
-                maxlength="32"
-                :value="searchInput"
-                @input="(e: any) => searchInput = e.target.value"
-            >
-                <x-icon href="#search"></x-icon>
-                <x-label>Search</x-label>
-            </x-input>
+            <div class="flex flex-row justify-center items-center gap-2">
+                <x-select @change="(e: any) => sortBy = e.detail.newValue">
+                    <x-menu class="">
+                        <x-menuitem value="name" toggled>
+                            <x-label><span class="qualifier"><Icon vlass="my-auto " icon="material-symbols:sort" class="size-16 block"></Icon>Sort By: </span>Name</x-label>
+                        </x-menuitem>
+                        <x-menuitem value="usage">
+                            <x-label><span class="qualifier"><Icon vlass="my-auto " icon="material-symbols:sort" class="size-16 block"></Icon>Sort By: </span>Usage</x-label>
+                        </x-menuitem>
+                    </x-menu>
+                </x-select>
+                <x-input
+                    id="select-username"
+                    class="w-64 max-w-64 m-0"
+                    type="text"
+                    maxlength="32"
+                    :value="searchInput"
+                    @input="(e: any) => searchInput = e.target.value"
+                >
+                    <x-icon href="#search"></x-icon>
+                    <x-label>Search</x-label>
+                </x-input>
+            </div>
         </div>
         <div v-if="winboat.isOnline.value" class="px-2">
-            <div v-if="apps.length" class="grid app-grid gap-4">
-                <x-card
-                    v-for="app of computedApps" :key="app.Name"
-                    class="cursor-pointer generic-hover p-2 my-0 flex flex-row gap-2 items-center justify-between bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
-                    @click="winboat.launchApp(app)"
-                >
-                    <div class="flex flex-row items-center gap-2 w-[85%]">
-                        <img class="size-10 rounded-md" :src="`data:image/jpeg;charset=utf-8;base64,${app.Icon}`"></img>
-                        <x-label class="text-ellipsis truncate">{{ app.Name }}</x-label>
-                    </div>
-                    <Icon icon="cuida:caret-right-outline"></Icon>
-                </x-card>
-            </div>
+                <TransitionGroup v-if="apps.length" name="apps" tag="x-card" class="grid app-grid gap-4 bg-transparent border-none">
+                    <x-card
+                        v-for="app of computedApps" :key="app.Name"
+                        class="cursor-pointer generic-hover p-2 my-0 flex flex-row gap-2 items-center justify-between bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
+                        @click="winboat.launchApp(app)"
+                    >
+                        <div class="flex flex-row items-center gap-2 w-[85%]">
+                            <img class="size-10 rounded-md" :src="`data:image/jpeg;charset=utf-8;base64,${app.Icon}`"></img>
+                            <x-label class="text-ellipsis truncate">{{ app.Name }}</x-label>
+                        </div>
+                        <Icon icon="cuida:caret-right-outline"></Icon>
+                    </x-card>
+                </TransitionGroup>
             <div v-else class="flex justify-center items-center mt-40">
                 <x-throbber class="w-16 h-16"></x-throbber>
             </div>
@@ -59,9 +71,15 @@ import { type WinApp } from '../../types';
 const winboat = new Winboat();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref('');
+const sortBy = ref('');
 
 const computedApps = computed(() => {
-    if (!searchInput.value) return apps.value.sort((a, b) => a.Name.localeCompare(b.Name));
+    if (!searchInput.value) return apps.value.sort((a, b) => { 
+        if(sortBy.value == 'usage' && a.Usage !== b.Usage) {
+            return b.Usage - a.Usage;
+        }
+        return a.Name.localeCompare(b.Name)
+    });
     return apps.value
         .filter(app => app.Name.toLowerCase().includes(searchInput.value.toLowerCase()))
         .sort((a, b) => a.Name.localeCompare(b.Name));
@@ -78,10 +96,33 @@ onMounted(async () => {
         }
     })
 })
+
 </script>
 
 <style scoped>
 .app-grid {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+x-menu .qualifier {
+    display: none;
+}
+
+.apps-move, /* apply transition to moving elements */
+.apps-enter-active,
+.apps-leave-active {
+  transition: all 0.5s ease;
+}
+
+.apps-enter-from,
+.apps-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+/* ensure leaving items are taken out of layout flow so that moving
+   animations can be calculated correctly. */
+.apps-leave-active {
+  position: absolute;
 }
 </style>
