@@ -8,7 +8,6 @@ import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { WinboatConfig } from "./config";
-import { app } from "electron";
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
@@ -57,10 +56,9 @@ class AppManager {
         if(!fs.existsSync(USAGE_PATH)) {
             fs.writeFileSync(USAGE_PATH, "{}");
         }
-        this.getApps()
     }
 
-    async updateAppUsage(options: { forceRead: boolean } = { forceRead: false }) {
+    async updateAppCache(options: { forceRead: boolean } = { forceRead: false }) {
         const res = await nodeFetch(`${WINBOAT_GUEST_API}/apps`);
         const newApps = await res.json() as WinApp[];
         newApps.push(...presetApps);
@@ -76,22 +74,38 @@ class AppManager {
     }
 
     async getApps(): Promise<WinApp[]> {
-        if(this.appCache.length > 0) return this.appCache;
-
-        const fsUsage = Object.entries(JSON.parse(fs.readFileSync(USAGE_PATH, 'utf-8'))) as any[]; // get the usage object that's on the disk
-        this.appCache = Array(fsUsage.length).fill(Object.create(presetApps[0]));
-        for(const i in fsUsage) {
-            this.appCache[i].Name = fsUsage[i][0];
-            this.appCache[i].Usage = fsUsage[i][1];
+        if(this.appCache.length > 0) {
+            return this.appCache;
         }
 
-        await this.updateAppUsage({ forceRead: true });
+        // Get the usage object that's on the disk
+        const fsUsage = Object.entries(JSON.parse(fs.readFileSync(USAGE_PATH, 'utf-8'))) as any[]; 
+        this.appCache = []; 
+
+        // Populate appCache with dummy WinApp object containing data from the disk
+        for (let i = 0; i < fsUsage.length; i++) {
+            this.appCache.push({
+                ...presetApps[0],
+                "Name": fsUsage[i][0],
+                "Usage": fsUsage[i][1]
+            });
+        }
+
+        await this.updateAppCache({ forceRead: true });
+
+        const appCacheHumanReadable = this.appCache.map(obj => {
+            const res = { ...obj } as any;
+            delete res.Icon;
+            return res;
+        })
+
+        logger.info(`AppCache: ${JSON.stringify(appCacheHumanReadable, null, 4)}`);
 
         return this.appCache;
     }
 
     incrementAppUsage(app: WinApp) {
-        app.Usage++;
+        app.Usage!++;
         this.appUsageCache[app.Name]++;
     }
 
@@ -124,7 +138,7 @@ export class Winboat {
         }
     })
     #wbConfig: WinboatConfig | null = null
-    #appMgr: AppManager | null = null
+    appMgr: AppManager | null = null
 
     constructor() {
         if (instance) return instance;
@@ -152,7 +166,7 @@ export class Winboat {
 
         this.#wbConfig = new WinboatConfig();
 
-        this.#appMgr = new AppManager();
+        this.appMgr = new AppManager();
 
         instance = this;
 
@@ -167,10 +181,6 @@ export class Winboat {
         } catch(e) {
             return false;
         }
-    }
-
-    async getApps() {
-        return this.#appMgr?.getApps() || [];
     }
 
     async getContainerStatus() {
@@ -363,8 +373,8 @@ export class Winboat {
 
         // Multiple spaces become one
         cmd = cmd.replace(/\s+/g, " ");
-        this.#appMgr?.incrementAppUsage(app);
-        this.#appMgr?.writeToDisk();
+        this.appMgr?.incrementAppUsage(app);
+        this.appMgr?.writeToDisk();
 
         logger.info(`Launch command:\n${cmd}`);
 

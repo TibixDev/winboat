@@ -6,10 +6,21 @@
                 <x-select @change="(e: any) => sortBy = e.detail.newValue">
                     <x-menu class="">
                         <x-menuitem value="name" toggled>
-                            <x-label><span class="qualifier"><Icon vlass="my-auto " icon="material-symbols:sort" class="size-16 block"></Icon>Sort By: </span>Name</x-label>
+                            <x-icon href="#sort" class="qualifier"></x-icon>
+                            <x-label>
+                                <span class="qualifier">
+                                    Sort By:
+                                </span>
+                                Name</x-label>
                         </x-menuitem>
                         <x-menuitem value="usage">
-                            <x-label><span class="qualifier"><Icon vlass="my-auto " icon="material-symbols:sort" class="size-16 block"></Icon>Sort By: </span>Usage</x-label>
+                            <x-icon href="#sort" class="qualifier"></x-icon>
+                            <x-label>
+                                <span class="qualifier">
+                                    Sort By:
+                                </span>
+                                Usage
+                            </x-label>
                         </x-menuitem>
                     </x-menu>
                 </x-select>
@@ -29,7 +40,7 @@
         <div v-if="winboat.isOnline.value" class="px-2">
                 <TransitionGroup v-if="apps.length" name="apps" tag="x-card" class="grid app-grid gap-4 bg-transparent border-none">
                     <x-card
-                        v-for="app of computedApps" :key="app.Name"
+                        v-for="app of computedApps" :key="app.Path"
                         class="cursor-pointer generic-hover p-2 my-0 flex flex-row gap-2 items-center justify-between bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
                         @click="winboat.launchApp(app)"
                     >
@@ -87,12 +98,19 @@ const computedApps = computed(() => {
 
 onMounted(async () => {
     if (winboat.isOnline.value) {
-        apps.value = await winboat.getApps();
+        apps.value = await winboat.appMgr!.getApps();
+
+        // Run in background, won't impact UX
+        await winboat.appMgr!.updateAppCache();
+        if(winboat.appMgr!.appCache.length > apps.value.length) {
+            apps.value = winboat!.appMgr!.appCache;
+        }
     }
 
     watch(winboat.isOnline, async (newVal, _) => {
         if (newVal) {
-            apps.value = await winboat.getApps();
+            apps.value = await winboat.appMgr!.getApps();
+            console.log("apps: ", apps.value);
         }
     })
 })
@@ -107,6 +125,8 @@ onMounted(async () => {
 x-menu .qualifier {
     display: none;
 }
+
+x-menu 
 
 .apps-move, /* apply transition to moving elements */
 .apps-enter-active,
