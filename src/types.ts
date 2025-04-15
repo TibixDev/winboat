@@ -26,6 +26,7 @@ export type WinApp = {
     Path: string;
     Icon: string;
     Source: string;
+    Usage?: number;
 }
 
 export type ComposeConfig = {
