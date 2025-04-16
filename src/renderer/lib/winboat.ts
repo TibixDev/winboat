@@ -184,8 +184,13 @@ export class Winboat {
     }
 
     async getContainerStatus() {
-        const { stdout: _containerStatus } = await execAsync(`docker inspect --format="{{.State.Status}}" WinBoat`);
-        return _containerStatus.trim() as ContainerStatusValue;
+        try {
+            const { stdout: _containerStatus } = await execAsync(`docker inspect --format="{{.State.Status}}" WinBoat`);
+            return _containerStatus.trim() as ContainerStatusValue;
+        } catch(e) {
+            console.error("Failed to get container status, most likely we are in the process of resetting");
+            return ContainerStatus.Dead;
+        }
     }
 
     async getMetrics() {
