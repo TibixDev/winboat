@@ -81,25 +81,46 @@
                             </h1>
                         </div>
                         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how large the display scaling is. This applies for both the desktop view and applications.
+                            Controls how large the display scaling is. This applies for both the desktop view and applications
                         </p>
                     </div>
                     <div class="flex flex-row justify-center items-center gap-2">
-                        <x-select class="w-20" @change="(e: any) => scale = Number(e.detail.newValue)">
+                        <x-select class="w-20 z-100" @change="(e: any) => wbConfig.config.scale = Number(e.detail.newValue)">
                             <x-menu>
-                                <x-menuitem value="100" :toggled="scale === 100">
+                                <x-menuitem value="100" :toggled="wbConfig.config.scale === 100">
                                     <x-label>100%</x-label>
                                 </x-menuitem>
 
-                                <x-menuitem value="140" :toggled="scale === 140">
+                                <x-menuitem value="140" :toggled="wbConfig.config.scale === 140">
                                     <x-label>140%</x-label>
                                 </x-menuitem>
 
-                                <x-menuitem value="180" :toggled="scale === 180">
+                                <x-menuitem value="180" :toggled="wbConfig.config.scale === 180">
                                     <x-label>180%</x-label>
                                 </x-menuitem>
                             </x-menu>
                         </x-select>
+                    </div>
+                </x-card>
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="game-icons:swipe-card"></Icon>
+                            <h1 class="text-lg my-0 font-semibold">
+                                Smartcard Passthrough
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, your smartcard readers will be passed to Windows when you start an app
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                            :toggled="wbConfig.config.smartcardEnabled"
+                            @toggle="(_: any) => wbConfig.config.smartcardEnabled = !wbConfig.config.smartcardEnabled"
+                            size="large"
+                        ></x-switch>
                     </div>
                 </x-card>
             </div>
@@ -156,15 +177,9 @@ const isResettingWinboat = ref(false);
 
 // For General
 const wbConfig = new WinboatConfig();
-const scale = ref(100);
 
 onMounted(async () => {
     await assignValues();
-    scale.value = wbConfig.config.scale;
-
-    watch(scale, (newVal, _) => {
-        wbConfig.config.scale = newVal;
-    })
 })
 
 async function assignValues() {

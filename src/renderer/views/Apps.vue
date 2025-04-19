@@ -87,7 +87,7 @@ const sortBy = ref('');
 const computedApps = computed(() => {
     if (!searchInput.value) return apps.value.sort((a, b) => { 
         if(sortBy.value == 'usage' && a.Usage !== b.Usage) {
-            return b.Usage - a.Usage;
+            return b.Usage! - a.Usage!;
         }
         return a.Name.localeCompare(b.Name)
     });
@@ -110,7 +110,7 @@ onMounted(async () => {
     watch(winboat.isOnline, async (newVal, _) => {
         if (newVal) {
             apps.value = await winboat.appMgr!.getApps();
-            console.log("apps: ", apps.value);
+            console.log("Apps list: ", apps.value);
         }
     })
 })

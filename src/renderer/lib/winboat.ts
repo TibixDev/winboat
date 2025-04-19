@@ -357,6 +357,7 @@ export class Winboat {
         /sound:sys:pulse\
         /microphone:sys:pulse\
         /floatbar\
+        ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
         /scale:${this.#wbConfig?.config.scale ?? 100}\
         /wm-class:"${app.Name}"\
@@ -372,6 +373,7 @@ export class Winboat {
                 /sound:sys:pulse\
                 /microphone:sys:pulse\
                 /floatbar\
+                ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
                 /scale:${this.#wbConfig?.config.scale ?? 100}\
                 /compression &`;
         }

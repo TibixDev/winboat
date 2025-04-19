@@ -4,10 +4,12 @@ import { WINBOAT_DIR } from "./constants";
 
 export type WinboatConfigObj = {
     scale: number;
+    smartcardEnabled: boolean
 };
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
+    smartcardEnabled: false
 };
 
 let instance: WinboatConfig | null = null;
@@ -28,6 +30,7 @@ export class WinboatConfig {
         return new Proxy(this.#configData, {
             get: (target, key) => target[key as keyof WinboatConfigObj],
             set: (target, key, value) => {
+                // @ts-expect-error This is valid
                 target[key as keyof WinboatConfigObj] = value;
                 this.writeConfig();
                 console.info("Wrote modified config to disk");
