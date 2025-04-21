@@ -71,6 +71,12 @@
                                 At least 2 CPU threads (Detected: {{ specs.cpuThreads }} threads)
                             </li>
                             <li class="flex items-center gap-2">
+                                <span v-if="specs.cpuThreads >= 2" class="text-green-500">✔</span>
+                                <span v-else class="text-red-500">✘</span>
+                                At least 32 GB free space in <span class="font-mono bg-neutral-700 rounded-md px-0.5">/var</span>
+                                (Detected: {{ specs.diskSpaceGB }} GB)
+                            </li>
+                            <li class="flex items-center gap-2">
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 Virtualization (KVM) enabled
