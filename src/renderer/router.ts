@@ -12,10 +12,7 @@ export const routes: RouteRecordRaw[] = [
     { path: '/', name: "Loading", component: Blank, meta: { icon: 'line-md:loading-loop' } },
     { path: '/home', name: "Home", component: Home, meta: { icon: 'fluent:home-32-filled' } },
     { path: '/setup', name: "SetupUI", component: SetupUI, meta: { icon: 'fluent-mdl2:install-to-drive' } },
-    // { path: '/adblock', name: "Reklámvédelem", component: Adblock, meta: { icon: 'fluent:shield-32-filled' } },
     { path: '/apps', name: "Apps", component: Apps, meta: { icon: 'fluent:apps-32-filled' } },
-    // WIP
-    // { path: '/install-center', name: "Install Center", component: InstallCenter, meta: { icon: 'clarity:store-solid' } },
     { path: '/configuration', name: "Configuration", component: Config, meta: { icon: 'icon-park-outline:config' } },
     { path: '/about', name: "About", component: About, meta: { icon: 'fluent:info-32-filled' } },
 
