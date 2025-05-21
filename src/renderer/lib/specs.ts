@@ -5,7 +5,8 @@ const { promisify }: typeof import('util') = require('util');
 const execAsync = promisify(exec);
 
 export function satisfiesPrequisites(specs: Specs) {
-    return specs.dockerInstalled && 
+    return specs.dockerInstalled &&
+        specs.dockerComposeInstalled && 
         specs.freeRDPInstalled &&
         specs.ipTablesLoaded &&
         specs.iptableNatLoaded &&
@@ -21,6 +22,7 @@ export const defaultSpecs: Specs = {
     diskSpaceGB: 0,
     kvmEnabled: false,
     dockerInstalled: false,
+    dockerComposeInstalled: false,
     freeRDPInstalled: false,
     ipTablesLoaded: false,
     iptableNatLoaded: false
@@ -41,6 +43,7 @@ export async function getSpecs() {
         }
     } catch (e) { }
 
+    // Docker check
     try {
         // We use /var here because /var/lib/docker is _the_ location for Docker data.
         // Also it covers cases of immutable distros using Podman (hello Bazzite!), since
@@ -62,6 +65,24 @@ export async function getSpecs() {
         specs.dockerInstalled = !!dockerOutput;
     } catch (e) { }
 
+    // Docker Compose plugin check with version validation
+    try {
+        const { stdout: dockerComposeOutput } = await execAsync('docker compose version');
+        if (dockerComposeOutput) {
+            // Example output: "Docker Compose version v2.35.1"
+            const versionMatch = dockerComposeOutput.match(/v(\d+\.\d+\.\d+)/);
+            if (versionMatch) {
+                const majorVersion = parseInt(versionMatch[1].split('.')[0], 10);
+                specs.dockerComposeInstalled = majorVersion >= 2;
+            } else {
+                specs.dockerComposeInstalled = false; // No valid version found
+            }
+        } else {
+            specs.dockerComposeInstalled = false; // No output, plugin not installed
+        }
+    } catch (e) { }
+
+    // FreeRDP check (including Flatpak)
     try {
         const freeRDPAliases = ["xfreerdp", "xfreerdp3", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];
         for(const alias of freeRDPAliases) {
@@ -69,11 +90,13 @@ export async function getSpecs() {
         }
     } catch(e) {}
 
+    // iptables kernel module check
     try {
         const { stdout: ipTablesOutput } = await execAsync('lsmod | grep ip_tables');
         specs.ipTablesLoaded = !!ipTablesOutput.trim();
     } catch (e) { }
 
+    // iptables_nat kernel module check
     try {
         const { stdout: iptableNatOutput } = await execAsync('lsmod | grep iptable_nat');
         specs.iptableNatLoaded = !!iptableNatOutput.trim();
