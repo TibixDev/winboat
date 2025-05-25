@@ -70,7 +70,8 @@ export async function getSpecs() {
         const { stdout: dockerComposeOutput } = await execAsync('docker compose version');
         if (dockerComposeOutput) {
             // Example output: "Docker Compose version v2.35.1"
-            const versionMatch = dockerComposeOutput.match(/v(\d+\.\d+\.\d+)/);
+            // Example output 2: "Docker Compose version 2.36.2"
+            const versionMatch = dockerComposeOutput.match(/(\d+\.\d+\.\d+)/);
             if (versionMatch) {
                 const majorVersion = parseInt(versionMatch[1].split('.')[0], 10);
                 specs.dockerComposeInstalled = majorVersion >= 2;
