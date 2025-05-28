@@ -13,8 +13,8 @@ Windows Registry Editor Version 5.00
     "AutoAdminLogon"="0"
 
     ; Always use the server's keyboard layout, TODO: Investigate
-    ; [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
-    ; "IgnoreRemoteKeyboardLayout"=dword:00000001
+    [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
+    "IgnoreRemoteKeyboardLayout"=dword:00000001
 
     ; Disable "Do you want your PC to be discoverable" prompt after each host system reboot
     [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Network\NewNetworkWindowOff]
