@@ -14,6 +14,7 @@
         "target": "nsis"
     },
     "linux":  {
+        "icon": "icons/winboat.png",
         "target": ["flatpak", "appimage"]
     },
     "files": [
@@ -40,6 +41,11 @@
         {
             "from": "./guest_server",
             "to": "guest_server",
+            "filter": ["**/*"]
+        },
+                {
+            "from": "./src/renderer/public/img/winboat_logo.png",
+            "to": "icon.png",
             "filter": ["**/*"]
         }
     ]

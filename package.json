@@ -1,7 +1,7 @@
 {
     "name": "winboat",
     "version": "0.5.10",
-    "description": "Windows Apps on Linux",
+    "description": "Windows for Penguins",
     "main": "main/main.js",
     "scripts": {
         "dev": "node scripts/dev-server.js",
