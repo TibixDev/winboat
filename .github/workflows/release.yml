@@ -73,9 +73,9 @@ jobs:
         run: npm ci
 
       - name: Build guest server and app
-        run: npm run build:linux
+        run: npm run build:linux-gs
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
