@@ -38,6 +38,8 @@ jobs:
 
       - name: Build guest server and app
         run: npm run build:linux-gs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
