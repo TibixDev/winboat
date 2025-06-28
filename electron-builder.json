@@ -39,7 +39,7 @@
     "extraResources": [
         {
             "from": "./guest_server",
-            "to": "resources/guest_server",
+            "to": "guest_server",
             "filter": ["**/*"]
         }
     ]
