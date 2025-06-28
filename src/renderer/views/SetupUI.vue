@@ -397,6 +397,7 @@ import { getSpecs, defaultSpecs, satisfiesPrequisites } from '../lib/specs';
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
+import license from '../assets/LICENSE.txt?raw'
 const os: typeof import('os') = require('os');
 
 type Step = {
@@ -468,9 +469,7 @@ const steps: Step[] = [
 const MIN_CPU_THREADS = 1;
 const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
-
 const $router = useRouter();
-const license = ref("");
 const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
@@ -485,8 +484,6 @@ const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 
 onMounted(async () => {
-    const licenseRes = await fetch("/LICENSE.txt");
-    license.value = await licenseRes.text();
     specs.value = await getSpecs();
     console.log("Specs", specs.value);
     username.value = os.userInfo().username;
