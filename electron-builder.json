@@ -35,5 +35,12 @@
 	"!build",
 	"!dist",
 	"!scripts"
+    ],
+    "extraResources": [
+        {
+            "from": "./guest_server",
+            "to": "resources/guest_server",
+            "filter": ["**/*"]
+        }
     ]
 }
