@@ -14,7 +14,7 @@
         "target": "nsis"
     },
     "linux":  {
-        "target": ["snap"]
+        "target": ["flatpak", "appimage"]
     },
     "files": [
         {
