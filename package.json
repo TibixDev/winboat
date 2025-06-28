@@ -10,10 +10,10 @@
         "build:linux-gs": "npm run build-guest-server && cp -r src/renderer/public/* src/main/static && node scripts/build.js && electron-builder && rm -rf src/main/static/* && touch src/main/static/.gitkeep",
         "build:linux": "node scripts/build.js && electron-builder --linux"
     },
-    "repository": "https://github.com/deluze/electron-vue-template",
+    "repository": "https://github.com/TibixDev/winboat",
     "author": {
-        "name": "Deluze",
-        "url": "https://github.com/Deluze"
+        "name": "TibixDev",
+        "url": "https://github.com/TibixDev"
     },
     "devDependencies": {
         "@types/json-to-pretty-yaml": "^1.2.1",
