@@ -13,6 +13,16 @@
         <!-- UI / SetupUI -->
         <div v-if="useRoute().name !== 'SetupUI'" class="flex flex-row h-[calc(100vh-2rem)]">
             <x-nav class="w-72 flex flex-none flex-col gap-0.5 bg-gray-500/10 backdrop-contrast-90 backdrop-blur-xl">
+                <div
+                    v-if="winboat?.rdpConnected.value"
+                    class="w-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-blue-500 text-white
+                    !mt-0 py-1 shadow-md shadow-indigo-500/50 transition-all duration-300 hover:brightness-105 flex flex-row items-center justify-center gap-2"
+                >
+                    <Icon class="size-5" icon="mdi:remote-desktop"></Icon>
+                    <span class="font-semibold text-center">
+                        RDP Session Active
+                    </span>
+                </div>
                 <div class="p-4 flex flex-row items-center gap-4">
                     <img class="rounded-full w-16"
                         src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Windows_10_Default_Profile_Picture.svg/2048px-Windows_10_Default_Profile_Picture.svg.png"
@@ -64,6 +74,7 @@ import { routes } from './router';
 import { Icon } from '@iconify/vue';
 import { onMounted } from 'vue';
 import { isInstalled } from './lib/install';
+import { Winboat } from './lib/winboat';
 const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
 const os: typeof import('os') = require('os')
 const path: typeof import('path') = require('path')
@@ -71,6 +82,7 @@ const remote: typeof import('@electron/remote') = require('@electron/remote');
 
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
+let winboat: Winboat | null = null;
 
 onMounted(async () => {
     console.log("WinBoat app path:", path.join(remote.app.getAppPath(), "..", ".."));
@@ -79,6 +91,7 @@ onMounted(async () => {
         console.log("Not installed, redirecting to setup...")
         $router.push('/setup');
     } else {
+        winboat = new Winboat();
         $router.push('/home');
     }
 })

@@ -14,6 +14,7 @@ if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 :: Copy files from OEM to install directory
 copy "%OEM_DIR%\winboat_guest_server.exe" "%EXE_PATH%" /Y
 copy "%OEM_DIR%\apps.ps1" "%PS1_PATH%" /Y
+copy "%OEM_DIR%\rdp-status.ps1" "%PS1_PATH%" /Y
 copy "%OEM_DIR%\nssm.exe" "%NSSM_PATH%" /Y
 
 :: Install the service with NSSM

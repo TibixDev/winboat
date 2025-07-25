@@ -95,11 +95,26 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(metrics)
 }
 
+func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
+	// Grep for any active RDP sessions via qwinsta
+	// Run the PowerShell script
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "rdp-status.ps1")
+	output, err := cmd.Output()
+	if err != nil {
+		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
 	r.HandleFunc("/health", getHealth).Methods("GET")
 	r.HandleFunc("/metrics", getMetrics).Methods("GET")
+	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
 	if err := http.ListenAndServe(":7148", r); err != nil {

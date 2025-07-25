@@ -121,6 +121,8 @@ export class Winboat {
     containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited)
     containerActionLoading: Ref<boolean> = ref(false)
     #metricsInverval: NodeJS.Timeout | null = null;
+    #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
+    rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
             usage: 0,
@@ -143,25 +145,19 @@ export class Winboat {
     constructor() {
         if (instance) return instance;
         
-        this.#healthInterval = setInterval(async () => {
-            const _isOnline = await this.getHealth();
-            if (_isOnline !== this.isOnline.value) {
-                this.isOnline.value = _isOnline;
-                logger.info(`Winboat Guest API went ${this.isOnline ? 'online' : 'offline'}`);
-            }
-        }, 1000);
-
+        // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
             const _containerStatus = await this.getContainerStatus();
             if (_containerStatus !== this.containerStatus.value) {
                 this.containerStatus.value = _containerStatus;
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
-            }
-        }, 1000);
 
-        this.#metricsInverval = setInterval(async () => {
-            if (!this.isOnline.value) return;
-            this.metrics.value = await this.getMetrics();
+                if (_containerStatus === ContainerStatus.Running) {
+                    this.createAPIInvervals();
+                } else {
+                    this.destroyAPIInvervals();
+                }
+            }
         }, 1000);
 
         this.#wbConfig = new WinboatConfig();
@@ -171,6 +167,81 @@ export class Winboat {
         instance = this;
 
         return instance;
+    }
+
+    /**
+     * Creates the intervals which rely on the Winboat Guest API.
+     */
+    createAPIInvervals() {
+        logger.info("Creating Winboat API intervals...");
+        const HEALTH_WAIT_MS = 1000;
+        const METRICS_WAIT_MS = 1000;
+        const RDP_STATUS_WAIT_MS = 1000;
+
+        // Make sure we don't have any existing intervals
+        if (this.#healthInterval) {
+            clearInterval(this.#healthInterval);
+            this.#healthInterval = null;
+        }
+
+        this.#healthInterval = setInterval(async () => {
+            const _isOnline = await this.getHealth();
+            if (_isOnline !== this.isOnline.value) {
+                this.isOnline.value = _isOnline;
+                logger.info(`Winboat Guest API went ${this.isOnline ? 'online' : 'offline'}`);
+            }
+        }, HEALTH_WAIT_MS);
+
+        // Make sure we don't have any existing intervals
+        if (this.#metricsInverval) {
+            clearInterval(this.#metricsInverval);
+            this.#metricsInverval = null;
+        }
+
+        this.#metricsInverval = setInterval(async () => {
+            if (!this.isOnline.value) return;
+            this.metrics.value = await this.getMetrics();
+        }, METRICS_WAIT_MS);
+
+        // Make sure we don't have any existing intervals
+        if (this.#rdpConnectionStatusInterval) {
+            clearInterval(this.#rdpConnectionStatusInterval);
+            this.#rdpConnectionStatusInterval = null;
+        }
+        this.#rdpConnectionStatusInterval = setInterval(async () => {
+            if (!this.isOnline.value) return;
+            const _rdpConnected = await this.getRDPConnectedStatus();
+            if (_rdpConnected !== this.rdpConnected.value) {
+                this.rdpConnected.value = _rdpConnected;
+                logger.info(`RDP connection status changed to ${_rdpConnected ? 'connected' : 'disconnected'}`);
+            }
+        }, RDP_STATUS_WAIT_MS);
+    }
+
+    /**
+     * Destroys the intervals which rely on the Winboat Guest API.
+     * This is called when the container is in any state other than Running.
+     */
+    destroyAPIInvervals() {
+        logger.info("Destroying Winboat API intervals...");
+        if (this.#healthInterval) {
+            clearInterval(this.#healthInterval);
+            this.#healthInterval = null;
+            // Side-effect: Set isOnline to false
+            this.isOnline.value = false;
+        }
+
+        if (this.#metricsInverval) {
+            clearInterval(this.#metricsInverval);
+            this.#metricsInverval = null;
+        }
+
+        if (this.#rdpConnectionStatusInterval) {
+            clearInterval(this.#rdpConnectionStatusInterval);
+            this.#rdpConnectionStatusInterval = null;
+            // Side-effect: Set rdpConnected to false
+            this.rdpConnected.value = false;
+        }
     }
 
     async getHealth() {
@@ -197,6 +268,12 @@ export class Winboat {
         const res = await nodeFetch(`${WINBOAT_GUEST_API}/metrics`);
         const metrics = await res.json() as Metrics;
         return metrics;
+    }
+
+    async getRDPConnectedStatus() {
+        const res = await nodeFetch(`${WINBOAT_GUEST_API}/rdp/status`);
+        const status = await res.json() as { rdpConnected: boolean };
+        return status.rdpConnected;
     }
 
     parseCompose() {
