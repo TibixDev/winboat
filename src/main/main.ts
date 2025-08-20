@@ -1,6 +1,5 @@
 import { app, BrowserWindow, ipcMain, session } from 'electron';
 import { join } from 'path';
-import { setupIPCHandles } from './ipchandle';
 import { initialize, enable } from '@electron/remote/main';
 
 initialize();
@@ -68,5 +67,3 @@ app.on('window-all-closed', function () {
 ipcMain.on('message', (event, message) => {
     console.log(message);
 })
-
-setupIPCHandles();
