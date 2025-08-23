@@ -15,7 +15,7 @@
     },
     "linux":  {
         "icon": "icons/winboat.png",
-        "target": ["flatpak", "appimage"]
+        "target": ["appimage"]
     },
     "files": [
         {

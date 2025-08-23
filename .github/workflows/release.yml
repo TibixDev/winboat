@@ -1,12 +1,10 @@
 name: Build WinBoat
-
 on:
   push:
     branches:
       - main
     tags:
-      - 'v*'
-
+      - "v*"
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,71 +12,47 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-
+          node-version: "22"
+          cache: "npm"
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.24.2'
-
-      - name: Install Flatpak dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
-          flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak install -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-
+          go-version: "stable"
       - name: Install dependencies
         run: npm ci
-
       - name: Build guest server and app
         run: npm run build:linux-gs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifacts
           path: dist/*
-
   release:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
-
+          node-version: "22"
+          cache: "npm"
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.24.2'
-
-      - name: Install Flatpak dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
-          flatpak install -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
-
+          go-version: "stable"
       - name: Install dependencies
         run: npm ci
-
       - name: Build guest server and app
         run: npm run build:linux-gs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
