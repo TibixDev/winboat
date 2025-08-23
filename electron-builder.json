@@ -3,7 +3,7 @@
     "directories": {
         "output": "dist"
     },
-
+    "publish": null,
     "nsis": {
         "oneClick": false,
         "perMachine": false,
