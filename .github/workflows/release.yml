@@ -1,4 +1,6 @@
 name: Build WinBoat
+permissions:
+  contents: write
 on:
   push:
     branches:
