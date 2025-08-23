@@ -41,20 +41,31 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: '22'
+          cache: 'npm'
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "stable"
+          go-version: 'stable'
       - name: Install dependencies
         run: npm ci
       - name: Build guest server and app
         run: npm run build:linux-gs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Package unpacked variant
+        run: |
+          cd dist
+          zip -r winboat-linux-unpacked.zip linux-unpacked/
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: linux-release-artifacts
-          path: dist/*
+          files: |
+            dist/*.AppImage
+            dist/winboat-linux-unpacked.zip
+            dist/latest-linux.yml
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
