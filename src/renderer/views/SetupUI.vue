@@ -92,7 +92,7 @@
                                 <span v-if="specs.dockerComposeInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 Docker Compose v2 installed
-                                <a href="https://docs.docker.com/compose/install/#scenario-two-install-the-docker-compose-plugin-linux-only" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://docs.docker.com/compose/install/#plugin-linux-only" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDPInstalled" class="text-green-500">✔</span>
