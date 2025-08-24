@@ -7,6 +7,7 @@ const execAsync = promisify(exec);
 export function satisfiesPrequisites(specs: Specs) {
     return specs.dockerInstalled &&
         specs.dockerComposeInstalled && 
+        specs.dockerIsInUserGroups &&
         specs.freeRDPInstalled &&
         specs.ipTablesLoaded &&
         specs.iptableNatLoaded &&
@@ -23,6 +24,7 @@ export const defaultSpecs: Specs = {
     kvmEnabled: false,
     dockerInstalled: false,
     dockerComposeInstalled: false,
+    dockerIsInUserGroups: false,
     freeRDPInstalled: false,
     ipTablesLoaded: false,
     iptableNatLoaded: false
@@ -41,7 +43,9 @@ export async function getSpecs() {
         if (totalMemLine) {
             specs.ramGB = Math.round(parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024 * 100) / 100;
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error('Error reading /proc/meminfo:', e);
+    }
 
     // Docker check
     try {
@@ -51,19 +55,23 @@ export async function getSpecs() {
         // TODO:hdkv where does Podman stores the images and the data on non-immutables (aka regular Fedora)?
         const diskStats = fs.statfsSync('/var');
         specs.diskSpaceGB = Math.round(diskStats.bavail * diskStats.bsize / 1024 / 1024 / 1024 * 100) / 100;
-    } catch (e) { }
+    } catch (e) {
+        console.error('Error getting disk space for /var:', e);
+    }
 
     try {
         const cpuInfo = fs.readFileSync('/proc/cpuinfo', 'utf8');
         if ((cpuInfo.includes('vmx') || cpuInfo.includes('svm')) && fs.existsSync('/dev/kvm')) {
             specs.kvmEnabled = true;
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error('Error reading /proc/cpuinfo or checking /dev/kvm:', e);
+    }
 
     try {
         const { stdout: dockerOutput } = await execAsync('docker --version');
         specs.dockerInstalled = !!dockerOutput;
-    } catch (e) { }
+    } catch (e) {}
 
     // Docker Compose plugin check with version validation
     try {
@@ -81,7 +89,17 @@ export async function getSpecs() {
         } else {
             specs.dockerComposeInstalled = false; // No output, plugin not installed
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error('Error checking Docker Compose version:', e);
+    }
+
+    // Docker user group check
+    try {
+        const userGroups = (await execAsync('groups')).stdout;
+        specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes('docker');
+    } catch (e) {
+        console.error('Error checking user groups for docker:', e);
+    }
 
     // FreeRDP check (including Flatpak)
     try {
@@ -89,19 +107,25 @@ export async function getSpecs() {
         for(const alias of freeRDPAliases) {
             specs.freeRDPInstalled ||= !!(await execAsync(`${alias} || exit 0`)).stdout;
         }
-    } catch(e) {}
+    } catch(e) {
+        console.error('Error checking FreeRDP installation:', e);
+    }
 
     // iptables kernel module check
     try {
         const { stdout: ipTablesOutput } = await execAsync('lsmod | grep ip_tables');
         specs.ipTablesLoaded = !!ipTablesOutput.trim();
-    } catch (e) { }
+    } catch (e) {
+        console.error('Error checking ip_tables module:', e);
+    }
 
     // iptables_nat kernel module check
     try {
         const { stdout: iptableNatOutput } = await execAsync('lsmod | grep iptable_nat');
         specs.iptableNatLoaded = !!iptableNatOutput.trim();
-    } catch (e) { }
+    } catch (e) {
+        console.error('Error checking iptable_nat module:', e);
+    }
 
     console.log('Specs:', specs);
     return specs;

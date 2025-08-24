@@ -7,6 +7,7 @@ export type Specs = {
     kvmEnabled: boolean;
     dockerInstalled: boolean;
     dockerComposeInstalled: boolean,
+    dockerIsInUserGroups: boolean;
     freeRDPInstalled: boolean;
     ipTablesLoaded: boolean;
     iptableNatLoaded: boolean;

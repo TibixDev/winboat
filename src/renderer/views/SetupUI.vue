@@ -95,6 +95,12 @@
                                 <a href="https://docs.docker.com/compose/install/#plugin-linux-only" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
+                                <span v-if="specs.dockerIsInUserGroups" class="text-green-500">✔</span>
+                                <span v-else class="text-red-500">✘</span>
+                                User added to the <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
+                                <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                            </li>
+                            <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDPInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 FreeRDP installed
