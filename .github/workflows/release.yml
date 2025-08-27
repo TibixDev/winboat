@@ -55,10 +55,14 @@ jobs:
         run: npm run build:linux-gs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Package unpacked variant
+      - name: Zip unpacked variant
         run: |
           cd dist
           zip -r winboat-linux-unpacked.zip linux-unpacked/
+      - name: Zip guest server
+        run: |
+          cd dist/linux-unpacked/resources/guest_server
+          zip -r ../../../winboat-guest-server.zip .
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -66,6 +70,7 @@ jobs:
             dist/*.AppImage
             dist/winboat-linux-unpacked.zip
             dist/latest-linux.yml
+            dist/winboat-guest-server.zip
           draft: false
           prerelease: false
           generate_release_notes: true
