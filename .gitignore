@@ -12,3 +12,4 @@ package-lock.json
 # *.exe
 temp
 guest_server/winboat_guest_server.exe
+guest_server/winboat_guest_server.zip

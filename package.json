@@ -5,7 +5,7 @@
     "main": "main/main.js",
     "scripts": {
         "dev": "node scripts/dev-server.js",
-        "build-guest-server": "cd guest_server && GOOS=windows GOARCH=amd64 go build -o winboat_guest_server.exe main.go",
+        "build-guest-server": "cd guest_server && GOOS=windows GOARCH=amd64 go build -o winboat_guest_server.exe main.go && rm -f *.zip && zip -r winboat-guest-server.zip .",
         "build:linux-gs": "npm run build-guest-server && node scripts/build.js && electron-builder --linux"
     },
     "repository": "https://github.com/TibixDev/winboat",
