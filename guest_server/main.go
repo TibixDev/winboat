@@ -13,6 +13,12 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
+var (
+	Version        = "0.0.0"
+	CommitHash     = "n/a"
+	BuildTimestamp = "n/a"
+)
+
 type Metrics struct {
 	CPU struct {
 		Usage     float64 `json:"usage"`     // Percentage, 0-100
@@ -46,6 +52,17 @@ func getApps(w http.ResponseWriter, r *http.Request) {
 func getHealth(w http.ResponseWriter, r *http.Request) {
 	// Simple health check
 	response := map[string]string{"status": "ok"}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func getVersion(w http.ResponseWriter, r *http.Request) {
+	response := map[string]string{
+		"version":     Version,
+		"commit_hash": CommitHash,
+		"build_time":  BuildTimestamp,
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
@@ -113,6 +130,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
 	r.HandleFunc("/health", getHealth).Methods("GET")
+	r.HandleFunc("/version", getVersion).Methods("GET")
 	r.HandleFunc("/metrics", getMetrics).Methods("GET")
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 
