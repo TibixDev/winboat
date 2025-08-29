@@ -15,6 +15,10 @@ export LDFLAGS=(
   "-X 'main.BuildTimestamp=${BUILD_TIMESTAMP}'"
 )
 
+echo "Version: ${VERSION}"
+echo "Commit Hash: ${COMMIT_HASH}"
+echo "Build Timestamp: ${BUILD_TIMESTAMP}"
+
 cd guest_server
 go build -ldflags="${LDFLAGS[*]}" -o winboat_guest_server.exe main.go
 rm -f winboat_guest_server.zip

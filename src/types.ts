@@ -78,3 +78,15 @@ export type Metrics = {
         percentage: number // Disk Usage in percentage (e.g. 70%)
     }
 }
+
+export type GuestServerVersion = {
+    version: string;
+    commit_hash: string;
+    build_time: string;
+}
+
+export type GuestServerUpdateResponse = {
+    filename: string;
+    status: string;
+    temp_path: string;
+}

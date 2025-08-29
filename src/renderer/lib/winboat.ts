@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
 import { WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
-import type { ComposeConfig, Metrics, WinApp } from "../../types";
+import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from 'yaml';
@@ -13,6 +13,8 @@ const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
 const { promisify }: typeof import('util') = require('util');
 const { exec }: typeof import('child_process') = require('child_process');
+const remote: typeof import('@electron/remote') = require('@electron/remote');
+const FormData: typeof import('form-data') = require('form-data');
 
 const execAsync = promisify(exec);
 
@@ -117,6 +119,7 @@ class AppManager {
 export class Winboat {
     #healthInterval: NodeJS.Timeout | null = null;
     isOnline: Ref<boolean> = ref(false);
+    isUpdatingGuestServer: Ref<boolean> = ref(false);
     #containerInterval: NodeJS.Timeout | null = null;
     containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited)
     containerActionLoading: Ref<boolean> = ref(false)
@@ -189,6 +192,10 @@ export class Winboat {
             if (_isOnline !== this.isOnline.value) {
                 this.isOnline.value = _isOnline;
                 logger.info(`Winboat Guest API went ${this.isOnline ? 'online' : 'offline'}`);
+
+                if (this.isOnline.value) {
+                    await this.checkVersionAndUpdateGuestServer();
+                }
             }
         }, HEALTH_WAIT_MS);
 
@@ -463,5 +470,65 @@ export class Winboat {
         logger.info(`Launch command:\n${cmd}`);
 
         await execAsync(cmd);
+    }
+
+    async checkVersionAndUpdateGuestServer() {
+        // 1. Get the version of the guest server and compare it to the current version
+        const versionRes = await nodeFetch(`${WINBOAT_GUEST_API}/version`);
+        const version = await versionRes.json() as GuestServerVersion;
+
+        const appVersion = import.meta.env.VITE_APP_VERSION;
+
+        if (version.version !== appVersion) {
+            logger.info(`New local version of WinBoat Guest Server found: ${appVersion}`);
+            logger.info(`Current version of WinBoat Guest Server: ${version.version}`);
+        }
+
+        // 2. Return early if the version is the same
+        if (version.version === appVersion) {
+            return;
+        }
+
+        // 3. Set update flag & grab winboat_guest_server.zip from Electron assets
+        this.isUpdatingGuestServer.value = true;
+        const zipPath = remote.app.isPackaged
+            ? path.join(remote.app.getAppPath(), 'guest_server', 'winboat_guest_server.zip')
+            : path.join(remote.app.getAppPath(), '..', '..', 'guest_server', 'winboat_guest_server.zip');
+
+        // 4. Send the payload to the guest server, as a multipart/form-data with updateFile
+        const formData = new FormData();
+        formData.append('updateFile', fs.createReadStream(zipPath));
+
+        try {
+            const res = await nodeFetch(`${WINBOAT_GUEST_API}/update`, {
+                method: 'POST',
+                body: formData as any
+            });
+            if (res.status !== 200) {
+                const resBody = await res.text();
+                throw new Error(resBody);
+            }
+            const resJson = await res.json() as GuestServerUpdateResponse;
+            logger.info(`Update params: ${JSON.stringify(resJson, null, 4)}`);
+            logger.info("Successfully sent update payload to guest server");
+            
+        } catch(e) {
+            logger.error("Failed to send update payload to guest server");
+            logger.error(e);
+            this.isUpdatingGuestServer.value = false;
+            throw e;
+        }
+
+        // 5. Wait about ~3 seconds, then start scanning for health
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        let _isOnline = await this.getHealth();
+        while (!_isOnline) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            _isOnline = await this.getHealth();
+        }
+        logger.info("Update completed, Winboat Guest Server is online");
+
+        // Done!
+        this.isUpdatingGuestServer.value = false;
     }
 }
