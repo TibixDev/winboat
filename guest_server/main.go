@@ -1,10 +1,17 @@
+//go:build windows
+// +build windows
+
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -126,6 +133,74 @@ func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
 	w.Write(output)
 }
 
+func applyUpdate(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(100 << 20) // Limit upload size to 100MB
+	var buf bytes.Buffer
+
+	// Grab the file
+	file, _, err := r.FormFile("updateFile")
+	if err != nil {
+		http.Error(w, "Failed to get update file: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Copy to buffer & close the file
+	io.Copy(&buf, file)
+	file.Close()
+
+	// Check zip magic bytes
+	if !(buf.Bytes()[0] == 'P' && buf.Bytes()[1] == 'K' && buf.Bytes()[2] == 3 && buf.Bytes()[3] == 4) {
+		http.Error(w, "Uploaded file is not a valid ZIP archive", http.StatusBadRequest)
+		return
+	}
+
+	// Make temp directory
+	tmpDir, err := os.MkdirTemp("", "winboat-update")
+	if err != nil {
+		http.Error(w, "Failed to create temp directory: "+err.Error(), http.StatusInternalServerError)
+	}
+
+	// Write to temp file
+	fileName := "update.zip"
+	tmpFilePath := filepath.Join(tmpDir, fileName)
+	err = os.WriteFile(tmpFilePath, buf.Bytes(), 0644)
+
+	if err != nil {
+		http.Error(w, "Failed to write temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return success & the paths
+	response := map[string]string{
+		"status":    "updating",
+		"temp_path": tmpFilePath,
+		"filename":  fileName,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+
+	// Get current executable path & directory
+	exePath, err := os.Executable()
+	if err != nil {
+		http.Error(w, "Failed to get executable path: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	appDir := filepath.Dir(exePath)
+
+	// Create & run the script
+	scriptPath := filepath.Join(appDir, "update.ps1")
+	cmd := exec.Command("cmd", "/C", "start", "/B", "powershell",
+		"-ExecutionPolicy", "Bypass", "-File", scriptPath,
+		"-AppPath", appDir,
+		"-UpdateFilePath", tmpFilePath,
+		"-ServiceName", "WinBoatGuestServer")
+
+	// The script will take care of the rest, including stopping this service
+	cmd.Run()
+
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
@@ -133,6 +208,7 @@ func main() {
 	r.HandleFunc("/version", getVersion).Methods("GET")
 	r.HandleFunc("/metrics", getMetrics).Methods("GET")
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
+	r.HandleFunc("/update", applyUpdate).Methods("POST")
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
 	if err := http.ListenAndServe(":7148", r); err != nil {
