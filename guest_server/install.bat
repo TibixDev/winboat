@@ -1,7 +1,6 @@
 @echo off
 set INSTALL_DIR=C:\Program Files\WinBoat
 set EXE_PATH=%INSTALL_DIR%\winboat_guest_server.exe
-set PS1_PATH=%INSTALL_DIR%\apps.ps1
 set NSSM_PATH=%INSTALL_DIR%\nssm.exe
 set OEM_DIR=C:\OEM
 
@@ -12,10 +11,7 @@ reg import "%OEM_DIR%\RDPApps.reg"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
 :: Copy files from OEM to install directory
-copy "%OEM_DIR%\winboat_guest_server.exe" "%EXE_PATH%" /Y
-copy "%OEM_DIR%\apps.ps1" "%PS1_PATH%" /Y
-copy "%OEM_DIR%\rdp-status.ps1" "%PS1_PATH%" /Y
-copy "%OEM_DIR%\nssm.exe" "%NSSM_PATH%" /Y
+xcopy "%OEM_DIR%\*" "%INSTALL_DIR%\" /Y /E
 
 :: Install the service with NSSM
 "%NSSM_PATH%" install WinBoatGuestServer "%EXE_PATH%"
