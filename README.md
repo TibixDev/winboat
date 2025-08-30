@@ -54,7 +54,7 @@ Before running WinBoat, ensure your system meets the following requirements:
 ## Downloading
 You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer two variants:
 - **AppImage:** A popular & portable app format which should run fine on most distributions
-- **Unpacked:** The raw unpacked files, simply run the executable located `linux-unpacked/winboat`
+- **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
 
 ## Known Issues About Container Runtimes
 - Podman is **unsupported** for now
@@ -92,7 +92,7 @@ Feel free to:
 Check out our issues page to get started, or feel free to open a new issue if you've found something that needs attention.
 
 ## License
-WinBoat is licensed under the [MIT](https://github.com/TibixDev/winboat/blob/main/LICENSE)
+WinBoat is licensed under the [MIT](https://github.com/TibixDev/winboat/blob/main/LICENSE) license
 
 ## Inspiration / Alternatives
 These past few years some cool projects have surfaced with similar concepts, some of which we've also taken inspirations from.\
