@@ -53,6 +53,43 @@
                         <p class="text-neutral-100">Cores</p>
                     </div>
                 </x-card>
+                <x-card
+                    class="flex flex-row items-center justify-between p-2 relative z-20  w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                    <div class="w-full">
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="fluent:tv-usb-24-filled"></Icon>
+                            <h1 class="text-lg my-0 font-semibold">
+                                USB Passthrough
+                            </h1>
+                        </div>
+                        <x-label class="font-semibold text-base" v-if="usbDevices.length == 0">Press the button below to add USB devices to your passthrough list</x-label>
+                        <TransitionGroup name="devices" tag="x-box" class="flex-col gap-1 mt-4">
+                            <x-card 
+                                class="flex items-center justify-between m-0 py-0 px-2" 
+                                v-for="index, k of usbDevices" 
+                                :key="k"
+                                @click="usbDevices.splice(k, 1)"
+                            >
+                                <p class="text-base">{{ displayUsbDevices[index].alias }}</p>
+                                <x-button class="mt-1">
+                                    <x-icon href="#remove"></x-icon>
+                                </x-button>
+                            </x-card>
+                        </TransitionGroup>
+                        <x-button class="mt-4" @click="fetchUSBDevices({ignoreVendorIDs: ['1d6b']}).then(x => displayUsbDevices = x)" v-if="displayUsbDevices.length == 0 || usbDevices.length != displayUsbDevices.length">
+                            <x-icon href="#add"></x-icon>
+                            <TransitionGroup ref="usbMenu" name="menu" tag="x-menu">
+                                <x-menuitem 
+                                    v-for="device, k of displayUsbDevices.filter((_, i: number) => !usbDevices.includes(i))" 
+                                    :key="k"
+                                    @click="(e: any) => {usbDevices.push(displayUsbDevices.indexOf(device)); e.stopPropagation()}"
+                                >
+                                    <x-label>{{device.alias}}</x-label>
+                                </x-menuitem>
+                            </TransitionGroup>
+                        </x-button>
+                    </div>
+                </x-card>
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="error, k of errors" :key="k">
                         ❗ {{ error }}
@@ -72,7 +109,7 @@
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
                 <x-card
-                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                    class="flex flex-row items-center justify-between p-2 relative z-10  w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
                     <div>
                         <div class="flex flex-row items-center gap-2 mb-2">
                             <Icon class="text-violet-400 inline-flex size-8" icon="uil:scaling-right"></Icon>
@@ -159,6 +196,7 @@ import { type ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
+import { fetchUSBDevices } from '../lib/usb';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 const winboat = new Winboat();
@@ -174,12 +212,20 @@ const maxRamGB = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
+const usbDevices = ref(Array<any>());
+const displayUsbDevices = ref(Array<any>());
+
 
 // For General
 const wbConfig = new WinboatConfig();
 
 onMounted(async () => {
     await assignValues();
+    watch(usbDevices.value, async () => {
+        if(usbDevices.value.length != displayUsbDevices.value.length) return;
+        // ideally we'd like to close the usb selection menu when its empty but that causes the entire config screen to stop working sadly
+        //await document.querySelector("[role='menu']")?.close();
+    });
 })
 
 async function assignValues() {
@@ -234,6 +280,7 @@ const errors = computed(() => {
     return errCollection;
 })
 
+
 async function resetWinboat() {
     if (++resetQuestionCounter.value < 3) {
         return;
@@ -246,5 +293,40 @@ async function resetWinboat() {
 
 </script>
 
-<style>
+<style scoped>
+.devices-move, /* apply transition to moving elements */
+.devices-enter-active,
+.devices-leave-active {
+  transition: all 0.5s ease;
+}
+
+.devices-enter-from,
+.devices-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+/* ensure leaving items are taken out of layout flow so that moving
+   animations can be calculated correctly. */
+.devices-leave-active {
+  position: absolute;
+}
+
+.menu-move, /* apply transition to moving elements */
+.menu-enter-active,
+.menu-leave-active {
+  transition: all 0.5s ease;
+}
+
+.menu-enter-from,
+.menu-leave-to {
+  opacity: 0;
+  transform: translateX(30px) scale(0);
+}
+
+/* ensure leaving items are taken out of layout flow so that moving
+   animations can be calculated correctly. */
+.menu-leave-active {
+  position: absolute;
+}
 </style>
