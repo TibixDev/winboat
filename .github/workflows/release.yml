@@ -14,19 +14,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
         with:
-          node-version: "22"
-          cache: "npm"
+          version: 10
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
       - name: Install dependencies
-        run: npm ci
+        run: pnpm i --frozen-lockfile
       - name: Build guest server and app
-        run: npm run build:linux-gs
+        run: pnpm run build:linux-gs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload artifacts
@@ -38,23 +37,33 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Node.js
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: 20
+          cache: 'pnpm'
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: 'stable'
+        
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Build guest server and app
-        run: npm run build:linux-gs
+        run: pnpm run build:linux-gs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Zip unpacked variant
         run: |
           cd dist
