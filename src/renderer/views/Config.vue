@@ -62,29 +62,43 @@
                                 USB Passthrough
                             </h1>
                         </div>
-                        <x-label class="font-semibold text-base" v-if="usbDevices.length == 0">Press the button below to add USB devices to your passthrough list</x-label>
+                        <x-label class="text-base" v-if="usbDevicesIdxs.length == 0">Press the button below to add USB devices to your passthrough list</x-label>
                         <TransitionGroup name="devices" tag="x-box" class="flex-col gap-1 mt-4">
                             <x-card 
-                                class="flex items-center justify-between m-0 py-0 px-2" 
-                                v-for="index, k of usbDevices" 
-                                :key="k"
-                                @click="usbDevices.splice(k, 1)"
+                                class="flex items-center justify-between m-0 py-0 px-2 bg-white/10" 
+                                v-for="index, k of usbDevicesIdxs" 
+                                :key="index" 
+                                @mouseenter="(e: Event) => hasIssue(displayUsbDevices[index]) && showTooltip(e)"
+                                @mouseleave="(e: Event) => hasIssue(displayUsbDevices[index]) && closeTooltip(e)"
                             >
-                                <p class="text-base">{{ displayUsbDevices[index].alias }}</p>
-                                <x-button class="mt-1">
+                                <x-tooltip class="scale-125" v-if="hasIssue(displayUsbDevices[index])">{{ (displayUsbDevices[index] as USBDeviceWithIssue).issue }}</x-tooltip>
+                                <div class="flex flex-row items-center gap-2"> 
+                                    <Icon v-if="hasIssue(displayUsbDevices[index])" class="text-red-500 inline-flex size-7" icon="clarity:warning-solid">
+                                    </Icon>
+                                    <p class="text-base !m-0">{{ displayUsbDevices[index].alias }}</p>
+                                </div>
+                                <x-button @click="usbDevicesIdxs.splice(k, 1)" class="mt-1 !bg-gradient-to-tl shadow-md shadow-red-900/20 !border-1 !border-slate-800/15  from-red-500/20 to-transparent hover:from-red-500/30 transition">
                                     <x-icon href="#remove"></x-icon>
                                 </x-button>
                             </x-card>
                         </TransitionGroup>
-                        <x-button class="mt-4" @click="fetchUSBDevices({ignoreVendorIDs: ['1d6b']}).then(x => displayUsbDevices = x)" v-if="displayUsbDevices.length == 0 || usbDevices.length != displayUsbDevices.length">
+                        <x-button 
+                            v-if="filterMenuItems().length > 0"
+                            class="mt-4 !bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                            @click="fetchUSBDevices({ignoreVendorIDs: ['1d6b']}).then(x => updateDisplayUSBList(x)).then(_ => console.log(usbDevicesIdxs.length, displayUsbDevices.length))"
+                        >
                             <x-icon href="#add"></x-icon>
+                            <x-label>Add Device</x-label>
                             <TransitionGroup ref="usbMenu" name="menu" tag="x-menu">
                                 <x-menuitem 
-                                    v-for="device, k of displayUsbDevices.filter((_, i: number) => !usbDevices.includes(i))" 
+                                    v-for="device, k of filterMenuItems()" 
                                     :key="k"
-                                    @click="(e: any) => {usbDevices.push(displayUsbDevices.indexOf(device)); e.stopPropagation()}"
+                                    @click="(e: any) => {usbDevicesIdxs.push(displayUsbDevices.indexOf(device)); e.stopPropagation()}"
                                 >
                                     <x-label>{{device.alias}}</x-label>
+                                </x-menuitem>
+                                <x-menuitem v-if="filterMenuItems().length === 0" disabled>
+                                    <x-label>No available devices</x-label>
                                 </x-menuitem>
                             </TransitionGroup>
                         </x-button>
@@ -96,7 +110,7 @@
                     </p>
                 </div>
                 <x-button
-                    :disabled="errors.length || (origNumCores === numCores && origRamGB === ramGB) || isApplyingChanges"
+                    :disabled="errors.length || (origNumCores === numCores && origRamGB === ramGB && shouldUpdateUsbList) || isApplyingChanges"
                     @click="applyChanges()"
                     class="w-24"
                 >
@@ -192,12 +206,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { Winboat } from '../lib/winboat';
-import { type ComposeConfig } from '../../types';
+import type { ComposeConfig, USBDevice } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
-import { fetchUSBDevices } from '../lib/usb';
+import { fetchUSBDevices, extractUSBFromDockerArgs, serializeUSBDevices } from '../lib/usb';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
+
+type USBDeviceWithIssue = (USBDevice & { issue: string });
+type USBDeviceWithPossibleIssue = USBDevice | USBDeviceWithIssue;
 
 const winboat = new Winboat();
 
@@ -206,23 +223,23 @@ const compose = ref<ComposeConfig | null>(null);
 const numCores = ref(0);
 const origNumCores = ref(0);
 const maxNumCores = ref(0);
-const ramGB = ref(0);
+const ramGB = ref(0); 
 const origRamGB = ref(0);
 const maxRamGB = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
-const usbDevices = ref(Array<any>());
-const displayUsbDevices = ref(Array<any>());
-
+const usbDevicesIdxs = ref(Array<number>());
+const displayUsbDevices = ref(Array<USBDeviceWithPossibleIssue>());
+const origUsbDevices = ref(Array<USBDevice>())
 
 // For General
 const wbConfig = new WinboatConfig();
 
 onMounted(async () => {
     await assignValues();
-    watch(usbDevices.value, async () => {
-        if(usbDevices.value.length != displayUsbDevices.value.length) return;
+    watch(usbDevicesIdxs.value, async () => {
+        if(usbDevicesIdxs.value.length != displayUsbDevices.value.length) return;
         // ideally we'd like to close the usb selection menu when its empty but that causes the entire config screen to stop working sadly
         //await document.querySelector("[role='menu']")?.close();
     });
@@ -237,14 +254,38 @@ async function assignValues() {
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
 
+    usbDevicesIdxs.value = [];
+    displayUsbDevices.value = await fetchUSBDevices({ignoreVendorIDs: ['1d6b']});
+    origUsbDevices.value = await extractUSBFromDockerArgs(compose.value.services.windows.environment.ARGUMENTS);
+
+    for (const device of origUsbDevices.value) {
+        const idx = displayUsbDevices.value.findIndex(
+            elem => 
+                elem.productID == device.productID 
+                && elem.vendorID == device.vendorID 
+                && elem.alias == device.alias);
+
+        if (idx !== -1) {
+            usbDevicesIdxs.value.push(idx);
+            continue;
+        }
+
+        displayUsbDevices.value.push({...device, issue: "USB device not connected"});
+        usbDevicesIdxs.value.push(displayUsbDevices.value.length - 1);
+        console.log(displayUsbDevices.value)
+    }
+
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuThreads;
 }
 
 async function applyChanges() {
+    const selectedUsbDevices = usbDevicesIdxs.value.map(x => filterIssue(displayUsbDevices.value[x])) as USBDevice[];
+
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
+    compose.value!.services.windows.environment.ARGUMENTS = serializeUSBDevices(selectedUsbDevices);
 
     isApplyingChanges.value = true;
     try {
@@ -280,6 +321,54 @@ const errors = computed(() => {
     return errCollection;
 })
 
+// Needed because xel only implemented this for buttons
+function showTooltip(e: Event) {
+    const elem = e.target as HTMLElement;
+    const tooltip = elem.querySelector("x-tooltip") as any;
+    tooltip.open(elem);
+}
+
+// Needed because xel only implemented this for buttons
+function closeTooltip(e: Event) {
+    const elem = e.target as HTMLElement;
+    const tooltip = elem.querySelector("x-tooltip") as any;
+    tooltip.close(elem);
+}
+
+function updateDisplayUSBList(devices: USBDevice[]) {
+    for(const device of devices) {
+        const idx = displayUsbDevices.value.findIndex(
+            elem => 
+                elem.productID == device.productID 
+                && elem.vendorID == device.vendorID 
+                && elem.alias == device.alias);
+        if(idx !== -1) continue;
+        displayUsbDevices.value.push(device);
+    }
+}
+
+const hasIssue = (device?: USBDeviceWithPossibleIssue) => device?.hasOwnProperty("issue");
+const filterMenuItems = () => displayUsbDevices.value.filter((elem, i: number) => !usbDevicesIdxs.value.includes(i) && !hasIssue(elem));
+const filterIssue = (device: USBDeviceWithPossibleIssue): USBDevice => Object({
+    vendorID: device.vendorID,
+    productID: device.productID,
+    alias: device.alias
+});
+
+function areExclusiveArraysEqual<T>(a: T[], b: T[]): boolean {
+    const compareObjects = (obj1: any, obj2: any) => 
+        Object.keys(obj1).length === Object.keys(obj2).length &&
+        Object.keys(obj1).every(key => obj1[key] === obj2[key]);
+
+    return a.length === b.length && 
+        a.every((elem: any) => b.find(other => compareObjects(elem, other)));
+}
+
+const shouldUpdateUsbList = computed(() => {
+    const selectedUsbDevices = usbDevicesIdxs.value.map(x => filterIssue(displayUsbDevices.value[x])) as USBDevice[];
+    console.log({selectedUsbDevices, a: origUsbDevices.value}, areExclusiveArraysEqual(selectedUsbDevices, origUsbDevices.value))
+    return areExclusiveArraysEqual(selectedUsbDevices, origUsbDevices.value);
+})
 
 async function resetWinboat() {
     if (++resetQuestionCounter.value < 3) {
@@ -294,7 +383,7 @@ async function resetWinboat() {
 </script>
 
 <style scoped>
-.devices-move, /* apply transition to moving elements */
+.devices-move, 
 .devices-enter-active,
 .devices-leave-active {
   transition: all 0.5s ease;
@@ -306,13 +395,11 @@ async function resetWinboat() {
   transform: translateX(30px);
 }
 
-/* ensure leaving items are taken out of layout flow so that moving
-   animations can be calculated correctly. */
 .devices-leave-active {
   position: absolute;
 }
 
-.menu-move, /* apply transition to moving elements */
+.menu-move, 
 .menu-enter-active,
 .menu-leave-active {
   transition: all 0.5s ease;
@@ -321,11 +408,9 @@ async function resetWinboat() {
 .menu-enter-from,
 .menu-leave-to {
   opacity: 0;
-  transform: translateX(30px) scale(0);
+  transform: translateX(20px) scale(0.9);
 }
 
-/* ensure leaving items are taken out of layout flow so that moving
-   animations can be calculated correctly. */
 .menu-leave-active {
   position: absolute;
 }

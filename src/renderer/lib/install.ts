@@ -32,6 +32,7 @@ const defaultCompose: ComposeConfig = {
                 "PASSWORD": "MyWindowsPassword",
                 "HOME": "${HOME}",
                 "LANGUAGE": "English",
+                "ARGUMENTS": ""
             },
             "cap_add": [
                 "NET_ADMIN"
@@ -51,7 +52,8 @@ const defaultCompose: ComposeConfig = {
                 "./oem:/oem"
             ],
             "devices": [
-                "/dev/kvm"
+                "/dev/kvm",
+                "/dev/bus/usb"
             ]
         }
     }
