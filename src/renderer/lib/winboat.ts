@@ -215,8 +215,18 @@ export class Winboat {
             clearInterval(this.#rdpConnectionStatusInterval);
             this.#rdpConnectionStatusInterval = null;
         }
+
         this.#rdpConnectionStatusInterval = setInterval(async () => {
+            // If the guest is offline, don't even bother checking RDP status
             if (!this.isOnline.value) return;
+
+            // If RDP monitoring is disabled, don't check status, just set it to false
+            if (!this.#wbConfig?.config.rdpMonitoringEnabled) {
+                this.rdpConnected.value = false;
+                return;
+            }
+
+            // Check RDP status
             const _rdpConnected = await this.getRDPConnectedStatus();
             if (_rdpConnected !== this.rdpConnected.value) {
                 this.rdpConnected.value = _rdpConnected;

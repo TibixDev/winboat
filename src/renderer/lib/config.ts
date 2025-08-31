@@ -5,11 +5,13 @@ import { WINBOAT_DIR } from "./constants";
 export type WinboatConfigObj = {
     scale: number;
     smartcardEnabled: boolean
+    rdpMonitoringEnabled: boolean
 };
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
-    smartcardEnabled: false
+    smartcardEnabled: false,
+    rdpMonitoringEnabled: false,
 };
 
 let instance: WinboatConfig | null = null;
@@ -57,8 +59,28 @@ export class WinboatConfig {
 
         try {
             const rawConfig = fs.readFileSync(this.#configPath, "utf-8");
+            const configObj = JSON.parse(rawConfig) as WinboatConfigObj;
             console.log("Successfully read the config file");
-            return { ...JSON.parse(rawConfig) as WinboatConfigObj };
+
+            // Some fields might be missing after an update, so we merge them with the default config
+            for (const key in defaultConfig) {
+                let hasMissing = false;
+                if (!(key in configObj)) {
+                    // @ts-expect-error This is valid
+                    configObj[key] = defaultConfig[key];
+                    hasMissing = true;
+                    console.log(`Added missing config key: ${key} with default value: ${defaultConfig[key as keyof WinboatConfigObj]}`);
+                }
+
+                // If we have any missing keys, we should just write the config back to disk so those new keys are saved
+                // We cannot use this.writeConfig() here since #configData is not populated yet
+                if (hasMissing) {
+                    fs.writeFileSync(this.#configPath, JSON.stringify(configObj, null, 4), "utf-8");
+                    console.log("Wrote updated config with missing keys to disk");
+                }
+            }
+
+            return { ...configObj };
         } catch (e) {
             console.error("Config’s borked, outputting the default:", e);
             return { ...defaultConfig };
