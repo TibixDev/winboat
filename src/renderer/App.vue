@@ -12,15 +12,47 @@
         <!-- Updater -->
         <dialog ref="updateDialog">
             <Icon class="text-indigo-400 size-12" icon="mdi:cloud-upload"></Icon>
-            <h3 class="mt-2" v-if="winboat?.isUpdatingGuestServer.value">Updating Guest Server</h3>
-            <h3 class="mt-2" v-else>Guest Server update successful!</h3>
-            <p v-if="winboat?.isUpdatingGuestServer.value" class="max-w-[40vw]">
-                The guest is currently running an outdated version of the WinBoat Guest Server. Please wait while we update it to the current version.
-            </p>
-            <p v-else class="max-w-[40vw]">
-                The WinBoat Guest Server has been updated successfully! You can now close this dialog and continue using the application.
-            </p>
-            <footer>
+
+            <template v-if="manualUpdateRequired">
+                <h3 class="mt-2">Manual Guest Server Update Required</h3>
+                <div class="max-w-[60vw]">
+                    <strong>WinBoat has encountered an issue while trying to update the Guest Server automatically. Please follow the steps below to manually update it:</strong>
+                    <ol class="mt-2 list-decimal list-inside">
+                        <li>
+                            Use VNC over at 
+                            <a @click="openAnchorLink" href="http://127.0.0.1:8006/" target="_blank" rel="noopener noreferrer">http://127.0.0.1:8006/</a>
+                            to access Windows
+                        </li>
+                        <li>Press Win + R or search for <code>Run</code>, type in <code>services.msc</code></li>
+                        <li>Stop the <code>WinBoatGuestServer</code> service by right clicking and pressing "Stop"</li>
+                        <li>
+                            Download the new Guest Server from
+                            <a @click="openAnchorLink" href="https://github.com/TibixDev/winboat/releases" target="_blank" rel="noopener noreferrer">https://github.com/TibixDev/winboat/releases</a>,
+                            you should pick version <strong>{{ appVer }}</strong>
+                        </li>
+                        <li>Navigate to <code>C:\Program Files\WinBoat</code> and delete the contents</li>
+                        <li>Extract the freshly downloaded zip into the same folder</li>
+                        <li>Start the <code>WinBoatGuestServer</code> service by right clicking and pressing "Start"</li>
+                        <li>If you were using VNC, log out of Windows and close it</li>
+                        <li>Restart WinBoat</li>
+                    </ol>
+                    <p>
+                        We're sorry for the inconvenience. 😟
+                    </p>
+                </div>
+            </template>
+
+            <template v-else>
+                <h3 class="mt-2" v-if="winboat?.isUpdatingGuestServer.value">Updating Guest Server</h3>
+                <h3 class="mt-2" v-else>Guest Server update successful!</h3>
+                <p v-if="winboat?.isUpdatingGuestServer.value" class="max-w-[40vw]">
+                    The guest is currently running an outdated version of the WinBoat Guest Server. Please wait while we update it to the current version.
+                </p>
+                <p v-else class="max-w-[40vw]">
+                    The WinBoat Guest Server has been updated successfully! You can now close this dialog and continue using the application.
+                </p>
+            </template>
+            <footer v-if="!manualUpdateRequired && winboat?.isUpdatingGuestServer.value">
                 <x-progressbar v-if="winboat?.isUpdatingGuestServer.value" class="my-4"></x-progressbar>
                 <x-button v-else id="close-button" @click="updateDialog!.close()" toggled>
                     <x-label>Close</x-label>
@@ -50,7 +82,7 @@
                         <x-label class="text-[0.8rem]">Local Account</x-label>
                     </div>
                 </div>
-                <RouterLink v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(r.name))" :to="route.path" :key="route.path">
+                <RouterLink v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(String(r.name)))" :to="route.path" :key="route.path">
                     <x-navitem value="first">
                         <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)"></Icon>
                         <x-label>{{ route.name }}</x-label>
@@ -90,18 +122,23 @@
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { routes } from './router';
 import { Icon } from '@iconify/vue';
-import { onMounted, useTemplateRef, watch } from 'vue';
+import { onMounted, ref, useTemplateRef, watch } from 'vue';
 import { isInstalled } from './lib/install';
 import { Winboat } from './lib/winboat';
+import { openAnchorLink } from './utils/openLink';
 const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
 const os: typeof import('os') = require('os')
 const path: typeof import('path') = require('path')
 const remote: typeof import('@electron/remote') = require('@electron/remote');
 
 const $router = useRouter();
-const updateDialog = useTemplateRef('updateDialog');
 const appVer = import.meta.env.VITE_APP_VERSION;
 let winboat: Winboat | null = null;
+
+let updateTimeout: NodeJS.Timeout | null = null;
+const manualUpdateRequired = ref(false);
+const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
+const updateDialog = useTemplateRef('updateDialog');
 
 onMounted(async () => {
     console.log("WinBoat app path:", path.join(remote.app.getAppPath(), "..", ".."));
@@ -115,10 +152,22 @@ onMounted(async () => {
     }
 
     // Watch for guest server updates and show dialog
-    watch(() => winboat?.isUpdatingGuestServer.value, (newVal) => {
-        if (newVal) {
+    watch(() => winboat?.isUpdatingGuestServer.value, (isUpdating) => {
+        if (isUpdating === true) {
             updateDialog.value!.showModal();
-        } 
+            
+            // Prepare the timeout to show manual update required after 45 seconds
+            updateTimeout = setTimeout(() => {
+                manualUpdateRequired.value = true;
+            }, MANUAL_UPDATE_TIMEOUT);
+        } else {
+            // Clear the timeout if the update finished before the timeout
+            if (updateTimeout) {
+                clearTimeout(updateTimeout);
+                updateTimeout = null;
+            }
+            manualUpdateRequired.value = false;
+        }
     })
 })
 
