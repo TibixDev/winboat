@@ -43,6 +43,7 @@
         "node-fetch": "2",
         "path-browserify": "^1.0.1",
         "turndown": "^7.2.0",
+        "usb": "^2.16.0",
         "vue": "^3.5.13",
         "vue-router": "^4.5.0",
         "vue3-apexcharts": "^1.8.0",

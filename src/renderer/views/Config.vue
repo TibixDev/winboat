@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col gap-10" :class="{ 'hidden': !maxNumCores }">
+    <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ 'hidden': !maxNumCores }">
         <div>
             <x-label class="mb-4 text-neutral-300">Resources</x-label>
             <div class="flex flex-col gap-4">
@@ -85,7 +85,7 @@
                         <x-button 
                             v-if="filterMenuItems().length > 0"
                             class="mt-4 !bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
-                            @click="fetchUSBDevices({ignoreVendorIDs: ['1d6b']}).then(x => updateDisplayUSBList(x)).then(_ => console.log(usbDevicesIdxs.length, displayUsbDevices.length))"
+                            @click=""
                         >
                             <x-icon href="#add"></x-icon>
                             <x-label>Add Device</x-label>
@@ -210,7 +210,12 @@ import type { ComposeConfig, USBDevice } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
-import { fetchUSBDevices, extractUSBFromDockerArgs, serializeUSBDevices } from '../lib/usb';
+import { DefaultCompose } from '../lib/install';
+import { QMPManager } from '../lib/qmp';
+// import { fetchUSBDevices, extractUSBFromDockerArgs, serializeUSBDevices } from '../lib/usb';
+const fetchUSBDevices = () => {};
+const extractUSBFromDockerArgs = () => {};
+const serializeUSBDevices = () => {};
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 type USBDeviceWithIssue = (USBDevice & { issue: string });
@@ -238,6 +243,8 @@ const wbConfig = new WinboatConfig();
 
 onMounted(async () => {
     await assignValues();
+    const test = await QMPManager.createConnection("127.0.0.1", 7149);
+    console.log("asd: ", await test.executeCommand("qmp_capabilities"));
     watch(usbDevicesIdxs.value, async () => {
         if(usbDevicesIdxs.value.length != displayUsbDevices.value.length) return;
         // ideally we'd like to close the usb selection menu when its empty but that causes the entire config screen to stop working sadly
@@ -255,8 +262,8 @@ async function assignValues() {
     origRamGB.value = ramGB.value;
 
     usbDevicesIdxs.value = [];
-    displayUsbDevices.value = await fetchUSBDevices({ignoreVendorIDs: ['1d6b']});
-    origUsbDevices.value = await extractUSBFromDockerArgs(compose.value.services.windows.environment.ARGUMENTS);
+    // displayUsbDevices.value = await fetchUSBDevices({ignoreVendorIDs: ['1d6b']});
+    // origUsbDevices.value = await extractUSBFromDockerArgs(compose.value.services.windows.environment.ARGUMENTS);
 
     for (const device of origUsbDevices.value) {
         const idx = displayUsbDevices.value.findIndex(
@@ -285,7 +292,7 @@ async function applyChanges() {
 
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
-    compose.value!.services.windows.environment.ARGUMENTS = serializeUSBDevices(selectedUsbDevices);
+    // compose.value!.services.windows.environment.ARGUMENTS = DefaultCompose.services.windows.environment.ARGUMENTS + serializeUSBDevices(selectedUsbDevices);
 
     isApplyingChanges.value = true;
     try {

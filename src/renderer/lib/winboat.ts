@@ -18,7 +18,6 @@ const FormData: typeof import('form-data') = require('form-data');
 
 const execAsync = promisify(exec);
 
-let instance: Winboat | null = null;
 const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
 const USAGE_PATH = path.join(WINBOAT_DIR, 'appUsage.json');
 
@@ -117,6 +116,8 @@ class AppManager {
 }
 
 export class Winboat {
+    private static instance: Winboat;
+
     #healthInterval: NodeJS.Timeout | null = null;
     isOnline: Ref<boolean> = ref(false);
     isUpdatingGuestServer: Ref<boolean> = ref(false);
@@ -146,7 +147,7 @@ export class Winboat {
     appMgr: AppManager | null = null
 
     constructor() {
-        if (instance) return instance;
+        if (Winboat.instance) return Winboat.instance;
         
         // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
@@ -167,9 +168,7 @@ export class Winboat {
 
         this.appMgr = new AppManager();
 
-        instance = this;
-
-        return instance;
+        Winboat.instance = this;
     }
 
     /**

@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
 
 const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
-const defaultCompose: ComposeConfig = {
+export const DefaultCompose: ComposeConfig = {
     "name": "winboat",
     "volumes": {
         "data": null
@@ -32,7 +32,7 @@ const defaultCompose: ComposeConfig = {
                 "PASSWORD": "MyWindowsPassword",
                 "HOME": "${HOME}",
                 "LANGUAGE": "English",
-                "ARGUMENTS": ""
+                "ARGUMENTS": "-qmp tcp:localhost:7149,server --monitor stdio\n"
             },
             "cap_add": [
                 "NET_ADMIN"
@@ -116,7 +116,7 @@ export class InstallManager {
         }
 
         // Configure the compose file
-        const composeContent = { ...defaultCompose }
+        const composeContent = { ...DefaultCompose }
 
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuThreads}`;
