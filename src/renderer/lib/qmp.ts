@@ -26,14 +26,19 @@ type QMPCommandInfo = {
     name: string
 };
 
+type QMPStatusInfo = {
+    running: boolean,
+    status: string
+};
+
 type QMPError = {
     error: object
 };
 
 type QMPReturn<T> = T extends never ? never : { return: T };
 
-type QMPCommandWithArgs = "human-monitor-command" | "device_add" | "device_del"
-type QMPCommandNoArgs = "qmp_capabilities" | "query-commands";
+type QMPCommandWithArgs = "human-monitor-command" | "device_add" | "device_del" | "qom-list-types";
+type QMPCommandNoArgs = "qmp_capabilities" | "query-commands" | "query-status";
 type QMPCommand = QMPCommandWithArgs | QMPCommandNoArgs;
 
 type QMPArgumentProps = {
@@ -43,7 +48,8 @@ type QMPArgumentProps = {
     "vendorid": number,
     "productid": number,
     "hostbus": string,
-    "hostaddr": string
+    "hostaddr": string,
+    "implements": string
 };
 
 type QMPArgument<T extends keyof QMPArgumentProps> = {
@@ -61,6 +67,7 @@ type QMPCommandExpectedArgument<T extends QMPCommand> =
 export type QMPResponse<T extends QMPCommand> = QMPReturn<
             T extends "qmp_capabilities" ? QMPGreeting : 
             T extends "query-commands" ? QMPCommandInfo[] :
+            T extends "query-status" ? QMPStatusInfo :
             T extends "human-monitor-command" ? string :
             T extends "device_add" ? object :
             T extends "device_del" ? string : // TODO: change this 
@@ -114,9 +121,6 @@ export class QMPManager {
             ...qmpArgument && { arguments: qmpArgument }
         };
 
-
-        console.log("message: ", message);
-
         return new Promise((resolve, reject) => {
             this.qmpSocket.write(JSON.stringify(message), (err) => {
                 if(err) {
@@ -132,5 +136,16 @@ export class QMPManager {
                 });
             });
         });
+    }
+
+    async isAlive(): Promise<boolean> {
+        try {
+            const { return: { running, status } } = await this.executeCommand("query-status");
+            return running;
+        } catch(e) {
+            logger.error("There was an error querying status of QMP connection");
+            logger.error(e);
+            return false;
+        }
     }
 }

@@ -8,6 +8,8 @@ import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { WinboatConfig } from "./config";
+import { QMPManager } from "./qmp";
+import { assert } from "@vueuse/core";
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
@@ -17,9 +19,9 @@ const remote: typeof import('@electron/remote') = require('@electron/remote');
 const FormData: typeof import('form-data') = require('form-data');
 
 const execAsync = promisify(exec);
-
-const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
 const USAGE_PATH = path.join(WINBOAT_DIR, 'appUsage.json');
+const QMP_PORT = 7149;
+export const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
 
 const presetApps: WinApp[] = [
     {
@@ -117,7 +119,6 @@ class AppManager {
 
 export class Winboat {
     private static instance: Winboat;
-
     #healthInterval: NodeJS.Timeout | null = null;
     isOnline: Ref<boolean> = ref(false);
     isUpdatingGuestServer: Ref<boolean> = ref(false);
@@ -145,6 +146,7 @@ export class Winboat {
     })
     #wbConfig: WinboatConfig | null = null
     appMgr: AppManager | null = null
+    qmpMgr: QMPManager | null = null
 
     constructor() {
         if (Winboat.instance) return Winboat.instance;
@@ -157,6 +159,7 @@ export class Winboat {
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
                 if (_containerStatus === ContainerStatus.Running) {
+                    await this.#connectQMPManager();
                     this.createAPIInvervals();
                 } else {
                     this.destroyAPIInvervals();
@@ -169,6 +172,8 @@ export class Winboat {
         this.appMgr = new AppManager();
 
         Winboat.instance = this;
+
+        return Winboat.instance;
     }
 
     /**
@@ -214,8 +219,18 @@ export class Winboat {
             clearInterval(this.#rdpConnectionStatusInterval);
             this.#rdpConnectionStatusInterval = null;
         }
+
         this.#rdpConnectionStatusInterval = setInterval(async () => {
+            // If the guest is offline, don't even bother checking RDP status
             if (!this.isOnline.value) return;
+
+            // If RDP monitoring is disabled, don't check status, just set it to false
+            if (!this.#wbConfig?.config.rdpMonitoringEnabled) {
+                this.rdpConnected.value = false;
+                return;
+            }
+
+            // Check RDP status
             const _rdpConnected = await this.getRDPConnectedStatus();
             if (_rdpConnected !== this.rdpConnected.value) {
                 this.rdpConnected.value = _rdpConnected;
@@ -296,11 +311,29 @@ export class Winboat {
         }
     }
 
+    async #connectQMPManager() {
+        try {
+            if(await this.qmpMgr?.isAlive()) {
+                return;
+            }
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", QMP_PORT);
+            const capabilities = await this.qmpMgr.executeCommand("qmp_capabilities");
+            assert("QMP" in capabilities);
+
+            const commands = await this.qmpMgr.executeCommand("query-commands");
+            assert(commands.return.every(x => "name" in x));
+        } catch(e) {
+            logger.error("There was an error connecting to QMP");
+            logger.error(e);
+        }
+    }
+
     async startContainer() {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
             const { stdout } = await execAsync("docker container start WinBoat");
+            await this.#connectQMPManager();
             logger.info(`Container response: ${stdout}`);
         } catch(e) {
             logger.error("There was an error performing the container action.");
@@ -392,6 +425,7 @@ export class Winboat {
 
         // 5. Deploy the container with the new compose file
         await execAsync(`docker compose -f ${composeFilePath} up -d`);
+        await this.#connectQMPManager();
         logger.info("Replace compose config completed, successfully deployed new container");
 
         this.containerActionLoading.value = false;

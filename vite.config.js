@@ -19,6 +19,7 @@ const config = defineConfig({
         rollupOptions: {
             external: ['fs', 'os', 'child_process', 'util'], // For build
         },
+        chunkSizeWarningLimit: NaN // Not needed for a desktop app
     },
     plugins: [
         vuePlugin({
