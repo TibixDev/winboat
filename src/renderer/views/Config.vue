@@ -211,7 +211,7 @@ import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
 import { DefaultCompose } from '../lib/install';
-import { QMPManager } from '../lib/qmp';
+;
 // import { fetchUSBDevices, extractUSBFromDockerArgs, serializeUSBDevices } from '../lib/usb';
 const fetchUSBDevices = () => {};
 const extractUSBFromDockerArgs = () => {};
@@ -243,8 +243,7 @@ const wbConfig = new WinboatConfig();
 
 onMounted(async () => {
     await assignValues();
-    const test = await QMPManager.createConnection("127.0.0.1", 7149);
-    console.log("asd: ", await test.executeCommand("qmp_capabilities"));
+
     watch(usbDevicesIdxs.value, async () => {
         if(usbDevicesIdxs.value.length != displayUsbDevices.value.length) return;
         // ideally we'd like to close the usb selection menu when its empty but that causes the entire config screen to stop working sadly
