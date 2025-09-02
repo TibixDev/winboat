@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col gap-10" :class="{ 'hidden': !maxNumCores }">
+    <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ 'hidden': !maxNumCores }">
         <div>
             <x-label class="mb-4 text-neutral-300">Resources</x-label>
             <div class="flex flex-col gap-4">
