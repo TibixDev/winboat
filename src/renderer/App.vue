@@ -52,7 +52,7 @@
                     The WinBoat Guest Server has been updated successfully! You can now close this dialog and continue using the application.
                 </p>
             </template>
-            <footer v-if="!manualUpdateRequired && winboat?.isUpdatingGuestServer.value">
+            <footer v-if="!manualUpdateRequired">
                 <x-progressbar v-if="winboat?.isUpdatingGuestServer.value" class="my-4"></x-progressbar>
                 <x-button v-else id="close-button" @click="updateDialog!.close()" toggled>
                     <x-label>Close</x-label>
