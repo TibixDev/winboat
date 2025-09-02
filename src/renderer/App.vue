@@ -89,7 +89,7 @@
                     </x-navitem>
                 </RouterLink>
                 <div class="flex flex-col justify-end items-center p-4 h-full">
-                    <p class="text-xs text-neutral-500">WinBoat Pre-Release Alpha {{ appVer }}</p>
+                    <p class="text-xs text-neutral-500">WinBoat Beta v{{ appVer }} {{ isDev ? 'Dev' : 'Prod' }}</p>
                 </div>
             </x-nav>
             <div class="px-5 flex-grow max-h-[calc(100vh-2rem)] overflow-y-auto py-4">
@@ -133,6 +133,7 @@ const remote: typeof import('@electron/remote') = require('@electron/remote');
 
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
+const isDev = import.meta.env.DEV;
 let winboat: Winboat | null = null;
 
 let updateTimeout: NodeJS.Timeout | null = null;
