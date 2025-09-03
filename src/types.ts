@@ -21,6 +21,7 @@ export type InstallConfiguration = {
     diskSpaceGB: number;
     username: string;
     password: string;
+    customIsoPath: string | undefined;
 }
 
 export type WinApp = {

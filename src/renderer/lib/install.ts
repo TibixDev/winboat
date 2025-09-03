@@ -124,8 +124,11 @@ export class InstallManager {
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
-
-
+        
+        if (this.conf.customIsoPath) {
+            composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
+        }
+        
         // Write the compose file
         const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");
         fs.writeFileSync(composeFilePath, composeYAML, { encoding: 'utf8' });

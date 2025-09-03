@@ -133,12 +133,9 @@
                         <p class="text-lg text-gray-400">
                             Pick the version of Windows you want to install, and the language you'd like to use.
                         </p>
-    
                         <p class="text-lg text-gray-400">
                             You can only change these settings now. Once the installation is complete, you will not be able to change them unless you reinstall.
                         </p>
-    
-    
                         <div>
                             <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
                             <x-select id="select-edition" @change="(e: any) => windowsVersion = e.detail.newValue" class="w-64">
@@ -154,7 +151,6 @@
                                 </x-menu>
                             </x-select>
                         </div>
-    
                         <div>
                             <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
                             <x-select id="select-language" @change="(e: any) => windowsLanguage = e.detail.newValue" class="w-64">
@@ -176,7 +172,13 @@
                                 </x-menu>
                             </x-select>
                         </div>
-    
+                        <div class="mt-4">
+                            <div class="flex flex-col gap-2">
+                                <label for="select-iso" class="text-xs text-neutral-400">Optional:</label>
+                                <x-button id="select-iso" class="w-64" @click="selectIsoFile">Select ISO File</x-button>
+                                <span v-if="customIsoPath" class="text-xs text-gray-400">Selected: {{ customIsoFileName }}</span>
+                            </div>
+                        </div>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
@@ -410,6 +412,9 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
+
+const path = require('path');
+const { dialog } = require('electron').remote || require('@electron/remote');
 const os: typeof import('os') = require('os');
 
 type Step = {
@@ -487,6 +492,8 @@ const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
+const customIsoPath = ref(undefined);
+const customIsoFileName = ref(undefined);
 const cpuThreads = ref(2);
 const ramGB = ref(4);
 const diskSpaceGB = ref(32);
@@ -502,6 +509,26 @@ onMounted(async () => {
     console.log("Username", username.value);
 })
 
+function selectIsoFile() {
+    dialog.showOpenDialog({
+        title: 'Select ISO File',
+        filters: [
+          {
+            name: 'ISO Files',
+            extensions: ['iso']
+          }
+        ],
+        properties: ['openFile']
+    })
+    .then(result => {
+      if (!result.canceled && result.filePaths.length > 0) {
+        customIsoPath.value = result.filePaths[0];
+        customIsoFileName.value = path.basename(result.filePaths[0]);
+        console.log('ISO path updated:', customIsoPath.value);
+      }
+    });
+}
+
 function install() {
     const installConfig: InstallConfiguration = {
         windowsVersion: windowsVersion.value,
@@ -511,6 +538,7 @@ function install() {
         diskSpaceGB: diskSpaceGB.value,
         username: username.value,
         password: password.value,
+        ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
     }
 
     // Begin installation and attach event listeners
