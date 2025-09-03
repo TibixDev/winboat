@@ -1,6 +1,6 @@
 {
     "name": "winboat",
-    "version": "0.6.13",
+    "version": "0.7.0",
     "description": "Windows for Penguins",
     "main": "main/main.js",
     "scripts": {
@@ -37,6 +37,7 @@
         "@vueuse/motion": "^2.2.6",
         "apexcharts": "^4.5.0",
         "form-data": "^4.0.4",
+        "jimp": "^1.6.0",
         "json-to-pretty-yaml": "^1.2.2",
         "marked": "^15.0.6",
         "nanoevents": "^9.1.0",

@@ -1,17 +1,20 @@
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
+import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 
 export type WinboatConfigObj = {
     scale: number;
     smartcardEnabled: boolean
     rdpMonitoringEnabled: boolean
+    customApps: WinApp[]
 };
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,
+    customApps: []
 };
 
 let instance: WinboatConfig | null = null;

@@ -45,7 +45,7 @@ type Metrics struct {
 
 func getApps(w http.ResponseWriter, r *http.Request) {
 	// Run the PowerShell script
-	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "apps.ps1")
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\apps.ps1")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
@@ -122,7 +122,7 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
 	// Grep for any active RDP sessions via qwinsta
 	// Run the PowerShell script
-	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "rdp-status.ps1")
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\rdp-status.ps1")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
@@ -189,7 +189,7 @@ func applyUpdate(w http.ResponseWriter, r *http.Request) {
 	appDir := filepath.Dir(exePath)
 
 	// Create & run the script
-	scriptPath := filepath.Join(appDir, "update.ps1")
+	scriptPath := filepath.Join(appDir, "scripts\\update.ps1")
 	cmd := exec.Command("cmd", "/C", "start", "/B", "powershell",
 		"-ExecutionPolicy", "Bypass", "-File", scriptPath,
 		"-AppPath", appDir,
@@ -201,6 +201,25 @@ func applyUpdate(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func getIcon(w http.ResponseWriter, r *http.Request) {
+	path := r.PostFormValue("path")
+	if path == "" {
+		http.Error(w, "path is required", http.StatusBadRequest)
+		return
+	}
+
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\get-icon.ps1", "-path", path)
+	output, err := cmd.Output()
+	if err != nil {
+		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
@@ -209,6 +228,7 @@ func main() {
 	r.HandleFunc("/metrics", getMetrics).Methods("GET")
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
+	r.HandleFunc("/get-icon", getIcon).Methods("POST")
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
 	if err := http.ListenAndServe(":7148", r); err != nil {

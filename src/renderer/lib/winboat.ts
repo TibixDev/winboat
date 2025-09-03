@@ -53,17 +53,21 @@ type ContainerStatusValue = typeof ContainerStatus[keyof typeof ContainerStatus]
 class AppManager {
     appCache: WinApp[] = []
     appUsageCache: { [key: string]: number } = {};
+    #wbConfig: WinboatConfig | null = null;
     
     constructor() {
         if(!fs.existsSync(USAGE_PATH)) {
             fs.writeFileSync(USAGE_PATH, "{}");
         }
+
+        this.#wbConfig = new WinboatConfig();
     }
 
     async updateAppCache(options: { forceRead: boolean } = { forceRead: false }) {
         const res = await nodeFetch(`${WINBOAT_GUEST_API}/apps`);
         const newApps = await res.json() as WinApp[];
         newApps.push(...presetApps);
+        newApps.push(...this.#wbConfig!.config.customApps);
 
         if(this.appCache.values.length == newApps.length && !options.forceRead) return
 
@@ -113,6 +117,37 @@ class AppManager {
 
     async writeToDisk() {
         fs.writeFileSync(USAGE_PATH, JSON.stringify(this.appUsageCache));
+    }
+
+    /**
+     * Adds a custom app to WinBoat's application list
+     * @param name Name of the app
+     * @param path Path of the app
+     * @param icon Icon of the app
+     */
+    async addCustomApp(name: string, path: string, icon: string) {
+        const customWinApp: WinApp = {
+            Name: name,
+            Path: path,
+            Icon: icon,
+            Source: "custom",
+            Usage: 0
+        }
+        this.appCache.push(customWinApp);
+        this.appUsageCache[name] = 0;
+        await this.writeToDisk();
+        this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.concat(customWinApp);
+    }
+
+    /**
+     * Removes a custom app from WinBoat's application list
+     * @param app The app to remove
+     */
+    async removeCustomApp(app: WinApp) {
+        this.appCache = this.appCache.filter((a) => a.Name !== app.Name);
+        this.appUsageCache = Object.fromEntries(Object.entries(this.appUsageCache).filter(([key]) => key !== app.Name));
+        await this.writeToDisk();
+        this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.filter((a) => a.Name !== app.Name);
     }
 }
 
