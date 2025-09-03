@@ -122,7 +122,9 @@ function Get-ApplicationName {
 
     # Final Cleanup: Remove common registered/trademark symbols and trim whitespace
     if ($appName) {
-        $appName = $appName -replace '(?i)\s*\(r\)|\(tm\)|©|®|™', ''
+        # TODO: This breaks on CJK systems because of UTF-8, check out https://github.com/TibixDev/winboat/issues/40
+        # Original line in Base64:
+        # JGFwcE5hbWUgPSAkYXBwTmFtZSAtcmVwbGFjZSAnKD9pKVxzKlwoclwpfFwodG1cKXzCqXzCrnzihKInLCAnJw==
         $appName = $appName.Trim()
     }
 
