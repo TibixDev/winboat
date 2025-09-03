@@ -138,13 +138,19 @@
                         </p>
                         <div>
                             <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
-                            <x-select id="select-edition" @change="(e: any) => windowsVersion = e.detail.newValue" class="w-64">
+                            <x-select
+                                id="select-edition"
+                                @change="(e: any) => windowsVersion = e.detail.newValue"
+                                class="w-64"
+                                :disabled="!!customIsoPath"
+                            >
                                 <x-menu>
                                     <x-menuitem
                                         v-for="(version, key) in WINDOWS_VERSIONS"
                                         :key="key"
                                         :value="key"
                                         :toggled="windowsVersion === key"
+                                        v-show="key !== 'custom'"
                                     >
                                         <x-label>{{ version }}</x-label>
                                     </x-menuitem>
@@ -153,7 +159,12 @@
                         </div>
                         <div>
                             <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
-                            <x-select id="select-language" @change="(e: any) => windowsLanguage = e.detail.newValue" class="w-64">
+                            <x-select
+                                id="select-language"
+                                @change="(e: any) => windowsLanguage = e.detail.newValue"
+                                class="w-64"
+                                :disabled="!!customIsoPath"
+                            >
                                 <x-menu @change="(e: any) => windowsLanguage = e.detail.newValue">
                                     <x-menuitem
                                         v-for="(language, languageWithBanner) in WINDOWS_LANGUAGES"
@@ -175,8 +186,11 @@
                         <div class="mt-4">
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Optional:</label>
-                                <x-button id="select-iso" class="w-64" @click="selectIsoFile">Select ISO File</x-button>
-                                <span v-if="customIsoPath" class="text-xs text-gray-400">Selected: {{ customIsoFileName }}</span>
+                                <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">Select ISO File</x-button>
+                                <span v-if="customIsoPath" class="text-xs text-gray-400 flex items-center gap-2">
+                                    Selected: {{ customIsoFileName }}
+                                    <x-button size="small" class="ml-2 px-2 py-0" @click="deselectIsoFile">Remove</x-button>
+                                </span>
                             </div>
                         </div>
                         <div class="flex flex-row gap-4 mt-6">
@@ -492,8 +506,8 @@ const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
-const customIsoPath = ref(undefined);
-const customIsoFileName = ref(undefined);
+const customIsoPath = ref("");
+const customIsoFileName = ref("");
 const cpuThreads = ref(2);
 const ramGB = ref(4);
 const diskSpaceGB = ref(32);
@@ -524,9 +538,18 @@ function selectIsoFile() {
       if (!result.canceled && result.filePaths.length > 0) {
         customIsoPath.value = result.filePaths[0];
         customIsoFileName.value = path.basename(result.filePaths[0]);
+        windowsLanguage.value = 'English'; // Language can't be custom
+        windowsVersion.value = 'custom';
         console.log('ISO path updated:', customIsoPath.value);
       }
     });
+}
+
+function deselectIsoFile() {
+    customIsoPath.value = "";
+    customIsoFileName.value = "";
+    windowsLanguage.value = 'English';
+    windowsVersion.value = '11';
 }
 
 function install() {
