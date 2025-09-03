@@ -14,7 +14,7 @@ export const WINDOWS_VERSIONS = {
     "10": "Windows 10 Pro",
     "10l": "WIndows 10 LTSC 2021",
     "10e": "Windows 10 Enterprise",
-    'custom': 'Custom ISO (Optional)',
+    'custom': 'Custom Windows',
 }
 
 export type WindowsVersionKey = keyof typeof WINDOWS_VERSIONS;
