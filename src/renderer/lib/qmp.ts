@@ -2,6 +2,7 @@ import { WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
 const path: typeof import('path') = require('path');
 import { type Socket } from 'net';
+import { assert } from "@vueuse/core";
 const { createConnection }: typeof import('net') = require('net');
 
 const logger = createLogger(path.join(WINBOAT_DIR, 'qmp.log'));
@@ -31,14 +32,32 @@ type QMPStatusInfo = {
     status: string
 };
 
+type QMPObjectPropertyInfo = {
+    name: string,
+    type: "u8" | "u16" | "bool" | "str" | "double" | string,
+    description?: string,
+    "default-value"?: string
+};
+
+type QMPBlockInfo = {
+    device: string,
+    qdev?: string,
+    type: string,
+    removable: boolean,
+    locked: boolean,
+    tray_open?: boolean,
+    io_status?: object,
+    inserted?: object
+};
+
 type QMPError = {
     error: object
 };
 
 type QMPReturn<T> = T extends never ? never : { return: T };
 
-type QMPCommandWithArgs = "human-monitor-command" | "device_add" | "device_del" | "qom-list-types";
-type QMPCommandNoArgs = "qmp_capabilities" | "query-commands" | "query-status";
+type QMPCommandWithArgs = "human-monitor-command" | "device_add" | "device_del" | "device-list-properties";
+type QMPCommandNoArgs = "qmp_capabilities" | "query-commands" | "query-status" | "query-block";
 type QMPCommand = QMPCommandWithArgs | QMPCommandNoArgs;
 
 type QMPArgumentProps = {
@@ -49,7 +68,7 @@ type QMPArgumentProps = {
     "productid": number,
     "hostbus": string,
     "hostaddr": string,
-    "implements": string
+    "typename": string
 };
 
 type QMPArgument<T extends keyof QMPArgumentProps> = {
@@ -60,6 +79,7 @@ type QMPCommandExpectedArgument<T extends QMPCommand> =
     T extends "human-monitor-command" ? QMPArgument<"command-line"> : 
     T extends "device_add" ? QMPArgument<"driver" | "id" | "productid" | "vendorid" | "hostbus" | "hostaddr"> : 
     T extends "device_del" ? QMPArgument<"id"> : 
+    T extends "device-list-properties" ? QMPArgument<"typename"> :
     never
 
 
@@ -71,18 +91,18 @@ export type QMPResponse<T extends QMPCommand> = QMPReturn<
             T extends "human-monitor-command" ? string :
             T extends "device_add" ? object :
             T extends "device_del" ? string : // TODO: change this 
+            T extends "device-list-properties" ? QMPObjectPropertyInfo[] :
+            T extends "query-block" ? QMPBlockInfo[] :
             never 
 >;
 
 export class QMPManager {
     qmpSocket: Socket;
-    status: QMPStatus;
 
     /**
      * Please use {@link QMPManager.createConnection} instead.
      */
     constructor(socket: Socket) {
-        this.status = "Connected";
         this.qmpSocket = socket;
     }
 
@@ -101,11 +121,12 @@ export class QMPManager {
                         const response = JSON.parse(data.toString());
                         
                         if("QMP" in response) {
-                            resolve(new QMPManager(socket));
+                            return resolve(new QMPManager(socket));
                         } 
     
-                        throw new Error(`Invalid QMP response: ${data.toString()}`);
+                        reject(new Error(`Invalid QMP response: ${data.toString()}`));
                     } catch (e) {
+                        logger.error(e);
                         reject(e);
                     }
                 });
@@ -121,16 +142,17 @@ export class QMPManager {
             ...qmpArgument && { arguments: qmpArgument }
         };
 
-        return new Promise((resolve, reject) => {
+        return new Promise<QMPResponse<C>>((resolve, reject) => {
             this.qmpSocket.write(JSON.stringify(message), (err) => {
                 if(err) {
                     logger.error(err);
-                    reject();
+                    reject(err);
                 }
                 this.qmpSocket.once("data", (data: Buffer) => {
                     try {
                         resolve(JSON.parse(data.toString()));
                     } catch(e) {
+                        logger.error(e);
                         reject(e);
                     }
                 });
@@ -140,8 +162,13 @@ export class QMPManager {
 
     async isAlive(): Promise<boolean> {
         try {
-            const { return: { running, status } } = await this.executeCommand("query-status");
-            return running;
+            if (this.qmpSocket.closed || this.qmpSocket.destroyed) { 
+                return false;
+            }
+
+            const response = await this.executeCommand("query-status");
+            assert("return" in response);
+            return true;
         } catch(e) {
             logger.error("There was an error querying status of QMP connection");
             logger.error(e);

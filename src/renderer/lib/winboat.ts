@@ -149,7 +149,9 @@ export class Winboat {
     qmpMgr: QMPManager | null = null
 
     constructor() {
-        if (Winboat.instance) return Winboat.instance;
+        if (Winboat.instance) {
+            return Winboat.instance;
+        }
         
         // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
@@ -312,13 +314,15 @@ export class Winboat {
     }
 
     async #connectQMPManager() {
+        if(await this.qmpMgr?.isAlive()) {
+            return;
+        }
+
         try {
-            if(await this.qmpMgr?.isAlive()) {
-                return;
-            }
-            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", QMP_PORT);
+            this.qmpMgr?.qmpSocket.destroy();
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", QMP_PORT).catch(e => {logger.error(e); throw e});
             const capabilities = await this.qmpMgr.executeCommand("qmp_capabilities");
-            assert("QMP" in capabilities);
+            assert("return" in capabilities);
 
             const commands = await this.qmpMgr.executeCommand("query-commands");
             assert(commands.return.every(x => "name" in x));
@@ -326,6 +330,7 @@ export class Winboat {
             logger.error("There was an error connecting to QMP");
             logger.error(e);
         }
+
     }
 
     async startContainer() {
@@ -333,7 +338,6 @@ export class Winboat {
         this.containerActionLoading.value = true;
         try {
             const { stdout } = await execAsync("docker container start WinBoat");
-            await this.#connectQMPManager();
             logger.info(`Container response: ${stdout}`);
         } catch(e) {
             logger.error("There was an error performing the container action.");

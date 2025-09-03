@@ -3,8 +3,11 @@
         <div class="flex items-center justify-between mb-6">
             <x-label class="text-neutral-300">Apps</x-label>
             <div class="flex flex-row justify-center items-center gap-2">
-                <x-select @change="(e: any) => sortBy = e.detail.newValue">
-                    <x-menu class="">
+                <x-select 
+                    @change="(e: any) => sortBy = e.detail.newValue" 
+                    :disabled="winboat.containerStatus.value !== ContainerStatus.Exited && winboat.containerStatus.value !== ContainerStatus.Dead"
+                >
+                    <x-menu>
                         <x-menuitem value="name" toggled>
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
@@ -31,6 +34,7 @@
                     maxlength="32"
                     :value="searchInput"
                     @input="(e: any) => searchInput = e.target.value"
+                    :disabled="winboat.containerStatus.value !== ContainerStatus.Exited && winboat.containerStatus.value !== ContainerStatus.Dead"
                 >
                     <x-icon href="#search"></x-icon>
                     <x-label>Search</x-label>

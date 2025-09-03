@@ -110,7 +110,7 @@
                     </p>
                 </div>
                 <x-button
-                    :disabled="errors.length || (origNumCores === numCores && origRamGB === ramGB && shouldUpdateUsbList) || isApplyingChanges"
+                    :disabled="errors.length || (origNumCores === numCores && origRamGB === ramGB) || isApplyingChanges"
                     @click="applyChanges()"
                     class="w-24"
                 >
@@ -235,9 +235,6 @@ import { USBManager, type PTSerializableDeviceInfo } from '../lib/usbmanager';
 import { type Device } from 'usb';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
-type USBDeviceWithIssue = (USBDevice & { issue: string });
-type USBDeviceWithPossibleIssue = USBDevice | USBDeviceWithIssue;
-
 const winboat = new Winboat();
 const usbManager = new USBManager();
 
@@ -252,22 +249,13 @@ const maxRamGB = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
-const usbDevicesIdxs = ref(Array<number>());
-const displayUsbDevices = ref(Array<USBDeviceWithPossibleIssue>());
-const origUsbDevices = ref(Array<USBDevice>())
 
 // For General
 const wbConfig = new WinboatConfig();
 
 onMounted(async () => {
     await assignValues();
-
-    watch(usbDevicesIdxs.value, async () => {
-        if(usbDevicesIdxs.value.length != displayUsbDevices.value.length) return;
-        // ideally we'd like to close the usb selection menu when its empty but that causes the entire config screen to stop working sadly
-        //await document.querySelector("[role='menu']")?.close();
-    });
-})
+});
 
 async function assignValues() {
     compose.value = winboat.parseCompose();
@@ -278,27 +266,6 @@ async function assignValues() {
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
 
-    usbDevicesIdxs.value = [];
-    // displayUsbDevices.value = await fetchUSBDevices({ignoreVendorIDs: ['1d6b']});
-    // origUsbDevices.value = await extractUSBFromDockerArgs(compose.value.services.windows.environment.ARGUMENTS);
-
-    for (const device of origUsbDevices.value) {
-        const idx = displayUsbDevices.value.findIndex(
-            elem => 
-                elem.productID == device.productID 
-                && elem.vendorID == device.vendorID 
-                && elem.alias == device.alias);
-
-        if (idx !== -1) {
-            usbDevicesIdxs.value.push(idx);
-            continue;
-        }
-
-        displayUsbDevices.value.push({...device, issue: "USB device not connected"});
-        usbDevicesIdxs.value.push(displayUsbDevices.value.length - 1);
-        console.log(displayUsbDevices.value)
-    }
-
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuThreads;
@@ -307,8 +274,6 @@ async function assignValues() {
 }
 
 async function applyChanges() {
-    const selectedUsbDevices = usbDevicesIdxs.value.map(x => filterIssue(displayUsbDevices.value[x])) as USBDevice[];
-
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
     // compose.value!.services.windows.environment.ARGUMENTS = DefaultCompose.services.windows.environment.ARGUMENTS + serializeUSBDevices(selectedUsbDevices);
@@ -347,55 +312,6 @@ const errors = computed(() => {
     return errCollection;
 })
 
-// Needed because xel only implemented this for buttons
-function showTooltip(e: Event) {
-    const elem = e.target as HTMLElement;
-    const tooltip = elem.querySelector("x-tooltip") as any;
-    tooltip.open(elem);
-}
-
-// Needed because xel only implemented this for buttons
-function closeTooltip(e: Event) {
-    const elem = e.target as HTMLElement;
-    const tooltip = elem.querySelector("x-tooltip") as any;
-    tooltip.close(elem);
-}
-
-function updateDisplayUSBList(devices: USBDevice[]) {
-    for(const device of devices) {
-        const idx = displayUsbDevices.value.findIndex(
-            elem => 
-                elem.productID == device.productID 
-                && elem.vendorID == device.vendorID 
-                && elem.alias == device.alias);
-        if(idx !== -1) continue;
-        displayUsbDevices.value.push(device);
-    }
-}
-
-const hasIssue = (device?: USBDeviceWithPossibleIssue) => device?.hasOwnProperty("issue");
-const filterMenuItems = () => displayUsbDevices.value.filter((elem, i: number) => !usbDevicesIdxs.value.includes(i) && !hasIssue(elem));
-const filterIssue = (device: USBDeviceWithPossibleIssue): USBDevice => Object({
-    vendorID: device.vendorID,
-    productID: device.productID,
-    alias: device.alias
-});
-
-function areExclusiveArraysEqual<T>(a: T[], b: T[]): boolean {
-    const compareObjects = (obj1: any, obj2: any) => 
-        Object.keys(obj1).length === Object.keys(obj2).length &&
-        Object.keys(obj1).every(key => obj1[key] === obj2[key]);
-
-    return a.length === b.length && 
-        a.every((elem: any) => b.find(other => compareObjects(elem, other)));
-}
-
-const shouldUpdateUsbList = computed(() => {
-    const selectedUsbDevices = usbDevicesIdxs.value.map(x => filterIssue(displayUsbDevices.value[x])) as USBDevice[];
-    console.log({selectedUsbDevices, a: origUsbDevices.value}, areExclusiveArraysEqual(selectedUsbDevices, origUsbDevices.value))
-    return areExclusiveArraysEqual(selectedUsbDevices, origUsbDevices.value);
-})
-
 async function resetWinboat() {
     if (++resetQuestionCounter.value < 3) {
         return;
@@ -418,14 +334,6 @@ function refreshAvailableDevices() {
             !usbManager.stringifyDevice(device).includes(LINUX_FOUNDATION_VID);
     });
     console.info('[Available Devices] Debug', availableDevices.value);
-}
-
-
-function isDeviceConnected(ptDevice: PTSerializableDeviceInfo): boolean {
-    return usbManager.devices.value.some(device => 
-        device.deviceDescriptor.idVendor === ptDevice.vendorId && 
-        device.deviceDescriptor.idProduct === ptDevice.productId
-    );
 }
 
 function addDevice(device: Device): void {
