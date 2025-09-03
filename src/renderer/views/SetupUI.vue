@@ -185,7 +185,7 @@
                         </div>
                         <div class="mt-4">
                             <div class="flex flex-col gap-2">
-                                <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional):</label>
+                                <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
                                 <div class="flex items-center gap-2">
                                     <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">Select ISO File</x-button>
                                     <span class="relative group">
