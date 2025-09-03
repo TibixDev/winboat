@@ -195,7 +195,7 @@
                                         </span>
                                     </span>
                                 </div>
-                                <span v-if="customIsoPath" class="text-xs text-gray-400 flex items-center gap-2">
+                                <span v-if="customIsoPath" class="text-xs text-gray-400 font-semibold flex items-center gap-2">
                                     Selected: {{ customIsoFileName }}
                                     <x-button size="small" class="ml-2 px-2 py-0" @click="deselectIsoFile">Remove</x-button>
                                 </span>
