@@ -32,6 +32,7 @@ const defaultCompose: ComposeConfig = {
                 "PASSWORD": "MyWindowsPassword",
                 "HOME": "${HOME}",
                 "LANGUAGE": "English",
+                "ARGUMENTS": "-cpu host,arch_capabilities=off"
             },
             "cap_add": [
                 "NET_ADMIN"

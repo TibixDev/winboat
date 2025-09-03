@@ -1,6 +1,6 @@
 {
     "name": "winboat",
-    "version": "0.6.11",
+    "version": "0.6.12",
     "description": "Windows for Penguins",
     "main": "main/main.js",
     "scripts": {

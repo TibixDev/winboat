@@ -49,6 +49,7 @@ export type ComposeConfig = {
                 PASSWORD: string;
                 HOME: string;
                 LANGUAGE: string;
+                ARGUMENTS: string;
                 [key: string]: string; // Allow additional env vars
             };
             privileged: boolean;
