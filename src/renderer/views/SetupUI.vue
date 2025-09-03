@@ -186,7 +186,15 @@
                         <div class="mt-4">
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Optional:</label>
-                                <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">Select ISO File</x-button>
+                                <div class="flex items-center gap-2">
+                                    <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">Select ISO File</x-button>
+                                    <span class="relative group">
+                                        <Icon icon="line-md:question-circle" class="text-neutral-400 cursor-pointer" />
+                                        <span class="absolute left-6 top-1 z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                            We offer you the possibility of using a custom Windows ISO for your convenience, however we can't provide any support if your custom ISO breaks or certain features within WinBoat stop working.
+                                        </span>
+                                    </span>
+                                </div>
                                 <span v-if="customIsoPath" class="text-xs text-gray-400 flex items-center gap-2">
                                     Selected: {{ customIsoFileName }}
                                     <x-button size="small" class="ml-2 px-2 py-0" @click="deselectIsoFile">Remove</x-button>
