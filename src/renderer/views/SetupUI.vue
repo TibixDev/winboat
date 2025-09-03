@@ -164,8 +164,14 @@
                                         :key="language"
                                         :value="language"
                                         :toggled="windowsLanguage === language"
+                                        :disabled="['German', 'Hungarian'].includes(language)"
                                     >
-                                        <x-label>{{ languageWithBanner }}</x-label>
+                                        <x-label>
+                                            {{ languageWithBanner }}
+                                            <span v-if="['German', 'Hungarian'].includes(language)" class="text-red-400">
+                                                (Broken, use Language Pack)
+                                            </span>
+                                        </x-label>
                                     </x-menuitem>
                                 </x-menu>
                             </x-select>
