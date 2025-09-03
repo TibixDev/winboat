@@ -435,8 +435,8 @@ import { InstallManager, type InstallState, InstallStates } from '../lib/install
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
 
-const path = require('path');
-const { dialog } = require('electron').remote || require('@electron/remote');
+const path: typeof import('path') = require('path')
+const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
 const os: typeof import('os') = require('os');
 
 type Step = {
@@ -532,7 +532,7 @@ onMounted(async () => {
 })
 
 function selectIsoFile() {
-    dialog.showOpenDialog({
+    electron.dialog.showOpenDialog({
         title: 'Select ISO File',
         filters: [
           {
