@@ -165,12 +165,7 @@ export class InstallManager {
 
         // Copy all files from guest_server to oemPath
         try {
-            fs.readdirSync(appPath).forEach(file => {
-                const srcFile = path.join(appPath, file);
-                const destFile = path.join(oemPath, file);
-                fs.copyFileSync(srcFile, destFile);
-                logger.info(`Copied ${file} to ${destFile}`);
-            });
+            fs.cpSync(appPath, oemPath, { recursive: true });
             logger.info("OEM assets created successfully");
         } catch (error) {
             logger.error(`Failed to copy OEM assets: ${error}`);
