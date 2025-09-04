@@ -265,6 +265,10 @@ export class Winboat {
             // Side-effect: Set rdpConnected to false
             this.rdpConnected.value = false;
         }
+
+        if (this.qmpMgr?.isAlive) {
+            this.qmpMgr.qmpSocket.destroy();
+        }
     }
 
     async getHealth() {
@@ -325,6 +329,8 @@ export class Winboat {
             assert("return" in capabilities);
 
             const commands = await this.qmpMgr.executeCommand("query-commands");
+
+            // @ts-ignore property "result" already exists due to assert
             assert(commands.return.every(x => "name" in x));
         } catch(e) {
             logger.error("There was an error connecting to QMP");

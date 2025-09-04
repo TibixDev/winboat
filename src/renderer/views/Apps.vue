@@ -4,8 +4,8 @@
             <x-label class="text-neutral-300">Apps</x-label>
             <div class="flex flex-row justify-center items-center gap-2">
                 <x-select 
-                    @change="(e: any) => sortBy = e.detail.newValue" 
-                    :disabled="winboat.containerStatus.value !== ContainerStatus.Exited && winboat.containerStatus.value !== ContainerStatus.Dead"
+                    @change="(e: any) => sortBy = e.detail.newValue"
+                    :disabled="!winboat.isOnline.value"
                 >
                     <x-menu>
                         <x-menuitem value="name" toggled>
@@ -34,7 +34,7 @@
                     maxlength="32"
                     :value="searchInput"
                     @input="(e: any) => searchInput = e.target.value"
-                    :disabled="winboat.containerStatus.value !== ContainerStatus.Exited && winboat.containerStatus.value !== ContainerStatus.Dead"
+                    :disabled="!winboat.isOnline.value"
                 >
                     <x-icon href="#search"></x-icon>
                     <x-label>Search</x-label>

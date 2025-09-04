@@ -64,7 +64,6 @@ export class USBManager {
     #setupDeviceUpdateListeners() {
         usb.on("attach", async (device: Device) => {
             this.devices.value = getDeviceList();
-
             logger.info(`USB device attached: ${this.stringifyDevice(device)}`);
             if (
                     this.#winboat.isOnline.value &&
@@ -329,34 +328,28 @@ function getDeviceStringsFromLsusb(vidHex: string, pidHex: string): DeviceString
         return { manufacturer: null, product: null };
     }
 }
-/*
-      Bus 3, Addr 5, Port 3, Speed 480 Mb/s
-    Class ef: USB device 046d:0825, C270 HD WEBCAM
-  Bus 3, Addr 2, Port 2, Speed 12 Mb/s
-    Class 00: USB device 046d:c52b, USB Receiver
-  Bus 1, Addr 12, Port 4, Speed 12 Mb/s
-    Class 00: USB device 046d:0a9c, G432 Gaming Headset
-  Bus 1, Addr 10, Port 1, Speed 12 Mb/s
-    Class 00: USB device 1532:0098, Razer DeathAdder Essential
 
-*/
+
 async function QMPCheckIfDeviceExists(qmpConn: QMPManager, vendorId: number, productId: number): Promise<boolean> {
+    let response = null;
     try {
-        const response = await qmpConn.executeCommand("human-monitor-command", {"command-line": "info qtree"})
+        response = await qmpConn.executeCommand("human-monitor-command", {"command-line": "info qtree"})
         assert("result" in response);
-
+        // @ts-ignore property "result" already exists due to assert
         return response.return.includes(`usb-host, id "${vendorId}:${productId}"`);
     } catch(e) {
         logger.error(`There was an error checking whether USB device '${vendorId}:${productId}' exists`);
         logger.error(e);
+        logger.error(`QMP response: ${response}`);
     }
     return false;
 }
 
 // TODO: handle hostaddr/hostbus
 async function QMPAddDevice(qmpConn: QMPManager, vendorId: number, productId: number) {
+    let response = null;
     try {
-        const response = await qmpConn.executeCommand("device_add", {
+        response = await qmpConn.executeCommand("device_add", {
             driver: "usb-host",
             id: `${vendorId}:${productId}`, // TODO: get rid of this
             vendorid: vendorId,
@@ -366,17 +359,20 @@ async function QMPAddDevice(qmpConn: QMPManager, vendorId: number, productId: nu
     } catch(e) {
         logger.error(`There was an error adding USB device '${vendorId}:${productId}'`);
         logger.error(e);
+        logger.error(`QMP response: ${response}`);
     }
     logger.info("QMPAddDevice", vendorId, productId);
 }
 
 async function QMPRemoveDevice(qmpConn: QMPManager, vendorId: number, productId: number) {
+    let response = null;
     try {
-        const response = await qmpConn.executeCommand("device_del", { id: `${vendorId}:${productId}`});
+        response = await qmpConn.executeCommand("device_del", { id: `${vendorId}:${productId}`});
         assert("result" in response);
     } catch(e) {
         logger.error(`There was an error removing USB device '${vendorId}:${productId}'`);
         logger.error(e);
+        logger.error(`QMP response: ${response}`);
     }
     logger.info("QMPRemoveDevice", vendorId, productId);
 }

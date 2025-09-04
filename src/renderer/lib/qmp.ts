@@ -54,7 +54,7 @@ type QMPError = {
     error: object
 };
 
-type QMPReturn<T> = T extends never ? never : { return: T };
+type QMPReturn<T> = T extends never ? never : { return: T } | QMPError;
 
 type QMPCommandWithArgs = "human-monitor-command" | "device_add" | "device_del" | "device-list-properties";
 type QMPCommandNoArgs = "qmp_capabilities" | "query-commands" | "query-status" | "query-block";
@@ -66,8 +66,8 @@ type QMPArgumentProps = {
     "id": string,
     "vendorid": number,
     "productid": number,
-    "hostbus": string,
-    "hostaddr": string,
+    "hostbus": number,
+    "hostaddr": number,
     "typename": string
 };
 
@@ -108,10 +108,13 @@ export class QMPManager {
 
     /**
      * Creates a new {@link QMPManager} instance, returning a promise that resolves after the socket successfully connected
+     * 
+     * May block if there is another connection taking up the socket, so be careful!
+     * 
      * @param host - The hostname of the qmp connection (e.g. 0.0.0.0, 127.0.0.1)
      * @param port - The port of the qmp connection (e.g. 6969, 420)
+     * 
      */
-
     static async createConnection(host: string, port: number): Promise<QMPManager> {
         return new Promise((resolve, reject) => {
             const socket = createConnection({ host, port }, () => {
@@ -134,6 +137,14 @@ export class QMPManager {
         });
     }
     
+    /**
+     * Executes the QMP command specified by `command`.
+     * 
+     * Optionally, you can specify an argument for given command if it requires one.
+     * 
+     * @param command 
+     * 
+     */
     async executeCommand<C extends QMPCommandNoArgs>(command: C): Promise<QMPResponse<C>>
     async executeCommand<C extends QMPCommandWithArgs>(command: C, qmpArgument: QMPCommandExpectedArgument<C>): Promise<QMPResponse<C>>
     async executeCommand<C extends QMPCommand>(command: C,  qmpArgument?: QMPCommandExpectedArgument<C>): Promise<QMPResponse<C>> {
@@ -160,6 +171,12 @@ export class QMPManager {
         });
     }
 
+    /**
+     * Checks whether the socket is still alive, then queries the status of the QMP connection.
+     * 
+     * @returns True if the socket is alive and if the QMP command `query-status` returned without errors.
+     * 
+     */
     async isAlive(): Promise<boolean> {
         try {
             if (this.qmpSocket.closed || this.qmpSocket.destroyed) { 
