@@ -462,7 +462,7 @@ export class Winboat {
         logger.close();
 
         // 5. Remove WinBoat directory
-        fs.unlinkSync(WINBOAT_DIR);
+        fs.rmSync(WINBOAT_DIR,  { recursive: true, force: true });
         console.info(`Removed ${WINBOAT_DIR}`);
         console.info("So long and thanks for all the fish!");
     }
