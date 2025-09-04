@@ -133,31 +133,38 @@
                         <p class="text-lg text-gray-400">
                             Pick the version of Windows you want to install, and the language you'd like to use.
                         </p>
-    
                         <p class="text-lg text-gray-400">
                             You can only change these settings now. Once the installation is complete, you will not be able to change them unless you reinstall.
                         </p>
-    
-    
                         <div>
                             <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
-                            <x-select id="select-edition" @change="(e: any) => windowsVersion = e.detail.newValue" class="w-64">
+                            <x-select
+                                id="select-edition"
+                                @change="(e: any) => windowsVersion = e.detail.newValue"
+                                class="w-64"
+                                :disabled="!!customIsoPath"
+                            >
                                 <x-menu>
                                     <x-menuitem
                                         v-for="(version, key) in WINDOWS_VERSIONS"
                                         :key="key"
                                         :value="key"
                                         :toggled="windowsVersion === key"
+                                        v-show="key !== 'custom'"
                                     >
                                         <x-label>{{ version }}</x-label>
                                     </x-menuitem>
                                 </x-menu>
                             </x-select>
                         </div>
-    
                         <div>
                             <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
-                            <x-select id="select-language" @change="(e: any) => windowsLanguage = e.detail.newValue" class="w-64">
+                            <x-select
+                                id="select-language"
+                                @change="(e: any) => windowsLanguage = e.detail.newValue"
+                                class="w-64"
+                                :disabled="!!customIsoPath"
+                            >
                                 <x-menu @change="(e: any) => windowsLanguage = e.detail.newValue">
                                     <x-menuitem
                                         v-for="(language, languageWithBanner) in WINDOWS_LANGUAGES"
@@ -176,7 +183,24 @@
                                 </x-menu>
                             </x-select>
                         </div>
-    
+                        <div class="mt-4">
+                            <div class="flex flex-col gap-2">
+                                <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
+                                <div class="flex items-center gap-2">
+                                    <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">Select ISO File</x-button>
+                                    <span class="relative group">
+                                        <Icon icon="line-md:question-circle" class="text-neutral-400 cursor-pointer" />
+                                        <span class="absolute left-6 top-1 z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                            We offer you the possibility of using a custom Windows ISO for your convenience, however we can't provide any support if your custom ISO breaks or certain features within WinBoat stop working.
+                                        </span>
+                                    </span>
+                                </div>
+                                <span v-if="customIsoPath" class="text-xs text-gray-400 font-semibold flex items-center gap-2">
+                                    Selected: {{ customIsoFileName }}
+                                    <x-button size="small" class="ml-2 px-2 py-0" @click="deselectIsoFile">Remove</x-button>
+                                </span>
+                            </div>
+                        </div>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
@@ -410,6 +434,9 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
+
+const path: typeof import('path') = require('path')
+const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
 const os: typeof import('os') = require('os');
 
 type Step = {
@@ -487,6 +514,8 @@ const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
+const customIsoPath = ref("");
+const customIsoFileName = ref("");
 const cpuThreads = ref(2);
 const ramGB = ref(4);
 const diskSpaceGB = ref(32);
@@ -502,6 +531,35 @@ onMounted(async () => {
     console.log("Username", username.value);
 })
 
+function selectIsoFile() {
+    electron.dialog.showOpenDialog({
+        title: 'Select ISO File',
+        filters: [
+          {
+            name: 'ISO Files',
+            extensions: ['iso']
+          }
+        ],
+        properties: ['openFile']
+    })
+    .then(result => {
+      if (!result.canceled && result.filePaths.length > 0) {
+        customIsoPath.value = result.filePaths[0];
+        customIsoFileName.value = path.basename(result.filePaths[0]);
+        windowsLanguage.value = 'English'; // Language can't be custom
+        windowsVersion.value = 'custom';
+        console.log('ISO path updated:', customIsoPath.value);
+      }
+    });
+}
+
+function deselectIsoFile() {
+    customIsoPath.value = "";
+    customIsoFileName.value = "";
+    windowsLanguage.value = 'English';
+    windowsVersion.value = '11';
+}
+
 function install() {
     const installConfig: InstallConfiguration = {
         windowsVersion: windowsVersion.value,
@@ -511,6 +569,7 @@ function install() {
         diskSpaceGB: diskSpaceGB.value,
         username: username.value,
         password: password.value,
+        ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
     }
 
     // Begin installation and attach event listeners
