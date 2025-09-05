@@ -42,6 +42,11 @@
             "from": "./guest_server",
             "to": "guest_server",
             "filter": ["**/*"]
+        },
+        {
+            "from": "src/main/custom_scripts",
+            "to": "custom_scripts",
+            "filter": ["**/*"]
         }
     ]
 }
