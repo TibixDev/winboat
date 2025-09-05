@@ -1,6 +1,6 @@
 {
     "name": "winboat",
-    "version": "0.7.2",
+    "version": "0.7.3",
     "description": "Windows for Penguins",
     "main": "main/main.js",
     "scripts": {
@@ -11,7 +11,8 @@
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
         "name": "TibixDev",
-        "url": "https://github.com/TibixDev"
+        "url": "https://github.com/TibixDev",
+        "email": "staff@winboat.app"
     },
     "devDependencies": {
         "@types/json-to-pretty-yaml": "^1.2.1",
