@@ -566,12 +566,8 @@ function selectIsoFile() {
         const filePath = result.filePaths[0]
         const isoType = getIsoType(filePath);
 
-        if (isoType === 'Invalid') {
-            electron.dialog.showErrorBox("Invalid ISO!", "This ISO is not bootable!");
-        }
-
-        else if (isoType === 'linux') {
-            electron.dialog.showErrorBox("Invalid ISO!", "You can not use Linux ISO files!");
+        if (isoType !== 'Unknown' && isoType !== 'winnt') {
+            electron.dialog.showErrorBox("Invalid ISO!", "This ISO is not valid!");
         }
 
         else {
