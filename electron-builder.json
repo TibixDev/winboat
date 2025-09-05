@@ -1,47 +1,49 @@
 {
-    "appId": "com.teabox.winboat",
-    "directories": {
-        "output": "dist"
+  "appId": "com.teabox.winboat",
+  "directories": {
+    "output": "dist"
+  },
+  "publish": null,
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "shortcutName": "WinBoat"
+  },
+  "win": {
+    "target": "nsis"
+  },
+  "linux": {
+    "icon": "icons/winboat.png",
+    "target": ["appimage", "deb", "rpm", "tar.gz"],
+    "category": "Utility",
+    "artifactName": "${name}-${version}-${arch}.${ext}"
+  },
+  "files": [
+    {
+      "from": "build/main",
+      "to": "main",
+      "filter": ["**/*"]
     },
-    "publish": null,
-    "nsis": {
-        "oneClick": false,
-        "perMachine": false,
-        "allowToChangeInstallationDirectory": true,
-        "shortcutName": "WinBoat"
+    {
+      "from": "build/renderer",
+      "to": "renderer",
+      "filter": ["**/*"]
     },
-    "win": {
-        "target": "nsis"
+    {
+      "from": "src/main/static",
+      "to": "static",
+      "filter": ["**/*"]
     },
-    "linux":  {
-        "icon": "icons/winboat.png",
-        "target": ["appimage"]
-    },
-    "files": [
-        {
-            "from": "build/main",
-            "to": "main",
-            "filter": ["**/*"]
-        },
-        {
-            "from": "build/renderer",
-            "to": "renderer",
-            "filter": ["**/*"]
-        },
-        {
-            "from": "src/main/static",
-            "to": "static",
-            "filter": ["**/*"]
-        },
-	"!build",
-	"!dist",
-	"!scripts"
-    ],
-    "extraResources": [
-        {
-            "from": "./guest_server",
-            "to": "guest_server",
-            "filter": ["**/*"]
-        }
-    ]
+    "!build",
+    "!dist",
+    "!scripts"
+  ],
+  "extraResources": [
+    {
+      "from": "./guest_server",
+      "to": "guest_server",
+      "filter": ["**/*"]
+    }
+  ]
 }
