@@ -12,7 +12,6 @@
         <!-- Updater -->
         <dialog ref="updateDialog">
             <Icon class="text-indigo-400 size-12" icon="mdi:cloud-upload"></Icon>
-
             <template v-if="manualUpdateRequired">
                 <h3 class="mt-2">Manual Guest Server Update Required</h3>
                 <div class="max-w-[60vw]">
@@ -82,7 +81,7 @@
                         <x-label class="text-[0.8rem]">Local Account</x-label>
                     </div>
                 </div>
-                <RouterLink v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(String(r.name)))" :to="route.path" :key="route.path">
+                <RouterLink v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(r.name))" :to="route.path" :key="route.path">
                     <x-navitem value="first">
                         <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)"></Icon>
                         <x-label>{{ route.name }}</x-label>

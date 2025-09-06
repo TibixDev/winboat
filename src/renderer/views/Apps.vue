@@ -71,7 +71,10 @@
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
                  
-                <x-select @change="(e: any) => sortBy = e.detail.newValue">
+                <x-select 
+                    @change="(e: any) => sortBy = e.detail.newValue"
+                    :disabled="!winboat.isOnline.value"
+                >
                     <x-menu class="">
                         <x-menuitem value="name" toggled>
                             <x-icon href="#sort" class="qualifier"></x-icon>
@@ -99,6 +102,7 @@
                     maxlength="32"
                     :value="searchInput"
                     @input="(e: any) => searchInput = e.target.value"
+                    :disabled="!winboat.isOnline.value"
                 >
                     <x-icon href="#search"></x-icon>
                     <x-label>Search</x-label>
