@@ -101,9 +101,9 @@
                                 <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
-                                <span v-if="specs.freeRDPInstalled" class="text-green-500">✔</span>
+                                <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                FreeRDP installed
+                                FreeRDP 3.x.x installed
                                 <a href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">

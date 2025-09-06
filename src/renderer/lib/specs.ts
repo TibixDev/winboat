@@ -1,3 +1,4 @@
+import { getFreeRDP } from '../utils/getFreeRDP';
 const fs: typeof import('fs') = require('fs');
 const os: typeof import('os') = require('os');
 const { exec }: typeof import('child_process') = require('child_process');
@@ -8,7 +9,7 @@ export function satisfiesPrequisites(specs: Specs) {
     return specs.dockerInstalled &&
         specs.dockerComposeInstalled && 
         specs.dockerIsInUserGroups &&
-        specs.freeRDPInstalled &&
+        specs.freeRDP3Installed &&
         specs.ipTablesLoaded &&
         specs.iptableNatLoaded &&
         specs.kvmEnabled &&
@@ -25,7 +26,7 @@ export const defaultSpecs: Specs = {
     dockerInstalled: false,
     dockerComposeInstalled: false,
     dockerIsInUserGroups: false,
-    freeRDPInstalled: false,
+    freeRDP3Installed: false,
     ipTablesLoaded: false,
     iptableNatLoaded: false
 }
@@ -59,6 +60,7 @@ export async function getSpecs() {
         console.error('Error getting disk space for /var:', e);
     }
 
+    // KVM check
     try {
         const cpuInfo = fs.readFileSync('/proc/cpuinfo', 'utf8');
         if ((cpuInfo.includes('vmx') || cpuInfo.includes('svm')) && fs.existsSync('/dev/kvm')) {
@@ -68,10 +70,13 @@ export async function getSpecs() {
         console.error('Error reading /proc/cpuinfo or checking /dev/kvm:', e);
     }
 
+    // Docker check
     try {
         const { stdout: dockerOutput } = await execAsync('docker --version');
         specs.dockerInstalled = !!dockerOutput;
-    } catch (e) {}
+    } catch (e) {
+        console.error('Error checking for Docker installation:', e);
+    }
 
     // Docker Compose plugin check with version validation
     try {
@@ -101,14 +106,16 @@ export async function getSpecs() {
         console.error('Error checking user groups for docker:', e);
     }
 
-    // FreeRDP check (including Flatpak)
+    // FreeRDP 3.x.x check (including Flatpak)
     try {
-        const freeRDPAliases = ["xfreerdp", "xfreerdp3", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];
-        for(const alias of freeRDPAliases) {
-            specs.freeRDPInstalled ||= !!(await execAsync(`${alias} || exit 0`)).stdout;
-        }
+        const VERSION_3_STRING = "version 3.";
+        // Will fail if no binary is found, so and default is false, so we're good
+        const freeRDPBin = await getFreeRDP();
+        const versionString = (await execAsync(`${freeRDPBin} --version`)).stdout;
+        specs.freeRDP3Installed = versionString.includes(VERSION_3_STRING);
+
     } catch(e) {
-        console.error('Error checking FreeRDP installation:', e);
+        console.error('Error checking FreeRDP 3.x.x installation (most likely not installed):', e);
     }
 
     // iptables kernel module check

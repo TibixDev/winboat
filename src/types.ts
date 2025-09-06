@@ -8,7 +8,7 @@ export type Specs = {
     dockerInstalled: boolean;
     dockerComposeInstalled: boolean,
     dockerIsInUserGroups: boolean;
-    freeRDPInstalled: boolean;
+    freeRDP3Installed: boolean;
     ipTablesLoaded: boolean;
     iptableNatLoaded: boolean;
 }
