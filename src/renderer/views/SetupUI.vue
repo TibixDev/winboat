@@ -59,7 +59,7 @@
                         <p class="text-lg text-gray-400">
                             In order to run WinBoat, your computer must meet the following requirements.
                         </p>
-                        <ul class="text-lg text-gray-400 list-none space-y-2 bg-neutral-800 py-4 rounded-lg">
+                        <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 px-4 rounded-lg">
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.ramGB >= 4" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
@@ -73,7 +73,7 @@
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.diskSpaceGB >= 32" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                At least 32 GB free space in <span class="font-mono bg-neutral-700 rounded-md px-0.5">/var</span>
+                                At least 32 GB free in <span class="font-mono bg-neutral-700 rounded-md px-0.5">/var</span>
                                 (Detected: {{ specs.diskSpaceGB }} GB)
                             </li>
                             <li class="flex items-center gap-2">
@@ -99,6 +99,15 @@
                                 <span v-else class="text-red-500">✘</span>
                                 User added to the <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
                                 <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span v-if="specs.dockerIsRunning" class="text-green-500">✔</span>
+                                <span v-else class="text-red-500">✘</span>
+                                Docker daemon is running
+                                <span class="text-gray-600">
+                                    (Also enable on boot)
+                                </span>
+                                <a href="https://docs.docker.com/config/daemon/start/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
@@ -187,11 +196,15 @@
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
                                 <div class="flex items-center gap-2">
-                                    <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">Select ISO File</x-button>
+                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile">Select ISO File</x-button>
                                     <span class="relative group">
-                                        <Icon icon="line-md:question-circle" class="text-neutral-400 cursor-pointer" />
-                                        <span class="absolute left-6 top-1 z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                            We offer you the possibility of using a custom Windows ISO for your convenience, however we can't provide any support if your custom ISO breaks or certain features within WinBoat stop working.
+                                        <Icon icon="line-md:alert" class="text-neutral-400 cursor-pointer" />
+                                        <span
+                                            class="absolute bottom-5 left-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                        >
+                                            We offer you the possibility of using a custom Windows ISO for your convenience,
+                                            however we can't provide any support if your custom ISO breaks or certain features within WinBoat stop working.
                                         </span>
                                     </span>
                                 </div>
@@ -201,7 +214,7 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="flex flex-row gap-4 mt-6" :class="{ '!mt-2': customIsoPath }">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
                         </div>

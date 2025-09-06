@@ -8,6 +8,7 @@ const execAsync = promisify(exec);
 export function satisfiesPrequisites(specs: Specs) {
     return specs.dockerInstalled &&
         specs.dockerComposeInstalled && 
+        specs.dockerIsRunning &&
         specs.dockerIsInUserGroups &&
         specs.freeRDP3Installed &&
         specs.ipTablesLoaded &&
@@ -25,6 +26,7 @@ export const defaultSpecs: Specs = {
     kvmEnabled: false,
     dockerInstalled: false,
     dockerComposeInstalled: false,
+    dockerIsRunning: false,
     dockerIsInUserGroups: false,
     freeRDP3Installed: false,
     ipTablesLoaded: false,
@@ -96,6 +98,14 @@ export async function getSpecs() {
         }
     } catch (e) {
         console.error('Error checking Docker Compose version:', e);
+    }
+
+    // Docker is running check
+    try {
+        const { stdout: dockerOutput } = await execAsync('docker ps');
+        specs.dockerIsRunning = !!dockerOutput;
+    } catch (e) {
+        console.error('Error checking if Docker is running:', e);
     }
 
     // Docker user group check
