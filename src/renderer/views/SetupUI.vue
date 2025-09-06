@@ -59,7 +59,7 @@
                         <p class="text-lg text-gray-400">
                             In order to run WinBoat, your computer must meet the following requirements.
                         </p>
-                        <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 px-4 rounded-lg">
+                        <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 rounded-lg">
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.ramGB >= 4" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
