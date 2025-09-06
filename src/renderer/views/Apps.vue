@@ -62,6 +62,15 @@
         <div class="flex justify-between items-center mb-6">
             <x-label class="text-neutral-300">Apps</x-label>
             <div class="flex flex-row gap-2 justify-center items-center">
+                <!-- Refresh button -->
+                <x-button
+                    class="flex flex-row gap-1 items-center"
+                    @click="refreshApps"
+                >
+                    <Icon icon="mdi:refresh" class="size-4"></Icon>
+                    <x-label>Refresh</x-label>
+                </x-button>
+
                 <!-- custom app plus btn -->
                 <x-button
                     class="flex flex-row gap-1 items-center"
@@ -184,19 +193,11 @@ const computedApps = computed(() => {
 })
 
 onMounted(async () => {
-    if (winboat.isOnline.value) {
-        apps.value = await winboat.appMgr!.getApps();
-
-        // Run in background, won't impact UX
-        await winboat.appMgr!.updateAppCache();
-        if(winboat.appMgr!.appCache.length > apps.value.length) {
-            apps.value = winboat!.appMgr!.appCache;
-        }
-    }
+    await refreshApps();
 
     watch(winboat.isOnline, async (newVal, _) => {
         if (newVal) {
-            apps.value = await winboat.appMgr!.getApps();
+            await refreshApps();
             console.log("Apps list: ", apps.value);
         }
     })
@@ -206,6 +207,17 @@ onMounted(async () => {
         await debouncedFetchIcon(newVal, oldVal);
     })
 })
+
+async function refreshApps() {
+    if (winboat.isOnline.value) {
+        apps.value = await winboat.appMgr!.getApps();
+        // Run in background, won't impact UX
+        await winboat.appMgr!.updateAppCache();
+        if(winboat.appMgr!.appCache.length > apps.value.length) {
+            apps.value = winboat!.appMgr!.appCache;
+        }
+    }
+}
 
 const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {            
     if (newVal !== oldVal && newVal !== '') {
