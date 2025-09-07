@@ -74,7 +74,6 @@ function restartElectron() {
 
 function copyStaticFiles() {
     copy('static');
-    copy('custom_scripts');
 }
 
 /*
