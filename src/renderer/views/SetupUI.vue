@@ -434,21 +434,10 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
-const { spawnSync }: typeof import('child_process') = require('child_process');
-
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
 const os: typeof import('os') = require('os');
-
-function getResourcesPath() {
-  if (electron.app.isPackaged) {
-    return process.resourcesPath;
-  } else {
-    return electron.app.getAppPath();
-  }
-}
-
-const PYTHON_SCRIPT_FILE = path.join(getResourcesPath(), 'custom_scripts', 'get_iso_info.py')
+import { getIsoType, IsoType } from '../lib/getIsoType';
 
 type Step = {
     id: string,
@@ -542,14 +531,6 @@ onMounted(async () => {
     console.log("Username", username.value);
 })
 
-function getIsoType(path: string) {
-    const result = spawnSync('python3', [PYTHON_SCRIPT_FILE, path], {
-        encoding: 'utf8',
-    });
-
-    return result.stdout;
-}
-
 function selectIsoFile() {
     electron.dialog.showOpenDialog({
         title: 'Select ISO File',
@@ -564,35 +545,37 @@ function selectIsoFile() {
     .then(result => {
       if (!result.canceled && result.filePaths.length > 0) {
         const filePath = result.filePaths[0]
-        const isoType = getIsoType(filePath);
-
-        if (isoType !== 'Unknown' && isoType !== 'winnt') {
-            electron.dialog.showErrorBox("Invalid ISO!", "This ISO is not valid!");
-        }
-
-        else {
-            if (isoType === 'Unknown') {
-                const result = electron.dialog.showMessageBoxSync({
-                    type: 'warning',
-                    title: 'Unknown Operating System',
-                    message: 'ISO Contains Unknown OS',
-                    detail: 'The operating system on this ISO image could not be identified. This may be due to:\n\n• Custom or modified OS build\n• Unsupported operating system\n• Corrupted or incomplete ISO file\n\nProceeding may result in unexpected behavior or system instability.',
-                    buttons: ['Proceed Anyway', 'Cancel'],
-                    defaultId: 1,
-                    cancelId: 1,
-                });
-
-                if (result !== 0) {
-                    return;
-                }
+        getIsoType(filePath)
+        .then(res => {
+            console.log(res);
+            if (res !== IsoType.UNKNOWN && res !== IsoType.WINDOWS) {
+                electron.dialog.showErrorBox("Invalid ISO!", "This ISO is not valid!");
             }
+            
+            else {
+                if (res === IsoType.UNKNOWN) {
+                    const result = electron.dialog.showMessageBoxSync({
+                        type: 'warning',
+                        title: 'Unknown Operating System',
+                        message: 'ISO Contains Unknown OS',
+                        detail: 'The operating system on this ISO image could not be identified. This may be due to:\n\n• Custom or modified OS build\n• Unsupported operating system\n• Corrupted or incomplete ISO file\n\nProceeding may result in unexpected behavior or system instability.',
+                        buttons: ['Proceed Anyway', 'Cancel'],
+                        defaultId: 1,
+                        cancelId: 1,
+                    });
 
-            customIsoPath.value = filePath;
-            customIsoFileName.value = path.basename(filePath);
-            windowsLanguage.value = 'English'; // Language can't be custom
-            windowsVersion.value = 'custom';
-            console.log('ISO path updated:', customIsoPath.value);
-        }
+                    if (result !== 0) {
+                        return;
+                    }
+                }
+                
+                customIsoPath.value = filePath;
+                customIsoFileName.value = path.basename(filePath);
+                windowsLanguage.value = 'English'; // Language can't be custom
+                windowsVersion.value = 'custom';
+                console.log('ISO path updated:', customIsoPath.value);
+            }
+        })
       }
     });
 }
