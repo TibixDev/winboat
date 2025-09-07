@@ -1,5 +1,9 @@
 {
   "appId": "com.teabox.winboat",
+  "author": {
+    "name": "TibixDev",
+    "email": "fuloptibi03@gmail.com"
+  },
   "directories": {
     "output": "dist"
   },
