@@ -213,7 +213,7 @@ async function refreshApps() {
         apps.value = await winboat.appMgr!.getApps();
         // Run in background, won't impact UX
         await winboat.appMgr!.updateAppCache();
-        if(winboat.appMgr!.appCache.length > apps.value.length) {
+        if(winboat.appMgr!.appCache.length !== apps.value.length) {
             apps.value = winboat!.appMgr!.appCache;
         }
     }
