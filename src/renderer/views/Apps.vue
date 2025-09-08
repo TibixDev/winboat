@@ -59,7 +59,14 @@
             </footer>
         </dialog>
         
-        <div class="flex justify-between items-center mb-6">
+        <div
+            class="flex justify-between items-center mb-6"
+            :class="{
+                'opacity-50 pointer-events-none':
+                    winboat.containerStatus.value !== ContainerStatus.Running ||
+                    !winboat.isOnline.value
+            }"
+        >
             <x-label class="text-neutral-300">Apps</x-label>
             <div class="flex flex-row gap-2 justify-center items-center">
                 <!-- Refresh button -->
