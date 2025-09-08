@@ -4,10 +4,15 @@
         'config:recommended',
         ':disableRateLimiting',
     ],
-    'docker-compose': {
-        managerFilePatterns: [
-            '/src/renderer/lib/install.ts',
-        ],
-    },
-    "includePaths": ["**/src/renderer/lib/**"]
+    "includePaths": ["**/src/renderer/lib/**"],
+    "regexManagers": [
+        {
+            "fileMatch": ["src/renderer/lib/install\\.ts$"],
+            "matchStrings": [
+                "\"image\":\\s*\"(?<depName>ghcr\\.io/dockur/windows):(?<currentValue>[^\"]+)\""
+            ],
+            "datasourceTemplate": "docker",
+            "depTypeTemplate": "container"
+        }
+    ]
 }
