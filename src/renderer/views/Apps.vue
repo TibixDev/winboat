@@ -71,7 +71,7 @@
                     <x-label>Refresh</x-label>
                 </x-button>
 
-                <!-- custom app plus btn -->
+                <!-- Custom App Add Button -->
                 <x-button
                     class="flex flex-row gap-1 items-center"
                     @click="addCustomAppDialog!.showModal()"
@@ -80,6 +80,7 @@
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
                  
+                <!-- Sort By -->
                 <x-select @change="(e: any) => sortBy = e.detail.newValue">
                     <x-menu class="">
                         <x-menuitem value="name" toggled>
@@ -101,6 +102,9 @@
                         </x-menuitem>
                     </x-menu>
                 </x-select>
+
+
+                <!-- Search Input -->
                 <x-input
                     id="search-term"
                     class="m-0 w-64 max-w-64"
