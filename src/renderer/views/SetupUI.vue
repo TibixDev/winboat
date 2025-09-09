@@ -311,7 +311,24 @@
                             </div>
         
                             <div>
-                                <label for="select-ram" class="text-sm text-neutral-400">Select RAM</label>
+                                <label for="select-ram" class="text-sm text-neutral-400">
+                                    Select RAM
+                                    <span 
+                                        v-if="memoryInfo.availableGB < ramGB"
+                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
+                                    >
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        Warning
+                                        <span
+                                            class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                        >
+                                            You don't have enough unused memory available to allocate the requested amount of RAM.
+                                            You currently have ~{{ memoryInfo.availableGB }} GB of unused memory available.
+                                            If you continue with this amount of RAM, the container will likely crash.
+                                        </span>
+                                    </span>
+                                </label>
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-ram"
@@ -439,10 +456,10 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { InstallConfiguration, Specs } from '../../types';
-import { getSpecs, defaultSpecs, satisfiesPrequisites } from '../lib/specs';
+import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
@@ -531,6 +548,8 @@ const customIsoPath = ref("");
 const customIsoFileName = ref("");
 const cpuThreads = ref(2);
 const ramGB = ref(4);
+const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
+const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
 const username = ref("winboat");
 const password = ref("");
@@ -540,9 +559,23 @@ const preinstallMsg = ref("");
 onMounted(async () => {
     specs.value = await getSpecs();
     console.log("Specs", specs.value);
+
+    memoryInfo.value = await getMemoryInfo();
+    memoryInterval.value = setInterval(async () => {
+        memoryInfo.value = await getMemoryInfo();
+    }, 1000);
+    console.log("Memory Info", memoryInfo.value);
+
     username.value = os.userInfo().username;
     console.log("Username", username.value);
 })
+
+onUnmounted(() => {
+    if (memoryInterval.value) {
+        clearInterval(memoryInterval.value);
+    }
+})
+
 
 function selectIsoFile() {
     electron.dialog.showOpenDialog({

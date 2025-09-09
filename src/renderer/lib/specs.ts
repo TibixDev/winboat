@@ -41,11 +41,8 @@ export async function getSpecs() {
     // TODO: These commands might silently fail
     // But if they do, it means something wasn't right to begin with
     try {
-        const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
-        const totalMemLine = memInfo.split('\n').find(line => line.startsWith('MemTotal'));
-        if (totalMemLine) {
-            specs.ramGB = Math.round(parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024 * 100) / 100;
-        }
+        const memoryInfo = await getMemoryInfo();
+        specs.ramGB = memoryInfo.totalGB;
     } catch (e) {
         console.error('Error reading /proc/meminfo:', e);
     }
@@ -146,4 +143,34 @@ export async function getSpecs() {
 
     console.log('Specs:', specs);
     return specs;
+}
+
+
+export type MemoryInfo = {
+    totalGB: number;
+    availableGB: number;
+}
+
+export async function getMemoryInfo() {
+    try {
+        const memoryInfo: MemoryInfo = {
+            totalGB: 0,
+            availableGB: 0,
+        }
+        const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
+        const totalMemLine = memInfo.split('\n').find(line => line.startsWith('MemTotal'));
+        const availableMemLine = memInfo.split('\n').find(line => line.startsWith('MemAvailable'));
+        if (totalMemLine) {
+            memoryInfo.totalGB = Math.round(parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024 * 100) / 100;
+        }
+
+        if (availableMemLine) {
+            memoryInfo.availableGB = Math.round(parseInt(availableMemLine.split(/\s+/)[1]) / 1024 / 1024 * 100) / 100;
+        }
+
+        return memoryInfo;
+    } catch (e) {
+        console.error('Error reading /proc/meminfo:', e);
+        throw e;
+    }
 }
