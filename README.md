@@ -76,23 +76,15 @@ You can download the latest Linux builds under the [Releases](https://github.com
 </a>
 </details>
 
-### Prerequisites
-
-Install the patched fonts of powerline nerd-font and/or font-awesome. Have a look at the [Nerd Font README](https://github.com/ryanoasis/nerd-fonts/blob/master/readme.md) for more installation instructions. Don't forget to setup your terminal in order to use the correct font.
 
 | OS/Distro                       | Command                                                                 |
 | ------------------------------- | ------------------------------------------------------------------------|
-| Archlinux                       | `git clone https://aur.archlinux.org/winboat.git
-cd winboat
-makepkg -si`                                                                                                |
-| Fedora                          | `wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm
-sudo dnf install winboat-X.X.X-x86_64.rpm ` #41                                                             |
-| Gentoo                          | `## Building WinBoat`                                                   |
-| NixOS                           | `nix-env -iA nixos.winboat` #91                                         |
-| Debian and Derivatives          | `wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-amd64.deb 
-sudo apt install ./ winboat-X.X.X-amd64.deb` #41 
-| openSUSE                        | `wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm
-sudo dnf install winboat-X.X.X-x86_64.rpm` #41
+| Archlinux                       | git clone https://aur.archlinux.org/winboat.git  <br > cd winboat  <br > makepkg -si
+| Fedora [#41](#41)                         | wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm <br > sudo dnf install winboat-X.X.X-x86_64.rpm 
+| Gentoo                          | [building-winboat](#building-winboat)                                                     |
+| NixOS [#91](#91)                           | nix-env -iA nixos.winboat                                          |
+| Debian and Derivatives [#41](#41)          | wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-amd64.deb <br> sudo apt install ./ winboat-X.X.X-amd64.deb  
+| openSUSE [#41](#41)                        | wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm <br> sudo dnf install winboat-X.X.X-x86_64.rpm 
 
 
 
