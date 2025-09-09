@@ -19,7 +19,7 @@
         
         # Build the Electron app
         winboat-electron = pkgs.stdenv.mkDerivation rec {
-          pname = "winboat";
+          pname = packageJson.name;
           version = packageJson.version;
           
           src = ./.;
