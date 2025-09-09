@@ -10,6 +10,9 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+
+        #package.json
+        packageJson = builtins.fromJSON (builtins.readFile ./package.json);
         
         # Node.js dependencies for building
         nodejs = pkgs.nodejs_20;
@@ -17,7 +20,7 @@
         # Build the Electron app
         winboat-electron = pkgs.stdenv.mkDerivation rec {
           pname = "winboat";
-          version = "0.7.2";
+          version = packageJson.version;
           
           src = ./.;
           
