@@ -66,6 +66,38 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - Distros that emulate Docker through a Podman socket are **unsupported**
 - Any rootless containerization solution is currently **unsupported**
 
+
+## Installation
+
+<details>
+<summary>Packaging status</summary>
+<a href="https://repology.org/project/winboat/versions">
+    <img src="https://repology.org/badge/vertical-allrepos/winboat.svg?columns=3" alt="Packaging status">
+</a>
+</details>
+
+### Prerequisites
+
+Install the patched fonts of powerline nerd-font and/or font-awesome. Have a look at the [Nerd Font README](https://github.com/ryanoasis/nerd-fonts/blob/master/readme.md) for more installation instructions. Don't forget to setup your terminal in order to use the correct font.
+
+| OS/Distro                       | Command                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------|
+| Archlinux                       | `git clone https://aur.archlinux.org/winboat.git
+cd winboat
+makepkg -si`                                                                                                |
+| Fedora                          | `wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm
+sudo dnf install winboat-X.X.X-x86_64.rpm ` #41                                                             |
+| Gentoo                          | `## Building WinBoat`                                                   |
+| NixOS                           | `nix-env -iA nixos.winboat` #91                                         |
+| Debian and Derivatives          | `wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-amd64.deb 
+sudo apt install ./ winboat-X.X.X-amd64.deb` #41 
+| openSUSE                        | `wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm
+sudo dnf install winboat-X.X.X-x86_64.rpm` #41
+
+
+
+
+
 ## Building WinBoat
 - For building you need to have NodeJS and Go installed on your system
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
