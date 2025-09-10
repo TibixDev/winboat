@@ -1,3 +1,4 @@
+import { getFreeRDP } from '../utils/getFreeRDP';
 const fs: typeof import('fs') = require('fs');
 const os: typeof import('os') = require('os');
 const { exec }: typeof import('child_process') = require('child_process');
@@ -7,8 +8,9 @@ const execAsync = promisify(exec);
 export function satisfiesPrequisites(specs: Specs) {
     return specs.dockerInstalled &&
         specs.dockerComposeInstalled && 
+        specs.dockerIsRunning &&
         specs.dockerIsInUserGroups &&
-        specs.freeRDPInstalled &&
+        specs.freeRDP3Installed &&
         specs.ipTablesLoaded &&
         specs.iptableNatLoaded &&
         specs.kvmEnabled &&
@@ -24,8 +26,9 @@ export const defaultSpecs: Specs = {
     kvmEnabled: false,
     dockerInstalled: false,
     dockerComposeInstalled: false,
+    dockerIsRunning: false,
     dockerIsInUserGroups: false,
-    freeRDPInstalled: false,
+    freeRDP3Installed: false,
     ipTablesLoaded: false,
     iptableNatLoaded: false
 }
@@ -38,11 +41,8 @@ export async function getSpecs() {
     // TODO: These commands might silently fail
     // But if they do, it means something wasn't right to begin with
     try {
-        const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
-        const totalMemLine = memInfo.split('\n').find(line => line.startsWith('MemTotal'));
-        if (totalMemLine) {
-            specs.ramGB = Math.round(parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024 * 100) / 100;
-        }
+        const memoryInfo = await getMemoryInfo();
+        specs.ramGB = memoryInfo.totalGB;
     } catch (e) {
         console.error('Error reading /proc/meminfo:', e);
     }
@@ -59,6 +59,7 @@ export async function getSpecs() {
         console.error('Error getting disk space for /var:', e);
     }
 
+    // KVM check
     try {
         const cpuInfo = fs.readFileSync('/proc/cpuinfo', 'utf8');
         if ((cpuInfo.includes('vmx') || cpuInfo.includes('svm')) && fs.existsSync('/dev/kvm')) {
@@ -68,10 +69,13 @@ export async function getSpecs() {
         console.error('Error reading /proc/cpuinfo or checking /dev/kvm:', e);
     }
 
+    // Docker check
     try {
         const { stdout: dockerOutput } = await execAsync('docker --version');
         specs.dockerInstalled = !!dockerOutput;
-    } catch (e) {}
+    } catch (e) {
+        console.error('Error checking for Docker installation:', e);
+    }
 
     // Docker Compose plugin check with version validation
     try {
@@ -93,6 +97,14 @@ export async function getSpecs() {
         console.error('Error checking Docker Compose version:', e);
     }
 
+    // Docker is running check
+    try {
+        const { stdout: dockerOutput } = await execAsync('docker ps');
+        specs.dockerIsRunning = !!dockerOutput;
+    } catch (e) {
+        console.error('Error checking if Docker is running:', e);
+    }
+
     // Docker user group check
     try {
         const userGroups = (await execAsync('groups')).stdout;
@@ -101,14 +113,12 @@ export async function getSpecs() {
         console.error('Error checking user groups for docker:', e);
     }
 
-    // FreeRDP check (including Flatpak)
+    // FreeRDP 3.x.x check (including Flatpak)
     try {
-        const freeRDPAliases = ["xfreerdp", "xfreerdp3", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];
-        for(const alias of freeRDPAliases) {
-            specs.freeRDPInstalled ||= !!(await execAsync(`${alias} || exit 0`)).stdout;
-        }
+        const freeRDPBin = await getFreeRDP();
+        specs.freeRDP3Installed = !!freeRDPBin;
     } catch(e) {
-        console.error('Error checking FreeRDP installation:', e);
+        console.error('Error checking FreeRDP 3.x.x installation (most likely not installed):', e);
     }
 
     // iptables kernel module check
@@ -129,4 +139,34 @@ export async function getSpecs() {
 
     console.log('Specs:', specs);
     return specs;
+}
+
+
+export type MemoryInfo = {
+    totalGB: number;
+    availableGB: number;
+}
+
+export async function getMemoryInfo() {
+    try {
+        const memoryInfo: MemoryInfo = {
+            totalGB: 0,
+            availableGB: 0,
+        }
+        const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
+        const totalMemLine = memInfo.split('\n').find(line => line.startsWith('MemTotal'));
+        const availableMemLine = memInfo.split('\n').find(line => line.startsWith('MemAvailable'));
+        if (totalMemLine) {
+            memoryInfo.totalGB = Math.round(parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024 * 100) / 100;
+        }
+
+        if (availableMemLine) {
+            memoryInfo.availableGB = Math.round(parseInt(availableMemLine.split(/\s+/)[1]) / 1024 / 1024 * 100) / 100;
+        }
+
+        return memoryInfo;
+    } catch (e) {
+        console.error('Error reading /proc/meminfo:', e);
+        throw e;
+    }
 }
