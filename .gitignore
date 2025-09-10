@@ -1,6 +1,7 @@
 node_modules
 dist
 build
+result
 
 .vscode
 .idea
