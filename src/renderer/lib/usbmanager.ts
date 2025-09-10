@@ -102,7 +102,8 @@ export class USBManager {
             for (const ptDevice of this.#wbConfig.config.passedThroughDevices) {
                 if (this.isPTDeviceConnected(ptDevice) && !(await QMPCheckIfDeviceExists(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId))) {
                     logger.info(`Pass-through device ${this.stringifyPTSerializableDevice(ptDevice)} is connected, adding to VM`);
-                    await QMPAddDevice(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId);
+                    const device = this.devices.value.find((d) => d.deviceDescriptor.idVendor === ptDevice.vendorId && d.deviceDescriptor.idProduct === ptDevice.productId);
+                    await QMPAddDevice(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId, device?.busNumber, device?.deviceAddress);
                 }
             }
         });
@@ -212,7 +213,7 @@ export class USBManager {
         console.info('[Add] Debug 2', this.ptDevices.value);
 
         if (this.#winboat.isOnline.value && !await QMPCheckIfDeviceExists(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId)) {
-            await QMPAddDevice(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId);
+            await QMPAddDevice(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId, device.busNumber, device.deviceAddress);
         }
 
         logger.info(`Added device "${ptDevice.manufacturer} | ${ptDevice.product}" to passthrough list`);
@@ -347,12 +348,14 @@ async function QMPCheckIfDeviceExists(qmpConn: QMPManager, vendorId: number, pro
 
 // TODO: handle hostaddr/hostbus in case of duplicate VID/PID
 async function QMPAddDevice(qmpConn: QMPManager, vendorId: number, productId: number, hostbus?: number, hostaddr?: number) {
+    let response = null;
     try {
-        let response = null;
         if (hostbus && hostaddr) {
             response = await qmpConn.executeCommand("device_add", {
                 driver: "usb-host",
                 id: `${vendorId}:${productId}`, // TODO: get rid of this
+                vendorid: vendorId,
+                productid: productId,
                 hostdevice: `/dev/bus/usb/${String(hostbus).padStart(3, '0')}/${String(hostaddr).padStart(3, '0')}` 
             });
         }
@@ -369,6 +372,7 @@ async function QMPAddDevice(qmpConn: QMPManager, vendorId: number, productId: nu
     } catch(e) {
         logger.error(`There was an error adding USB device '${vendorId}:${productId}'`);
         logger.error(e);
+        logger.error(`QMP response: ${response}`);
     }
     logger.info("QMPAddDevice", vendorId, productId);
 }
