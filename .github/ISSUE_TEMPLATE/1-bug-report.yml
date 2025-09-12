@@ -1,0 +1,57 @@
+name: 🚨 Bug Report
+description: Report an issue that you've encountered
+title: "[Bug] "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking your time reporting an issue.
+        Please make sure to look through the [issue tracker](https://github.com/TibixDev/winboat/issues) before submitting an issue as to avoid duplicates.
+  - type: input
+    attributes:
+      label: What version of WinBoat are you running?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Your Environment
+      placeholder: |
+        Linux Distro used: 
+        Desktop Environment used:
+        FreeRDP type and version used: (e.g. flatpak 3.17.1)
+        Anything else you may find relevant...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce / Context
+      description: |
+        Please provide clear steps to reproduce this issue. 
+        If the issue is not completely reproducible, please provide some context about your case.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: Describe what should happen in this case.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Current Behavior
+      description: Tell us what happens instead of the Expected Behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Possible Solution
+      description: Optionally, suggest a fix/reason for the issue.
+  - type: checkboxes
+    attributes:
+      label: Quality Notice
+      options:
+        - label: I have checked the issue tracker and verified that this bug is a unique case.
+          required: true
