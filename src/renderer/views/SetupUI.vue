@@ -268,11 +268,28 @@
                                 <x-label>Password</x-label>
                             </x-input>
                         </div>
+                        <div>
+                            <label for="confirm-password" class="text-sm mb-4 text-neutral-400">Confirm Password</label>
+                            <x-input 
+                                id="confirm-password" 
+                                class="w-64 max-w-64" 
+                                type="password" 
+                                minlength="2" 
+                                maxlength="64"
+                                required 
+                                size="large"
+                                :value="confirmPassword"
+                                @input="(e: any) => confirmPassword = e.target.value"
+                            >
+                                <x-icon href="#lock"></x-icon>
+                                <x-label>Confirm Password</x-label>
+                            </x-input>
+                        </div>
     
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
-                                :disabled="username.length < 2 || password.length < 2"
+                                :disabled="username.length < 2 || password.length < 2 || password !== confirmPassword"
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
@@ -553,6 +570,7 @@ const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
 const username = ref("winboat");
 const password = ref("");
+const confirmPassword = ref("");
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 
