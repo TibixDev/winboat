@@ -40,11 +40,8 @@
               nodePackages.typescript
               go
               zip
-            ];
-
-            buildInputs = with pkgs; [
-              electron_35
               freerdp
+              electron_35
               iptables
               kmod
             ];
@@ -113,6 +110,7 @@
             electron_35
             go
             zip
+            freerdp3
           ];
 
           shellHook = ''

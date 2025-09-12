@@ -477,6 +477,8 @@ export class Winboat {
 
         logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
 
+        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
+
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
@@ -486,11 +488,12 @@ export class Winboat {
         /sound:sys:pulse\
         /microphone:sys:pulse\
         /floatbar\
+        -decorations\
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
         /scale:${this.#wbConfig?.config.scale ?? 100}\
-        /wm-class:"${app.Name}"\
-        /app:program:"${app.Path}",name:"${app.Name}" &`;
+        /wm-class:"${cleanAppName}"\
+        /app:program:"${app.Path}",name:"${cleanAppName}",hidef:on &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\

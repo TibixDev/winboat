@@ -115,12 +115,8 @@ export async function getSpecs() {
 
     // FreeRDP 3.x.x check (including Flatpak)
     try {
-        const VERSION_3_STRING = "version 3.";
-        // Will fail if no binary is found, so and default is false, so we're good
         const freeRDPBin = await getFreeRDP();
-        const versionString = (await execAsync(`${freeRDPBin} --version`)).stdout;
-        specs.freeRDP3Installed = versionString.includes(VERSION_3_STRING);
-
+        specs.freeRDP3Installed = !!freeRDPBin;
     } catch(e) {
         console.error('Error checking FreeRDP 3.x.x installation (most likely not installed):', e);
     }
