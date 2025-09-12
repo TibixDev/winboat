@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ 'hidden': !maxNumCores }">
+    <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ 'hidden': !maxNumThreads }">
         <div>
             <x-label class="mb-4 text-neutral-300">Resources</x-label>
             <div class="flex flex-col gap-4">
@@ -34,23 +34,23 @@
                         <div class="flex flex-row items-center gap-2 mb-2">
                             <Icon class="text-violet-400 inline-flex size-8" icon="solar:cpu-bold"></Icon>
                             <h1 class="text-lg my-0 font-semibold">
-                                CPU Cores
+                                CPU Threads
                             </h1>
                         </div>
                         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            How many CPU Cores are allocated to the Windows virtual machine
+                            How many CPU Threads are allocated to the Windows virtual machine
                         </p>
                     </div>
                     <div class="flex flex-row justify-center items-center gap-2">
                         <x-input
                             class="max-w-16 text-right text-[1.1rem]"
                             min="2"
-                            :max="maxNumCores"
-                            :value="numCores"
-                            @input="(e: any) => numCores = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
+                            :max="maxNumThreads"
+                            :value="numThreads"
+                            @input="(e: any) => numThreads = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
                             required
                         ></x-input>
-                        <p class="text-neutral-100">Cores</p>
+                        <p class="text-neutral-100">Threads</p>
                     </div>
                 </x-card>
                 <x-card
@@ -211,9 +211,9 @@ const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
-const numCores = ref(0);
-const origNumCores = ref(0);
-const maxNumCores = ref(0);
+const numThreads = ref(0);
+const origNumThreads = ref(0);
+const maxNumThreads = ref(0);
 const ramGB = ref(0);
 const origRamGB = ref(0);
 const maxRamGB = ref(0);
@@ -233,8 +233,8 @@ onMounted(async () => {
 async function assignValues() {
     compose.value = winboat.parseCompose();
 
-    numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
-    origNumCores.value = numCores.value;
+    numThreads.value = Number(compose.value.services.windows.environment.CPU_THREADS);
+    origNumThreads.value = numThreads.value;
 
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
@@ -244,12 +244,12 @@ async function assignValues() {
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
-    maxNumCores.value = specs.cpuThreads;
+    maxNumThreads.value = specs.cpuThreads;
 }
 
 async function applyChanges() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
-    compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
+    compose.value!.services.windows.environment.CPU_THREADS = `${numThreads.value}`;
 
     const composeHasHomefolderShare = compose.value!.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
 
@@ -274,12 +274,12 @@ async function applyChanges() {
 const errors = computed(() => {
     let errCollection: string[] = [];
 
-    if (!numCores.value || numCores.value < 2) {
-        errCollection.push("You must allocate at least two CPU cores for Windows to run properly")
+    if (!numThreads.value || numThreads.value < 2) {
+        errCollection.push("You must allocate at least two CPU threads for Windows to run properly")
     }
 
-    if (numCores.value > maxNumCores.value) {
-        errCollection.push("You cannot allocate more CPU cores to Windows than you have available")
+    if (numThreads.value > maxNumThreads.value) {
+        errCollection.push("You cannot allocate more CPU threads to Windows than you have available")
     }
 
     if (!ramGB.value || ramGB.value < 4) {
@@ -294,7 +294,7 @@ const errors = computed(() => {
 })
 
 const saveButtonDisabled = computed(() => {
-    const hasResourceChanges = origNumCores.value !== numCores.value || origRamGB.value !== ramGB.value || shareHomeFolder.value !== origShareHomeFolder.value;
+    const hasResourceChanges = origNumThreads.value !== numThreads.value || origRamGB.value !== ramGB.value || shareHomeFolder.value !== origShareHomeFolder.value;
     const shouldBeDisabled = errors.value.length || !hasResourceChanges || isApplyingChanges.value;
     return shouldBeDisabled;
 })

@@ -26,7 +26,7 @@ const defaultCompose: ComposeConfig = {
             "environment": {
                 "VERSION": "11",
                 "RAM_SIZE": "4G",
-                "CPU_CORES": "4",
+                "CPU_THREADS": "4",
                 "DISK_SIZE": "64G",
                 "USERNAME": "MyWindowsUser",
                 "PASSWORD": "MyWindowsPassword",
@@ -118,7 +118,7 @@ export class InstallManager {
         const composeContent = { ...defaultCompose }
 
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
-        composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuThreads}`;
+        composeContent.services.windows.environment.CPU_THREADS = `${this.conf.cpuThreads}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
         composeContent.services.windows.environment.VERSION = this.conf.windowsVersion;
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;

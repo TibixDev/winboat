@@ -45,7 +45,7 @@ export type ComposeConfig = {
             environment: {
                 VERSION: WindowsVersionKey;
                 RAM_SIZE: string;
-                CPU_CORES: string;
+                CPU_THREADS: string;
                 DISK_SIZE: string;
                 USERNAME: string;
                 PASSWORD: string;

@@ -294,10 +294,10 @@
     
                         <div class="flex flex-col gap-6">
                             <div>
-                                <label for="select-cpu-cores" class="text-sm text-neutral-400">Select CPU Cores</label>
+                                <label for="select-cpu-threads" class="text-sm text-neutral-400">Select CPU Threads</label>
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
-                                        id="select-cpu-cores"
+                                        id="select-cpu-threads"
                                         @change="(e: any) => cpuThreads = Number(e.target.value)"
                                         class="w-[50%]"
                                         :value="cpuThreads"
@@ -306,7 +306,7 @@
                                         step="1"
                                         ticks
                                     ></x-slider>
-                                    <x-label>{{ cpuThreads }} Cores</x-label>
+                                    <x-label>{{ cpuThreads }} Threads</x-label>
                                 </div>
                             </div>
         
@@ -387,8 +387,8 @@
                                     <span class="text-base text-white">{{ windowsLanguage }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">CPU Cores</span>
-                                    <span class="text-base text-white">{{ cpuThreads }} Cores</span>
+                                    <span class="text-sm text-gray-400">CPU Threads</span>
+                                    <span class="text-base text-white">{{ cpuThreads }} Threads</span>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">RAM</span>
