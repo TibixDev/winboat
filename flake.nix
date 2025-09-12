@@ -113,6 +113,7 @@
             electron_35
             go
             zip
+            freerdp3
           ];
 
           shellHook = ''
