@@ -18,15 +18,28 @@
         packages = {
           default = self.packages.${system}.winboat;
           
-          winboat = pkgs.stdenv.mkDerivation {
+          winboat = pkgs.buildNpmPackage {
             pname = "winboat";
             inherit version;
             
             src = ./.;
             
+            npmDepsHash = "sha256-FLR56LUA8zncQYrLzeM54nYyRr+XRNM6z5YhfJyCivU=";
+            
+            makeCacheWritable = true;
+            npmFlags = [ "--legacy-peer-deps" ];
+            
+            # Prevent Electron from downloading binaries
+            ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
+            ELECTRON_OVERRIDE_DIST_PATH = "${pkgs.electron_35}/bin/";
+            
             nativeBuildInputs = with pkgs; [
               makeWrapper
               imagemagick
+              nodejs_20
+              nodePackages.typescript
+              go
+              zip
             ];
 
             buildInputs = with pkgs; [
@@ -36,21 +49,27 @@
               kmod
             ];
 
-            dontConfigure = true;
-            dontBuild = true;
+            buildPhase = ''
+              node scripts/build.js
+            '';
 
             installPhase = ''
               mkdir -p $out/lib/winboat $out/bin $out/share/applications
               
-              # Copy artifacts
-              cp -r build/main build/renderer $out/lib/winboat/ 
-              cp -r node_modules $out/lib/winboat/ 2>/dev/null || true
+              # Copy built artifacts and essential files
+              cp -r build/main build/renderer $out/lib/winboat/
+              cp -r node_modules $out/lib/winboat/
               cp package*.json $out/lib/winboat/ 2>/dev/null || true
               cp -r icons $out/lib/winboat/ 2>/dev/null || true
               
-              # Executable wrapper
+              # Copy guest_server files
+              mkdir -p $out/lib/guest_server
+              cp -r guest_server/* $out/lib/guest_server/
+              
+              # Create executable wrapper
               makeWrapper ${pkgs.electron_35}/bin/electron $out/bin/winboat \
                 --add-flags "$out/lib/winboat/main/main.js" \
+                --chdir "$out/lib/winboat" \
                 --set ELECTRON_OVERRIDE_DIST_PATH "${pkgs.electron_35}/bin/" \
                 --set ELECTRON_SKIP_BINARY_DOWNLOAD "1" \
                 --set NODE_ENV "production" \
@@ -68,7 +87,7 @@
               Categories=Utility;Network;RemoteAccess;
               EOF
 
-              # Icons
+              # Icons (needed for desktop integration)
               for size in 16 32 48 64 128 256 512; do
                 mkdir -p "$out/share/icons/hicolor/''${size}x''${size}/apps"
                 ${pkgs.imagemagick}/bin/magick convert icons/icon.png -resize "''${size}x''${size}" \
@@ -92,17 +111,8 @@
             nodejs_20
             nodePackages.typescript
             electron_35
-            python3
-            pkg-config
-            vips
-            pixman
-            cairo
-            pango
-            libpng
-            libjpeg
-
-            nodePackages.vscode-langservers-extracted
-            nodePackages.typescript-language-server
+            go
+            zip
           ];
 
           shellHook = ''
