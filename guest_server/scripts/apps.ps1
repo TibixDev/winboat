@@ -334,18 +334,60 @@ try {
 } catch { } # Ignore errors during registry scan
 
 
-# 3. Start Menu Shortcuts (All Users)
-$startMenuPath = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs"
-if (Test-Path $startMenuPath -PathType Container) {
+# 3. Start Menu Shortcuts (All Users + All User Profiles)
+$startMenuPaths = @()
+
+# Add global Start Menu path
+$startMenuPaths += "C:\ProgramData\Microsoft\Windows\Start Menu\Programs"
+
+# Add Start Menu paths for all user profiles (when running as SYSTEM)
+try {
+    $usersPath = "C:\Users"
+    if (Test-Path $usersPath -PathType Container) {
+        Get-ChildItem $usersPath -Directory -ErrorAction SilentlyContinue | 
+            Where-Object { $_.Name -ne "Public" -and $_.Name -ne "All Users" -and $_.Name -ne "Default" -and $_.Name -ne "Default User" } |
+            ForEach-Object {
+                $userStartMenuPath = Join-Path $_.FullName "AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
+                if (Test-Path $userStartMenuPath -PathType Container) {
+                    $startMenuPaths += $userStartMenuPath
+                }
+            }
+    }
+} catch {
+    # Fallback: If C:\Users scan fails, try WMI approach
     try {
-        $lnkFiles = Get-ChildItem -Path $startMenuPath -Recurse -Filter *.lnk -File -ErrorAction SilentlyContinue
-        if ($lnkFiles) {
-            # Use strict mode for COM object for better error catching
-            $shell = New-Object -ComObject WScript.Shell -Strict
-            try {
-                foreach ($lnk in $lnkFiles) {
-                    $target = $null
-                    $appName = $null
+        Get-WmiObject Win32_UserProfile -ErrorAction SilentlyContinue | 
+            Where-Object { -not $_.Special -and $_.LocalPath -and $_.LocalPath -notlike "*\Public" -and $_.LocalPath -notlike "*\Default*" } | 
+            ForEach-Object {
+                $userStartMenuPath = Join-Path $_.LocalPath "AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
+                if (Test-Path $userStartMenuPath -PathType Container) {
+                    $startMenuPaths += $userStartMenuPath
+                }
+            }
+    } catch { } # If both methods fail, just use global path
+}
+
+# Collect .lnk files from all valid Start Menu directories
+$lnkFiles = @()
+foreach ($startMenuPath in $startMenuPaths) {
+    if (Test-Path $startMenuPath -PathType Container) {
+        try {
+            $pathLnkFiles = Get-ChildItem -Path $startMenuPath -Recurse -Filter *.lnk -File -ErrorAction SilentlyContinue
+            if ($pathLnkFiles) {
+                $lnkFiles += $pathLnkFiles
+            }
+        } catch { } # Ignore errors for individual paths
+    }
+}
+
+if ($lnkFiles) {
+    try {
+        # Use strict mode for COM object for better error catching
+        $shell = New-Object -ComObject WScript.Shell -Strict
+        try {
+            foreach ($lnk in $lnkFiles) {
+                $target = $null
+                $appName = $null
 
                     # Parse the shortcut file
                     try {
@@ -354,36 +396,55 @@ if (Test-Path $startMenuPath -PathType Container) {
                         # Resolve path if contains environment variables
                         if ($rawTarget) {
                             $target = try { $ExecutionContext.InvokeCommand.ExpandString($rawTarget) } catch { $rawTarget }
+                            
+                            # Handle case where SYSTEM user resolves paths to SYSTEM profile instead of actual user
+                            $systemProfilePath = "C:\WINDOWS\system32\config\systemprofile"
+                            if ($target -like "$systemProfilePath*") {
+                                # Extract the relative path after the profile directory
+                                $relativePath = $target -replace [regex]::Escape($systemProfilePath), ""
+                                
+                                # Try to find this app in actual user profiles
+                                $userBasePath = Split-Path (Split-Path $lnk.FullName) # Get user's start menu base path
+                                if ($userBasePath -like "*\Users\*\AppData\Roaming\Microsoft\Windows\Start Menu\Programs") {
+                                    # Extract username from the path
+                                    if ($userBasePath -match "\\Users\\([^\\]+)\\") {
+                                        $userName = $matches[1]
+                                        $userTarget = "C:\Users\$userName$relativePath"
+                                        if (Test-Path $userTarget -PathType Leaf) {
+                                            $target = $userTarget
+                                        }
+                                    }
+                                }
+                            }
                         }
                     } catch { continue } # Skip malformed or unreadable shortcuts
 
-                    # Skip if no target or looks like an uninstaller
-                    if (-not $target -or $target -like '*uninstall*' -or $target -like '*unins000*') {
-                        continue
-                    }
-
-                    # Get name using standard function (FileDesc > LNK Name > Target Name)
-                    $appName = Get-ApplicationName -targetPath $target -lnkPath $lnk.FullName
-
-                    # Refinement: If target is NOT an exe and name defaulted to target filename, prefer LNK filename
-                    if ($target -notlike '*.exe' -and $appName -eq (Add-SpacesToCamelCase ([System.IO.Path]::GetFileNameWithoutExtension($target))) ) {
-                        $lnkNameOnly = Add-SpacesToCamelCase -InputString ([System.IO.Path]::GetFileNameWithoutExtension($lnk.FullName))
-                        if ($lnkNameOnly -ne $appName) { $appName = $lnkNameOnly }
-                    }
-
-                    # Add if name is valid
-                    if ($appName) {
-                        Add-AppToListIfValid -Name $appName -InputPath $target -Source "startmenu"
-                    }
+                # Skip if no target or looks like an uninstaller
+                if (-not $target -or $target -like '*uninstall*' -or $target -like '*unins000*') {
+                    continue
                 }
-            } finally {
-                # Ensure COM object is released
-                if ($shell) {
-                    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell) | Out-Null
-                    Remove-Variable shell -ErrorAction SilentlyContinue # Clean up variable
-                    [System.GC]::Collect()
-                    [System.GC]::WaitForPendingFinalizers()
+
+                # Get name using standard function (FileDesc > LNK Name > Target Name)
+                $appName = Get-ApplicationName -targetPath $target -lnkPath $lnk.FullName
+
+                # Refinement: If target is NOT an exe and name defaulted to target filename, prefer LNK filename
+                if ($target -notlike '*.exe' -and $appName -eq (Add-SpacesToCamelCase ([System.IO.Path]::GetFileNameWithoutExtension($target))) ) {
+                    $lnkNameOnly = Add-SpacesToCamelCase -InputString ([System.IO.Path]::GetFileNameWithoutExtension($lnk.FullName))
+                    if ($lnkNameOnly -ne $appName) { $appName = $lnkNameOnly }
                 }
+
+                # Add if name is valid
+                if ($appName) {
+                    Add-AppToListIfValid -Name $appName -InputPath $target -Source "startmenu"
+                }
+            }
+        } finally {
+            # Ensure COM object is released
+            if ($shell) {
+                [System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell) | Out-Null
+                Remove-Variable shell -ErrorAction SilentlyContinue # Clean up variable
+                [System.GC]::Collect()
+                [System.GC]::WaitForPendingFinalizers()
             }
         }
     } catch { } # Ignore errors during Start Menu scan

@@ -2,13 +2,21 @@ const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 
 const execAsync = promisify(exec);
-export const FreeRDPAliases = ["xfreerdp3", "xfreerdp", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];
+const freeRDPAliases = ["xfreerdp3", "xfreerdp", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];
 
 /**
- * Returns the freerdp command available on the system
+ * Returns the correct FreeRDP 3.x.x command available on the system or null
  */
 export async function getFreeRDP() {
-    // The bash command used tries running both `xfreerdp3`, `xfreerdp` and `flatpak run --command=xfreerdp com.freerdp.FreeRDP`,
-    // piping their outputs to `/dev/null`, then echoes some string if the command succeeded.
-    return (await execAsync(FreeRDPAliases.map((alias) => `(${alias} > /dev/null 2>&1 && echo "${alias}")`).join("||"))).stdout.split("\n")[0];
+    const VERSION_3_STRING = "version 3.";
+    for (let alias of freeRDPAliases) {
+        try {
+            const shellOutput = await execAsync(`${alias} --version`);
+            if (shellOutput.stdout.includes(VERSION_3_STRING)) {
+                console.log("[getFreeRDP] Correct FreeRDP alias is", alias)
+                return alias;
+            }
+        } catch {}
+    }
+    return null;
 }
