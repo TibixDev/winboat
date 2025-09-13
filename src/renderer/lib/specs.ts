@@ -107,7 +107,7 @@ export async function getSpecs() {
 
     // Docker user group check
     try {
-        const userGroups = (await execAsync('groups')).stdout;
+        const userGroups = (await execAsync('id -Gn')).stdout;
         specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes('docker');
     } catch (e) {
         console.error('Error checking user groups for docker:', e);
