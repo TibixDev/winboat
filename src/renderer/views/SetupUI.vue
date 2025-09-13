@@ -59,7 +59,7 @@
                         <p class="text-lg text-gray-400">
                             In order to run WinBoat, your computer must meet the following requirements.
                         </p>
-                        <ul class="text-lg text-gray-400 list-none space-y-2 bg-neutral-800 py-4 rounded-lg">
+                        <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 rounded-lg">
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.ramGB >= 4" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
@@ -73,7 +73,7 @@
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.diskSpaceGB >= 32" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                At least 32 GB free space in <span class="font-mono bg-neutral-700 rounded-md px-0.5">/var</span>
+                                At least 32 GB free in <span class="font-mono bg-neutral-700 rounded-md px-0.5">/var</span>
                                 (Detected: {{ specs.diskSpaceGB }} GB)
                             </li>
                             <li class="flex items-center gap-2">
@@ -101,9 +101,18 @@
                                 <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
-                                <span v-if="specs.freeRDPInstalled" class="text-green-500">✔</span>
+                                <span v-if="specs.dockerIsRunning" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                FreeRDP installed
+                                Docker daemon is running
+                                <span class="text-gray-600">
+                                    (Also enable on boot)
+                                </span>
+                                <a href="https://docs.docker.com/config/daemon/start/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
+                                <span v-else class="text-red-500">✘</span>
+                                FreeRDP 3.x.x installed
                                 <a href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
@@ -187,11 +196,15 @@
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
                                 <div class="flex items-center gap-2">
-                                    <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">Select ISO File</x-button>
+                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile">Select ISO File</x-button>
                                     <span class="relative group">
-                                        <Icon icon="line-md:question-circle" class="text-neutral-400 cursor-pointer" />
-                                        <span class="absolute left-6 top-1 z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded shadow-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                            We offer you the possibility of using a custom Windows ISO for your convenience, however we can't provide any support if your custom ISO breaks or certain features within WinBoat stop working.
+                                        <Icon icon="line-md:alert" class="text-neutral-400 cursor-pointer" />
+                                        <span
+                                            class="absolute bottom-5 left-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                        >
+                                            We offer you the possibility of using a custom Windows ISO for your convenience,
+                                            however we can't provide any support if your custom ISO breaks or certain features within WinBoat stop working.
                                         </span>
                                     </span>
                                 </div>
@@ -201,7 +214,7 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="flex flex-row gap-4 mt-6" :class="{ '!mt-2': customIsoPath }">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
                         </div>
@@ -255,11 +268,28 @@
                                 <x-label>Password</x-label>
                             </x-input>
                         </div>
+                        <div>
+                            <label for="confirm-password" class="text-sm mb-4 text-neutral-400">Confirm Password</label>
+                            <x-input 
+                                id="confirm-password" 
+                                class="w-64 max-w-64" 
+                                type="password" 
+                                minlength="2" 
+                                maxlength="64"
+                                required 
+                                size="large"
+                                :value="confirmPassword"
+                                @input="(e: any) => confirmPassword = e.target.value"
+                            >
+                                <x-icon href="#lock"></x-icon>
+                                <x-label>Confirm Password</x-label>
+                            </x-input>
+                        </div>
     
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
-                                :disabled="username.length < 2 || password.length < 2"
+                                :disabled="username.length < 2 || password.length < 2 || password !== confirmPassword"
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
@@ -298,7 +328,24 @@
                             </div>
         
                             <div>
-                                <label for="select-ram" class="text-sm text-neutral-400">Select RAM</label>
+                                <label for="select-ram" class="text-sm text-neutral-400">
+                                    Select RAM
+                                    <span 
+                                        v-if="memoryInfo.availableGB < ramGB"
+                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
+                                    >
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        Warning
+                                        <span
+                                            class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                        >
+                                            You don't have enough unused memory available to allocate the requested amount of RAM.
+                                            You currently have ~{{ memoryInfo.availableGB }} GB of unused memory available.
+                                            If you continue with this amount of RAM, the container will likely crash.
+                                        </span>
+                                    </span>
+                                </label>
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-ram"
@@ -426,10 +473,10 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { InstallConfiguration, Specs } from '../../types';
-import { getSpecs, defaultSpecs, satisfiesPrequisites } from '../lib/specs';
+import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
@@ -518,18 +565,35 @@ const customIsoPath = ref("");
 const customIsoFileName = ref("");
 const cpuThreads = ref(2);
 const ramGB = ref(4);
+const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
+const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
 const username = ref("winboat");
 const password = ref("");
+const confirmPassword = ref("");
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 
 onMounted(async () => {
     specs.value = await getSpecs();
     console.log("Specs", specs.value);
+
+    memoryInfo.value = await getMemoryInfo();
+    memoryInterval.value = setInterval(async () => {
+        memoryInfo.value = await getMemoryInfo();
+    }, 1000);
+    console.log("Memory Info", memoryInfo.value);
+
     username.value = os.userInfo().username;
     console.log("Username", username.value);
 })
+
+onUnmounted(() => {
+    if (memoryInterval.value) {
+        clearInterval(memoryInterval.value);
+    }
+})
+
 
 function selectIsoFile() {
     electron.dialog.showOpenDialog({

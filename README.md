@@ -44,6 +44,7 @@ Before running WinBoat, ensure your system meets the following requirements:
   - [How to enable virtualization](https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web)
 - **Docker**: Required for containerization
   - [Installation Guide](https://docs.docker.com/engine/install/)
+  - **⚠️ NOTE:** Docker Desktop is **not** supported, you will run into issues if you use it
 - **Docker Compose v2**: Required for compatibility with docker-compose.yml files
   - [Installation Guide](https://docs.docker.com/compose/install/#plugin-linux-only)
 - **Docker User Group**: Add your user to the `docker` group
@@ -54,9 +55,11 @@ Before running WinBoat, ensure your system meets the following requirements:
   - [Module loading instructions](https://rentry.org/rmfq2e5e)
 
 ## Downloading
-You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer two variants:
+You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer four variants:
 - **AppImage:** A popular & portable app format which should run fine on most distributions
 - **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
+- **.deb:** The intended format for Debian based distributions
+- **.rpm:** The intended format for Fedora based distributions
 
 ## Known Issues About Container Runtimes
 - Podman is **unsupported** for now

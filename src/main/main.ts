@@ -1,11 +1,24 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import { join } from 'path';
 import { initialize, enable } from '@electron/remote/main';
 
 initialize();
 
+let mainWindow: BrowserWindow | null = null;
+
 function createWindow() {
-    const mainWindow = new BrowserWindow({
+    if(!app.requestSingleInstanceLock()) {
+        // @ts-ignore property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
+        dialog.showMessageBoxSync(null, {
+            type: "error",
+            buttons: ["Close"],
+            title: "WinBoat",
+            message: "An instance of WinBoat is already running.\n\tMultiple Instances are not allowed."
+        });
+        app.exit();
+    }
+
+    mainWindow = new BrowserWindow({
         minWidth: 1280,
         minHeight: 800,
         width: 1280,
@@ -63,6 +76,12 @@ app.whenReady().then(() => {
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit()
 });
+
+app.on("second-instance", _ => {
+    if(mainWindow) {
+        mainWindow.focus();
+    }
+})
 
 ipcMain.on('message', (event, message) => {
     console.log(message);
