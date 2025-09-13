@@ -72,7 +72,7 @@
                         <Icon class="size-8 text-violet-400" icon="solar:cpu-bold"></Icon>
                         <h2 class="my-0 text-2xl">CPU</h2>
                     </div>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">{{ compose?.services.windows.environment.CPU_CORES }} Virtual Cores</p>
+                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">{{ compose?.services.windows.environment.CPU_THREADS }} Virtual Threads </p>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">Frequency: {{ (winboat.metrics.value.cpu.frequency / 1000).toFixed(2) }} GHz</p>
                 </div>
             </x-card>
