@@ -484,7 +484,7 @@ import license from '../assets/LICENSE.txt?raw'
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
 const os: typeof import('os') = require('os');
-import { getIsoType, IsoType } from '../lib/getIsoType';
+import { isIsoValid } from '../lib/getIsoType';
 
 type Step = {
     id: string,
@@ -609,30 +609,13 @@ function selectIsoFile() {
     .then(result => {
       if (!result.canceled && result.filePaths.length > 0) {
         const filePath = result.filePaths[0]
-        getIsoType(filePath)
+        isIsoValid(filePath)
         .then(res => {
-            console.log(res);
-            if (res !== IsoType.UNKNOWN && res !== IsoType.WINDOWS) {
+            if (!res) {
                 electron.dialog.showErrorBox("Invalid ISO!", "This ISO is not valid!");
             }
             
             else {
-                if (res === IsoType.UNKNOWN) {
-                    const result = electron.dialog.showMessageBoxSync({
-                        type: 'warning',
-                        title: 'Unknown Operating System',
-                        message: 'ISO Contains Unknown OS',
-                        detail: 'The operating system on this ISO image could not be identified. This may be due to:\n\n• Custom or modified OS build\n• Unsupported operating system\n• Corrupted or incomplete ISO file\n\nProceeding may result in unexpected behavior or system instability.',
-                        buttons: ['Proceed Anyway', 'Cancel'],
-                        defaultId: 1,
-                        cancelId: 1,
-                    });
-
-                    if (result !== 0) {
-                        return;
-                    }
-                }
-                
                 customIsoPath.value = filePath;
                 customIsoFileName.value = path.basename(filePath);
                 windowsLanguage.value = 'English'; // Language can't be custom

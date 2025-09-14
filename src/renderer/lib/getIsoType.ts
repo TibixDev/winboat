@@ -1,10 +1,7 @@
 const fs: typeof import('fs') = require('fs');
-
-export enum IsoType {
-    INVALID,
-    WINDOWS,
-    UNKNOWN    
-}
+const { spawnSync }: typeof import('child_process') = require('child_process');
+const sep = require('path').sep;
+const path7zzs = require('7zip-bin-full').path7zzs.replace(`app.asar${sep}`, `app.asar.unpacked${sep}`);
 
 const VOLUME_ID_PATTERNS = [
     // Education
@@ -32,7 +29,14 @@ const VOLUME_ID_PATTERNS = [
     /^(J_)?(CCSN?A|C?CCOMA)_X64FREE?_/
 ];
 
-export async function getIsoType(path: string) {
+function listIso(path: string) {
+    const result = spawnSync(path7zzs, ['l', '-slt', '-ba', path], { 
+        encoding: 'utf8' 
+    });
+    return result.stdout;
+}
+
+export async function isIsoValid(path: string) {
     const fileHandle = await fs.promises.open(path, 'r');
 
     try {
@@ -44,7 +48,7 @@ export async function getIsoType(path: string) {
         
         // Check if it is IS9660
         if (signature !== 'CD001') {
-            return IsoType.INVALID;
+            return false;
         }
 
         const pvdBuffer = Buffer.alloc(2048);
@@ -60,16 +64,27 @@ export async function getIsoType(path: string) {
         const bootIndicator = headerBuffer.readUInt8(32);
 
         if (bootIndicator !== 0x88) {
-            return IsoType.INVALID;
+            return false;
         }
 
         for (const pattern of VOLUME_ID_PATTERNS) {
             if (pattern.test(volumeId)) {
-                return IsoType.WINDOWS;
+                return true;
             }
         }
 
-        return IsoType.UNKNOWN;
+        const isoFiles = listIso(path);
+        
+        for (const line of isoFiles.split('\n')) {
+            if (line.startsWith('Path = ')) {
+                const cleaned = line.substring(7);
+                if(cleaned == 'sources/boot.wim') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
   
     finally {
