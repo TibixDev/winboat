@@ -35,6 +35,17 @@ body:
       required: true
   - type: textarea
     attributes:
+      label: Logs
+      description: "Please drag 'n drop your `.log` files from `~/.winboat`, then format them accordingly"
+      placeholder: |
+        - [winboat.log](https://github.com/user-attachments/files/.../winboat.log)
+        - [install.log](https://github.com/user-attachments/files/.../install.log)
+        - [qmp.log](https://github.com/user-attachments/files/.../qmp.log)
+        ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
       label: Expected Behavior
       description: Describe what should happen in this case.
     validations:
