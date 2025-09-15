@@ -224,7 +224,7 @@
                     <div v-if="currentStep.id === StepID.USER_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            Configure the username and password for the Windows user account.
+                            Configure the username and password for Windows.
                         </p>
     
                         <p class="text-lg text-gray-400">
@@ -232,64 +232,83 @@
                             You will not be able to change these settings later on unless you reinstall.
                         </p>
     
-    
-                        <div>
-                            <label for="select-username" class="text-sm mb-4 text-neutral-400">Username</label>
-                            <x-input
-                                id="select-username"
-                                class="w-64 max-w-64"
-                                type="text"
-                                minlength="2"
-                                maxlength="32"
-                                required 
-                                size="large"
-                                :value="username"
-                                @input="(e: any) => username = e.target.value"
-                            >
-                                <x-icon href="#person"></x-icon>
-                                <x-label>Name</x-label>
-                            </x-input>
-                        </div>
-    
-                        <div>
-                            <label for="select-password" class="text-sm mb-4 text-neutral-400">Password</label>
-                            <x-input 
-                                id="select-password" 
-                                class="w-64 max-w-64" 
-                                type="password" 
-                                minlength="2" 
-                                maxlength="64"
-                                required 
-                                size="large"
-                                :value="password"
-                                @input="(e: any) => password = e.target.value"
-                            >
-                                <x-icon href="#lock"></x-icon>
-                                <x-label>Password</x-label>
-                            </x-input>
-                        </div>
-                        <div>
-                            <label for="confirm-password" class="text-sm mb-4 text-neutral-400">Confirm Password</label>
-                            <x-input 
-                                id="confirm-password" 
-                                class="w-64 max-w-64" 
-                                type="password" 
-                                minlength="2" 
-                                maxlength="64"
-                                required 
-                                size="large"
-                                :value="confirmPassword"
-                                @input="(e: any) => confirmPassword = e.target.value"
-                            >
-                                <x-icon href="#lock"></x-icon>
-                                <x-label>Confirm Password</x-label>
-                            </x-input>
+                        <div class="flex flex-row gap-4">
+                            <div class="flex flex-col gap-4">
+                                <div>
+                                    <label for="select-username" class="text-sm mb-4 text-neutral-400">Username</label>
+                                    <x-input
+                                        id="select-username"
+                                        class="w-64 max-w-64"
+                                        type="text"
+                                        minlength="2"
+                                        maxlength="32"
+                                        required 
+                                        size="large"
+                                        :value="username"
+                                        @input="(e: any) => username = e.target.value"
+                                    >
+                                        <x-icon href="#person"></x-icon>
+                                        <x-label>Name</x-label>
+                                    </x-input>
+                                </div>
+            
+                                <div>
+                                    <label for="select-password" class="text-sm mb-4 text-neutral-400">Password</label>
+                                    <x-input 
+                                        id="select-password" 
+                                        class="w-64 max-w-64" 
+                                        type="password" 
+                                        minlength="2" 
+                                        maxlength="64"
+                                        required 
+                                        size="large"
+                                        :value="password"
+                                        @input="(e: any) => password = e.target.value"
+                                    >
+                                        <x-icon href="#lock"></x-icon>
+                                        <x-label>Password</x-label>
+                                    </x-input>
+                                </div>
+                                
+                                <div>
+                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400">Confirm Password</label>
+                                    <x-input 
+                                        id="confirm-password" 
+                                        class="w-64 max-w-64" 
+                                        type="password" 
+                                        minlength="2" 
+                                        maxlength="64"
+                                        required 
+                                        size="large"
+                                        :value="confirmPassword"
+                                        @input="(e: any) => confirmPassword = e.target.value"
+                                    >
+                                        <x-icon href="#lock"></x-icon>
+                                        <x-label>Confirm Password</x-label>
+                                    </x-input>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col gap-4 mt-6">
+                                <div id="username-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
+                                    <div v-for="error in usernameErrors" :key="error">
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        {{ error }}
+                                    </div>
+                                </div>
+                                <div id="password-errors" class="text-red-400 text-sm font-semibold space-y-1">
+                                    <div v-for="error in passwordErrors" :key="error">
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        {{ error }}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
     
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
-                                :disabled="username.length < 2 || password.length < 2 || password !== confirmPassword"
+                                :disabled="usernameErrors.length || passwordErrors.length"
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
@@ -592,6 +611,43 @@ onUnmounted(() => {
     if (memoryInterval.value) {
         clearInterval(memoryInterval.value);
     }
+})
+
+const usernameErrors = computed(() => {
+    let errors: string[] = [];
+
+    // At least 2 characters
+    if (username.value.length < 2) {
+        errors.push("Must be at least 2 characters long");
+    }
+
+    // Only alphanumeric characters are allowed
+    if (!/^[a-zA-Z0-9]+$/.test(username.value)) {
+        errors.push("Must only contain alphanumeric characters");
+    }
+
+    return errors;
+})
+
+const passwordErrors = computed(() => {
+    let errors: string[] = [];
+
+    // Must match confirm password
+    if (password.value !== confirmPassword.value) {
+        errors.push("Passwords do not match");
+    }
+
+    // Only alphanumeric characters are allowed
+    if (!/^[a-zA-Z0-9]+$/.test(password.value)) {
+        errors.push("Must only contain alphanumeric characters");
+    }
+
+    // At least 4 characters
+    if (password.value.length < 4) {
+        errors.push("Must be at least 4 characters long");
+    }
+
+    return errors;
 })
 
 
