@@ -126,6 +126,7 @@ import { onMounted, ref, useTemplateRef, watch } from 'vue';
 import { isInstalled } from './lib/install';
 import { Winboat } from './lib/winboat';
 import { openAnchorLink } from './utils/openLink';
+import { addWinBoatIcons } from './utils/icons';
 const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
 const os: typeof import('os') = require('os')
 const path: typeof import('path') = require('path')
@@ -151,6 +152,9 @@ onMounted(async () => {
         winboat = new Winboat();
         $router.push('/home');
     }
+
+
+    addWinBoatIcons();
 
     // Watch for guest server updates and show dialog
     watch(() => winboat?.isUpdatingGuestServer.value, (isUpdating) => {

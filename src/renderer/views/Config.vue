@@ -75,6 +75,31 @@
                         ></x-switch>
                     </div>
                 </x-card>
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="winboat:remote-desktop"></Icon>
+                            <h1 class="text-lg my-0 font-semibold">
+                                FreeRDP Port
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            You can change what port FreeRDP uses to communicate with the VM
+                            <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-input
+                            class="max-w-16 text-right text-[1.1rem]"
+                            min="0"
+                            :max="PORT_MAX"
+                            :value="freerdpPort"
+                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
+                            required
+                        ></x-input>
+                    </div>
+                </x-card>
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="error, k of errors" :key="k">
                         ❗ {{ error }}
@@ -208,6 +233,8 @@ const winboat = new Winboat();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
+const RDP_PORT = 3389;
+const PORT_MAX = 65535;
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -219,6 +246,8 @@ const origRamGB = ref(0);
 const maxRamGB = ref(0);
 const origShareHomeFolder = ref(false);
 const shareHomeFolder = ref(false);
+const freerdpPort = ref(0);
+const origFreerdpPort = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
@@ -241,6 +270,10 @@ async function assignValues() {
 
     shareHomeFolder.value = compose.value.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
     origShareHomeFolder.value = shareHomeFolder.value;
+
+    const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
+    freerdpPort.value = Number(rdpEntry?.split(":")[0]);
+    origFreerdpPort.value = freerdpPort.value;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
@@ -294,7 +327,7 @@ const errors = computed(() => {
 })
 
 const saveButtonDisabled = computed(() => {
-    const hasResourceChanges = origNumCores.value !== numCores.value || origRamGB.value !== ramGB.value || shareHomeFolder.value !== origShareHomeFolder.value;
+    const hasResourceChanges = origNumCores.value !== numCores.value || origRamGB.value !== ramGB.value || shareHomeFolder.value !== origShareHomeFolder.value || freerdpPort.value !== origFreerdpPort.value;
     const shouldBeDisabled = errors.value.length || !hasResourceChanges || isApplyingChanges.value;
     return shouldBeDisabled;
 })
