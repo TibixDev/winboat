@@ -241,7 +241,8 @@ export class Winboat {
         }
 
         this.#metricsInverval = setInterval(async () => {
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking metrics
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
             this.metrics.value = await this.getMetrics();
         }, METRICS_WAIT_MS);
 
@@ -252,8 +253,8 @@ export class Winboat {
         }
 
         this.#rdpConnectionStatusInterval = setInterval(async () => {
-            // If the guest is offline, don't even bother checking RDP status
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking RDP status
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
 
             // If RDP monitoring is disabled, don't check status, just set it to false
             if (!this.#wbConfig?.config.rdpMonitoringEnabled) {

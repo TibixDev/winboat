@@ -170,6 +170,19 @@ func applyUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get current executable path & directory
+	exePath, err := os.Executable()
+	if err != nil {
+		http.Error(w, "Failed to get executable path: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	appDir := filepath.Dir(exePath)
+	origScriptPath := filepath.Join(appDir, "scripts\\update.ps1")
+	scriptPath := filepath.Join(tmpDir, "update.ps1")
+
+	// Copy the update script to the temp directory
+	copyFile(origScriptPath, scriptPath)
+
 	// Return success & the paths
 	response := map[string]string{
 		"status":    "updating",
@@ -180,24 +193,19 @@ func applyUpdate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 
-	// Get current executable path & directory
-	exePath, err := os.Executable()
-	if err != nil {
-		http.Error(w, "Failed to get executable path: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	appDir := filepath.Dir(exePath)
-
 	// Create & run the script
-	scriptPath := filepath.Join(appDir, "scripts\\update.ps1")
 	cmd := exec.Command("cmd", "/C", "start", "/B", "powershell",
 		"-ExecutionPolicy", "Bypass", "-File", scriptPath,
 		"-AppPath", appDir,
 		"-UpdateFilePath", tmpFilePath,
 		"-ServiceName", "WinBoatGuestServer")
 
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	cmd.Stdin = nil
+
 	// The script will take care of the rest, including stopping this service
-	cmd.Run()
+	cmd.Start()
 
 }
 
