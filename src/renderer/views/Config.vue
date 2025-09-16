@@ -79,14 +79,13 @@
                     class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
                     <div>
                         <div class="flex flex-row items-center gap-2 mb-2">
-                            <Icon class="text-violet-400 inline-flex size-8" icon="winboat:remote-desktop"></Icon>
+                            <Icon class="text-violet-400 inline-flex size-8" icon="lucide:ethernet-port"></Icon>
                             <h1 class="text-lg my-0 font-semibold">
                                 FreeRDP Port
                             </h1>
                         </div>
                         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
                             You can change what port FreeRDP uses to communicate with the VM
-                            <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
                         </p>
                     </div>
                     <div class="flex flex-row justify-center items-center gap-2">
@@ -227,13 +226,13 @@ import { type ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
+import { RDP_PORT } from '../lib/constants';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 const winboat = new Winboat();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
-const RDP_PORT = 3389;
 const PORT_MAX = 65535;
 
 // For Resources
@@ -291,6 +290,12 @@ async function applyChanges() {
     } else if (!shareHomeFolder.value && composeHasHomefolderShare) {
         compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(v => v !== HOMEFOLDER_SHARE_STR);
     }
+
+    const newPortEntries = compose.value!.services.windows.ports.filter(x => !x.includes(`:${RDP_PORT}`));
+
+    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/tcp`);
+    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/udp`);
+    compose.value!.services.windows.ports = newPortEntries;
 
     isApplyingChanges.value = true;
     try {
