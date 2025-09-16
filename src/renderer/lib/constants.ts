@@ -55,5 +55,14 @@ export const WINDOWS_LANGUAGES = {
     "🇺🇦 Ukrainian": "Ukrainian"
 }
 
+// Ports
 export const RDP_PORT = 3389;
 export const PORT_MAX = 65535;
+
+// USB
+export const USB_CLASS_IMAGING = 6;
+export const USB_INTERFACE_MTP = 5;
+export const USB_VID_BLACKLIST = [
+    // Linux Foundation VID
+    "1d6b:"
+];

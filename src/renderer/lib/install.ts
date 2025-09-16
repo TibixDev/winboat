@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
 
 const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
-const defaultCompose: ComposeConfig = {
+export const DefaultCompose: ComposeConfig = {
     "name": "winboat",
     "volumes": {
         "data": null
@@ -32,7 +32,8 @@ const defaultCompose: ComposeConfig = {
                 "PASSWORD": "MyWindowsPassword",
                 "HOME": "${HOME}",
                 "LANGUAGE": "English",
-                "ARGUMENTS": "-cpu host,arch_capabilities=off"
+                "HOST_PORTS": "7149",
+                "ARGUMENTS": "-cpu host,arch_capabilities=off \n-qmp tcp:0.0.0.0:7149,server,wait=off\n"
             },
             "cap_add": [
                 "NET_ADMIN"
@@ -41,6 +42,7 @@ const defaultCompose: ComposeConfig = {
             "ports": [
                 "8006:8006", // VNC Web Interface
                 "7148:7148", // Winboat Guest Server API
+                "7149:7149", // QEMU QMP Port
                 "3389:3389/tcp", // RDP
                 "3389:3389/udp" // RDP
             ],
@@ -49,10 +51,11 @@ const defaultCompose: ComposeConfig = {
             "volumes": [
                 "data:/storage",
                 "${HOME}:/shared",
-                "./oem:/oem"
+                "/dev/bus/usb:/dev/bus/usb", // QEMU Synamic USB Passthrough
+                "./oem:/oem",
             ],
             "devices": [
-                "/dev/kvm"
+                "/dev/kvm",
             ]
         }
     }
@@ -115,7 +118,7 @@ export class InstallManager {
         }
 
         // Configure the compose file
-        const composeContent = { ...defaultCompose }
+        const composeContent = { ...DefaultCompose }
 
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuThreads}`;

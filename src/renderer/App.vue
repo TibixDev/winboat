@@ -19,7 +19,6 @@
         <!-- Updater -->
         <dialog ref="updateDialog">
             <Icon class="text-indigo-400 size-12" icon="mdi:cloud-upload"></Icon>
-
             <template v-if="manualUpdateRequired">
                 <h3 class="mt-2">Manual Guest Server Update Required</h3>
                 <div class="max-w-[60vw]">
