@@ -226,14 +226,13 @@ import { type ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
-import { RDP_PORT } from '../lib/constants';
+import { RDP_PORT, PORT_MAX } from '../lib/constants';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 const winboat = new Winboat();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
-const PORT_MAX = 65535;
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -271,7 +270,7 @@ async function assignValues() {
     origShareHomeFolder.value = shareHomeFolder.value;
 
     const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
-    freerdpPort.value = Number(rdpEntry?.split(":")[0]);
+    freerdpPort.value = Number(rdpEntry?.split(":")?.at(0) ?? RDP_PORT);
     origFreerdpPort.value = freerdpPort.value;
 
     const specs = await getSpecs();
@@ -332,8 +331,17 @@ const errors = computed(() => {
 })
 
 const saveButtonDisabled = computed(() => {
-    const hasResourceChanges = origNumCores.value !== numCores.value || origRamGB.value !== ramGB.value || shareHomeFolder.value !== origShareHomeFolder.value || freerdpPort.value !== origFreerdpPort.value;
-    const shouldBeDisabled = errors.value.length || !hasResourceChanges || isApplyingChanges.value;
+    const hasResourceChanges = 
+        origNumCores.value !== numCores.value || 
+        origRamGB.value !== ramGB.value || 
+        shareHomeFolder.value !== origShareHomeFolder.value || 
+        freerdpPort.value !== origFreerdpPort.value;
+
+    const shouldBeDisabled = 
+        errors.value.length || 
+        !hasResourceChanges || 
+        isApplyingChanges.value;
+        
     return shouldBeDisabled;
 })
 

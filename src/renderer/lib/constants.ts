@@ -56,3 +56,4 @@ export const WINDOWS_LANGUAGES = {
 }
 
 export const RDP_PORT = 3389;
+export const PORT_MAX = 65535;
