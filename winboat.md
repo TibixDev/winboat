@@ -8,7 +8,7 @@
 - Windows Version
 - Language
 - Keyboard Layout (?)
-- Cores
+- Threads
 - RAM
 - Disk Size
 - Storage Folder
