@@ -132,6 +132,7 @@ export class QMPManager {
                         reject(new Error(`Invalid QMP response: ${data.toString()}`));
                     } catch (e) {
                         logger.error(e);
+                        logger.error(`QMP request 'data.toString()': ${data.toString()}`)
                         reject(e);
                     }
                 });
@@ -166,6 +167,7 @@ export class QMPManager {
                         resolve(JSON.parse(data.toString()));
                     } catch(e) {
                         logger.error(e);
+                        logger.error(`QMP request 'data.toString()': ${data.toString()}`)
                         reject(e);
                     }
                 });

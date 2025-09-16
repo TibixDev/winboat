@@ -26,6 +26,13 @@ export type PTSerializableDeviceInfo = {
     productId: number;
 } & DeviceStrings;
 
+type VidPidHex = {
+    // USB Vendor ID in hex
+    vendorIdHex: string;
+    // USB Product ID in hex
+    productIdHex: string;   
+}
+
 export class USBManager {
     private static instance: USBManager;
     // Current list of USB devices
@@ -36,6 +43,7 @@ export class USBManager {
 
     #linuxDeviceDatabase: LinuxDeviceDatabase = {};
     #deviceStringCache: Map<string, DeviceStrings> = new Map<string, DeviceStrings>();
+    #mtpDeviceCache: Map<string, boolean> = new Map<string, boolean>();
     #winboat: Winboat = new Winboat()
     #wbConfig: WinboatConfig = new WinboatConfig()
 
@@ -66,26 +74,31 @@ export class USBManager {
             this.devices.value = getDeviceList();
             logger.info(`USB device attached: ${this.stringifyDevice(device)}`);
             if (
-                    this.#winboat.isOnline.value &&
-                    this.isDeviceInPassthroughList(device) &&
-                    !await QMPCheckIfDeviceExists(this.#winboat.qmpMgr!, device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)
+                this.#winboat.isOnline.value &&
+                this.isDeviceInPassthroughList(device) &&
+                !await this.#QMPCheckIfDeviceExists(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)
             ) {
                 logger.info(`Device is in passthrough list, adding to VM: ${this.stringifyDevice(device)}`);   
-                await QMPAddDevice(this.#winboat.qmpMgr!, device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct, device.busNumber, device.deviceAddress);
+                await this.#QMPAddDevice(device);
             }
         });
 
         usb.on("detach", async (device: Device) => {
             this.devices.value = getDeviceList();
 
+            // Remove from MTP cache
+            const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device);
+            const cacheKey = `${vendorIdHex}:${productIdHex}`;
+            this.#mtpDeviceCache.delete(cacheKey);
+
             logger.info(`USB device detached: ${this.stringifyDevice(device)}`);
             if (
                 this.#winboat.isOnline.value &&
                 this.isDeviceInPassthroughList(device) &&
-                await QMPCheckIfDeviceExists(this.#winboat.qmpMgr!, device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)
+                await this.#QMPCheckIfDeviceExists(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)
             ) {
                 logger.info(`Device is in passthrough list, removing from VM: ${this.stringifyDevice(device)}`);
-                await QMPRemoveDevice(this.#winboat.qmpMgr!, device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct);
+                await this.#QMPRemoveDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct);
             }
         });
     }
@@ -100,10 +113,10 @@ export class USBManager {
             logger.info("Guest is online, passing through devices");
             // Pass through any devices that are in the passthrough list & connected
             for (const ptDevice of this.#wbConfig.config.passedThroughDevices) {
-                if (this.isPTDeviceConnected(ptDevice) && !(await QMPCheckIfDeviceExists(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId))) {
+                if (this.isPTDeviceConnected(ptDevice) && !(await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))) {
                     logger.info(`Pass-through device ${this.stringifyPTSerializableDevice(ptDevice)} is connected, adding to VM`);
-                    const device = this.devices.value.find((d) => d.deviceDescriptor.idVendor === ptDevice.vendorId && d.deviceDescriptor.idProduct === ptDevice.productId);
-                    await QMPAddDevice(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId, device?.busNumber, device?.deviceAddress);
+                    const device = this.devices.value.find((d) => d.deviceDescriptor.idVendor === ptDevice.vendorId && d.deviceDescriptor.idProduct === ptDevice.productId)!;
+                    await this.#QMPAddDevice(device);
                 }
             }
         });
@@ -115,8 +128,7 @@ export class USBManager {
      * @returns A human-readable string representing the USB device
      */
     stringifyDevice(device: Device): string {
-        const vendorIdHex = device.deviceDescriptor.idVendor.toString(16).padStart(4, "0");
-        const productIdHex = device.deviceDescriptor.idProduct.toString(16).padStart(4, "0");
+        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device);
 
         // Check cache first
         const cacheKey = `${vendorIdHex}:${productIdHex}`;
@@ -161,8 +173,7 @@ export class USBManager {
      * @returns A human-readable string representing the USB device
      */
     stringifyPTSerializableDevice(device: PTSerializableDeviceInfo): string {
-        const vendorIdHex = device.vendorId.toString(16).padStart(4, "0");
-        const productIdHex = device.productId.toString(16).padStart(4, "0");
+        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device);
 
         // Format: [VID:PID] Vendor Name | Product Name
         return `[${vendorIdHex}:${productIdHex}] ${device.manufacturer || "Unknown Vendor"} | ${device.product || "Unknown Product"}`;
@@ -174,8 +185,7 @@ export class USBManager {
      * @returns A PTSerializableDeviceInfo object representing the USB device
      */
     #convertDeviceToPTSerializable(device: Device): PTSerializableDeviceInfo {
-        const productIdHex = device.deviceDescriptor.idProduct.toString(16).padStart(4, "0");
-        const vendorIdHex = device.deviceDescriptor.idVendor.toString(16).padStart(4, "0");
+        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device)
 
         const deviceStrings = this.#deviceStringCache.get(`${vendorIdHex}:${productIdHex}`);
 
@@ -205,15 +215,12 @@ export class USBManager {
             throw new Error(`Device "${ptDevice.manufacturer} | ${ptDevice.product}" is already in the passthrough list`);
         }
 
-        console.info('[Add] Debug', this.ptDevices.value);
         // Push doesn't properly track reactivity, so we use concat instead
-        this.#wbConfig.config.passedThroughDevices =
-            this.#wbConfig.config.passedThroughDevices.concat(ptDevice);
+        this.#wbConfig.config.passedThroughDevices = this.#wbConfig.config.passedThroughDevices.concat(ptDevice);
         this.ptDevices.value = this.#wbConfig.config.passedThroughDevices;
-        console.info('[Add] Debug 2', this.ptDevices.value);
 
-        if (this.#winboat.isOnline.value && !await QMPCheckIfDeviceExists(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId)) {
-            await QMPAddDevice(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId, device.busNumber, device.deviceAddress);
+        if (this.#winboat.isOnline.value && !await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId)) {
+            await this.#QMPAddDevice(device);
         }
 
         logger.info(`Added device "${ptDevice.manufacturer} | ${ptDevice.product}" to passthrough list`);
@@ -224,15 +231,13 @@ export class USBManager {
      * @param ptDevice The device's PTSerializableDeviceInfo object to remove
      */
     async removeDeviceFromPassthroughList(ptDevice: PTSerializableDeviceInfo) {
-        console.info('[Remove] Debug', this.ptDevices.value);
         this.#wbConfig.config.passedThroughDevices = this.#wbConfig.config.passedThroughDevices.filter(
             d => d.vendorId !== ptDevice.vendorId || d.productId !== ptDevice.productId
         );
         this.ptDevices.value = this.#wbConfig.config.passedThroughDevices;
-        console.info('[Remove] Debug 2', this.ptDevices.value);
 
-        if (this.#winboat.isOnline.value && await QMPCheckIfDeviceExists(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId)) {
-            await QMPRemoveDevice(this.#winboat.qmpMgr!, ptDevice.vendorId, ptDevice.productId);
+        if (this.#winboat.isOnline.value && await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId)) {
+            await this.#QMPRemoveDevice(ptDevice.vendorId, ptDevice.productId);
         }
 
         logger.info(`Removed device "${ptDevice.manufacturer} | ${ptDevice.product}" from passthrough list`);
@@ -258,6 +263,127 @@ export class USBManager {
             d.deviceDescriptor.idVendor === ptDevice.vendorId &&
             d.deviceDescriptor.idProduct === ptDevice.productId
         );
+    }
+
+    /**
+     * Removes all passed through devices from the passthrough list
+     * and the WinBoat configuration object
+     */
+    async removeAllPassthroughDevicesAndConfig() {
+        for (const device of this.ptDevices.value) {
+            await this.removeDeviceFromPassthroughList(device);
+        }
+        this.#wbConfig.config.passedThroughDevices = [];
+        this.ptDevices.value = [];
+    }
+
+    /**
+     * Checks whether a {@link PTSerializableDeviceInfo} object or {@link Device} USB device is an MTP device or not
+     * @param device {@link PTSerializableDeviceInfo} object or {@link Device} USB device
+     */
+    isMTPDevice(device: PTSerializableDeviceInfo): boolean
+    isMTPDevice(device: Device): boolean
+    isMTPDevice(device: PTSerializableDeviceInfo | Device) {
+        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device)
+
+        // Check cache first
+        const cacheKey = `${vendorIdHex}:${productIdHex}`;
+        const cacheEntry = this.#mtpDeviceCache.get(cacheKey);
+        if (this.#mtpDeviceCache.get(cacheKey) !== undefined) {
+            return cacheEntry!;
+        }
+
+        // If the device is not a PTSerializableDeviceInfo & not connected
+        if ("vendorId" in device && !this.isPTDeviceConnected(device)) {
+            return false;
+        }
+
+        // Lookup MTP
+        const lsusbOutput = execSync(
+            `lsusb -vd ${vendorIdHex}:${productIdHex} 2>/dev/null`,
+            { encoding: 'utf8' }
+        );
+        const isMTP = lsusbOutput.includes("MTP");
+
+        // Set cache and return
+        this.#mtpDeviceCache.set(cacheKey, isMTP);
+        return isMTP;
+    }
+
+    /**
+     * Gets the Vendor ID and Product ID of a {@link PTSerializableDeviceInfo} object or {@link Device} USB device
+     * @param device The {@link PTSerializableDeviceInfo} object or {@link Device} USB device to check
+     */
+    getDeviceVidPidHex(device: PTSerializableDeviceInfo | Device): VidPidHex {
+        const ret = { vendorIdHex: "",  productIdHex: "" };
+        if("vendorId" in device) {
+            ret.vendorIdHex = device.vendorId.toString(16).padStart(4, "0");
+            ret.productIdHex = device.productId.toString(16).padStart(4, "0");
+        }
+        else {
+            ret.vendorIdHex = device.deviceDescriptor.idVendor.toString(16).padStart(4, "0");
+            ret.productIdHex = device.deviceDescriptor.idProduct.toString(16).padStart(4, "0");
+        }
+
+        return ret;
+    }
+
+    async #QMPCheckIfDeviceExists(vendorId: number, productId: number): Promise<boolean> {
+        let response = null;
+        try {
+            response = await this.#winboat.qmpMgr!.executeCommand("human-monitor-command", {"command-line": "info qtree"})
+            assert("result" in response);
+    
+            // @ts-ignore property "result" already exists due to assert
+            return response.return.includes(`usb-host, id "${vendorId}:${productId}"`);
+        } catch(e) {
+            logger.error(`There was an error checking whether USB device '${vendorId}:${productId}' exists`);
+            logger.error(e);
+            logger.error(`QMP response: ${response}`);
+        }
+        return false;
+    }
+    
+    // TODO: handle hostaddr/hostbus in case of duplicate VID/PID
+    async #QMPAddDevice(device: Device) {
+        let response = null;
+        const vendorid = device.deviceDescriptor.idVendor;
+        const productid = device.deviceDescriptor.idProduct;
+        const deviceBusPath = `/dev/bus/usb/${String(device.busNumber).padStart(3, '0')}/${String(device.deviceAddress).padStart(3, '0')}` ;
+
+        if (this.isMTPDevice(device)) {
+            freeMTPDevice(deviceBusPath);
+        }
+
+        try {
+            response = await this.#winboat.qmpMgr!.executeCommand("device_add", {
+                driver: "usb-host",
+                id: `${vendorid}:${productid}`, // TODO: get rid of this when we support multiple devices of the same kind
+                vendorid,
+                productid,
+                hostdevice: deviceBusPath
+            });
+    
+            assert("result" in response);
+        } catch(e) {
+            logger.error(`There was an error adding USB device '${vendorid}:${productid}'`);
+            logger.error(e);
+            logger.error(`QMP response: ${response}`);
+        }
+        logger.info("QMPAddDevice", vendorid, productid);
+    }
+    
+    async #QMPRemoveDevice(vendorId: number, productId: number) {
+        let response = null;
+        try {
+            response = await this.#winboat.qmpMgr!.executeCommand("device_del", { id: `${vendorId}:${productId}`});
+            assert("result" in response);
+        } catch(e) {
+            logger.error(`There was an error removing USB device '${vendorId}:${productId}'`);
+            logger.error(e);
+            logger.error(`QMP response: ${response}`);
+        }
+        logger.info("QMPRemoveDevice", vendorId, productId);
     }
 }
 
@@ -330,62 +456,18 @@ function getDeviceStringsFromLsusb(vidHex: string, pidHex: string): DeviceString
     }
 }
 
-async function QMPCheckIfDeviceExists(qmpConn: QMPManager, vendorId: number, productId: number): Promise<boolean> {
-    let response = null;
+/**
+ * Tries to free the MTP device found on `deviceBus`
+ * @param deviceBus The device bus to free
+ */
+function freeMTPDevice(deviceBus: string) {
     try {
-        response = await qmpConn.executeCommand("human-monitor-command", {"command-line": "info qtree"})
-        assert("result" in response);
-
-        // @ts-ignore property "result" already exists due to assert
-        return response.return.includes(`usb-host, id "${vendorId}:${productId}"`);
-    } catch(e) {
-        logger.error(`There was an error checking whether USB device '${vendorId}:${productId}' exists`);
-        logger.error(e);
-        logger.error(`QMP response: ${response}`);
-    }
-    return false;
-}
-
-// TODO: handle hostaddr/hostbus in case of duplicate VID/PID
-async function QMPAddDevice(qmpConn: QMPManager, vendorId: number, productId: number, hostbus?: number, hostaddr?: number) {
-    let response = null;
-    try {
-        if (hostbus && hostaddr) {
-            response = await qmpConn.executeCommand("device_add", {
-                driver: "usb-host",
-                id: `${vendorId}:${productId}`, // TODO: get rid of this
-                vendorid: vendorId,
-                productid: productId,
-                hostdevice: `/dev/bus/usb/${String(hostbus).padStart(3, '0')}/${String(hostaddr).padStart(3, '0')}` 
-            });
+        const fuserOutput = execSync(`fuser -k ${deviceBus}`, { encoding: 'utf8' });
+        if (fuserOutput.includes(deviceBus)) {
+            logger.info(`[freeMTPDevice] Freed device at bus ${deviceBus}`);
         }
-        else {
-            response = await qmpConn.executeCommand("device_add", {
-                driver: "usb-host",
-                id: `${vendorId}:${productId}`, // TODO: get rid of this
-                vendorid: vendorId,
-                productid: productId,
-            });
-        }
-        
-        assert("result" in response);
-    } catch(e) {
-        logger.error(`There was an error adding USB device '${vendorId}:${productId}'`);
-        logger.error(e);
-        logger.error(`QMP response: ${response}`);
     }
-    logger.info("QMPAddDevice", vendorId, productId);
-}
-
-async function QMPRemoveDevice(qmpConn: QMPManager, vendorId: number, productId: number) {
-    let response = null;
-    try {
-        response = await qmpConn.executeCommand("device_del", { id: `${vendorId}:${productId}`});
-        assert("result" in response);
-    } catch(e) {
-        logger.error(`There was an error removing USB device '${vendorId}:${productId}'`);
-        logger.error(e);
-        logger.error(`QMP response: ${response}`);
+    catch (e) {
+        logger.info(`[freeMTPDevice] Device at ${deviceBus} either doesn't need freeing or couldn't be freed`);
     }
-    logger.info("QMPRemoveDevice", vendorId, productId);
 }

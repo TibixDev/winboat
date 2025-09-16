@@ -10,6 +10,7 @@ export type WinboatConfigObj = {
     rdpMonitoringEnabled: boolean
     passedThroughDevices: PTSerializableDeviceInfo[];
     customApps: WinApp[]
+    experimentalFeatures: boolean
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -17,7 +18,8 @@ const defaultConfig: WinboatConfigObj = {
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,
     passedThroughDevices: [],
-    customApps: []
+    customApps: [],
+    experimentalFeatures: false
 };
 
 export class WinboatConfig { 

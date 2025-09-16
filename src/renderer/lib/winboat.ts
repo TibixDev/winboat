@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
+import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
 import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -48,6 +48,8 @@ export const ContainerStatus = {
     "Exited": "exited",
     "Dead": "dead"
 } as const;
+
+const QMP_WAIT_MS = 2000;
 
 type ContainerStatusValue = typeof ContainerStatus[keyof typeof ContainerStatus];
 
@@ -195,6 +197,12 @@ export class Winboat {
         // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
             const _containerStatus = await this.getContainerStatus();
+
+            // TODO: Remove if statement once this feature gets rolled out.
+            if (this.#wbConfig?.config.experimentalFeatures && !this.#qmpInterval) {
+                this.createQMPInterval();
+            }
+
             if (_containerStatus !== this.containerStatus.value) {
                 this.containerStatus.value = _containerStatus;
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
@@ -224,7 +232,6 @@ export class Winboat {
         const HEALTH_WAIT_MS = 1000;
         const METRICS_WAIT_MS = 1000;
         const RDP_STATUS_WAIT_MS = 1000;
-        const QMP_WAIT_MS = 2000;
 
         // *** Health Interval ***
         // Make sure we don't have any existing intervals
@@ -253,7 +260,8 @@ export class Winboat {
         }
 
         this.#metricsInverval = setInterval(async () => {
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking metrics
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
             this.metrics.value = await this.getMetrics();
         }, METRICS_WAIT_MS);
 
@@ -265,8 +273,8 @@ export class Winboat {
         }
 
         this.#rdpConnectionStatusInterval = setInterval(async () => {
-            // If the guest is offline, don't even bother checking RDP status
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking RDP status
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
 
             // If RDP monitoring is disabled, don't check status, just set it to false
             if (!this.#wbConfig?.config.rdpMonitoringEnabled) {
@@ -289,16 +297,10 @@ export class Winboat {
             this.#qmpInterval = null;
         }
 
-        this.#qmpInterval = setInterval(async () => {
-            // If QMP already exists and healthy, we're good
-            if (this.qmpMgr && await this.qmpMgr.isAlive()) return;
-
-            // Otherwise, connect to it since the container is alive but
-            // QMP either doesn't exist or is disconnected
-            await this.#connectQMPManager();
-            logger.info("[QMPInterval] Created new QMP Manager");
-            
-        }, QMP_WAIT_MS);
+        // TODO: Remove if statement once this feature gets rolled out.
+        if(this.#wbConfig?.config.experimentalFeatures) {
+            this.createQMPInterval();
+        }
     }
 
     /**
@@ -404,6 +406,26 @@ export class Winboat {
             logger.error("There was an error connecting to QMP");
             logger.error(e);
         }
+    }
+
+    createQMPInterval() {
+        logger.info("[createQMPInterval] Creating new QMP Interval");
+        this.#qmpInterval = setInterval(async () => {
+            if(!this.#wbConfig?.config.experimentalFeatures) {
+                clearInterval(this.#qmpInterval!);
+                this.#qmpInterval = null;
+                logger.info("[QMPInterval] Destroying self because experimentalFeatures was turned off")
+            }
+
+            // If QMP already exists and healthy, we're good
+            if (this.qmpMgr && await this.qmpMgr.isAlive()) return;
+
+            // Otherwise, connect to it since the container is alive but
+            // QMP either doesn't exist or is disconnected
+            await this.#connectQMPManager();
+            logger.info("[QMPInterval] Created new QMP Manager");
+            
+        }, QMP_WAIT_MS);
     }
 
     async startContainer() {
@@ -536,15 +558,22 @@ export class Winboat {
         if (!this.isOnline) throw new Error('Cannot launch app, Winboat is offline');
 
         const { username, password } = this.getCredentials();
+        const compose = this.parseCompose();
+        const rdpPortEntry = compose.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
+        const rdpPort = rdpPortEntry?.split(":")?.at(0) ?? RDP_PORT.toString();
+
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
         
         const freeRDPBin = await getFreeRDP();
 
         logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
 
+        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
+
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
+        /port:${rdpPort}\
         /cert:ignore\
         +clipboard\
         -wallpaper\
@@ -554,13 +583,14 @@ export class Winboat {
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
         /scale:${this.#wbConfig?.config.scale ?? 100}\
-        /wm-class:"${app.Name}"\
-        /app:program:"${app.Path}",name:"${app.Name}" &`;
+        /wm-class:"${cleanAppName}"\
+        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
                 /p:"${password}"\
                 /v:127.0.0.1\
+                /port:${rdpPort}\
                 /cert:ignore\
                 +clipboard\
                 +f\
