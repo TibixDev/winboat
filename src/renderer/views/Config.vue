@@ -75,6 +75,30 @@
                         ></x-switch>
                     </div>
                 </x-card>
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="lucide:ethernet-port"></Icon>
+                            <h1 class="text-lg my-0 font-semibold">
+                                FreeRDP Port
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            You can change what port FreeRDP uses to communicate with the VM
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-input
+                            class="max-w-16 text-right text-[1.1rem]"
+                            min="0"
+                            :max="PORT_MAX"
+                            :value="freerdpPort"
+                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || RDP_PORT)"
+                            required
+                        ></x-input>
+                    </div>
+                </x-card>
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="error, k of errors" :key="k">
                         ❗ {{ error }}
@@ -228,6 +252,7 @@ import { type ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
+import { RDP_PORT, PORT_MAX } from '../lib/constants';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 // Emits
@@ -248,6 +273,8 @@ const origRamGB = ref(0);
 const maxRamGB = ref(0);
 const origShareHomeFolder = ref(false);
 const shareHomeFolder = ref(false);
+const freerdpPort = ref(0);
+const origFreerdpPort = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
@@ -271,6 +298,10 @@ async function assignValues() {
     shareHomeFolder.value = compose.value.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
     origShareHomeFolder.value = shareHomeFolder.value;
 
+    const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
+    freerdpPort.value = Number(rdpEntry?.split(":")?.at(0) ?? RDP_PORT);
+    origFreerdpPort.value = freerdpPort.value;
+
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuThreads;
@@ -287,6 +318,12 @@ async function applyChanges() {
     } else if (!shareHomeFolder.value && composeHasHomefolderShare) {
         compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(v => v !== HOMEFOLDER_SHARE_STR);
     }
+
+    const newPortEntries = compose.value!.services.windows.ports.filter(x => !x.includes(`:${RDP_PORT}`));
+
+    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/tcp`);
+    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/udp`);
+    compose.value!.services.windows.ports = newPortEntries;
 
     isApplyingChanges.value = true;
     try {
@@ -323,8 +360,17 @@ const errors = computed(() => {
 })
 
 const saveButtonDisabled = computed(() => {
-    const hasResourceChanges = origNumCores.value !== numCores.value || origRamGB.value !== ramGB.value || shareHomeFolder.value !== origShareHomeFolder.value;
-    const shouldBeDisabled = errors.value.length || !hasResourceChanges || isApplyingChanges.value;
+    const hasResourceChanges = 
+        origNumCores.value !== numCores.value || 
+        origRamGB.value !== ramGB.value || 
+        shareHomeFolder.value !== origShareHomeFolder.value || 
+        freerdpPort.value !== origFreerdpPort.value;
+
+    const shouldBeDisabled = 
+        errors.value.length || 
+        !hasResourceChanges || 
+        isApplyingChanges.value;
+        
     return shouldBeDisabled;
 })
 

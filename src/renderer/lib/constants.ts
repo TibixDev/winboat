@@ -12,7 +12,7 @@ export const WINDOWS_VERSIONS = {
     "11l": "Windows 11 LTSC 2024",
     "11e": "Windows 11 Enterprise",
     "10": "Windows 10 Pro",
-    "10l": "WIndows 10 LTSC 2021",
+    "10l": "Windows 10 LTSC 2021",
     "10e": "Windows 10 Enterprise",
     'custom': 'Custom Windows',
 }
@@ -54,3 +54,6 @@ export const WINDOWS_LANGUAGES = {
     "🇹🇷 Turkish": "Turkish" ,
     "🇺🇦 Ukrainian": "Ukrainian"
 }
+
+export const RDP_PORT = 3389;
+export const PORT_MAX = 65535;

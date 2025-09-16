@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
+import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
 import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -241,7 +241,8 @@ export class Winboat {
         }
 
         this.#metricsInverval = setInterval(async () => {
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking metrics
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
             this.metrics.value = await this.getMetrics();
         }, METRICS_WAIT_MS);
 
@@ -252,8 +253,8 @@ export class Winboat {
         }
 
         this.#rdpConnectionStatusInterval = setInterval(async () => {
-            // If the guest is offline, don't even bother checking RDP status
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking RDP status
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
 
             // If RDP monitoring is disabled, don't check status, just set it to false
             if (!this.#wbConfig?.config.rdpMonitoringEnabled) {
@@ -471,6 +472,10 @@ export class Winboat {
         if (!this.isOnline) throw new Error('Cannot launch app, Winboat is offline');
 
         const { username, password } = this.getCredentials();
+        const compose = this.parseCompose();
+        const rdpPortEntry = compose.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
+        const rdpPort = rdpPortEntry?.split(":")?.at(0) ?? RDP_PORT.toString();
+
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
         
         const freeRDPBin = await getFreeRDP();
@@ -482,6 +487,7 @@ export class Winboat {
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
+        /port:${rdpPort}\
         /cert:ignore\
         +clipboard\
         -wallpaper\
@@ -498,6 +504,7 @@ export class Winboat {
             cmd = `${freeRDPBin} /u:"${username}"\
                 /p:"${password}"\
                 /v:127.0.0.1\
+                /port:${rdpPort}\
                 /cert:ignore\
                 +clipboard\
                 +f\
