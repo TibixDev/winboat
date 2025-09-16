@@ -192,6 +192,32 @@
                 </x-card>
             </div>
         </div>
+
+        <div>
+            <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
+            <x-card
+                class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                <div>
+                    <div class="flex flex-row items-center gap-2 mb-2">
+                        <Icon class="text-violet-400 inline-flex size-8" icon="streamline-ultimate:lab-tube-experiment"></Icon>
+                        <h1 class="text-lg my-0 font-semibold">
+                            Experimental Features
+                        </h1>
+                    </div>
+                    <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                        If enabled, you'll have access to experimental features that may not be stable or complete
+                    </p>
+                </div>
+                <div class="flex flex-row justify-center items-center gap-2">
+                    <x-switch
+                        :toggled="wbConfig.config.experimentalFeatures"
+                        @toggle="toggleExperimentalFeatures"
+                        size="large"
+                    ></x-switch>
+                </div>
+            </x-card>
+        </div>
+
         <div>
             <x-label class="mb-4 text-neutral-300">Danger Zone</x-label>
             <x-card class="flex flex-col w-full py-3 my-0 bg-red-500/10 backdrop-brightness-150 backdrop-blur-xl mb-6">
@@ -220,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue';
 import { Winboat } from '../lib/winboat';
 import { type ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
@@ -228,6 +254,9 @@ import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
 import { RDP_PORT, PORT_MAX } from '../lib/constants';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
+
+// Emits
+const $emit = defineEmits(["rerender"]);
 
 const winboat = new Winboat();
 
@@ -353,6 +382,11 @@ async function resetWinboat() {
     isResettingWinboat.value = true;
     await winboat.resetWinboat();
     app.exit();
+}
+
+function toggleExperimentalFeatures() {
+    wbConfig.config.experimentalFeatures = !wbConfig.config.experimentalFeatures;
+    $emit("rerender");
 }
 
 </script>

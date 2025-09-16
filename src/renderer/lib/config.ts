@@ -8,13 +8,15 @@ export type WinboatConfigObj = {
     smartcardEnabled: boolean
     rdpMonitoringEnabled: boolean
     customApps: WinApp[]
+    experimentalFeatures: boolean
 };
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,
-    customApps: []
+    customApps: [],
+    experimentalFeatures: false
 };
 
 let instance: WinboatConfig | null = null;
