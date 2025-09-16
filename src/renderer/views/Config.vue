@@ -94,7 +94,7 @@
                             min="0"
                             :max="PORT_MAX"
                             :value="freerdpPort"
-                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
+                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || RDP_PORT)"
                             required
                         ></x-input>
                     </div>
