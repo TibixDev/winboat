@@ -90,7 +90,7 @@
                     </div>
                 </div>
                 <RouterLink v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(String(r.name)))" :to="route.path" :key="route.path">
-                    <x-navitem value="first">
+                    <x-navitem>
                         <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)"></Icon>
                         <x-label>{{ route.name }}</x-label>
                     </x-navitem>

@@ -119,6 +119,10 @@ onMounted(async () => {
     wallpaper.value = compose.value.services.windows.environment.VERSION.includes("11")
         ? "./img/wallpaper/win11.webp"
         : "./img/wallpaper/win10.webp";
+    
+    // Highlight the navitem for the home page, since by default no
+    // navitem is highlighted and we can't use `toggled`
+    document.querySelector<HTMLButtonElement>('x-navitem')?.click()
 })
 
 const chartOptions = ref({
