@@ -61,6 +61,42 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - **.deb:** The intended format for Debian based distributions
 - **.rpm:** The intended format for Fedora based distributions
 
+#### Install on NixOS
+
+You can install Winboat on NixOS by adding the community flake to your system configuration.
+
+**Prerequisites:** You must have [Nix Flakes](https://nixos.wiki/wiki/Flakes) enabled on your NixOS system.
+
+1.  **Add the Flake to your NixOS Configuration**
+
+    In your system's `flake.nix` (usually at `/etc/nixos/flake.nix`), add `winboat` as an input:
+
+    ```nix
+    # /etc/nixos/flake.nix
+    {
+      inputs = {
+        # Add this lines
+        winboat = {
+          url = "github:TibixDev/winboat";
+          inputs.nixpkgs.follows = "nixpkgs";
+        };
+      };
+    }
+    ```
+
+2.  **Add the Package to your System**
+    Now add the package in your `configuration.nix`:
+    ```nix
+    # /etc/nixos/configuration.nix
+    { config, pkgs, winboat, ... }:
+    {
+      environment.systemPackages = [
+        # ... your other packages
+        # winboat.packages.x86_64-linux.default 
+        winboat.packages."${system}".default
+      ];
+    }
+    ```
 ## Known Issues About Container Runtimes
 - Podman is **unsupported** for now
 - Docker Desktop is **unsupported** for now

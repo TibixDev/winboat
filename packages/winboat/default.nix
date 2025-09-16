@@ -43,6 +43,12 @@
   libGL
 }:
 
+let
+  icon = fetchurl {
+    url = "https://raw.githubusercontent.com/TibixDev/winboat/main/icons/icon.png";
+    hash = "sha256-P3M/EdfMgcUcZUkBRYrdZCl4vl5cbx/dEvRaOuIrnc0=";
+  };
+in
 stdenv.mkDerivation rec {
   pname = "winboat";
   version = "0.7.12";
@@ -77,12 +83,26 @@ stdenv.mkDerivation rec {
       --set-rpath "${lib.makeLibraryPath buildInputs}" \
       "$appdir/winboat"
 
-    # This is the final, crucial fix.
-    # We add the '--no-sandbox' flag to disable Electron's internal security jail.
     makeWrapper "$appdir/winboat" "$out/bin/winboat" \
       --prefix PATH : "${lib.makeBinPath buildInputs}" \
       --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libGL ]}:$appdir" \
       --add-flags "--no-sandbox"
+
+    # --- Desktop Integration ---
+
+    install -Dm644 ${icon} $out/share/icons/hicolor/256x256/apps/winboat.png
+
+    install -Dm644 /dev/null $out/share/applications/winboat.desktop
+    cat > $out/share/applications/winboat.desktop <<EOF
+    [Desktop Entry]
+    Name=WinBoat
+    Comment=Run Windows applications on Linux like they are native
+    Exec=$out/bin/winboat
+    Icon=winboat
+    Type=Application
+    Terminal=false
+    Categories=System;Emulator;
+    EOF
 
     runHook postInstall
   '';
