@@ -6,6 +6,7 @@ import './index.css'
 import { autoScroll } from "./directives/autoscroll";
 import VueApexCharts from 'vue3-apexcharts'
 
+
 createApp(App)
     .directive('auto-scroll', autoScroll)
     .use(router)

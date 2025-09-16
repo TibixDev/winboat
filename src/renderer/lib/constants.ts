@@ -54,3 +54,6 @@ export const WINDOWS_LANGUAGES = {
     "🇹🇷 Turkish": "Turkish" ,
     "🇺🇦 Ukrainian": "Ukrainian"
 }
+
+export const RDP_PORT = 3389;
+export const PORT_MAX = 65535;
