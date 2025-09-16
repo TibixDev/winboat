@@ -494,11 +494,12 @@ export class Winboat {
         /sound:sys:pulse\
         /microphone:sys:pulse\
         /floatbar\
+        -decorations\
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
         /scale:${this.#wbConfig?.config.scale ?? 100}\
         /wm-class:"${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
+        /app:program:"${app.Path}",name:"${cleanAppName}",hidef:on &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
