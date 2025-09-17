@@ -3,7 +3,14 @@
         <!-- Decoration -->
         <div class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15 blob-anim"></div>
         <div class="gradient-ball absolute -z-10 right-0 top-0 translate-x-[50%] translate-y-[-50%] w-[90vw] aspect-square opacity-15 blob-anim"></div>
-
+        
+        <!-- Stripes for experimental -->
+        <div
+            v-show="wbConfig?.config.experimentalFeatures"
+            :key="rerenderCounter"
+            class="experimental-stripes absolute top-0 left-0 w-full h-[3rem] pointer-events-none z-[10] opacity-15 grayscale"
+        ></div>
+            
         <!-- Titlebar -->
         <x-titlebar @minimize="handleMinimize()" @buttonclick="handleTitleBarEvent" class="backdrop-blur-xl bg-neutral-900/50">
             <x-label>WinBoat</x-label>
@@ -12,7 +19,6 @@
         <!-- Updater -->
         <dialog ref="updateDialog">
             <Icon class="text-indigo-400 size-12" icon="mdi:cloud-upload"></Icon>
-
             <template v-if="manualUpdateRequired">
                 <h3 class="mt-2">Manual Guest Server Update Required</h3>
                 <div class="max-w-[60vw]">
@@ -83,7 +89,7 @@
                     </div>
                 </div>
                 <RouterLink v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(String(r.name)))" :to="route.path" :key="route.path">
-                    <x-navitem value="first">
+                    <x-navitem>
                         <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)"></Icon>
                         <x-label>{{ route.name }}</x-label>
                     </x-navitem>
@@ -104,7 +110,7 @@
                         {{ useRoute().name }}
                     </h1>
                 </div>
-                <router-view v-slot="{ Component }">
+                <router-view v-slot="{ Component }" @rerender="rerenderCounter++">
                     <transition mode="out-in" name="fade">
                         <component :is="Component" />
                     </transition>
@@ -126,6 +132,8 @@ import { onMounted, ref, useTemplateRef, watch } from 'vue';
 import { isInstalled } from './lib/install';
 import { Winboat } from './lib/winboat';
 import { openAnchorLink } from './utils/openLink';
+import { WinboatConfig } from './lib/config';
+import { USBManager } from './lib/usbmanager';
 const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
 const os: typeof import('os') = require('os')
 const path: typeof import('path') = require('path')
@@ -135,20 +143,25 @@ const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
 let winboat: Winboat | null = null;
+let wbConfig: WinboatConfig | null = null;
 
 let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef('updateDialog');
+const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
 
 onMounted(async () => {
     console.log("WinBoat app path:", path.join(remote.app.getAppPath(), "..", ".."));
+
+    new USBManager(); // Instantiate singleton class
     const winboatInstalled = await isInstalled();
     if (!winboatInstalled) {
         console.log("Not installed, redirecting to setup...")
         $router.push('/setup');
     } else {
-        winboat = new Winboat();
+        winboat = new Winboat(); // Instantiate singleton class
+        wbConfig = new WinboatConfig(); // Instantiate singleton class
         $router.push('/home');
     }
 
@@ -237,5 +250,17 @@ dialog::backdrop {
 .fade-leave-to {
     opacity: 0;
     /* transform: translateX(-20vw); */
+}
+
+/* Stripes for the top of the window to indicate experimental features enabled */
+.experimental-stripes {
+    background: repeating-linear-gradient(
+    45deg,
+    #ffffff00,
+    #ffffff00 25px,
+    rgb(129 140 248) 25px,
+    rgb(129 140 248) 50px
+    );
+    -webkit-mask-image: -webkit-gradient(linear, left 0%, left bottom, from(rgba(0,0,0,1)), to(rgba(0,0,0,0)))
 }
 </style>

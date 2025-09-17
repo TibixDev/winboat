@@ -18,7 +18,6 @@ on:
           - all
           - linux-only
           - guest-server-only
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,6 +34,10 @@ jobs:
           else
             echo "Automatic workflow triggered by ${{ github.event_name }}"
           fi
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -113,7 +116,6 @@ jobs:
       #       dist/latest-linux.yml
       #       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
       #     if-no-files-found: ignore
-
   guest-server-only:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
@@ -135,7 +137,6 @@ jobs:
         with:
           name: guest-server-artifacts
           path: guest_server/
-
   release:
     runs-on: ubuntu-latest
     if: >-
@@ -151,6 +152,10 @@ jobs:
           else
             echo "Release workflow triggered by tag: ${{ github.ref_name }}"
           fi
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:

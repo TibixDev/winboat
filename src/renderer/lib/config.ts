@@ -2,32 +2,36 @@ const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
 import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
+import { type PTSerializableDeviceInfo } from "./usbmanager";
 
 export type WinboatConfigObj = {
     scale: number;
     smartcardEnabled: boolean
     rdpMonitoringEnabled: boolean
+    passedThroughDevices: PTSerializableDeviceInfo[];
     customApps: WinApp[]
+    experimentalFeatures: boolean
 };
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,
-    customApps: []
+    passedThroughDevices: [],
+    customApps: [],
+    experimentalFeatures: false
 };
 
-let instance: WinboatConfig | null = null;
-
-export class WinboatConfig {
+export class WinboatConfig { 
+    private static instance: WinboatConfig;
     #configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     #configData: WinboatConfigObj = { ...defaultConfig };
 
     constructor() {
-        if (instance) return instance;
+        if (WinboatConfig.instance) return WinboatConfig.instance;
         this.#configData = this.readConfig();
         console.log("Reading current config", this.#configData);
-        instance = this;
+        WinboatConfig.instance = this;
     }
 
     get config(): WinboatConfigObj {
@@ -51,6 +55,7 @@ export class WinboatConfig {
     }
 
     writeConfig(): void {
+        console.log("writing data: ", this.#configData);
         fs.writeFileSync(this.#configPath, JSON.stringify(this.#configData, null, 4), "utf-8");
     }
 

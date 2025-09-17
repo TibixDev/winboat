@@ -52,6 +52,7 @@ export type ComposeConfig = {
                 HOME: string;
                 LANGUAGE: string;
                 ARGUMENTS: string;
+                HOST_PORTS: string;
                 [key: string]: string; // Allow additional env vars
             };
             privileged: boolean;
@@ -93,3 +94,9 @@ export type GuestServerUpdateResponse = {
     status: string;
     temp_path: string;
 }
+
+export type USBDevice = {
+    vendorID: string,
+    productID: string,
+    alias: string
+};
