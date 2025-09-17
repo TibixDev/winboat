@@ -107,6 +107,8 @@ export class USBManager {
      * Sets up the listener responsible for passing through devices in bulk when the guest is online
      */
     #setupGuestListener() {
+        // TODO: This should depend on QMP Manager instead, but that approach also has subtle pitfalls
+        // We are not guaranteed at this point to have a QMP Manager
         watch(this.#winboat.isOnline, async (isOnline: boolean) => {
             if (!isOnline) return;
 

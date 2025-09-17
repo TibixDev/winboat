@@ -10,6 +10,8 @@ import { getFreeRDP } from "../utils/getFreeRDP";
 import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
+import { setIntervalImmediately } from "../utils/interval";
+
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
@@ -405,7 +407,7 @@ export class Winboat {
 
     createQMPInterval() {
         logger.info("[createQMPInterval] Creating new QMP Interval");
-        this.#qmpInterval = setInterval(async () => {
+        this.#qmpInterval = setIntervalImmediately(async () => {
             if(!this.#wbConfig?.config.experimentalFeatures) {
                 clearInterval(this.#qmpInterval!);
                 this.#qmpInterval = null;
