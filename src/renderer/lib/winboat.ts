@@ -198,11 +198,6 @@ export class Winboat {
         this.#containerInterval = setInterval(async () => {
             const _containerStatus = await this.getContainerStatus();
 
-            // TODO: Remove if statement once this feature gets rolled out.
-            if (this.#wbConfig?.config.experimentalFeatures && !this.#qmpInterval) {
-                this.createQMPInterval();
-            }
-
             if (_containerStatus !== this.containerStatus.value) {
                 this.containerStatus.value = _containerStatus;
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
@@ -670,5 +665,12 @@ export class Winboat {
 
         // Done!
         this.isUpdatingGuestServer.value = false;
+    }
+
+    /**
+     * Whether or not the Winboat singleton has a QMP interval active
+     */
+    get hasQMPInterval() {
+        return this.#qmpInterval !== null;
     }
 }

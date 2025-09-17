@@ -162,7 +162,7 @@
                             <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
                                 <x-card 
                                     class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
-                                    v-for="device, k of usbManager.ptDevices.value" 
+                                    v-for="device of usbManager.ptDevices.value" 
                                     :key="`${device.vendorId}-${device.productId}`"
                                     :class="{ 'bg-white/[calc(0.05*0.75)] [&_*:not(div):not(span)]:opacity-75': !usbManager.isPTDeviceConnected(device) }"
                                 >
@@ -200,7 +200,8 @@
                             </TransitionGroup>
                             <x-button 
                                 v-if="availableDevices.length > 0"
-                                class="mt-4 !bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                :class="{ 'mt-4': usbManager.ptDevices.value.length }"
                                 @click="refreshAvailableDevices()"
                             >
                                 <x-icon href="#add"></x-icon>
@@ -355,19 +356,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, nextTick, onMounted, ref, watch } from 'vue';
-import { Winboat } from '../lib/winboat';
-import type { ComposeConfig, USBDevice } from '../../types';
+import { computed, onMounted, ref } from 'vue';
+import { ContainerStatus, Winboat } from '../lib/winboat';
+import type { ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
 import { WinboatConfig } from '../lib/config';
 import { USBManager, type PTSerializableDeviceInfo } from '../lib/usbmanager';
-import { type Device, type Interface } from "usb";
+import { type Device } from "usb";
 import {
     RDP_PORT,
     PORT_MAX,
-    USB_CLASS_IMAGING,
-    USB_INTERFACE_MTP,
     USB_VID_BLACKLIST
 } from '../lib/constants';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
@@ -605,9 +604,18 @@ async function toggleExperimentalFeatures() {
     rerenderExperimental.value++;
     $emit("rerender");
 
-    // Remove all passthrough USB devices since USB is still experimental
-    if (wbConfig.config.experimentalFeatures) {
+    // Remove all passthrough USB devices if we're disabling experimental features
+    // since USB passthrough is an experimental feature
+    if (!wbConfig.config.experimentalFeatures) {
         await usbManager.removeAllPassthroughDevicesAndConfig();
+    // Create the QMP interval if experimental features are enabled
+    // This would get created by default since we're changing the compose and re-deploying,
+    // but a scenario could also occur where the user is re-enabling experimental features
+    // after the compose changes, which then would cause a bug
+    // TODO: Remove after USB passthrough is no longer experimental
+    } else if (winboat.containerStatus.value == ContainerStatus.Running && !winboat.hasQMPInterval) {
+        console.log("Creating QMP interval because experimental features were turned on");
+        winboat.createQMPInterval();
     }
 }
 

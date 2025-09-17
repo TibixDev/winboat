@@ -387,8 +387,6 @@ export class USBManager {
     }
 }
 
-new USBManager();
-
 /**
  * Reads the Linux USB device database from the specified file path and returns a JSON representation.
  * @param filePath Path to the usb.ids file
