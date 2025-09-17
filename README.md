@@ -79,12 +79,12 @@ You can download the latest Linux builds under the [Releases](https://github.com
 
 | OS/Distro                       | Command                                                                 |
 | ------------------------------- | ------------------------------------------------------------------------|
-| Archlinux                       | git clone https://aur.archlinux.org/winboat.git  <br > cd winboat  <br > makepkg -si
-| Fedora                          | wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm <br > sudo dnf install winboat-X.X.X-x86_64.rpm 
-| Gentoo                          | [building-winboat](#building-winboat)                                                     |
+| Archlinux (community version)   | git clone https://aur.archlinux.org/winboat.git  <br > cd winboat  <br > makepkg -si
+| Fedora                          | wget/download the x86_64.rpm version <br > sudo dnf install x86_64.rpm 
+| Gentoo                          | [building-winboat](#building-winboat)                                   |
 | NixOS                           | nix-env -iA nixos.winboat                                               |
-| Debian and Derivatives          | wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-amd64.deb <br> sudo apt install ./ winboat-X.X.X-amd64.deb  
-| openSUSE                        | wget https://github.com/TibixDev/winboat/releases/download/vX.X.X/winboat-X.X.X-x86_64.rpm <br> sudo dnf install winboat-X.X.X-x86_64.rpm 
+| Debian and Derivatives          | wget/download the amd64.deb version <br> sudo apt install ./ x86_64.deb  
+| openSUSE                        | wget/download the amd64.rpm version <br> sudo dnf install x86_64.rpm 
 
 
 
