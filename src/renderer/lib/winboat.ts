@@ -13,8 +13,9 @@ import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
-const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
+const path: typeof import('path') = require('path');
+const process: typeof import('process') = require('process');
 const { promisify }: typeof import('util') = require('util');
 const { exec }: typeof import('child_process') = require('child_process');
 const remote: typeof import('@electron/remote') = require('@electron/remote');
@@ -629,9 +630,11 @@ export class Winboat {
         // 3. Set update flag & grab winboat_guest_server.zip from Electron assets
         this.isUpdatingGuestServer.value = true;
         const zipPath = remote.app.isPackaged
-            ? path.join(remote.app.getAppPath(), 'guest_server', 'winboat_guest_server.zip')
+            ? path.join(process.resourcesPath, 'guest_server', 'winboat_guest_server.zip')
             : path.join(remote.app.getAppPath(), '..', '..', 'guest_server', 'winboat_guest_server.zip');
 
+        logger.info("ZIP Path", zipPath)
+        
         // 4. Send the payload to the guest server, as a multipart/form-data with updateFile
         const formData = new FormData();
         formData.append('updateFile', fs.createReadStream(zipPath));
