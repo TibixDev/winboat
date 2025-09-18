@@ -27,6 +27,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Update USB IDs database
+        run: |
+          echo "Removing old usb.ids file..."
+          rm -f data/usb.ids
+          echo "Downloading latest usb.ids from linux-usb.org..."
+          curl -o data/usb.ids http://www.linux-usb.org/usb.ids
+          echo "USB IDs database updated successfully"
       - name: Show build type
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -145,6 +152,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Update USB IDs database
+        run: |
+          echo "Removing old usb.ids file..."
+          rm -f data/usb.ids
+          echo "Downloading latest usb.ids from linux-usb.org..."
+          curl -o data/usb.ids http://www.linux-usb.org/usb.ids
+          echo "USB IDs database updated successfully"
       - name: Show build type
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
