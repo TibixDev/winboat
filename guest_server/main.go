@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
@@ -236,9 +237,10 @@ func main() {
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
+	handler := cors.Default().Handler(r)
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
-	if err := http.ListenAndServe(":7148", r); err != nil {
+	if err := http.ListenAndServe(":7148", handler); err != nil {
 		log.Fatal("Server failed: ", err)
 	}
 }
