@@ -37,6 +37,7 @@
         "@vueuse/core": "^13.1.0",
         "@vueuse/motion": "^2.2.6",
         "apexcharts": "^4.5.0",
+        "consola": "^3.4.2",
         "form-data": "^4.0.4",
         "jimp": "^1.6.0",
         "json-to-pretty-yaml": "^1.2.2",
@@ -49,7 +50,6 @@
         "vue": "^3.5.13",
         "vue-router": "^4.5.0",
         "vue3-apexcharts": "^1.8.0",
-        "winston": "^3.17.0",
         "xel": "^0.33.7",
         "yaml": "^2.7.1"
     }

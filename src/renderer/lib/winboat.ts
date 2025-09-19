@@ -542,11 +542,8 @@ export class Winboat {
         // 3. Remove the container volume
         await execAsync("docker volume rm winboat_data");
         console.info("Removed volume");
-        
-        // 4. Close logger
-        logger.close();
 
-        // 5. Remove WinBoat directory
+        // 4. Remove WinBoat directory
         fs.rmSync(WINBOAT_DIR,  { recursive: true, force: true });
         console.info(`Removed ${WINBOAT_DIR}`);
         console.info("So long and thanks for all the fish!");
