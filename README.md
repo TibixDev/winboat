@@ -113,3 +113,12 @@ They're awesome and you should check them out:
 - [![Bluesky](https://img.shields.io/badge/Bluesky-winboat.app-00A8E8?style=flat&logo=bluesky&logoColor=white)](http://bsky.app/profile/winboat.app)
 - [![Discord](https://img.shields.io/badge/Discord-Join_Community-5865F2?style=flat&logo=discord&logoColor=white)](http://discord.gg/MEwmpWm4tN)
 - [![Email](https://img.shields.io/badge/Email-staff@winboat.app-D14836?style=flat&logo=gmail&logoColor=white)](mailto:staff@winboat.app)
+
+## Star History
+<a href="https://www.star-history.com/#tibixdev/winboat&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
+ </picture>
+</a>
