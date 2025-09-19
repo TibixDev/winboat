@@ -329,6 +329,23 @@
     
     
                         <div class="flex flex-col gap-6">
+        <div>
+            <label for="select-rdp-port" class="text-sm text-neutral-400">RDP Port</label>
+            <div class="flex flex-row gap-4 items-center">
+                <x-input
+                    id="select-rdp-port"
+                    class="w-32 max-w-32"
+                    type="number"
+                    min="1024"
+                    max="65535"
+                    :value="rdpPort"
+                    @input="(e: any) => rdpPort.value = Number(e.target.value)"
+                >
+                    <x-label>Port</x-label>
+                </x-input>
+                <span class="text-xs text-gray-400">Default: 3389</span>
+            </div>
+        </div>
                             <div>
                                 <label for="select-cpu-cores" class="text-sm text-neutral-400">Select CPU Cores</label>
                                 <div class="flex flex-row gap-4 items-center">
@@ -681,30 +698,42 @@ function deselectIsoFile() {
 }
 
 function install() {
-    const installConfig: InstallConfiguration = {
-        windowsVersion: windowsVersion.value,
-        windowsLanguage: windowsLanguage.value,
-        cpuThreads: cpuThreads.value,
-        ramGB: ramGB.value,
-        diskSpaceGB: diskSpaceGB.value,
-        username: username.value,
-        password: password.value,
-        ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
-    }
-
-    // Begin installation and attach event listeners
-    const installManager = new InstallManager(installConfig);
-    installManager.emitter.on("stateChanged", newState => {
-        installState.value = newState;
-        console.log("Install state changed", newState);
+    // Check if RDP port is in use before starting install
+    const net = require('net');
+    const testServer = net.createServer();
+    testServer.once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            alert(`The selected RDP port (${rdpPort.value}) is already in use. Please choose another port.`);
+        } else {
+            alert(`Error checking RDP port: ${err.message}`);
+        }
     });
-
-    installManager.emitter.on("preinstallMsg", msg => {
-        preinstallMsg.value = msg;
-        console.log("Preinstall msg", msg);
+    testServer.once('listening', () => {
+        testServer.close();
+        // Proceed with install
+        const installConfig = {
+            windowsVersion: windowsVersion.value,
+            windowsLanguage: windowsLanguage.value,
+            cpuThreads: cpuThreads.value,
+            ramGB: ramGB.value,
+            diskSpaceGB: diskSpaceGB.value,
+            username: username.value,
+            password: password.value,
+            rdpPort: rdpPort.value,
+            ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
+        };
+        const installManager = new InstallManager(installConfig);
+        installManager.emitter.on("stateChanged", newState => {
+            installState.value = newState;
+            console.log("Install state changed", newState);
+        });
+        installManager.emitter.on("preinstallMsg", msg => {
+            preinstallMsg.value = msg;
+            console.log("Preinstall msg", msg);
+        });
+        installManager.install();
     });
-
-    installManager.install();
+    testServer.listen(rdpPort.value);
 }
 </script>
 
