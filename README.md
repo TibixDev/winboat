@@ -107,8 +107,9 @@ They're awesome and you should check them out:
 - [dockur/windows](https://github.com/dockur/windows) (🌟 Also used in WinBoat)
 
 ## Socials & Contact
-- 🌐 **Website**: [winboat.app](https://www.winboat.app/)
-- 🐦 **Twitter/X**: [@winboat_app](https://x.com/winboat_app)
-- 🦋 **Bluesky**: [winboat.app](http://bsky.app/profile/winboat.app)
-- 🗨️ **Discord**: [Join our community](http://discord.gg/MEwmpWm4tN)
-- 📧 **Email**: [staff@winboat.app](mailto:staff@winboat.app)
+- [![Website](https://img.shields.io/badge/Website-winboat.app-blue?style=flat&logo=googlechrome&logoColor=white)](https://www.winboat.app/)
+- [![Twitter](https://img.shields.io/badge/Twitter-@winboat__app-1DA1F2?style=flat&logo=x&logoColor=white)](https://x.com/winboat_app)
+- [![Mastodon](https://img.shields.io/badge/Mastodon-@winboat-6364FF?style=flat&logo=mastodon&logoColor=white)](https://fosstodon.org/@winboat)
+- [![Bluesky](https://img.shields.io/badge/Bluesky-winboat.app-00A8E8?style=flat&logo=bluesky&logoColor=white)](http://bsky.app/profile/winboat.app)
+- [![Discord](https://img.shields.io/badge/Discord-Join_Community-5865F2?style=flat&logo=discord&logoColor=white)](http://discord.gg/MEwmpWm4tN)
+- [![Email](https://img.shields.io/badge/Email-staff@winboat.app-D14836?style=flat&logo=gmail&logoColor=white)](mailto:staff@winboat.app)
