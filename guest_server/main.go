@@ -44,14 +44,13 @@ type Metrics struct {
 }
 
 func getApps(w http.ResponseWriter, r *http.Request) {
-	// Run the PowerShell script
-	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\apps.ps1")
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & '.\\scripts\\apps.ps1'")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(output)
 }
