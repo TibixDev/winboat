@@ -17,7 +17,7 @@ let rendererPort = 0;
 
 async function startRenderer() {
     viteServer = await Vite.createServer({
-        configFile: Path.join(__dirname, '..', 'vite.config.js'),
+        configFile: Path.join(__dirname, '..', 'vite.config.ts'),
         mode: 'development',
     });
 
