@@ -118,7 +118,7 @@ export class InstallManager {
         }
 
         // Configure the compose file
-        const composeContent = { ...DefaultCompose }
+        const composeContent = { ...DefaultCompose };
 
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuThreads}`;
@@ -127,11 +127,21 @@ export class InstallManager {
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
-        
+
+        // Use user-specified RDP port, default to 3389
+        const rdpPort = this.conf.rdpPort ?? 3389;
+        composeContent.services.windows.ports = [
+            `8006:8006`, // VNC Web Interface
+            `7148:7148`, // Winboat Guest Server API
+            `7149:7149`, // QEMU QMP Port
+            `${rdpPort}:3389/tcp`, // RDP
+            `${rdpPort}:3389/udp`  // RDP
+        ];
+
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
         }
-        
+
         // Write the compose file
         const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");
         fs.writeFileSync(composeFilePath, composeYAML, { encoding: 'utf8' });

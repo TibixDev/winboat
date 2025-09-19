@@ -23,6 +23,7 @@ export type InstallConfiguration = {
     username: string;
     password: string;
     customIsoPath?: string;
+    rdpPort?: number; // User-specified RDP port (default 3389)
 }
 
 export type WinApp = {

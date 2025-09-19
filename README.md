@@ -25,7 +25,7 @@ WinBoat is currently in beta, so expect to occasionally run into hiccups and bug
 
 ## Features
 - **🎨 Elegant Interface**: Sleek and intuitive interface that seamlessly integrates Windows into your Linux desktop environment, making it feel like a native experience
-- **📦 Automated Installs**: Simple installation process through our interface - pick your preferences & specs and let us handle the rest
+- **📦 Automated Installs**: Simple installation process through our interface - pick your preferences & specs (including RDP port) and let us handle the rest
 - **🚀 Run Any App**: If it runs on Windows, it can run on WinBoat. Enjoy the full range of Windows applications as native OS-level windows in your Linux environment
 - **🖥️ Full Windows Desktop**: Access the complete Windows desktop experience when you need it, or run individual apps seamlessly integrated into your Linux workflow
 - **📁 Filesystem Integration**: Your home directory is mounted in Windows, allowing easy file sharing between the two systems without any hassle
@@ -33,6 +33,9 @@ WinBoat is currently in beta, so expect to occasionally run into hiccups and bug
 
 ## How Does It Work?
 WinBoat is an Electron app which allows you to run Windows apps on Linux using a containerized approach. Windows runs as a VM inside a Docker container, we communicate with it using the [WinBoat Guest Server](https://github.com/TibixDev/winboat/tree/main/guest_server) to retrieve data we need from Windows. For compositing applications as native OS-level windows, we use FreeRDP together with Windows's RemoteApp protocol.
+
+## RDP Port Configuration
+You can now specify the RDP port to use for remote desktop connections during installation. The default is 3389, but you may choose any available port in the range 1024–65535. If the selected port is already in use, WinBoat will prompt you to select another port before installation proceeds.
 
 ## Prerequisites
 Before running WinBoat, ensure your system meets the following requirements:
@@ -51,6 +54,7 @@ Before running WinBoat, ensure your system meets the following requirements:
   - [Setup Instructions](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
 - **FreeRDP**: Required for remote desktop connection (Please make sure you have **Version 3.x.x** with sound support included)
   - [Installation Guide](https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds)
+  - You can connect to the Windows VM using the port you selected during installation (default: 3389)
 - **Kernel Modules**: `iptables` and `iptable_nat` modules must be loaded
   - [Module loading instructions](https://rentry.org/rmfq2e5e)
 
