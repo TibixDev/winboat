@@ -500,10 +500,10 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
-
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
 const os: typeof import('os') = require('os');
+import { isIsoValid } from '../lib/getIsoType';
 
 type Step = {
     id: string,
@@ -664,11 +664,21 @@ function selectIsoFile() {
     })
     .then(result => {
       if (!result.canceled && result.filePaths.length > 0) {
-        customIsoPath.value = result.filePaths[0];
-        customIsoFileName.value = path.basename(result.filePaths[0]);
-        windowsLanguage.value = 'English'; // Language can't be custom
-        windowsVersion.value = 'custom';
-        console.log('ISO path updated:', customIsoPath.value);
+        const filePath = result.filePaths[0]
+        isIsoValid(filePath)
+        .then(res => {
+            if (!res) {
+                electron.dialog.showErrorBox("Invalid ISO!", "This ISO is not valid!");
+            }
+            
+            else {
+                customIsoPath.value = filePath;
+                customIsoFileName.value = path.basename(filePath);
+                windowsLanguage.value = 'English'; // Language can't be custom
+                windowsVersion.value = 'custom';
+                console.log('ISO path updated:', customIsoPath.value);
+            }
+        })
       }
     });
 }
