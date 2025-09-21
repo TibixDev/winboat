@@ -15,9 +15,11 @@
         packageJson = builtins.fromJSON (builtins.readFile ./package.json);
         version = packageJson.version;
         
-        # Dynamically calculate SHA256 for the AppImage
+        # URL for the AppImage
         appImageUrl = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}-x86_64.AppImage";
-        appImageSha256 = builtins.hashFile "sha256" (builtins.fetchurl appImageUrl);
+        
+        # SHA256 placeholder - will be updated by GitHub workflow on release
+        appImageSha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
         
         # Node.js dependencies for building
         nodejs = pkgs.nodejs_20;
