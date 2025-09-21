@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
@@ -44,14 +45,13 @@ type Metrics struct {
 }
 
 func getApps(w http.ResponseWriter, r *http.Request) {
-	// Run the PowerShell script
-	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\apps.ps1")
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & '.\\scripts\\apps.ps1'")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(output)
 }
@@ -170,6 +170,19 @@ func applyUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get current executable path & directory
+	exePath, err := os.Executable()
+	if err != nil {
+		http.Error(w, "Failed to get executable path: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	appDir := filepath.Dir(exePath)
+	origScriptPath := filepath.Join(appDir, "scripts\\update.ps1")
+	scriptPath := filepath.Join(tmpDir, "update.ps1")
+
+	// Copy the update script to the temp directory
+	copyFile(origScriptPath, scriptPath)
+
 	// Return success & the paths
 	response := map[string]string{
 		"status":    "updating",
@@ -180,24 +193,19 @@ func applyUpdate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 
-	// Get current executable path & directory
-	exePath, err := os.Executable()
-	if err != nil {
-		http.Error(w, "Failed to get executable path: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	appDir := filepath.Dir(exePath)
-
 	// Create & run the script
-	scriptPath := filepath.Join(appDir, "scripts\\update.ps1")
 	cmd := exec.Command("cmd", "/C", "start", "/B", "powershell",
 		"-ExecutionPolicy", "Bypass", "-File", scriptPath,
 		"-AppPath", appDir,
 		"-UpdateFilePath", tmpFilePath,
 		"-ServiceName", "WinBoatGuestServer")
 
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	cmd.Stdin = nil
+
 	// The script will take care of the rest, including stopping this service
-	cmd.Run()
+	cmd.Start()
 
 }
 
@@ -229,9 +237,10 @@ func main() {
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
+	handler := cors.Default().Handler(r)
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
-	if err := http.ListenAndServe(":7148", r); err != nil {
+	if err := http.ListenAndServe(":7148", handler); err != nil {
 		log.Fatal("Server failed: ", err)
 	}
 }

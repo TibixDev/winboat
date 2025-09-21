@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
+import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
 import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -8,19 +8,23 @@ import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { WinboatConfig } from "./config";
+import { QMPManager } from "./qmp";
+import { assert } from "@vueuse/core";
+import { setIntervalImmediately } from "../utils/interval";
+
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
-const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
+const path: typeof import('path') = require('path');
+const process: typeof import('process') = require('process');
 const { promisify }: typeof import('util') = require('util');
 const { exec }: typeof import('child_process') = require('child_process');
 const remote: typeof import('@electron/remote') = require('@electron/remote');
 const FormData: typeof import('form-data') = require('form-data');
 
 const execAsync = promisify(exec);
-
-let instance: Winboat | null = null;
-const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
 const USAGE_PATH = path.join(WINBOAT_DIR, 'appUsage.json');
+const QMP_PORT = 7149;
+export const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
 
 const presetApps: WinApp[] = [
     {
@@ -47,6 +51,8 @@ export const ContainerStatus = {
     "Exited": "exited",
     "Dead": "dead"
 } as const;
+
+const QMP_WAIT_MS = 2000;
 
 type ContainerStatusValue = typeof ContainerStatus[keyof typeof ContainerStatus];
 
@@ -152,14 +158,19 @@ class AppManager {
 }
 
 export class Winboat {
+    private static instance: Winboat;
+    // Update Intervals
     #healthInterval: NodeJS.Timeout | null = null;
-    isOnline: Ref<boolean> = ref(false);
-    isUpdatingGuestServer: Ref<boolean> = ref(false);
     #containerInterval: NodeJS.Timeout | null = null;
-    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited)
-    containerActionLoading: Ref<boolean> = ref(false)
     #metricsInverval: NodeJS.Timeout | null = null;
     #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
+    #qmpInterval: NodeJS.Timeout | null = null;
+
+    // Variables
+    isOnline: Ref<boolean> = ref(false);
+    isUpdatingGuestServer: Ref<boolean> = ref(false);
+    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited)
+    containerActionLoading: Ref<boolean> = ref(false)
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
@@ -179,21 +190,25 @@ export class Winboat {
     })
     #wbConfig: WinboatConfig | null = null
     appMgr: AppManager | null = null
+    qmpMgr: QMPManager | null = null
 
     constructor() {
-        if (instance) return instance;
+        if (Winboat.instance) {
+            return Winboat.instance;
+        }
         
         // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
             const _containerStatus = await this.getContainerStatus();
+
             if (_containerStatus !== this.containerStatus.value) {
                 this.containerStatus.value = _containerStatus;
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
                 if (_containerStatus === ContainerStatus.Running) {
-                    this.createAPIInvervals();
+                    await this.createAPIInvervals();
                 } else {
-                    this.destroyAPIInvervals();
+                    await this.destroyAPIInvervals();
                 }
             }
         }, 1000);
@@ -202,20 +217,21 @@ export class Winboat {
 
         this.appMgr = new AppManager();
 
-        instance = this;
+        Winboat.instance = this;
 
-        return instance;
+        return Winboat.instance;
     }
 
     /**
      * Creates the intervals which rely on the Winboat Guest API.
      */
-    createAPIInvervals() {
+    async createAPIInvervals() {
         logger.info("Creating Winboat API intervals...");
         const HEALTH_WAIT_MS = 1000;
         const METRICS_WAIT_MS = 1000;
         const RDP_STATUS_WAIT_MS = 1000;
 
+        // *** Health Interval ***
         // Make sure we don't have any existing intervals
         if (this.#healthInterval) {
             clearInterval(this.#healthInterval);
@@ -234,6 +250,7 @@ export class Winboat {
             }
         }, HEALTH_WAIT_MS);
 
+        // *** Metrics Interval ***
         // Make sure we don't have any existing intervals
         if (this.#metricsInverval) {
             clearInterval(this.#metricsInverval);
@@ -241,10 +258,12 @@ export class Winboat {
         }
 
         this.#metricsInverval = setInterval(async () => {
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking metrics
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
             this.metrics.value = await this.getMetrics();
         }, METRICS_WAIT_MS);
 
+        // *** RDP Connection Status Interval ***
         // Make sure we don't have any existing intervals
         if (this.#rdpConnectionStatusInterval) {
             clearInterval(this.#rdpConnectionStatusInterval);
@@ -252,8 +271,8 @@ export class Winboat {
         }
 
         this.#rdpConnectionStatusInterval = setInterval(async () => {
-            // If the guest is offline, don't even bother checking RDP status
-            if (!this.isOnline.value) return;
+            // If the guest is offline or updating, don't bother checking RDP status
+            if (!this.isOnline.value || this.isUpdatingGuestServer.value) return;
 
             // If RDP monitoring is disabled, don't check status, just set it to false
             if (!this.#wbConfig?.config.rdpMonitoringEnabled) {
@@ -268,13 +287,25 @@ export class Winboat {
                 logger.info(`RDP connection status changed to ${_rdpConnected ? 'connected' : 'disconnected'}`);
             }
         }, RDP_STATUS_WAIT_MS);
+
+        // *** QMP Interval ***
+        // Make sure we don't have any existing intervals
+        if (this.#qmpInterval) {
+            clearInterval(this.#qmpInterval);
+            this.#qmpInterval = null;
+        }
+
+        // TODO: Remove if statement once this feature gets rolled out.
+        if(this.#wbConfig?.config.experimentalFeatures) {
+            this.createQMPInterval();
+        }
     }
 
     /**
      * Destroys the intervals which rely on the Winboat Guest API.
      * This is called when the container is in any state other than Running.
      */
-    destroyAPIInvervals() {
+    async destroyAPIInvervals() {
         logger.info("Destroying Winboat API intervals...");
         if (this.#healthInterval) {
             clearInterval(this.#healthInterval);
@@ -293,6 +324,23 @@ export class Winboat {
             this.#rdpConnectionStatusInterval = null;
             // Side-effect: Set rdpConnected to false
             this.rdpConnected.value = false;
+        }
+
+        if (this.#qmpInterval) {
+            clearInterval(this.#qmpInterval);
+            this.#qmpInterval = null;
+
+            // Side effect: We must destroy the QMP Manager
+            try {
+                if (this.qmpMgr && await this.qmpMgr.isAlive()) {
+                    this.qmpMgr.qmpSocket.destroy();
+                }
+                this.qmpMgr = null;
+                logger.info("[destroyAPIInvervals] QMP Manager destroyed because container is no longer running");
+            } catch(e) {
+                logger.error("[destroyAPIInvervals] Failed to destroy QMP Manager");
+                logger.error(e);
+            }
         }
     }
 
@@ -340,6 +388,42 @@ export class Winboat {
             username: compose.services.windows.environment.USERNAME,
             password: compose.services.windows.environment.PASSWORD
         }
+    }
+
+    async #connectQMPManager() {
+        try {
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", QMP_PORT).catch(e => {logger.error(e); throw e});
+            const capabilities = await this.qmpMgr.executeCommand("qmp_capabilities");
+            assert("return" in capabilities);
+
+            const commands = await this.qmpMgr.executeCommand("query-commands");
+
+            // @ts-ignore property "result" already exists due to assert
+            assert(commands.return.every(x => "name" in x));
+        } catch(e) {
+            logger.error("There was an error connecting to QMP");
+            logger.error(e);
+        }
+    }
+
+    createQMPInterval() {
+        logger.info("[createQMPInterval] Creating new QMP Interval");
+        this.#qmpInterval = setIntervalImmediately(async () => {
+            if(!this.#wbConfig?.config.experimentalFeatures) {
+                clearInterval(this.#qmpInterval!);
+                this.#qmpInterval = null;
+                logger.info("[QMPInterval] Destroying self because experimentalFeatures was turned off")
+            }
+
+            // If QMP already exists and healthy, we're good
+            if (this.qmpMgr && await this.qmpMgr.isAlive()) return;
+
+            // Otherwise, connect to it since the container is alive but
+            // QMP either doesn't exist or is disconnected
+            await this.#connectQMPManager();
+            logger.info("[QMPInterval] Created new QMP Manager");
+            
+        }, QMP_WAIT_MS);
     }
 
     async startContainer() {
@@ -438,6 +522,7 @@ export class Winboat {
 
         // 5. Deploy the container with the new compose file
         await execAsync(`docker compose -f ${composeFilePath} up -d`);
+
         logger.info("Replace compose config completed, successfully deployed new container");
 
         this.containerActionLoading.value = false;
@@ -457,11 +542,8 @@ export class Winboat {
         // 3. Remove the container volume
         await execAsync("docker volume rm winboat_data");
         console.info("Removed volume");
-        
-        // 4. Close logger
-        logger.close();
 
-        // 5. Remove WinBoat directory
+        // 4. Remove WinBoat directory
         fs.rmSync(WINBOAT_DIR,  { recursive: true, force: true });
         console.info(`Removed ${WINBOAT_DIR}`);
         console.info("So long and thanks for all the fish!");
@@ -471,15 +553,22 @@ export class Winboat {
         if (!this.isOnline) throw new Error('Cannot launch app, Winboat is offline');
 
         const { username, password } = this.getCredentials();
+        const compose = this.parseCompose();
+        const rdpPortEntry = compose.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
+        const rdpPort = rdpPortEntry?.split(":")?.at(0) ?? RDP_PORT.toString();
+
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
         
         const freeRDPBin = await getFreeRDP();
 
         logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
 
+        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
+
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
+        /port:${rdpPort}\
         /cert:ignore\
         +clipboard\
         -wallpaper\
@@ -489,13 +578,14 @@ export class Winboat {
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
         /scale:${this.#wbConfig?.config.scale ?? 100}\
-        /wm-class:"${app.Name}"\
-        /app:program:"${app.Path}",name:"${app.Name}" &`;
+        /wm-class:"${cleanAppName}"\
+        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
                 /p:"${password}"\
                 /v:127.0.0.1\
+                /port:${rdpPort}\
                 /cert:ignore\
                 +clipboard\
                 +f\
@@ -537,9 +627,11 @@ export class Winboat {
         // 3. Set update flag & grab winboat_guest_server.zip from Electron assets
         this.isUpdatingGuestServer.value = true;
         const zipPath = remote.app.isPackaged
-            ? path.join(remote.app.getAppPath(), 'guest_server', 'winboat_guest_server.zip')
+            ? path.join(process.resourcesPath, 'guest_server', 'winboat_guest_server.zip')
             : path.join(remote.app.getAppPath(), '..', '..', 'guest_server', 'winboat_guest_server.zip');
 
+        logger.info("ZIP Path", zipPath)
+        
         // 4. Send the payload to the guest server, as a multipart/form-data with updateFile
         const formData = new FormData();
         formData.append('updateFile', fs.createReadStream(zipPath));
@@ -575,5 +667,12 @@ export class Winboat {
 
         // Done!
         this.isUpdatingGuestServer.value = false;
+    }
+
+    /**
+     * Whether or not the Winboat singleton has a QMP interval active
+     */
+    get hasQMPInterval() {
+        return this.#qmpInterval !== null;
     }
 }

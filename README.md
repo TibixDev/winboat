@@ -44,6 +44,7 @@ Before running WinBoat, ensure your system meets the following requirements:
   - [How to enable virtualization](https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web)
 - **Docker**: Required for containerization
   - [Installation Guide](https://docs.docker.com/engine/install/)
+  - **⚠️ NOTE:** Docker Desktop is **not** supported, you will run into issues if you use it
 - **Docker Compose v2**: Required for compatibility with docker-compose.yml files
   - [Installation Guide](https://docs.docker.com/compose/install/#plugin-linux-only)
 - **Docker User Group**: Add your user to the `docker` group
@@ -54,9 +55,11 @@ Before running WinBoat, ensure your system meets the following requirements:
   - [Module loading instructions](https://rentry.org/rmfq2e5e)
 
 ## Downloading
-You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer two variants:
+You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer four variants:
 - **AppImage:** A popular & portable app format which should run fine on most distributions
 - **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
+- **.deb:** The intended format for Debian based distributions
+- **.rpm:** The intended format for Fedora based distributions
 
 ## Known Issues About Container Runtimes
 - Podman is **unsupported** for now
@@ -104,8 +107,18 @@ They're awesome and you should check them out:
 - [dockur/windows](https://github.com/dockur/windows) (🌟 Also used in WinBoat)
 
 ## Socials & Contact
-- 🌐 **Website**: [winboat.app](https://www.winboat.app/)
-- 🐦 **Twitter/X**: [@winboat_app](https://x.com/winboat_app)
-- 🦋 **Bluesky**: [winboat.app](http://bsky.app/profile/winboat.app)
-- 🗨️ **Discord**: [Join our community](http://discord.gg/MEwmpWm4tN)
-- 📧 **Email**: [staff@winboat.app](mailto:staff@winboat.app)
+- [![Website](https://img.shields.io/badge/Website-winboat.app-blue?style=flat&logo=googlechrome&logoColor=white)](https://www.winboat.app/)
+- [![Twitter](https://img.shields.io/badge/Twitter-@winboat__app-1DA1F2?style=flat&logo=x&logoColor=white)](https://x.com/winboat_app)
+- [![Mastodon](https://img.shields.io/badge/Mastodon-@winboat-6364FF?style=flat&logo=mastodon&logoColor=white)](https://fosstodon.org/@winboat)
+- [![Bluesky](https://img.shields.io/badge/Bluesky-winboat.app-00A8E8?style=flat&logo=bluesky&logoColor=white)](http://bsky.app/profile/winboat.app)
+- [![Discord](https://img.shields.io/badge/Discord-Join_Community-5865F2?style=flat&logo=discord&logoColor=white)](http://discord.gg/MEwmpWm4tN)
+- [![Email](https://img.shields.io/badge/Email-staff@winboat.app-D14836?style=flat&logo=gmail&logoColor=white)](mailto:staff@winboat.app)
+
+## Star History
+<a href="https://www.star-history.com/#tibixdev/winboat&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
+ </picture>
+</a>

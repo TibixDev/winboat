@@ -42,7 +42,7 @@ else
 fi
 
 # Build the guest server
-go build -ldflags="${LDFLAGS[*]}" -o winboat_guest_server.exe main.go
+go build -ldflags="${LDFLAGS[*]}" -o winboat_guest_server.exe *.go
 rm -f winboat_guest_server.zip
 zip -r winboat_guest_server.zip .
 

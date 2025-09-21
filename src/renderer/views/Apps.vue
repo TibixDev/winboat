@@ -59,10 +59,26 @@
             </footer>
         </dialog>
         
-        <div class="flex justify-between items-center mb-6">
+        <div
+            class="flex justify-between items-center mb-6"
+            :class="{
+                'opacity-50 pointer-events-none':
+                    winboat.containerStatus.value !== ContainerStatus.Running ||
+                    !winboat.isOnline.value
+            }"
+        >
             <x-label class="text-neutral-300">Apps</x-label>
             <div class="flex flex-row gap-2 justify-center items-center">
-                <!-- custom app plus btn -->
+                <!-- Refresh button -->
+                <x-button
+                    class="flex flex-row gap-1 items-center"
+                    @click="refreshApps"
+                >
+                    <Icon icon="mdi:refresh" class="size-4"></Icon>
+                    <x-label>Refresh</x-label>
+                </x-button>
+
+                <!-- Custom App Add Button -->
                 <x-button
                     class="flex flex-row gap-1 items-center"
                     @click="addCustomAppDialog!.showModal()"
@@ -70,8 +86,10 @@
                     <x-icon href="#add" class="qualifier"></x-icon>
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
-                 
-                <x-select @change="(e: any) => sortBy = e.detail.newValue">
+                <x-select 
+                    @change="(e: any) => sortBy = e.detail.newValue"
+                    :disabled="!winboat.isOnline.value"
+                >
                     <x-menu class="">
                         <x-menuitem value="name" toggled>
                             <x-icon href="#sort" class="qualifier"></x-icon>
@@ -92,6 +110,9 @@
                         </x-menuitem>
                     </x-menu>
                 </x-select>
+
+
+                <!-- Search Input -->
                 <x-input
                     id="search-term"
                     class="m-0 w-64 max-w-64"
@@ -99,6 +120,7 @@
                     maxlength="32"
                     :value="searchInput"
                     @input="(e: any) => searchInput = e.target.value"
+                    :disabled="!winboat.isOnline.value"
                 >
                     <x-icon href="#search"></x-icon>
                     <x-label>Search</x-label>
@@ -184,19 +206,11 @@ const computedApps = computed(() => {
 })
 
 onMounted(async () => {
-    if (winboat.isOnline.value) {
-        apps.value = await winboat.appMgr!.getApps();
-
-        // Run in background, won't impact UX
-        await winboat.appMgr!.updateAppCache();
-        if(winboat.appMgr!.appCache.length > apps.value.length) {
-            apps.value = winboat!.appMgr!.appCache;
-        }
-    }
+    await refreshApps();
 
     watch(winboat.isOnline, async (newVal, _) => {
         if (newVal) {
-            apps.value = await winboat.appMgr!.getApps();
+            await refreshApps();
             console.log("Apps list: ", apps.value);
         }
     })
@@ -206,6 +220,17 @@ onMounted(async () => {
         await debouncedFetchIcon(newVal, oldVal);
     })
 })
+
+async function refreshApps() {
+    if (winboat.isOnline.value) {
+        apps.value = await winboat.appMgr!.getApps();
+        // Run in background, won't impact UX
+        await winboat.appMgr!.updateAppCache();
+        if(winboat.appMgr!.appCache.length !== apps.value.length) {
+            apps.value = winboat!.appMgr!.appCache;
+        }
+    }
+}
 
 const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {            
     if (newVal !== oldVal && newVal !== '') {

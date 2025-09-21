@@ -6,7 +6,7 @@ const compileTs = require('./private/tsc');
 
 function buildRenderer() {
     return Vite.build({
-        configFile: Path.join(__dirname, '..', 'vite.config.js'),
+        configFile: Path.join(__dirname, '..', 'vite.config.ts'),
         base: './',
         mode: 'production'
     });
