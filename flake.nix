@@ -92,7 +92,7 @@
           inherit version;
           
           src = pkgs.fetchurl {
-            url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}.AppImage";
+            url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}-x86_64.AppImage";
             sha256 = "sha256-XxUrwxw/Thv+amiv2/hGW5K12JgPtNiPdCg+7e+o788=";
           };
           
@@ -105,7 +105,7 @@
               pname = "winboat";
               inherit version;
               src = pkgs.fetchurl {
-                url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}.AppImage";
+                url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}-x86_64.AppImage";
                 sha256 = "sha256-XxUrwxw/Thv+amiv2/hGW5K12JgPtNiPdCg+7e+o788=";
               };
             };
