@@ -11,13 +11,17 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         
+        # Read version from package.json
+        packageJson = builtins.fromJSON (builtins.readFile ./package.json);
+        version = packageJson.version;
+        
         # Node.js dependencies for building
         nodejs = pkgs.nodejs_20;
         
         # Build the Electron app
         winboat-electron = pkgs.stdenv.mkDerivation rec {
           pname = "winboat";
-          version = "0.7.2";
+          inherit version;
           
           src = ./.;
           
@@ -85,10 +89,10 @@
         # AppImage version (downloads pre-built release)
         winboat-appimage = pkgs.appimageTools.wrapType2 {
           pname = "winboat";
-          version = "0.7.2";
+          inherit version;
           
           src = pkgs.fetchurl {
-            url = "https://github.com/TibixDev/winboat/releases/download/v0.7.2/winboat-0.7.2.AppImage";
+            url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}.AppImage";
             sha256 = "sha256-XxUrwxw/Thv+amiv2/hGW5K12JgPtNiPdCg+7e+o788=";
           };
           
@@ -99,9 +103,9 @@
           extraInstallCommands = let
             appimageContents = pkgs.appimageTools.extract {
               pname = "winboat";
-              version = "0.7.2";
+              inherit version;
               src = pkgs.fetchurl {
-                url = "https://github.com/TibixDev/winboat/releases/download/v0.7.2/winboat-0.7.2.AppImage";
+                url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}.AppImage";
                 sha256 = "sha256-XxUrwxw/Thv+amiv2/hGW5K12JgPtNiPdCg+7e+o788=";
               };
             };
