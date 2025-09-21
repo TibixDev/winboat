@@ -64,13 +64,29 @@
               cp dist/*.AppImage $out/bin/winboat.AppImage
               chmod +x $out/bin/winboat.AppImage
               
-              makeWrapper $out/bin/winboat.AppImage $out/bin/winboat \
+              # Create a wrapper script that runs winboat with proper docker group
+              cat > $out/bin/winboat << 'EOF'
+#!/bin/bash
+exec sg docker -c "$out/bin/winboat.AppImage $*"
+EOF
+              chmod +x $out/bin/winboat
+              
+              # Also create the original wrapper for direct access
+              makeWrapper $out/bin/winboat.AppImage $out/bin/winboat-direct \
                 --prefix PATH : ${pkgs.freerdp3}/bin
             else
               # If no AppImage, install the unpacked electron app
               cp -r dist/linux-unpacked $out/lib/winboat
               
-              makeWrapper ${pkgs.electron}/bin/electron $out/bin/winboat \
+              # Create a wrapper script that runs electron with proper docker group
+              cat > $out/bin/winboat << 'EOF'
+#!/bin/bash
+exec sg docker -c "${pkgs.electron}/bin/electron $out/lib/winboat/resources/app $*"
+EOF
+              chmod +x $out/bin/winboat
+              
+              # Also create the original wrapper for direct access
+              makeWrapper ${pkgs.electron}/bin/electron $out/bin/winboat-direct \
                 --add-flags "$out/lib/winboat/resources/app" \
                 --prefix PATH : ${pkgs.freerdp3}/bin
             fi
