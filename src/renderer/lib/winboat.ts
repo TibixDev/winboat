@@ -1,12 +1,13 @@
 import { ref, type Ref } from "vue";
-import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
-import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp } from "../../types";
+import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API, NOVNC_URL } from "./constants";
+import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCommands } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from 'yaml';
 import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { openLink } from '../utils/openLink';
 import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
@@ -40,8 +41,25 @@ const presetApps: WinApp[] = [
         Source: "internal",
         Path: "%windir%\\explorer.exe",
         Usage: 0
+    },
+    {
+        Name: "🖥️ Browser Display",
+        Icon: AppIcons[InternalApps.NOVNC_BROWSER],
+        Source: "internal",
+        Path: NOVNC_URL,
+        Usage: 0
     }
-]
+];
+
+/**
+ * For specifying custom behavior when launching an app (e.g. novnc)
+ * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
+ */
+const customAppCommands: CustomAppCommands = {
+    [NOVNC_URL]: () => {
+        openLink(NOVNC_URL);
+    }
+}
 
 export const ContainerStatus = {
     "Created": "created",
@@ -551,6 +569,12 @@ export class Winboat {
 
     async launchApp(app: WinApp) {
         if (!this.isOnline) throw new Error('Cannot launch app, Winboat is offline');
+
+        if(customAppCommands[app.Path]) {
+            logger.info(`Found custom app command for '${app.Name}'`);
+            customAppCommands[app.Path]!();
+            return;
+        }
 
         const { username, password } = this.getCredentials();
         const compose = this.parseCompose();
