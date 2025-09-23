@@ -33,6 +33,10 @@ export type WinApp = {
     Usage?: number;
 }
 
+export type CustomAppCommands = {
+    [key: string]: null | (() => void);
+};
+
 export type ComposeConfig = {
     name: string;
     volumes: {
