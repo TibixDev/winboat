@@ -573,6 +573,8 @@ export class Winboat {
         if(customAppCommands[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
             customAppCommands[app.Path]!();
+            this.appMgr?.incrementAppUsage(app);
+            this.appMgr?.writeToDisk();
             return;
         }
 
