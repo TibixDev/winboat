@@ -109,7 +109,7 @@ EOF
         };
         
         # AppImage version (downloads pre-built release)
-        winboat-appimage = pkgs.appimageTools.wrapType2 {
+        winboat-appimage = pkgs.stdenv.mkDerivation {
           pname = "winboat";
           inherit version;
           
@@ -117,12 +117,12 @@ EOF
             url = appImageUrl;
             sha256 = appImageSha256;
           };
-          
-          extraPkgs = pkgs: with pkgs; [
-            freerdp3
-          ];
-          
-          extraInstallCommands = let
+
+          nativeBuildInputs = with pkgs; [ makeWrapper ];
+
+          unpackPhase = "true";
+
+          installPhase = let
             appimageContents = pkgs.appimageTools.extract {
               pname = "winboat";
               inherit version;
@@ -131,7 +131,29 @@ EOF
                 sha256 = appImageSha256;
               };
             };
+            wrappedAppImage = pkgs.appimageTools.wrapType2 {
+              pname = "winboat";
+              inherit version;
+              src = pkgs.fetchurl {
+                url = appImageUrl;
+                sha256 = appImageSha256;
+              };
+              extraPkgs = pkgs: with pkgs; [ freerdp3 usbutils ];
+            };
           in ''
+            mkdir -p $out/bin $out/share/applications
+
+            # Create a wrapper script that runs the AppImage with proper docker group
+            cat > $out/bin/winboat << 'EOF'
+            #!/bin/bash
+            exec sg docker -c "${wrappedAppImage}/bin/winboat $*"
+            EOF
+            chmod +x $out/bin/winboat
+
+            # Also create the original wrapper for direct access
+            makeWrapper ${wrappedAppImage}/bin/winboat $out/bin/winboat-direct \
+              --prefix PATH : ${pkgs.freerdp3}/bin                
+
             # Install desktop entry
             mkdir -p $out/share/applications
             cat > $out/share/applications/winboat.desktop << EOF
