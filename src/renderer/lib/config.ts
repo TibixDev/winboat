@@ -61,6 +61,11 @@ export class WinboatConfig {
 
     readConfig(): WinboatConfigObj {
         if (!fs.existsSync(this.#configPath)) {
+            // Also the create the directory because we're not guaranteed to have it
+            if (!fs.existsSync(WINBOAT_DIR)) {
+                fs.mkdirSync(WINBOAT_DIR);
+            }
+
             fs.writeFileSync(this.#configPath, JSON.stringify(defaultConfig, null, 4), "utf-8");
             return { ...defaultConfig };
         }
