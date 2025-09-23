@@ -64,8 +64,6 @@ You can download the latest Linux builds under the [Releases](https://github.com
     1. Add to your flake `inputs.winboat.url = "github:TibixDev/winboat";`
     2. Add `inputs.winboat.packages.${system}.default` to `environment.systemPackages` or `home.packages`
 
-
-
 ## Known Issues About Container Runtimes
 - Podman is **unsupported** for now
 - Docker Desktop is **unsupported** for now
