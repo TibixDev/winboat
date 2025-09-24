@@ -380,7 +380,24 @@
                             </div>
         
                             <div>
-                                <label for="select-disk" class="text-sm text-neutral-400">Select Disk Size</label>
+                                <label for="select-disk" class="text-sm text-neutral-400">
+                                    Select Disk Size
+                                    <span
+                                        v-if="specs.diskSpaceGB - diskSpaceGB < 5"
+                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
+                                    >
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        Warning
+                                        <span
+                                            class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                        >
+                                            You're about to allocate most of your remaining disk space with less than 5GB in excess.
+                                            You currently have ~{{ specs.diskSpaceGB }} GB of disk space available in /var.
+                                            If you continue with this disk size, you may run out of space and encounter unexpected issues.
+                                        </span>
+                                    </span>
+                                </label>
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-disk"
