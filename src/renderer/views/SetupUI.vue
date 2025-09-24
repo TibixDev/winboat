@@ -470,7 +470,16 @@
                          <div v-if="installState === InstallStates.INSTALL_ERROR" class="flex flex-col h-full items-center justify-center gap-4">
                             <Icon icon="line-md:alert" class="size-16 text-red-500"></Icon>
                             <x-label class="text-lg text-gray-400 text-center">
-                                An error occurred while installing Windows. Please check the logs in <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span> for more information.
+                                An error occurred while installing Windows. Please check the logs in
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
+                                and verify
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker logs WinBoat</span>
+                                in your terminal for more information.
+                            </x-label>
+                            <x-label class="text-lg text-gray-400 text-center">
+                                To reset and try again, follow
+                                <a href="https://rentry.org/winboat_retry_install" @click="openAnchorLink">these</a>
+                                instructions.
                             </x-label>
                         </div>
 
