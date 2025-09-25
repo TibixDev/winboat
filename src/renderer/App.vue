@@ -26,7 +26,7 @@
                     <ol class="mt-2 list-decimal list-inside">
                         <li>
                             Use VNC over at 
-                            <a @click="openAnchorLink" href="http://127.0.0.1:8006/" target="_blank" rel="noopener noreferrer">http://127.0.0.1:8006/</a>
+                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">{{ novncURL }}</a>
                             to access Windows
                         </li>
                         <li>Press Win + R or search for <code>Run</code>, type in <code>services.msc</code></li>
@@ -134,6 +134,7 @@ import { Winboat } from './lib/winboat';
 import { openAnchorLink } from './utils/openLink';
 import { WinboatConfig } from './lib/config';
 import { USBManager } from './lib/usbmanager';
+import { GUEST_NOVNC_PORT, NOVNC_URL } from './lib/constants';
 const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
 const os: typeof import('os') = require('os')
 const path: typeof import('path') = require('path')
@@ -150,10 +151,9 @@ const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef('updateDialog');
 const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
+const novncURL = ref("");
 
 onMounted(async () => {
-    console.log("WinBoat app path:", path.join(remote.app.getAppPath(), "..", ".."));
-
     new USBManager(); // Instantiate singleton class
     const winboatInstalled = await isInstalled();
     if (!winboatInstalled) {
@@ -168,8 +168,8 @@ onMounted(async () => {
     // Watch for guest server updates and show dialog
     watch(() => winboat?.isUpdatingGuestServer.value, (isUpdating) => {
         if (isUpdating === true) {
+            novncURL.value = `http://127.0.0.1:${winboat?.getHostPort(GUEST_NOVNC_PORT)}`;
             updateDialog.value!.showModal();
-            
             // Prepare the timeout to show manual update required after 45 seconds
             updateTimeout = setTimeout(() => {
                 manualUpdateRequired.value = true;
