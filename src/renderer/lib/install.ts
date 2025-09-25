@@ -1,5 +1,5 @@
 import { type ComposeConfig, type InstallConfiguration } from "../../types";
-import { WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
+import { RESTART_ON_FAILURE, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
 import YAML from "json-to-pretty-yaml";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
@@ -47,7 +47,7 @@ export const DefaultCompose: ComposeConfig = {
                 "3389:3389/udp" // RDP
             ],
             "stop_grace_period": "120s",
-            "restart": "on-failure",
+            "restart": RESTART_ON_FAILURE,
             "volumes": [
                 "data:/storage",
                 "${HOME}:/shared",

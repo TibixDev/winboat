@@ -67,3 +67,9 @@ export const USB_VID_BLACKLIST = [
     // Linux Foundation VID
     "1d6b:"
 ];
+
+// Docker Restart Policies
+export const RESTART_UNLESS_STOPPED = "unless-stopped";
+export const RESTART_ON_FAILURE = "on-failure";
+export const RESTART_ALWAYS = "always";
+export const RESTART_NO = "no";
