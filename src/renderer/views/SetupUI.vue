@@ -676,7 +676,6 @@ const passwordErrors = computed(() => {
     return errors;
 })
 
-
 function selectIsoFile() {
     electron.dialog.showOpenDialog({
         title: 'Select ISO File',

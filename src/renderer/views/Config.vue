@@ -408,6 +408,7 @@ import {
     RESTART_ON_FAILURE,
     RESTART_NO
 } from '../lib/constants';
+import { getHostPortFromCompose } from '../utils/port';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 // Emits
@@ -419,8 +420,8 @@ const usbManager = new USBManager();
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
-const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off";
-const QMP_PORT = "7149";
+const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
+const GUEST_QMP_PORT = "7149";
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -525,6 +526,8 @@ async function saveDockerCompose() {
  * to the Docker Compose file if they don't already exist
  */
 async function addRequiredComposeFieldsUSB() {
+    const hostQmpPort = getHostQmpPort(compose);
+
     if (!usbPassthroughDisabled.value) {
         return;
     }
@@ -535,7 +538,7 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
     if(!hasQmpPort(compose)) {
-        compose.value!.services.windows.ports.push(`${QMP_PORT}:${QMP_PORT}`);
+        compose.value!.services.windows.ports.push(`${hostQmpPort}:${GUEST_QMP_PORT}`);
     }
 
     if(!compose.value!.services.windows.environment.ARGUMENTS) {
@@ -550,7 +553,7 @@ async function addRequiredComposeFieldsUSB() {
     }
     if(!hasHostPort(compose)) {
         const delimeter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? '' : ',';
-        compose.value!.services.windows.environment.HOST_PORTS += delimeter + QMP_PORT;
+        compose.value!.services.windows.environment.HOST_PORTS += delimeter + GUEST_QMP_PORT;
     }
     
     await saveDockerCompose();
@@ -580,10 +583,11 @@ const errors = computed(() => {
     return errCollection;
 })
 
+const getHostQmpPort = (_compose: typeof compose) => getHostPortFromCompose(GUEST_QMP_PORT, _compose.value!)
 const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
 const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
-const hasQmpPort = (_compose: typeof compose) => _compose.value?.services.windows.ports?.includes(`${QMP_PORT}:${QMP_PORT}`)
-const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(QMP_PORT);
+const hasQmpPort = (_compose: typeof compose) => _compose.value?.services.windows.ports?.includes(`${getHostQmpPort(_compose)}:${GUEST_QMP_PORT}`)
+const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
 
 const usbPassthroughDisabled = computed(() => {
     return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort(compose) || !hasHostPort(compose);

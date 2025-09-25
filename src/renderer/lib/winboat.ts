@@ -12,6 +12,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
+import { getHostPortFromCompose } from "../utils/port";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const fs: typeof import('fs') = require('fs');
@@ -398,6 +399,17 @@ export class Winboat {
         const composeFile = fs.readFileSync(path.join(WINBOAT_DIR, 'docker-compose.yml'), 'utf-8');
         const composeContents = YAML.parse(composeFile) as ComposeConfig;
         return composeContents;
+    }
+
+    /**
+     * Returns the host port that maps to the given guest port
+     * 
+     * @param guestPort The port that gets looked up
+     * @returns The host port that maps to the given guest port, or null if not found
+     */
+    getHostPort(guestPort: number | string): number | null {
+        const compose = this.parseCompose();
+        return getHostPortFromCompose(guestPort, compose);
     }
 
     getCredentials() {
