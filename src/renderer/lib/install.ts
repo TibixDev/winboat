@@ -21,7 +21,7 @@ export const DefaultCompose: ComposeConfig = {
     },
     "services": {
         "windows": {
-            "image": "ghcr.io/dockur/windows:4.35",
+            "image": "ghcr.io/dockur/windows:5.03",
             "container_name": "WinBoat",
             "environment": {
                 "VERSION": "11",
@@ -33,7 +33,7 @@ export const DefaultCompose: ComposeConfig = {
                 "HOME": "${HOME}",
                 "LANGUAGE": "English",
                 "HOST_PORTS": "7149",
-                "ARGUMENTS": "-cpu host,arch_capabilities=off \n-qmp tcp:0.0.0.0:7149,server,wait=off\n"
+                "ARGUMENTS": "-qmp tcp:0.0.0.0:7149,server,wait=off"
             },
             "cap_add": [
                 "NET_ADMIN"
