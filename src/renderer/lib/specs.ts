@@ -137,6 +137,18 @@ export async function getSpecs() {
         console.error('Error checking iptable_nat module:', e);
     }
 
+    if (!specs.ipTablesLoaded) {
+        try {
+            const { stdout: nftablesOutput } = await execAsync('lsmod | grep nf_tables');
+            if (nftablesOutput.trim().length > 0) {
+                specs.ipTablesLoaded = true;
+                specs.iptableNatLoaded = true;
+            }
+        } catch (e) {
+            console.error('Error checking nf_tables module:', e);
+        }
+    }
+
     console.log('Specs:', specs);
     return specs;
 }
