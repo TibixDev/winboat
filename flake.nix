@@ -19,7 +19,7 @@
         appImageUrl = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}-x86_64.AppImage";
         
         # SHA256 placeholder - will be updated by GitHub workflow on release
-        appImageSha256 = "sha256-MGVTA1c8duyDG8jyCrohQ5z5SMitVgMvMyc8heVkdA4=";
+        appImageSha256 = "sha256-UdzRw3dpggI4aF9DTrrBo9J1dn2tYcY7cQMrMIf51gI=";
         
         # Node.js dependencies for building
         nodejs = pkgs.nodejs_20;
