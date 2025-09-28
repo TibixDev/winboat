@@ -62,4 +62,4 @@ jobs:
 
             git add flake.nix || true
             git commit -m "chore: update flake.nix for version ${VERSION}" || echo "No changes to commit"
-            git push origin HEAD:main || echo "Push failed"
+            git push origin HEAD:nix-support || echo "Push failed"
