@@ -53,5 +53,7 @@ jobs:
             sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" flake.nix
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -am "Update flake.nix for version ${VERSION}"
-            git push origin HEAD:main
+
+            git add flake.nix || true
+            git commit -m "chore: update flake.nix for version ${VERSION}" || echo "No changes to commit"
+            git push origin HEAD:main || echo "Push failed (possible branch protection)"
