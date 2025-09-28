@@ -680,7 +680,6 @@ const passwordErrors = computed(() => {
 })
 
 const novncURL = computed(() => {
-    console.log("getting the vnc port lesgo");
     const port = installManager?.portMgr.value?.getHostPort(GUEST_NOVNC_PORT) ?? GUEST_NOVNC_PORT;
 
     return `http://127.0.0.1:${port}`;

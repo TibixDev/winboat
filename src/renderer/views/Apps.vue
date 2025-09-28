@@ -178,7 +178,7 @@ import { type WinApp } from '../../types';
 import WBContextMenu from '../components/WBContextMenu.vue';
 import WBMenuItem from '../components/WBMenuItem.vue';
 import { AppIcons, DEFAULT_ICON } from '../data/appicons';
-import { WINBOAT_GUEST_API } from '../lib/constants';
+import { GUEST_API_PORT, WINBOAT_GUEST_API } from '../lib/constants';
 import { debounce } from '../utils/debounce';
 import { Jimp, JimpMime } from 'jimp';
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
@@ -192,6 +192,12 @@ const addCustomAppDialog = useTemplateRef('addCustomAppDialog');
 const customAppName = ref('');
 const customAppPath = ref('');
 const customAppIcon = ref(`data:image/png;base64,${AppIcons[DEFAULT_ICON]}`);
+
+const apiURL = computed(() => {
+    const port = winboat.portMgr.value?.getHostPort(GUEST_API_PORT) ?? GUEST_API_PORT;
+
+    return `http://127.0.0.1:${port}`;
+})
 
 const computedApps = computed(() => {
     if (!searchInput.value) return apps.value.sort((a, b) => { 
@@ -223,9 +229,9 @@ onMounted(async () => {
 
 async function refreshApps() {
     if (winboat.isOnline.value) {
-        apps.value = await winboat.appMgr!.getApps();
+        apps.value = await winboat.appMgr!.getApps(apiURL.value);
         // Run in background, won't impact UX
-        await winboat.appMgr!.updateAppCache();
+        await winboat.appMgr!.updateAppCache(apiURL.value);
         if(winboat.appMgr!.appCache.length !== apps.value.length) {
             apps.value = winboat!.appMgr!.appCache;
         }

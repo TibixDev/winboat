@@ -91,7 +91,8 @@ export class PortManager {
         }
 
         // Handle the RDP entries separately since thos are duplicates.
-        if (!PortManager.isPortOpen(RDP_PORT)) {
+        let rdpHostPort = RDP_PORT;
+        if (!PortManager.isPortOpen(rdpHostPort)) {
             const randomOpenPort = await PortManager.getOpenPortInRange(RDP_PORT + 1, RDP_PORT + 101);
 
             if(!randomOpenPort) {
@@ -100,8 +101,10 @@ export class PortManager {
             }
 
             logger.info(`RDP port ${RDP_PORT} is in use, remapping to ${randomOpenPort}`);
-            portManager.ports.set(randomOpenPort, ComposePortEntry.fromPorts(randomOpenPort, RDP_PORT));
+            rdpHostPort = randomOpenPort;
         }
+        portManager.ports.set(RDP_PORT, ComposePortEntry.fromPorts(rdpHostPort, RDP_PORT));
+        
 
         return portManager
     }
@@ -127,6 +130,15 @@ export class PortManager {
         const ret = [];
 
         for(const [_, portEntry] of this.ports.entries()) {
+            if(portEntry.guestPort !== RDP_PORT) {
+                ret.push(portEntry.entry);
+                continue;
+            }
+
+            portEntry.protocol = "tcp";
+            ret.push(portEntry.entry);
+
+            portEntry.protocol = "udp";
             ret.push(portEntry.entry);
         }
 

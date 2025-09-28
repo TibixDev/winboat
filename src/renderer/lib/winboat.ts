@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API, NOVNC_URL } from "./constants";
+import { RDP_PORT, WINBOAT_DIR, NOVNC_URL, GUEST_API_PORT } from "./constants";
 import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCommands } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -12,7 +12,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { PortManager } from "../utils/port";
+import { ComposePortEntry, PortManager } from "../utils/port";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const fs: typeof import('fs') = require('fs');
@@ -88,8 +88,8 @@ class AppManager {
         this.#wbConfig = new WinboatConfig();
     }
 
-    async updateAppCache(options: { forceRead: boolean } = { forceRead: false }) {
-        const res = await nodeFetch(`${WINBOAT_GUEST_API}/apps`);
+    async updateAppCache(apiURL: string, options: { forceRead: boolean } = { forceRead: false }) {
+        const res = await nodeFetch(`${apiURL}/apps`);
         const newApps = await res.json() as WinApp[];
         newApps.push(...presetApps);
         newApps.push(...this.#wbConfig!.config.customApps);
@@ -104,7 +104,7 @@ class AppManager {
         this.appCache = newApps;
     }
 
-    async getApps(): Promise<WinApp[]> {
+    async getApps(apiURL: string): Promise<WinApp[]> {
         if(this.appCache.length > 0) {
             return this.appCache;
         }
@@ -122,7 +122,7 @@ class AppManager {
             });
         }
 
-        await this.updateAppCache({ forceRead: true });
+        await this.updateAppCache(apiURL, { forceRead: true });
 
         const appCacheHumanReadable = this.appCache.map(obj => {
             const res = { ...obj } as any;
@@ -210,7 +210,7 @@ export class Winboat {
     #wbConfig: WinboatConfig | null = null;
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
-    portMgr: PortManager | null = null;
+    portMgr: Ref<PortManager | null> = ref(null);
 
 
     constructor() {
@@ -320,15 +320,6 @@ export class Winboat {
         if(this.#wbConfig?.config.experimentalFeatures) {
             this.createQMPInterval();
         }
-
-        try {
-            const compose = this.parseCompose();
-            this.portMgr = await PortManager.parseCompose(compose);
-        }
-        catch(e) {
-            logger.error("Could not parse port entries from compose");
-            logger.error(e);
-        }
     }
 
     /**
@@ -377,7 +368,10 @@ export class Winboat {
     async getHealth() {
         // If /health returns 200, then the guest is ready
         try {
-            const res = await nodeFetch(`${WINBOAT_GUEST_API}/health`);
+            const apiPort = this.getHostPort(GUEST_API_PORT);
+            const apiUrl = `http://127.0.0.1:${apiPort}`;
+
+            const res = await nodeFetch(`${apiUrl}/health`);
             return res.status === 200;
         } catch(e) {
             return false;
@@ -395,13 +389,18 @@ export class Winboat {
     }
 
     async getMetrics() {
-        const res = await nodeFetch(`${WINBOAT_GUEST_API}/metrics`);
+        const apiPort = this.getHostPort(GUEST_API_PORT);
+        const apiUrl = `http://127.0.0.1:${apiPort}`;
+        const res = await nodeFetch(`${apiUrl}/metrics`);
         const metrics = await res.json() as Metrics;
         return metrics;
     }
 
     async getRDPConnectedStatus() {
-        const res = await nodeFetch(`${WINBOAT_GUEST_API}/rdp/status`);
+
+        const apiPort = this.getHostPort(GUEST_API_PORT);
+        const apiUrl = `http://127.0.0.1:${apiPort}`;
+        const res = await nodeFetch(`${apiUrl}/rdp/status`);
         const status = await res.json() as { rdpConnected: boolean };
         return status.rdpConnected;
     }
@@ -419,7 +418,7 @@ export class Winboat {
      * @returns The host port that maps to the given guest port, or null if not found
      */
     getHostPort(guestPort: number | string): number | null {
-        return this.portMgr?.getHostPort(guestPort) ?? parseInt(guestPort.toString());;
+        return this.portMgr.value?.getHostPort(guestPort) ?? parseInt(guestPort.toString());;
     }
 
     getCredentials() {
@@ -470,6 +469,14 @@ export class Winboat {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
+            const compose = this.parseCompose();
+            this.portMgr.value = await PortManager.parseCompose(compose);
+
+            if(!this.portMgr.value!.composeFormat.every((elem) => compose.services.windows.ports.includes(elem))) {
+                compose.services.windows.ports = this.portMgr.value!.composeFormat;
+                await this.replaceCompose(compose);
+            }
+
             const { stdout } = await execAsync("docker container start WinBoat");
             logger.info(`Container response: ${stdout}`);
         } catch(e) {
@@ -657,7 +664,9 @@ export class Winboat {
 
     async checkVersionAndUpdateGuestServer() {
         // 1. Get the version of the guest server and compare it to the current version
-        const versionRes = await nodeFetch(`${WINBOAT_GUEST_API}/version`);
+        const apiPort = this.getHostPort(GUEST_API_PORT);
+        const apiUrl = `http://127.0.0.1:${apiPort}`;
+        const versionRes = await nodeFetch(`${apiUrl}/version`);
         const version = await versionRes.json() as GuestServerVersion;
 
         const appVersion = import.meta.env.VITE_APP_VERSION;
@@ -685,7 +694,9 @@ export class Winboat {
         formData.append('updateFile', fs.createReadStream(zipPath));
 
         try {
-            const res = await nodeFetch(`${WINBOAT_GUEST_API}/update`, {
+            const apiPort = this.getHostPort(GUEST_API_PORT);
+            const apiUrl = `http://127.0.0.1:${apiPort}`;
+            const res = await nodeFetch(`${apiUrl}/update`, {
                 method: 'POST',
                 body: formData as any
             });
