@@ -408,7 +408,7 @@ import {
     RESTART_ON_FAILURE,
     RESTART_NO
 } from '../lib/constants';
-import { getHostPortFromCompose } from '../utils/port';
+import { PortManager } from '../utils/port';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 // Emits
@@ -583,10 +583,10 @@ const errors = computed(() => {
     return errCollection;
 })
 
-const getHostQmpPort = (_compose: typeof compose) => getHostPortFromCompose(GUEST_QMP_PORT, _compose.value!)
+const getHostQmpPort = (_compose: typeof compose) => PortManager.getHostPortFromCompose(GUEST_QMP_PORT, _compose.value!);
 const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
 const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
-const hasQmpPort = (_compose: typeof compose) => _compose.value?.services.windows.ports?.includes(`${getHostQmpPort(_compose)}:${GUEST_QMP_PORT}`)
+const hasQmpPort = (_compose: typeof compose) => _compose.value?.services.windows.ports?.includes(`${getHostQmpPort(_compose)}:${GUEST_QMP_PORT}`);
 const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
 
 const usbPassthroughDisabled = computed(() => {

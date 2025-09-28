@@ -469,7 +469,7 @@
                         <h1 class="text-3xl font-semibold">Installation</h1>
                         <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour.
-                            In the meantime you can grab coffee and check the status <a href="http://127.0.0.1:8006" @click="openAnchorLink">in your browser</a>.
+                            In the meantime you can grab coffee and check the status <a :href="novncURL" @click="openAnchorLink">{{ novncURL }} in your browser</a>.
                         </p>
     
                         <!-- Installing -->
@@ -522,10 +522,11 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { InstallConfiguration, Specs } from '../../types';
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
+import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, DEFAULT_NOVNC_URL, GUEST_NOVNC_PORT } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
+import { PortManager } from '../utils/port';
 
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
@@ -595,7 +596,7 @@ const steps: Step[] = [
         title: "Finish",
         icon: "bx:bxs-check-circle",
     },
-]
+];
 
 const MIN_CPU_THREADS = 1;
 const MIN_RAM_GB = 2;
@@ -618,6 +619,8 @@ const password = ref("");
 const confirmPassword = ref("");
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
+
+let installManager: InstallManager | null = null;
 
 onMounted(async () => {
     specs.value = await getSpecs();
@@ -676,6 +679,13 @@ const passwordErrors = computed(() => {
     return errors;
 })
 
+const novncURL = computed(() => {
+    console.log("getting the vnc port lesgo");
+    const port = installManager?.portMgr.value?.getHostPort(GUEST_NOVNC_PORT) ?? GUEST_NOVNC_PORT;
+
+    return `http://127.0.0.1:${port}`;
+})
+
 function selectIsoFile() {
     electron.dialog.showOpenDialog({
         title: 'Select ISO File',
@@ -715,10 +725,11 @@ function install() {
         username: username.value,
         password: password.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
-    }
+    };
+
+    installManager = new InstallManager(installConfig);
 
     // Begin installation and attach event listeners
-    const installManager = new InstallManager(installConfig);
     installManager.emitter.on("stateChanged", newState => {
         installState.value = newState;
         console.log("Install state changed", newState);

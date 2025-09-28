@@ -12,7 +12,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { getHostPortFromCompose } from "../utils/port";
+import { PortManager } from "../utils/port";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const fs: typeof import('fs') = require('fs');
@@ -188,8 +188,8 @@ export class Winboat {
     // Variables
     isOnline: Ref<boolean> = ref(false);
     isUpdatingGuestServer: Ref<boolean> = ref(false);
-    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited)
-    containerActionLoading: Ref<boolean> = ref(false)
+    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited);
+    containerActionLoading: Ref<boolean> = ref(false);
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
@@ -206,10 +206,12 @@ export class Winboat {
             total: 0,
             percentage: 0
         }
-    })
-    #wbConfig: WinboatConfig | null = null
-    appMgr: AppManager | null = null
-    qmpMgr: QMPManager | null = null
+    });
+    #wbConfig: WinboatConfig | null = null;
+    appMgr: AppManager | null = null;
+    qmpMgr: QMPManager | null = null;
+    portMgr: PortManager | null = null;
+
 
     constructor() {
         if (Winboat.instance) {
@@ -318,6 +320,15 @@ export class Winboat {
         if(this.#wbConfig?.config.experimentalFeatures) {
             this.createQMPInterval();
         }
+
+        try {
+            const compose = this.parseCompose();
+            this.portMgr = await PortManager.parseCompose(compose);
+        }
+        catch(e) {
+            logger.error("Could not parse port entries from compose");
+            logger.error(e);
+        }
     }
 
     /**
@@ -408,8 +419,7 @@ export class Winboat {
      * @returns The host port that maps to the given guest port, or null if not found
      */
     getHostPort(guestPort: number | string): number | null {
-        const compose = this.parseCompose();
-        return getHostPortFromCompose(guestPort, compose);
+        return this.portMgr?.getHostPort(guestPort) ?? parseInt(guestPort.toString());;
     }
 
     getCredentials() {

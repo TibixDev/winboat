@@ -1,10 +1,10 @@
 import { type ComposeConfig, type InstallConfiguration } from "../../types";
-import { GUEST_NOVNC_PORT, RDP_PORT, RESTART_ON_FAILURE, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
+import { GUEST_API_PORT, GUEST_NOVNC_PORT, RDP_PORT, RESTART_ON_FAILURE, WINBOAT_DIR } from "./constants";
 import YAML from "json-to-pretty-yaml";
+import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
-import { getHostPortFromCompose, getOpenPortInRange, isPortOpen } from "../utils/port";
-import { containsProp } from "@vueuse/core";
+import { PortManager } from "../utils/port";
 const fs: typeof import('fs') = require('fs');
 const { exec }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
@@ -86,12 +86,14 @@ export class InstallManager {
     emitter: Emitter<InstallEvents>;
     state: InstallState;
     preinstallMsg: string;
+    portMgr: Ref<PortManager | null>;
 
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
         this.state = InstallStates.IDLE;
         this.preinstallMsg = ""
         this.emitter = createNanoEvents<InstallEvents>();
+        this.portMgr = ref(null);
     }
 
     changeState(newState: InstallState) {
@@ -111,7 +113,7 @@ export class InstallManager {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async createComposeFile(): Promise<ComposeConfig> {
+    async createComposeFile() {
         this.changeState(InstallStates.CREATING_COMPOSE_FILE);
 
         // Ensure the directory exists
@@ -121,49 +123,10 @@ export class InstallManager {
         }
 
         // Configure the compose file
-        const composeContent = { ...DefaultCompose }
+        const composeContent = { ...DefaultCompose };
+        this.portMgr.value = await PortManager.parseCompose(composeContent);
 
-        // Ensure that the RDP ports are open, and if not, remap them to a random open port
-        if (!isPortOpen(RDP_PORT)) {
-            const randomOpenPort = await getOpenPortInRange(RDP_PORT + 1, RDP_PORT + 101);
-
-            if(!randomOpenPort) {
-                logger.error(`No open port found in range ${RDP_PORT}:${RDP_PORT + 101}`); // TODO: handle this case with a dialog possibly
-            }
-
-            logger.info(`RDP port ${RDP_PORT} is in use, remapping to ${randomOpenPort}`);
-            const newRDPTCP = `${randomOpenPort}:${RDP_PORT}/tcp`;
-            const newRDPUDP = `${randomOpenPort}:${RDP_PORT}/udp`;
-            
-            const rdpTcpIndex = composeContent.services.windows.ports.findIndex(x => x.endsWith(`${RDP_PORT}/tcp`));
-            const rdpUdpIndex = composeContent.services.windows.ports.findIndex(x => x.endsWith(`${RDP_PORT}/udp`));
-        
-            composeContent.services.windows.ports[rdpTcpIndex] = newRDPTCP;
-            composeContent.services.windows.ports[rdpUdpIndex] = newRDPUDP;
-        }
-
-        // Ensure that ports are open, if not, remap them to a random open port
-        for (const portIndex in composeContent.services.windows.ports) {
-            const portEntry = composeContent.services.windows.ports[portIndex].split(":");
-            const hostPort = parseInt(portEntry[0]);
-            const guestPort = portEntry[1];
-
-            if(guestPort.includes(RDP_PORT.toString())) continue;
-
-            if(!await isPortOpen(hostPort)) {
-                const randomOpenPort = await getOpenPortInRange(hostPort + 1, hostPort + 101);
-
-                if(!randomOpenPort) {
-                    logger.error(`No open port found in range ${hostPort}:${hostPort + 101}`); // TODO: handle this case with a dialog possibly
-                }
-                
-                const newPortEntry = `${randomOpenPort}:${guestPort}`;
-                logger.info(`Port ${hostPort} is in use, remapping to ${randomOpenPort}`);
-                
-                composeContent.services.windows.ports[portIndex] = newPortEntry;
-            }
-        }
-
+        composeContent.services.windows.ports = this.portMgr.value.composeFormat;
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuThreads}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
@@ -175,14 +138,12 @@ export class InstallManager {
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
         }
-        
+
         // Write the compose file
         const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");
         fs.writeFileSync(composeFilePath, composeYAML, { encoding: 'utf8' });
         logger.info(`Creating compose file at: ${composeFilePath}`);
         logger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
-
-        return composeContent;
     }
 
     createOEMAssets() {
@@ -271,7 +232,7 @@ export class InstallManager {
         logger.info('Container started successfully.');
     }
 
-    async monitorContainerPreinstall(compose: ComposeConfig) {
+    async monitorContainerPreinstall() {
         // Sleep a bit to make sure the webserver is up in the container
         await this.sleep(3000);
 
@@ -280,7 +241,7 @@ export class InstallManager {
 
         while (true) {
             try {
-                const vncHostPort = getHostPortFromCompose(GUEST_NOVNC_PORT, compose);
+                const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
                 const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`);
                 if (response.status === 404) {
                     logger.info('Received 404, preinstall completed');
@@ -313,7 +274,8 @@ export class InstallManager {
 
         while (true) {
             try {
-                const res = await nodeFetch(`${WINBOAT_GUEST_API}/health`);
+                const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
+                const res = await nodeFetch(`http://127.0.0.1/${apiHostPort}/health`);
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
@@ -335,15 +297,16 @@ export class InstallManager {
         }
     }
 
-
     async install() {
         logger.info('Starting installation...');
-        const composeConfig = await this.createComposeFile();
+
+        await this.createComposeFile();
         this.createOEMAssets();
         await this.startContainer();
-        await this.monitorContainerPreinstall(composeConfig);
+        await this.monitorContainerPreinstall();
         await this.monitorAPIHealth();
         this.changeState(InstallStates.COMPLETED);
+
         logger.info('Installation completed successfully.');
     }
 }
