@@ -53,14 +53,15 @@ jobs:
 
             ESC_HASH=$(printf '%s' "$HASH" | sed -e 's/[\/&]/\\&/g')
 
-            git fetch origin main
-            git merge --no-edit -X theirs origin/main
-
-            sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" flake.nix
             git config user.name "github-actions[bot]"
             echo "set user.name to github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             echo "set user.email to github-actions[bot]@users.noreply.github.com"
+
+            git fetch origin nix-support
+            git merge --no-edit -X theirs origin/nix-support
+
+            sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" flake.nix
 
 
             git add flake.nix || true
