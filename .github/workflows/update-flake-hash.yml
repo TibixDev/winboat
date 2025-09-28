@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Nix
         uses: cachix/install-nix-action@v16
@@ -48,12 +51,15 @@ jobs:
             echo "Calculated SHA256: $HASH"
             echo "nix_sha256=${HASH}" >> $GITHUB_OUTPUT
 
-            # Update flake.nix
             ESC_HASH=$(printf '%s' "$HASH" | sed -e 's/[\/&]/\\&/g')
+
+            git fetch origin main
+            git merge --no-edit -X theirs origin/main
+
             sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" flake.nix
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
             git add flake.nix || true
             git commit -m "chore: update flake.nix for version ${VERSION}" || echo "No changes to commit"
-            git push origin HEAD:main || echo "Push failed (possible branch protection)"
+            git push origin HEAD:main || echo "Push failed"
