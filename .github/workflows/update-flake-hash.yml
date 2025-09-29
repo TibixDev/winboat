@@ -19,53 +19,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
-          
-      - name: Determine version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"  # Remove 'v' prefix if present
-          else
-            # Read version from package.json
-            VERSION=$(grep '"version"' package.json | cut -d'"' -f4)
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          
-      - name: Download and calculate SHA256
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Nix
+        uses: cachix/install-nix-action@v16
+        with:
+          nix_path: nixpkgs=channel:nixos-25.05
+
+      - name: Calculate SHA256 hash
         id: calculate-hash
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          URL="https://github.com/TibixDev/winboat/releases/download/v${VERSION}/winboat-${VERSION}-x86_64.AppImage"
-          
-          echo "Downloading from: $URL"
-          SHA256=$(curl -sL "$URL" | sha256sum | cut -d' ' -f1)
-          
-          # Convert to SRI format (sha256-<base64>)
-          SHA256_B64=$(python3 -c "import binascii, base64; print(base64.b64encode(binascii.unhexlify('$SHA256')).decode())")
-          NIX_SHA256="sha256-${SHA256_B64}"
-          
-          echo "Calculated SHA256: $SHA256"
-          echo "Nix format: $NIX_SHA256"
-          echo "nix_sha256=${NIX_SHA256}" >> $GITHUB_OUTPUT
-          
-      - name: Update flake.nix
-        run: |
-          NIX_SHA256="${{ steps.calculate-hash.outputs.nix_sha256 }}"
-          
-          # Update the SHA256 placeholder in flake.nix
-          sed -i 's|appImageSha256 = "sha256-[^"]*"|appImageSha256 = "'${NIX_SHA256}'"|' flake.nix
-          
-          echo "Updated flake.nix with hash: ${NIX_SHA256}"
-          
-      - name: Commit and push changes
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          git add flake.nix
-          git commit -m "chore: update flake hash for version ${VERSION}" || exit 0
-          git push
+        uses: workflow/nix-shell-action@v3
+        with:
+          packages: nix
+          script: |
+            set -euo pipefail
+
+            if [ "${{ github.event_name }}" = "release" ]; then
+              VERSION="${{ github.event.release.tag_name }}"
+            else
+              VERSION="${{ github.event.inputs.version }}"
+            fi
+
+            VERSION="${VERSION#v}"
+
+            URL="https://github.com/TibixDev/winboat/releases/download/v${VERSION}/winboat-${VERSION}-x64.tar.gz"
+
+            echo "Prefetching from: $URL"
+            HASH=$(nix-prefetch-url "$URL")
+
+            echo "Calculated SHA256: $HASH"
+            echo "nix_sha256=${HASH}" >> $GITHUB_OUTPUT
+
+            ESC_HASH=$(printf '%s' "$HASH" | sed -e 's/[\/&]/\\&/g')
+
+            git config user.name "github-actions[bot]"
+            echo "set user.name to github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            echo "set user.email to github-actions[bot]@users.noreply.github.com"
+
+            git fetch origin main
+            git merge --no-edit -X theirs origin/main
+
+            sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" flake.nix
+
+
+            git add flake.nix || true
+            git commit -m "chore: update flake.nix for version ${VERSION}" || echo "No changes to commit"
+            git push origin HEAD:main || echo "Push failed"
