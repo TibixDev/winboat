@@ -46,7 +46,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: "npm"
@@ -171,7 +171,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "24"
           cache: "npm"
