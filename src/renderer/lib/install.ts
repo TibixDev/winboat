@@ -275,7 +275,7 @@ export class InstallManager {
         while (true) {
             try {
                 const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
-                const res = await nodeFetch(`http://127.0.0.1/${apiHostPort}/health`);
+                const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`);
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);

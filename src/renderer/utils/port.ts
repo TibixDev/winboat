@@ -9,6 +9,10 @@ const logger = createLogger(path.join(WINBOAT_DIR, 'ports.log'));
 // Here, undefined denotes the absence of a protocol from the port entry. 
 type PortEntryProtocol = "tcp" | "udp" | undefined;
 
+type PortManagerConfig = {
+    findOpenPorts: boolean;
+};
+
 export class ComposePortEntry extends String {
     hostPort: number;
     guestPort: number;
@@ -65,7 +69,7 @@ export class PortManager {
      * @param compose The config to be parsed
      * @returns A {@link PortManager} object
      */
-    static async parseCompose(compose: ComposeConfig): Promise<PortManager> {
+    static async parseCompose(compose: ComposeConfig, options?: PortManagerConfig): Promise<PortManager> {
         const portManager = new PortManager();
         const configPortEntries = compose.services.windows.ports;
 
@@ -76,7 +80,7 @@ export class PortManager {
 
             if(parsedEntry.guestPort === RDP_PORT) continue;
 
-            if(!await PortManager.isPortOpen(parsedEntry.hostPort)) {
+            if(!await PortManager.isPortOpen(parsedEntry.hostPort) && options?.findOpenPorts) {
                 const randomOpenPort = await PortManager.getOpenPortInRange(parsedEntry.hostPort + 1, parsedEntry.hostPort + 101);
 
                 if(!randomOpenPort) {
@@ -92,7 +96,8 @@ export class PortManager {
 
         // Handle the RDP entries separately since thos are duplicates.
         let rdpHostPort = RDP_PORT;
-        if (!PortManager.isPortOpen(rdpHostPort)) {
+        console.log("options: ", options);
+        if (!PortManager.isPortOpen(rdpHostPort) && options?.findOpenPorts) {
             const randomOpenPort = await PortManager.getOpenPortInRange(RDP_PORT + 1, RDP_PORT + 101);
 
             if(!randomOpenPort) {

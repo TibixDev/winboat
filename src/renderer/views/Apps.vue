@@ -178,7 +178,7 @@ import { type WinApp } from '../../types';
 import WBContextMenu from '../components/WBContextMenu.vue';
 import WBMenuItem from '../components/WBMenuItem.vue';
 import { AppIcons, DEFAULT_ICON } from '../data/appicons';
-import { GUEST_API_PORT, WINBOAT_GUEST_API } from '../lib/constants';
+import { GUEST_API_PORT } from '../lib/constants';
 import { debounce } from '../utils/debounce';
 import { Jimp, JimpMime } from 'jimp';
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
@@ -242,7 +242,7 @@ const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {
     if (newVal !== oldVal && newVal !== '') {
         const formData = new FormData();
         formData.append('path', newVal);
-        const iconRes = await nodeFetch(`${WINBOAT_GUEST_API}/get-icon`, {
+        const iconRes = await nodeFetch(`${apiURL.value}/get-icon`, {
             method: 'POST',
             body: formData as any
         });
@@ -322,7 +322,7 @@ function cancelAddCustomApp() {
 async function addCustomApp() {
     const iconRaw = customAppIcon.value.split('data:image/png;base64,')[1];
     await winboat.appMgr!.addCustomApp(customAppName.value, customAppPath.value, iconRaw);
-    apps.value = await winboat.appMgr!.getApps();
+    apps.value = await winboat.appMgr!.getApps(apiURL.value);
     addCustomAppDialog.value!.close();
     resetCustomAppForm();
 }
@@ -332,7 +332,7 @@ async function addCustomApp() {
  */
 async function removeCustomApp(app: WinApp) {
     await winboat.appMgr!.removeCustomApp(app);
-    apps.value = await winboat.appMgr!.getApps();
+    apps.value = await winboat.appMgr!.getApps(apiURL.value);
 }
 
 /**

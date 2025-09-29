@@ -252,6 +252,15 @@ export class Winboat {
         const METRICS_WAIT_MS = 1000;
         const RDP_STATUS_WAIT_MS = 1000;
 
+        // *** Port Manager ***
+        // If the container was already running before opening WinBoat, the ports will already be used by the container
+        // So we don't need to remap any ports
+        // TODO: Investigate whether we need to remap user ports
+        if(!this.portMgr.value) {
+            const compose = this.parseCompose();
+            this.portMgr.value = await PortManager.parseCompose(compose, { findOpenPorts: false });
+        }
+
         // *** Health Interval ***
         // Make sure we don't have any existing intervals
         if (this.#healthInterval) {

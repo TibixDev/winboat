@@ -583,7 +583,7 @@ const errors = computed(() => {
     return errCollection;
 })
 
-const getHostQmpPort = (_compose: typeof compose) => PortManager.getHostPortFromCompose(GUEST_QMP_PORT, _compose.value!);
+const getHostQmpPort = (_compose: typeof compose) => winboat.getHostPort(GUEST_QMP_PORT);
 const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
 const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = (_compose: typeof compose) => _compose.value?.services.windows.ports?.includes(`${getHostQmpPort(_compose)}:${GUEST_QMP_PORT}`);
