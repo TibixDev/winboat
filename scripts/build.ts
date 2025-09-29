@@ -2,8 +2,8 @@ import Path from 'path';
 import Chalk from 'chalk';
 import FileSystem from 'fs';
 import * as Vite from 'vite';
-import compileTs from './private/tsc.js';
-import { EOL } from 'os';
+import compileTs from './private/tsc.ts';
+// ^ Extension can't be omitted because Node expects it
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);

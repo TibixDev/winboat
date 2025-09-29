@@ -1,12 +1,13 @@
 process.env.NODE_ENV = 'development';
 
 import * as Vite from 'vite';
-import ChildProcess from 'child_process';
+import ChildProcess, { type ChildProcessWithoutNullStreams } from 'child_process';
 import Path from 'path';
 import Chalk from 'chalk';
 import Chokidar from 'chokidar';
 import Electron from 'electron';
-import compileTs from './private/tsc.js';
+import compileTs from './private/tsc.ts';
+// ^ Extension needed because no TSConfig in the root
 import FileSystem from 'fs';
 import { EOL } from 'os';
 import { fileURLToPath } from 'url';
@@ -14,8 +15,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = Path.dirname(__filename);
 
-let viteServer = null;
-let electronProcess = null;
+let viteServer: Vite.ViteDevServer | null = null;
+let electronProcess: ChildProcessWithoutNullStreams | null = null;
 let electronProcessLocker = false;
 let rendererPort = 0;
 
@@ -44,12 +45,13 @@ async function startElectron() {
 
     const args = [
         Path.join(__dirname, '..', 'build', 'main', 'main.js'),
-        rendererPort,
+        String(rendererPort),
     ];
-    electronProcess = ChildProcess.spawn(Electron, args);
+
+    electronProcess = ChildProcess.spawn(String(Electron), args);
     electronProcessLocker = false;
 
-    electronProcess.stdout.on('data', data => {
+    electronProcess!.stdout.on('data', data => {
         if (data == EOL) {
             return;
         }
@@ -57,11 +59,11 @@ async function startElectron() {
         process.stdout.write(Chalk.blueBright(`[electron] `) + Chalk.white(data.toString()))
     });
 
-    electronProcess.stderr.on('data', data => 
+    electronProcess!.stderr.on('data', data => 
         process.stderr.write(Chalk.blueBright(`[electron] `) + Chalk.white(data.toString()))
     );
 
-    electronProcess.on('exit', () => stop());
+    electronProcess!.on('exit', () => stop());
 }
 
 function restartElectron() {
@@ -94,7 +96,7 @@ function copy(path) {
 }
 
 function stop() {
-    viteServer.close();
+    viteServer!.close();
     process.exit();
 }
 
