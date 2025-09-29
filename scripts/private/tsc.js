@@ -1,7 +1,7 @@
-const ChildProcess = require('child_process');
-const Chalk = require('chalk');
+import ChildProcess from 'child_process';
+import Chalk from 'chalk';
 
-function compile(directory) {
+export default function compile(directory) {
   return new Promise((resolve, reject) => {
     const tscProcess = ChildProcess.exec('tsc', {
       cwd: directory,
@@ -21,4 +21,3 @@ function compile(directory) {
   });
 }
 
-module.exports = compile;

@@ -1,8 +1,56 @@
 import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import { join } from 'path';
-import { initialize, enable } from '@electron/remote/main';
+import { initialize, enable } from '@electron/remote/main/index.js';
+import Store from 'electron-store';
 
 initialize();
+
+// Window Constants
+const WINDOW_MIN_WIDTH = 1280;
+const WINDOW_MIN_HEIGHT = 800;
+
+// For electron-store Type-Safety
+type SchemaType = {
+    dimensions: {
+        width: number,
+        height: number
+    },
+    position: {
+        x: number,
+        y: number
+    }
+};
+
+const windowStore = new Store<SchemaType>({ schema: {
+    dimensions: {
+        type: 'object',
+        properties: {
+            width: {
+                type: 'number',
+                minimum: WINDOW_MIN_WIDTH,
+                default: WINDOW_MIN_WIDTH
+            },
+            height: {
+                type: 'number',
+                minimum: WINDOW_MIN_HEIGHT,
+                default: WINDOW_MIN_HEIGHT
+            },
+        },
+        required: ['width', 'height']
+    },
+    position: {
+        type: 'object',
+        properties: {
+            x: {
+                type: 'number'
+            },
+            y: {
+                type: 'number'
+            }
+        },
+        required: ['x', 'y']
+    }
+}});
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -19,12 +67,12 @@ function createWindow() {
     }
 
     mainWindow = new BrowserWindow({
-        minWidth: 1280,
-        minHeight: 800,
-        width: 1280,
-        height: 800,
-        y: 0,
-        x: 500,
+        minWidth: WINDOW_MIN_WIDTH,
+        minHeight: WINDOW_MIN_HEIGHT,
+        width: windowStore.get('dimensions.width'),
+        height: windowStore.get('dimensions.height'),
+        x: windowStore.get('position.x'),
+        y: windowStore.get('position.y'),
         transparent: false,
         frame: false,
         webPreferences: {
@@ -32,6 +80,20 @@ function createWindow() {
             nodeIntegration: true,
             contextIsolation: false,
         }
+    });
+
+    mainWindow.on('close', () => {
+        const bounds = mainWindow?.getBounds();
+
+        windowStore.set('dimensions', {
+            width: bounds?.width,
+            height: bounds?.height
+        });
+
+        windowStore.set('position', {
+            x: bounds?.x,
+            y: bounds?.y
+        });
     });
 
     enable(mainWindow.webContents);
