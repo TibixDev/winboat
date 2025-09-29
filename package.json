@@ -2,6 +2,7 @@
     "name": "winboat",
     "version": "0.8.5",
     "description": "Windows for Penguins",
+    "type": "module",
     "main": "main/main.js",
     "scripts": {
         "dev": "node scripts/dev-server.js",
@@ -38,6 +39,7 @@
         "@vueuse/motion": "^2.2.6",
         "apexcharts": "^4.5.0",
         "consola": "^3.4.2",
+        "electron-store": "^11.0.0",
         "form-data": "^4.0.4",
         "jimp": "^1.6.0",
         "json-to-pretty-yaml": "^1.2.2",
