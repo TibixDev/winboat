@@ -83,6 +83,35 @@ EOF
       };
 
     in {
+      devShells.x86_64-linux.default = pkgs.mkShell {
+        name = "winboat-dev";
+        buildInputs = with pkgs; [
+          pkgs.makeWrapper
+          pkgs.freerdp3
+          pkgs.usbutils
+          pkgs.libusb1
+          pkgs.electron 
+          pkgs.gcc 
+          pkgs.glibc 
+          pkgs.stdenv.cc.cc.lib
+        ];
+
+        shellHook = ''
+          export PATH=${pkgs.electron}/bin:$PATH
+          export LD_LIBRARY_PATH=/run/current-system/sw/lib:${pkgs.gcc}/lib:${pkgs.glibc}/lib:${pkgs.electron}/lib:${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
+
+          if [ -d ./node_modules/electron/dist ]; then
+            mkdir -p ./node_modules/electron/dist
+            cat > ./node_modules/electron/dist/electron <<'EOF'
+#!/bin/sh
+exec "${pkgs.electron}/bin/electron" "$@"
+EOF
+            chmod +x ./node_modules/electron/dist/electron
+          fi
+
+        '';
+      };
+
       packages.x86_64-linux.winboat = winboatPkg;
 
       winboat = winboatPkg;
