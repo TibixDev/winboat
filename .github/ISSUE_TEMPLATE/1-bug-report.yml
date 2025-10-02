@@ -36,7 +36,9 @@ body:
   - type: textarea
     attributes:
       label: Logs
-      description: "Please drag 'n drop your `.log` files from `~/.winboat`, then format them accordingly"
+      description: | 
+        Please drag 'n drop your `.log` files from `~/.winboat`, then format them accordingly. 
+        WARNING: winboat.log contains your VM's password in plaintext, so if it's sensitive make sure to remove it before uploading."
       placeholder: |
         - [winboat.log](https://github.com/user-attachments/files/.../winboat.log)
         - [install.log](https://github.com/user-attachments/files/.../install.log)
