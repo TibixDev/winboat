@@ -31,6 +31,7 @@ export type WinApp = {
     Icon: string;
     Source: string;
     Usage?: number;
+    HasDesktopShortcut: boolean;
 }
 
 export type CustomAppCommands = {

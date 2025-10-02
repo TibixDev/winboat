@@ -5,13 +5,13 @@
             <p>Add a custom app to your apps list.</p>
 
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
-                <div class="flex flex-col flex-none gap-2 justify-center items-center">
+                <div class="flex flex-col items-center justify-center flex-none gap-2">
                     <div class="relative">
                         <img v-if="customAppIcon" :src="customAppIcon" class="size-24">
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
-                            class="flex absolute top-0 left-0 flex-col gap-1 justify-center items-center w-full h-full rounded-xl opacity-0 backdrop-blur-sm transition duration-200 absoute bg-black/50 hover:opacity-100"
+                            class="absolute top-0 left-0 flex flex-col items-center justify-center w-full h-full gap-1 transition duration-200 opacity-0 rounded-xl backdrop-blur-sm absoute bg-black/50 hover:opacity-100"
                         >
                             <Icon icon="mdi:pencil" class="size-10"></Icon>
                             <x-label>Change Icon</x-label>
@@ -31,19 +31,19 @@
             </div>
 
             <div class="flex flex-col gap-1 mt-2">
-                <div class="flex flex-row gap-2 items-center my-0 font-semibold text-blue-400">
+                <div class="flex flex-row items-center gap-2 my-0 font-semibold text-blue-400">
                     <Icon icon="fluent:info-32-filled" class="inline size-4"></Icon>
                     <p class="!my-0 break-normal max-w-[30vw]">
                         Please make sure the path you enter is a valid path to an executable file, otherwise the app will not work.
                     </p>
                 </div>
-                <div class="flex flex-row gap-2 items-center my-0 font-semibold text-blue-400">
+                <div class="flex flex-row items-center gap-2 my-0 font-semibold text-blue-400">
                     <Icon icon="fluent:info-32-filled" class="inline size-4"></Icon>
                     <p class="!my-0 break-normal max-w-[30vw]">
                         Custom apps can be removed by right clicking on them and selecting "Remove Custom App".
                     </p>
                 </div>
-                <div class="flex flex-row gap-2 items-center my-0 font-semibold text-red-500" v-for="error, k of customAppAddErrors" :key="k">
+                <div class="flex flex-row items-center gap-2 my-0 font-semibold text-red-500" v-for="error, k of customAppAddErrors" :key="k">
                     <Icon icon="fluent:warning-32-filled" class="inline size-4"></Icon>
                     <p class="!my-0">{{ error }}</p>
                 </div>
@@ -60,7 +60,7 @@
         </dialog>
         
         <div
-            class="flex justify-between items-center mb-6"
+            class="flex items-center justify-between mb-6"
             :class="{
                 'opacity-50 pointer-events-none':
                     winboat.containerStatus.value !== ContainerStatus.Running ||
@@ -68,10 +68,10 @@
             }"
         >
             <x-label class="text-neutral-300">Apps</x-label>
-            <div class="flex flex-row gap-2 justify-center items-center">
+            <div class="flex flex-row items-center justify-center gap-2">
                 <!-- Refresh button -->
                 <x-button
-                    class="flex flex-row gap-1 items-center"
+                    class="flex flex-row items-center gap-1"
                     @click="refreshApps"
                 >
                     <Icon icon="mdi:refresh" class="size-4"></Icon>
@@ -80,7 +80,7 @@
 
                 <!-- Custom App Add Button -->
                 <x-button
-                    class="flex flex-row gap-1 items-center"
+                    class="flex flex-row items-center gap-1"
                     @click="addCustomAppDialog!.showModal()"
                 >
                     <x-icon href="#add" class="qualifier"></x-icon>
@@ -115,7 +115,7 @@
                 <!-- Search Input -->
                 <x-input
                     id="search-term"
-                    class="m-0 w-64 max-w-64"
+                    class="w-64 m-0 max-w-64"
                     type="text"
                     maxlength="32"
                     :value="searchInput"
@@ -131,7 +131,7 @@
                 <TransitionGroup v-if="apps.length" name="apps" tag="x-card" class="grid gap-4 bg-transparent border-none app-grid">
                     <x-card
                         v-for="app of computedApps" :key="app.Path"
-                        class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
+                        class="relative flex flex-row items-center justify-between gap-2 p-2 my-0 cursor-pointer backdrop-blur-xl backdrop-brightness-150 generic-hover bg-neutral-800/20"
                         :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
                         @click="winboat.launchApp(app)"
                     >
@@ -140,20 +140,28 @@
                             <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                         </div>
                         <Icon icon="cuida:caret-right-outline"></Icon>
-                        <WBContextMenu v-if="app.Source === 'custom'">
-                            <WBMenuItem @click="removeCustomApp(app)">
+                        <WBContextMenu>
+                            <WBMenuItem v-if="!app.HasDesktopShortcut" @click="addDesktopShortcut(app)">
+                                <Icon class="size-4" icon="mdi:desktop-mac"></Icon>
+                                <x-label>Add Desktop Shortcut</x-label>
+                            </WBMenuItem>
+                            <WBMenuItem v-if="app.HasDesktopShortcut" @click="removeDesktopShortcut(app)">
+                                <Icon class="size-4" icon="mdi:minus"></Icon>
+                                <x-label>Remove Desktop Shortcut</x-label>
+                            </WBMenuItem>
+                            <WBMenuItem v-if="app.Source === 'custom'" @click="removeCustomApp(app)">
                                 <Icon class="size-4" icon="mdi:trash-can"></Icon>
                                 <x-label>Remove Custom App</x-label>
                             </WBMenuItem>
                         </WBContextMenu>
                     </x-card>
                 </TransitionGroup>
-            <div v-else class="flex justify-center items-center mt-40">
+            <div v-else class="flex items-center justify-center mt-40">
                 <x-throbber class="w-16 h-16"></x-throbber>
             </div>
         </div>
         <div v-else class="px-2 mt-32">
-            <div class="flex flex-col gap-4 justify-center items-center">
+            <div class="flex flex-col items-center justify-center gap-4">
                 <Icon class="text-violet-400 size-32" icon="fluent-mdl2:plug-disconnected"></Icon>
                 <h1
                     class="text-xl font-semibold w-[30vw] text-center leading-16"
@@ -172,13 +180,13 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, watch, useTemplateRef } from 'vue';
 import { ContainerStatus, Winboat } from '../lib/winboat';
 import { type WinApp } from '../../types';
 import WBContextMenu from '../components/WBContextMenu.vue';
 import WBMenuItem from '../components/WBMenuItem.vue';
 import { AppIcons, DEFAULT_ICON } from '../data/appicons';
-import { WINBOAT_GUEST_API } from '../lib/constants';
+import { WINBOAT_GUEST_API, RDP_PORT } from '../lib/constants';
 import { debounce } from '../utils/debounce';
 import { Jimp, JimpMime } from 'jimp';
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
@@ -187,6 +195,9 @@ const FormData: typeof import('form-data') = require('form-data');
 const winboat = new Winboat();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref('');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const sortBy = ref('');
 const addCustomAppDialog = useTemplateRef('addCustomAppDialog');
 const customAppName = ref('');
@@ -327,6 +338,126 @@ async function addCustomApp() {
 async function removeCustomApp(app: WinApp) {
     await winboat.appMgr!.removeCustomApp(app);
     apps.value = await winboat.appMgr!.getApps();
+}
+
+async function addDesktopShortcut(app: WinApp) {
+
+    const execCmd = await winboat.buildLaunchCommand(app);
+
+    const appName = app.Name.replace(/[^a-zA-Z0-9-_\.]/g, '_');
+    const binDir = path.join(os.homedir(), '.local', 'bin');
+    const iconDir = path.join(os.homedir(), '.local', 'share', 'icons');
+    const desktopShortcutDir = path.join(os.homedir(), '.local', 'share', 'applications');
+
+    const wrapperContent = `
+    WINBOAT_API=${JSON.stringify(WINBOAT_GUEST_API)}
+    RDP_PORT=${JSON.stringify(RDP_PORT)}
+
+    start_container() {
+        docker start WinBoat >/dev/null 2>&1 || true
+    }
+
+    wait_for_health() {
+        for _ in $(seq 1 8); do
+            if curl -fsS --max-time 2 "$WINBOAT_API/health" >/dev/null 2>&1; then
+                return 0
+            fi
+            sleep 1
+        done
+        return 1
+    }
+
+    wait_for_rdp() {
+        for _ in $(seq 1 120); do
+            if curl -fsS --max-time 2 "$WINBOAT_API/rdp/status" 2>/dev/null | grep -q '"rdpConnected":true'; then
+                return 0
+            fi
+            sleep 1
+        done
+        return 1
+    }
+
+    start_container
+    wait_for_health || true
+    wait_for_rdp || true
+
+    exec sh -lc ${JSON.stringify(execCmd)} "$@"
+    `;
+
+
+    try {
+        await fs.promises.mkdir(binDir, { recursive: true });
+        await fs.promises.mkdir(iconDir, { recursive: true });
+        await fs.promises.mkdir(desktopShortcutDir, { recursive: true });
+
+        let iconPath = '';
+        if (app.Icon) {
+            iconPath = path.join(iconDir, `${appName}.png`);
+            await fs.promises.writeFile(iconPath, Buffer.from(app.Icon, 'base64'));
+        }
+
+        const wrapperPath = path.join(binDir, appName);
+        const wrapperTmp = wrapperPath + '.tmp';
+        await fs.promises.writeFile(wrapperTmp, wrapperContent, { mode: 0o700 });
+        await fs.promises.rename(wrapperTmp, wrapperPath);
+
+        const shortcutPath = path.join(desktopShortcutDir, `${appName}.desktop`);
+        const shortcutTmp = shortcutPath + '.tmp';
+        const desktopFile = [
+            '[Desktop Entry]',
+            `Name=${app.Name}`,
+            `Exec=${wrapperPath} %U`,
+            iconPath ? `Icon=${iconPath}` : null,
+            'Type=Application',
+            'Terminal=false',
+            'StartupNotify=false',
+            'Categories=Utility;Application;'
+        ].filter(Boolean).join('\n');
+        await fs.promises.writeFile(shortcutTmp, desktopFile, { mode: 0o644 });
+        await fs.promises.rename(shortcutTmp, shortcutPath);
+
+        app.HasDesktopShortcut = true;
+        winboat.appMgr?.setDesktopShortcut(app.Name, true);
+
+    } catch (err) {
+        console.error('Failed to create desktop shortcut:', err);
+        throw err;
+    }
+}
+
+async function removeDesktopShortcut(app: WinApp) {
+    const appName = app.Name.replace(/[^a-zA-Z0-9-_\.]/g, '_');
+    const binDir = path.join(os.homedir(), '.local', 'bin');
+    const iconDir = path.join(os.homedir(), '.local', 'share', 'icons');
+    const desktopShortcutDir = path.join(os.homedir(), '.local', 'share', 'applications');
+
+    const wrapperPath = path.join(binDir, appName);
+    const shortcutPath = path.join(desktopShortcutDir, `${appName}.desktop`);
+    const iconPath = path.join(iconDir, `${appName}.png`);
+    const logPath = path.join(os.homedir(), '.cache', 'winboat', `${appName}.log`);
+
+    async function unlinkIfExists(p: string) {
+        try {
+            await fs.promises.unlink(p);
+        } catch (err: any) {
+            if (err && err.code === 'ENOENT') return;
+            throw err;
+        }
+    }
+
+    try {
+        await Promise.all([
+            unlinkIfExists(wrapperPath),
+            unlinkIfExists(shortcutPath),
+            unlinkIfExists(iconPath),
+            unlinkIfExists(logPath),
+        ]);
+    } catch (err) {
+        console.warn('Failed to fully remove desktop shortcut files:', err);
+    }
+
+    app.HasDesktopShortcut = false;
+    winboat.appMgr?.setDesktopShortcut(app.Name, false);
 }
 
 /**

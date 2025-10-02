@@ -10,6 +10,7 @@ export type WinboatConfigObj = {
     rdpMonitoringEnabled: boolean
     passedThroughDevices: PTSerializableDeviceInfo[];
     customApps: WinApp[]
+    desktopShortcuts: { [key: string]: boolean }
     experimentalFeatures: boolean
 };
 
@@ -19,6 +20,7 @@ const defaultConfig: WinboatConfigObj = {
     rdpMonitoringEnabled: false,
     passedThroughDevices: [],
     customApps: [],
+    desktopShortcuts: {},
     experimentalFeatures: false
 };
 

@@ -33,21 +33,24 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
-        Usage: 0 
+        Usage: 0,
+        HasDesktopShortcut: false
     },
     {
         Name: "⚙️ Windows Explorer",
         Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
         Source: "internal",
         Path: "%windir%\\explorer.exe",
-        Usage: 0
+        Usage: 0,
+        HasDesktopShortcut: false
     },
     {
         Name: "🖥️ Browser Display",
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
         Path: NOVNC_URL,
-        Usage: 0
+        Usage: 0,
+        HasDesktopShortcut: false
     }
 ];
 
@@ -98,6 +101,12 @@ class AppManager {
         for(const appIdx in newApps) {
             newApps[appIdx].Usage = this.appCache.find((app) => app.Name == newApps[appIdx].Name)?.Usage || 0;
             this.appUsageCache[newApps[appIdx].Name] = newApps[appIdx].Usage;
+            try {
+                const shortcuts = this.#wbConfig?.config.desktopShortcuts || {};
+                newApps[appIdx].HasDesktopShortcut = !!shortcuts[newApps[appIdx].Name];
+            } catch (e) {
+                newApps[appIdx].HasDesktopShortcut = newApps[appIdx].HasDesktopShortcut || false;
+            }
         }
 
         this.appCache = newApps;
@@ -155,7 +164,8 @@ class AppManager {
             Path: path,
             Icon: icon,
             Source: "custom",
-            Usage: 0
+            Usage: 0,
+            HasDesktopShortcut: false
         }
         this.appCache.push(customWinApp);
         this.appUsageCache[name] = 0;
@@ -172,6 +182,18 @@ class AppManager {
         this.appUsageCache = Object.fromEntries(Object.entries(this.appUsageCache).filter(([key]) => key !== app.Name));
         await this.writeToDisk();
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.filter((a) => a.Name !== app.Name);
+    }
+
+    setDesktopShortcut(name: string, enabled: boolean) {
+        const shortcuts = this.#wbConfig!.config.desktopShortcuts || {};
+        shortcuts[name] = enabled;
+        this.#wbConfig!.config.desktopShortcuts = shortcuts;
+
+        for (const app of this.appCache) {
+            if (app.Name === name) {
+                app.HasDesktopShortcut = enabled;
+            }
+        }
     }
 }
 
@@ -408,6 +430,44 @@ export class Winboat {
         }
     }
 
+    async buildLaunchCommand(app: WinApp): Promise<string> {
+        if (customAppCommands[app.Path]) {
+            return `xdg-open ${JSON.stringify(app.Path)}`;
+        }
+
+        const { username, password } = this.getCredentials();
+        const compose = this.parseCompose();
+        const rdpPortEntry = compose.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`));
+        const rdpPort = rdpPortEntry?.split(":")?.at(0) ?? RDP_PORT.toString();
+
+        const freeRDPBin = await getFreeRDP();
+        const cleanAppName = app.Name.replace(/[,.'\"]/g, "");
+
+        let baseCmd = `
+        ${freeRDPBin} 
+        /u:"${username}" \
+        /p:"${password}" \
+        /v:127.0.0.1 \
+        /port:${rdpPort} \
+        /cert:ignore \
+        +clipboard \
+        -wallpaper \
+        /sound:sys:pulse \
+        /microphone:sys:pulse \
+        /floatbar ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''} \
+        /compression \
+        /scale:${this.#wbConfig?.config.scale ?? 100} \
+        /wm-class:"${cleanAppName}" 
+        /app:program:"${app.Path}",name:"${cleanAppName}"`;
+
+        if (app.Path == InternalApps.WINDOWS_DESKTOP) {
+            baseCmd = `${freeRDPBin} /u:"${username}" /p:"${password}" /v:127.0.0.1 /port:${rdpPort} /cert:ignore +clipboard +f /sound:sys:pulse /microphone:sys:pulse /floatbar ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''} /scale:${this.#wbConfig?.config.scale ?? 100} /compression`;
+        }
+
+        baseCmd = baseCmd.replace(/\s+/g, " ").trim();
+        return baseCmd;
+    }
+
     async #connectQMPManager() {
         try {
             this.qmpMgr = await QMPManager.createConnection("127.0.0.1", QMP_PORT).catch(e => {logger.error(e); throw e});
@@ -585,46 +645,7 @@ export class Winboat {
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
         
-        const freeRDPBin = await getFreeRDP();
-
-        logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
-
-        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
-
-        let cmd = `${freeRDPBin} /u:"${username}"\
-        /p:"${password}"\
-        /v:127.0.0.1\
-        /port:${rdpPort}\
-        /cert:ignore\
-        +clipboard\
-        -wallpaper\
-        /sound:sys:pulse\
-        /microphone:sys:pulse\
-        /floatbar\
-        ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
-        /compression\
-        /scale:${this.#wbConfig?.config.scale ?? 100}\
-        /wm-class:"${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
-
-        if (app.Path == InternalApps.WINDOWS_DESKTOP) {
-            cmd = `${freeRDPBin} /u:"${username}"\
-                /p:"${password}"\
-                /v:127.0.0.1\
-                /port:${rdpPort}\
-                /cert:ignore\
-                +clipboard\
-                +f\
-                /sound:sys:pulse\
-                /microphone:sys:pulse\
-                /floatbar\
-                ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
-                /scale:${this.#wbConfig?.config.scale ?? 100}\
-                /compression &`;
-        }
-
-        // Multiple spaces become one
-        cmd = cmd.replace(/\s+/g, " ");
+        const cmd = (await this.buildLaunchCommand(app)) + (app.Path == InternalApps.WINDOWS_DESKTOP ? ' &' : ' &');
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
