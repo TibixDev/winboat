@@ -40,11 +40,11 @@ export const DefaultCompose: ComposeConfig = {
             ],
             "privileged": true,
             "ports": [
-                "8006:8006", // VNC Web Interface
-                "7148:7148", // Winboat Guest Server API
-                "7149:7149", // QEMU QMP Port
-                "3389:3389/tcp", // RDP
-                "3389:3389/udp" // RDP
+                "127.0.0.1:8006:8006/tcp", // VNC Web Interface
+                "127.0.0.1:7148:7148/tcp", // Winboat Guest Server API
+                "127.0.0.1:7149:7149/tcp", // QEMU QMP Port
+                "127.0.0.1:3389:3389/tcp", // RDP
+                "127.0.0.1:3389:3389/udp" // RDP
             ],
             "stop_grace_period": "120s",
             "restart": RESTART_ON_FAILURE,
