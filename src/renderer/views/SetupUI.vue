@@ -66,15 +66,9 @@
                                 At least 4 GB of RAM (Detected: {{ specs.ramGB }} GB)
                             </li>
                             <li class="flex items-center gap-2">
-                                <span v-if="specs.cpuThreads >= 2" class="text-green-500">✔</span>
+                                <span v-if="specs.cpuCores >= 2" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                At least 2 CPU threads (Detected: {{ specs.cpuThreads }} threads)
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span v-if="specs.diskSpaceGB >= 32" class="text-green-500">✔</span>
-                                <span v-else class="text-red-500">✘</span>
-                                At least 32 GB free in <span class="font-mono bg-neutral-700 rounded-md px-0.5">/var</span>
-                                (Detected: {{ specs.diskSpaceGB }} GB)
+                                At least 2 CPU cores (Detected: {{ specs.cpuCores }} cores)
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
@@ -133,6 +127,55 @@
                             >
                                 Next
                             </x-button>
+                        </div>
+                    </div>
+
+                    <!-- Install Location -->
+                    <div v-if="currentStep.id === StepID.INSTALL_LOCATION" class="step-block">
+                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <p class="text-lg text-gray-400">
+                            Choose where you want to install WinBoat. Files related to the Windows virtual machine will be stored in this location.
+                        </p>
+                        <p class="text-lg text-gray-400">
+                            Make sure you have at least {{ MIN_DISK_GB }}GB of disk space available in the selected location.
+                        </p>
+
+                        <div class="flex flex-row items-center mt-4">
+                            <x-input
+                                id="install-location"
+                                type="text"
+                                placeholder="Select Install Location"
+                                readonly
+                                :value="installFolder"
+                                class="!max-w-full w-[300px] rounded-r-none"
+                            >
+                                <x-icon href="#folder"></x-icon>
+                                <x-label>/your/install/folder</x-label>
+                            </x-input>
+                            <x-button class="!rounded-l-none" toggled @click="selectInstallFolder">
+                                {{ installFolder ? "Change" : "Select" }}
+                            </x-button>
+                        </div>
+
+                        <div id="install-folder-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
+                            <div v-for="error in installFolderErrors" :key="error">
+                                <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                {{ error }}
+                            </div>
+                            <div v-if="installFolder && !installFolderErrors?.length" class="text-green-400 font-semibold">
+                                <Icon icon="line-md:check-all" class="inline size-4 -translate-y-0.5"></Icon>
+                                Valid install folder
+                            </div>
+                        </div>
+
+                        <div class="flex flex-row gap-4 mt-6">
+                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button
+                                toggled
+                                class="px-6"
+                                :disabled="!installFolder || installFolderErrors?.length"
+                                @click="currentStepIdx++"
+                            >Next</x-button>
                         </div>
                     </div>
     
@@ -334,15 +377,15 @@
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-cpu-cores"
-                                        @change="(e: any) => cpuThreads = Number(e.target.value)"
+                                        @change="(e: any) => cpuCores = Number(e.target.value)"
                                         class="w-[50%]"
-                                        :value="cpuThreads"
-                                        :min="MIN_CPU_THREADS"
-                                        :max="specs.cpuThreads"
+                                        :value="cpuCores"
+                                        :min="MIN_CPU_CORES"
+                                        :max="specs.cpuCores"
                                         step="1"
                                         ticks
                                     ></x-slider>
-                                    <x-label>{{ cpuThreads }} Cores</x-label>
+                                    <x-label>{{ cpuCores }} Core{{ cpuCores > 1 ? 's' : '' }}</x-label>
                                 </div>
                             </div>
         
@@ -383,7 +426,7 @@
                                 <label for="select-disk" class="text-sm text-neutral-400">
                                     Select Disk Size
                                     <span
-                                        v-if="specs.diskSpaceGB - diskSpaceGB < 5"
+                                        v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
@@ -393,7 +436,7 @@
                                             hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
                                             You're about to allocate most of your remaining disk space with less than 5GB in excess.
-                                            You currently have ~{{ specs.diskSpaceGB }} GB of disk space available in /var.
+                                            You currently have ~{{ installFolderDiskSpaceGB }} GB of disk space available for the drive corresponding to {{ installFolder }}.
                                             If you continue with this disk size, you may run out of space and encounter unexpected issues.
                                         </span>
                                     </span>
@@ -405,7 +448,7 @@
                                         class="w-[50%]"
                                         :value="diskSpaceGB"
                                         :min="MIN_DISK_GB"
-                                        :max="specs.diskSpaceGB"
+                                        :max="installFolderDiskSpaceGB || 0"
                                         step="8"
                                     ></x-slider>
                                     <x-label>{{ diskSpaceGB }} GB</x-label>
@@ -441,7 +484,7 @@
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">CPU Cores</span>
-                                    <span class="text-base text-white">{{ cpuThreads }} Cores</span>
+                                    <span class="text-base text-white">{{ cpuCores }} Cores</span>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">RAM</span>
@@ -454,6 +497,10 @@
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">Username</span>
                                     <span class="text-base text-white">{{ username }}</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm text-gray-400">Install Location</span>
+                                    <span class="text-base text-white">{{ installFolder }}</span>
                                 </div>
                             </div>
                         </div>
@@ -520,6 +567,7 @@
 import { Icon } from '@iconify/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { computedAsync } from '@vueuse/core'
 import { InstallConfiguration, Specs } from '../../types';
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
@@ -529,7 +577,9 @@ import license from '../assets/LICENSE.txt?raw'
 
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
+const fs: typeof import('fs') = require('fs');
 const os: typeof import('os') = require('os');
+const checkDiskSpace: typeof import('check-disk-space').default = require('check-disk-space').default; 
 
 type Step = {
     id: string,
@@ -541,6 +591,7 @@ enum StepID {
     WELCOME = "STEP_WELCOME",
     PREREQUISITES = "STEP_PREREQUISITES",
     LICENSE = "STEP_LICENSE",
+    INSTALL_LOCATION = "STEP_INSTALL_LOCATION",
     WINDOWS_CONFIG = "STEP_WINDOWS_CONFIG",
     HARDWARE_CONFIG = "STEP_HARDWARE_CONFIG",
     USER_CONFIG = "STEP_USER_CONFIG",
@@ -564,6 +615,11 @@ const steps: Step[] = [
         id: StepID.PREREQUISITES,
         title: "Pre-Requisites",
         icon: "line-md:check-all",
+    },
+    {
+        id: StepID.INSTALL_LOCATION,
+        title: "Install Location",
+        icon: "line-md:folder-arrow-down-filled",
     },
     {
         id: StepID.WINDOWS_CONFIG,
@@ -597,18 +653,19 @@ const steps: Step[] = [
     },
 ]
 
-const MIN_CPU_THREADS = 1;
+const MIN_CPU_CORES = 1;
 const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
+const installFolder = ref("");
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
-const cpuThreads = ref(2);
+const cpuCores = ref(2);
 const ramGB = ref(4);
 const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
@@ -706,12 +763,66 @@ function deselectIsoFile() {
     windowsVersion.value = '11';
 }
 
+function selectInstallFolder() {
+    electron.dialog.showOpenDialog({
+        title: 'Select Install Folder',
+        properties: ['openDirectory', 'createDirectory']
+    }).then(result => {
+      if (!result.canceled && result.filePaths.length > 0) {
+        const selectedPath = result.filePaths[0];
+        const finalPath = path.join(selectedPath, 'winboat');
+        console.log('Install path selected:', finalPath);
+        installFolder.value = finalPath;
+      }
+    });
+}
+
+const installFolderErrors = computedAsync(async () => {
+    let errors: string[] = [];
+
+    if (!installFolder.value) {
+        errors.push("Please select an install location");
+        return errors; // <- The rest shouldn't be ran if no path is selected
+    }
+
+    // Path without /winboat
+    const parentPath = path.dirname(installFolder.value);
+    console.log("Parent path", parentPath);
+
+    // Check if path is writable
+    try {
+        fs.accessSync(parentPath, fs.constants.W_OK);
+    } catch (err) {
+        console.error(err);
+        errors.push("The selected install location is not writable");
+    }
+
+    // Check if we have enough disk space
+    const diskSpace = await checkDiskSpace(parentPath);
+    const freeGB = Math.floor(diskSpace.free / (1024 * 1024 * 1024));
+    if (freeGB < MIN_DISK_GB) {
+        errors.push(`Not enough disk space available. At least ${MIN_DISK_GB} GB is required, but only ${freeGB} GB is available.`);
+    }
+
+    return errors;
+})
+
+const installFolderDiskSpaceGB = computedAsync(async () => {
+    if (!installFolder.value) return 0;
+
+    const parentPath = path.dirname(installFolder.value);
+    const diskSpace = await checkDiskSpace(parentPath);
+    const freeGB = Math.floor(diskSpace.free / (1024 * 1024 * 1024));
+    return freeGB;
+})
+
 function install() {
     const installConfig: InstallConfiguration = {
         windowsVersion: windowsVersion.value,
         windowsLanguage: windowsLanguage.value,
-        cpuThreads: cpuThreads.value,
+        cpuCores: cpuCores.value,
         ramGB: ramGB.value,
+        installFolder: installFolder.value,
         diskSpaceGB: diskSpaceGB.value,
         username: username.value,
         password: password.value,
