@@ -143,8 +143,8 @@ const remote: typeof import('@electron/remote') = require('@electron/remote');
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
-let winboat: Winboat | null = null;
-let wbConfig: WinboatConfig | null = null;
+let winboat: Winboat | null;
+let wbConfig: WinboatConfig | null;
 
 let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);

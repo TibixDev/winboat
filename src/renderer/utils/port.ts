@@ -1,5 +1,5 @@
 import { type ComposeConfig } from "../../types";
-import { PORT_MAX, RDP_PORT, WINBOAT_DIR } from "../lib/constants";
+import { GUEST_RDP_PORT, PORT_MAX, WINBOAT_DIR } from "../lib/constants";
 import { createLogger } from "./log";
 import path from "path";
 const { createServer, connect }: typeof import("net") = require("net");
@@ -12,6 +12,10 @@ type PortEntryProtocol = "tcp" | "udp" | undefined;
 type PortManagerConfig = {
     findOpenPorts: boolean;
 };
+
+type PortMappingOptions = PortManagerConfig & {
+    protocol?: PortEntryProtocol
+}
 
 export class ComposePortEntry extends String {
     hostPort: number;
@@ -32,7 +36,7 @@ export class ComposePortEntry extends String {
     }
 
     // TODO: change how ComposePortEntry is initialized
-    static fromPorts(hostPort: number, guestPort: number, protocol: PortEntryProtocol = undefined) {
+    static fromPorts(hostPort: number, guestPort: number, protocol?: PortEntryProtocol) {
         const protocolString = protocol ? `/${protocol}` : "";
         return new ComposePortEntry(`${hostPort}:${guestPort}${protocolString}`);
     }
@@ -69,46 +73,26 @@ export class PortManager {
      * @param compose The config to be parsed
      * @returns A {@link PortManager} object
      */
-    static async parseCompose(compose: ComposeConfig, options?: PortManagerConfig): Promise<PortManager> {
+    static async parseCompose(compose: ComposeConfig, options: PortManagerConfig = { findOpenPorts: true }): Promise<PortManager> {
         const portManager = new PortManager();
         const configPortEntries = compose.services.windows.ports;
+        let rdpHostPort = GUEST_RDP_PORT; // by default we map the rdp host port to the same value as in the guest, so it's a great default value.
 
         // Parse port entries and populate the ports map, skipping over the RDP entries.
         // TODO: check for duplicates
         for(const portEntry of configPortEntries) {
             const parsedEntry = new ComposePortEntry(portEntry);
 
-            if(parsedEntry.guestPort === RDP_PORT) continue;
-
-            if(!await PortManager.isPortOpen(parsedEntry.hostPort) && options?.findOpenPorts) {
-                const randomOpenPort = await PortManager.getOpenPortInRange(parsedEntry.hostPort + 1, parsedEntry.hostPort + 101);
-
-                if(!randomOpenPort) {
-                    logger.error(`No open port found in range ${parsedEntry.hostPort}:${parsedEntry.hostPort + 101}`); // TODO: handle this case with a dialog possibly
-                    throw new Error(`No open port found in range ${parsedEntry.hostPort}:${parsedEntry.hostPort + 101}`);
-                }
-
-                logger.info(`Port ${parsedEntry.hostPort} is in use, remapping to ${randomOpenPort}`);
-                parsedEntry.hostPort = randomOpenPort;
-            }
-            portManager.ports.set(parsedEntry.guestPort, parsedEntry);
-        }
-
-        // Handle the RDP entries separately since thos are duplicates.
-        let rdpHostPort = RDP_PORT;
-        console.log("options: ", options);
-        if (!PortManager.isPortOpen(rdpHostPort) && options?.findOpenPorts) {
-            const randomOpenPort = await PortManager.getOpenPortInRange(RDP_PORT + 1, RDP_PORT + 101);
-
-            if(!randomOpenPort) {
-                logger.error(`No open port found in range ${RDP_PORT}:${RDP_PORT + 101}`); // TODO: handle this case with a dialog possibly
-                throw new Error(`No open port found in range ${RDP_PORT}:${RDP_PORT + 101}`);
+            if(parsedEntry.guestPort === GUEST_RDP_PORT) {
+                rdpHostPort = parsedEntry.hostPort;
+                continue;
             }
 
-            logger.info(`RDP port ${RDP_PORT} is in use, remapping to ${randomOpenPort}`);
-            rdpHostPort = randomOpenPort;
+            await portManager.setPortMapping(parsedEntry.guestPort, parsedEntry.hostPort, { ...options });
         }
-        portManager.ports.set(RDP_PORT, ComposePortEntry.fromPorts(rdpHostPort, RDP_PORT));
+
+        // Handle the RDP entries separately since those are duplicates.
+        await portManager.setPortMapping(GUEST_RDP_PORT, rdpHostPort, { ...options });
         
 
         return portManager
@@ -129,13 +113,53 @@ export class PortManager {
     }
 
     /**
+     * Creates a new port mapping or overwrites an existing one.
+     * In case the host port is not open, it tries to find one.
+     */
+    async setPortMapping(guestPort: number | string, hostPort: number | string, options: PortMappingOptions = { findOpenPorts: true }) {
+        if(typeof guestPort === "string") {
+            guestPort = parseInt(guestPort);
+        }
+        if(typeof hostPort === "string") {
+            hostPort = parseInt(hostPort);
+        }
+        
+        if(!await PortManager.isPortOpen(hostPort) && options?.findOpenPorts) {
+            const randomOpenPort = await PortManager.getOpenPortInRange(hostPort + 1, hostPort + 101);
+
+            if(!randomOpenPort) {
+                logger.error(`No open port found in range ${hostPort}:${hostPort + 101}`); // TODO: handle this case with a dialog possibly
+                throw new Error(`No open port found in range ${hostPort}:${hostPort + 101}`);
+            }
+
+            logger.info(`Port ${hostPort} is in use, remapping to ${randomOpenPort}`);
+            hostPort = randomOpenPort;
+        }
+
+        this.ports.set(guestPort, ComposePortEntry.fromPorts(hostPort, guestPort, options?.protocol));
+    }
+
+    /**
+     * Returns whether there's a port mapping tied to given guestPort
+     */
+    hasPortMapping(guestPort: string | number): boolean {
+        if(typeof guestPort === "string") {
+            guestPort = parseInt(guestPort);
+        }
+
+        console.log("hasPortMapping", guestPort, this.ports.has(guestPort));
+
+        return this.ports.has(guestPort);
+    }
+
+    /**
      * Returns port entries in a string array using {@link ComposeConfig}'s format
      */
     get composeFormat(): string[] {
         const ret = [];
 
         for(const [_, portEntry] of this.ports.entries()) {
-            if(portEntry.guestPort !== RDP_PORT) {
+            if(portEntry.guestPort !== GUEST_RDP_PORT) {
                 ret.push(portEntry.entry);
                 continue;
             }

@@ -122,7 +122,7 @@
                             min="0"
                             :max="PORT_MAX"
                             :value="freerdpPort"
-                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || RDP_PORT)"
+                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || winboat.getHostPort(GUEST_RDP_PORT))"
                             required
                         ></x-input>
                     </div>
@@ -402,11 +402,12 @@ import { WinboatConfig } from '../lib/config';
 import { USBManager, type PTSerializableDeviceInfo } from '../lib/usbmanager';
 import { type Device } from "usb";
 import {
-    RDP_PORT,
     PORT_MAX,
     USB_VID_BLACKLIST,
     RESTART_ON_FAILURE,
-    RESTART_NO
+    RESTART_NO,
+    GUEST_RDP_PORT,
+    DEFAULT_HOST_QMP_PORT
 } from '../lib/constants';
 import { PortManager } from '../utils/port';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
@@ -474,8 +475,7 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
-    freerdpPort.value = Number(rdpEntry?.split(":")?.at(0) ?? RDP_PORT);
+    freerdpPort.value = winboat.getHostPort(GUEST_RDP_PORT);
     origFreerdpPort.value = freerdpPort.value;
 
     const specs = await getSpecs();
@@ -503,11 +503,8 @@ async function saveDockerCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    const newPortEntries = compose.value!.services.windows.ports.filter(x => !x.includes(`:${RDP_PORT}`));
-
-    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/tcp`);
-    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/udp`);
-    compose.value!.services.windows.ports = newPortEntries;
+    winboat.portMgr.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value);
+    compose.value!.services.windows.ports = winboat.portMgr.value!.composeFormat;
 
     isApplyingChanges.value = true;
     try {
@@ -526,19 +523,18 @@ async function saveDockerCompose() {
  * to the Docker Compose file if they don't already exist
  */
 async function addRequiredComposeFieldsUSB() {
-    const hostQmpPort = getHostQmpPort(compose);
-
     if (!usbPassthroughDisabled.value) {
         return;
     }
     
     isUpdatingUSBPrerequisites.value = true;
+    await winboat.stopContainer();
 
     if(!hasUsbVolume(compose)) {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
     if(!hasQmpPort(compose)) {
-        compose.value!.services.windows.ports.push(`${hostQmpPort}:${GUEST_QMP_PORT}`);
+        await winboat.portMgr.value!.setPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT);
     }
 
     if(!compose.value!.services.windows.environment.ARGUMENTS) {
@@ -583,10 +579,9 @@ const errors = computed(() => {
     return errCollection;
 })
 
-const getHostQmpPort = (_compose: typeof compose) => winboat.getHostPort(GUEST_QMP_PORT);
 const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
 const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
-const hasQmpPort = (_compose: typeof compose) => _compose.value?.services.windows.ports?.includes(`${getHostQmpPort(_compose)}:${GUEST_QMP_PORT}`);
+const hasQmpPort = (_compose: typeof compose) => winboat.portMgr.value!.hasPortMapping(GUEST_QMP_PORT);
 const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
 
 const usbPassthroughDisabled = computed(() => {

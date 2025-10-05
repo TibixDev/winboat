@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { RDP_PORT, WINBOAT_DIR, NOVNC_URL, GUEST_API_PORT } from "./constants";
+import { WINBOAT_DIR, NOVNC_URL, GUEST_API_PORT, GUEST_RDP_PORT } from "./constants";
 import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCommands } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -426,7 +426,7 @@ export class Winboat {
      * @param guestPort The port that gets looked up
      * @returns The host port that maps to the given guest port, or null if not found
      */
-    getHostPort(guestPort: number | string): number | null {
+    getHostPort(guestPort: number | string): number {
         return this.portMgr.value?.getHostPort(guestPort) ?? parseInt(guestPort.toString());;
     }
 
@@ -618,8 +618,7 @@ export class Winboat {
 
         const { username, password } = this.getCredentials();
         const compose = this.parseCompose();
-        const rdpPortEntry = compose.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
-        const rdpPort = rdpPortEntry?.split(":")?.at(0) ?? RDP_PORT.toString();
+        const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
         
@@ -632,7 +631,7 @@ export class Winboat {
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
-        /port:${rdpPort}\
+        /port:${rdpHostPort}\
         /cert:ignore\
         +clipboard\
         -wallpaper\
@@ -649,7 +648,7 @@ export class Winboat {
             cmd = `${freeRDPBin} /u:"${username}"\
                 /p:"${password}"\
                 /v:127.0.0.1\
-                /port:${rdpPort}\
+                /port:${rdpHostPort}\
                 /cert:ignore\
                 +clipboard\
                 +f\

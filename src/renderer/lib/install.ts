@@ -1,5 +1,5 @@
 import { type ComposeConfig, type InstallConfiguration } from "../../types";
-import { GUEST_API_PORT, GUEST_NOVNC_PORT, RDP_PORT, RESTART_ON_FAILURE, WINBOAT_DIR } from "./constants";
+import { GUEST_API_PORT, GUEST_NOVNC_PORT, RESTART_ON_FAILURE, WINBOAT_DIR } from "./constants";
 import YAML from "json-to-pretty-yaml";
 import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
