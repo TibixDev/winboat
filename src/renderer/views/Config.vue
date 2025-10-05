@@ -479,7 +479,7 @@ async function assignValues() {
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
-    maxNumCores.value = specs.cpuThreads;
+    maxNumCores.value = specs.cpuCores;
 
     refreshAvailableDevices();
 }

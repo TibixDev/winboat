@@ -1,6 +1,6 @@
 {
     "name": "winboat",
-    "version": "0.8.5",
+    "version": "0.8.6-alpha",
     "description": "Windows for Penguins",
     "type": "module",
     "main": "main/main.js",
@@ -41,6 +41,7 @@
         "@vueuse/core": "^13.1.0",
         "@vueuse/motion": "^2.2.6",
         "apexcharts": "^4.5.0",
+        "check-disk-space": "^3.4.0",
         "consola": "^3.4.2",
         "electron-store": "^11.0.0",
         "form-data": "^4.0.4",

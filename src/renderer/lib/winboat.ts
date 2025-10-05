@@ -557,9 +557,22 @@ export class Winboat {
         await execAsync("docker rm WinBoat")
         console.info("Removed container")
 
-        // 3. Remove the container volume
-        await execAsync("docker volume rm winboat_data");
-        console.info("Removed volume");
+        // 3. Remove the container volume or folder
+        const compose = this.parseCompose();
+        const storage = compose.services.windows.volumes.find(vol => vol.includes('/storage'));
+        if (storage?.startsWith("data:")) {
+            // In this case we have a volume (legacy)
+            await execAsync("docker volume rm winboat_data");
+            console.info("Removed volume");
+        } else {
+            const storageFolder = storage?.split(":").at(0) ?? null;
+            if (storageFolder && fs.existsSync(storageFolder)) {
+                fs.rmSync(storageFolder, { recursive: true, force: true });
+                console.info(`Removed storage folder at ${storageFolder}`);
+            } else {
+                console.warn("Storage folder does not exist, skipping removal");
+            }
+        }
 
         // 4. Remove WinBoat directory
         fs.rmSync(WINBOAT_DIR,  { recursive: true, force: true });
