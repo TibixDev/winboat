@@ -1,4 +1,5 @@
 import { type WindowsVersionKey } from "./renderer/lib/constants";
+import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {
     cpuThreads: number;
@@ -33,8 +34,8 @@ export type WinApp = {
     Usage?: number;
 }
 
-export type CustomAppCommands = {
-    [key: string]: null | (() => void);
+export type CustomAppCallbacks = {
+    [key: string]: null | ((context: Winboat) => void);
 };
 
 export type ComposeConfig = {

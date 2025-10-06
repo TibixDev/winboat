@@ -449,6 +449,11 @@ const rerenderExperimental = ref(0);
 // ^ This ref is needed because reactivity fails on wbConfig. 
 //   We manually increment this value in toggleExperimentalFeatures() to force rerender.
 
+// For handling the QMP port, as we can't rely on the winboat instance doing this for us.
+// A great example is when the container is offline. In that case, winboat's portManager isn't instantiated.
+let qmpPortManager = ref<PortManager | null>(null);
+// ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
+
 // For General
 const wbConfig = new WinboatConfig();
 
@@ -462,9 +467,11 @@ onMounted(async () => {
  */
 async function assignValues() {
     compose.value = winboat.parseCompose();
+    qmpPortManager.value = await PortManager.parseCompose(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
+
 
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
@@ -475,7 +482,7 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = winboat.getHostPort(GUEST_RDP_PORT);
+    freerdpPort.value = qmpPortManager.value.getHostPort(GUEST_RDP_PORT);
     origFreerdpPort.value = freerdpPort.value;
 
     const specs = await getSpecs();
@@ -503,8 +510,8 @@ async function saveDockerCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    winboat.portMgr.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value);
-    compose.value!.services.windows.ports = winboat.portMgr.value!.composeFormat;
+    qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value);
+    compose.value!.services.windows.ports = qmpPortManager.value!.composeFormat;
 
     isApplyingChanges.value = true;
     try {
@@ -533,8 +540,8 @@ async function addRequiredComposeFieldsUSB() {
     if(!hasUsbVolume(compose)) {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
-    if(!hasQmpPort(compose)) {
-        await winboat.portMgr.value!.setPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT);
+    if(!hasQmpPort()) {
+        await qmpPortManager.value!.setPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT);
     }
 
     if(!compose.value!.services.windows.environment.ARGUMENTS) {
@@ -581,11 +588,11 @@ const errors = computed(() => {
 
 const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
 const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
-const hasQmpPort = (_compose: typeof compose) => winboat.portMgr.value!.hasPortMapping(GUEST_QMP_PORT);
+const hasQmpPort = () => qmpPortManager.value?.hasPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
 
 const usbPassthroughDisabled = computed(() => {
-    return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort(compose) || !hasHostPort(compose);
+    return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
 })
 
 const saveButtonDisabled = computed(() => {

@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR, NOVNC_URL, GUEST_API_PORT, GUEST_RDP_PORT } from "./constants";
-import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCommands } from "../../types";
+import { WINBOAT_DIR, GUEST_API_PORT, GUEST_RDP_PORT, GUEST_QMP_PORT, GUEST_NOVNC_PORT } from "./constants";
+import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCallbacks } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from 'yaml';
@@ -25,8 +25,11 @@ const FormData: typeof import('form-data') = require('form-data');
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, 'appUsage.json');
-const QMP_PORT = 7149;
 export const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
+
+enum CustomAppCommands {
+    NOVNC_COMMAND = "NOVNC_COMMAND"
+};
 
 const presetApps: WinApp[] = [
     {
@@ -47,7 +50,7 @@ const presetApps: WinApp[] = [
         Name: "🖥️ Browser Display",
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
-        Path: NOVNC_URL,
+        Path: CustomAppCommands.NOVNC_COMMAND,
         Usage: 0
     }
 ];
@@ -56,9 +59,10 @@ const presetApps: WinApp[] = [
  * For specifying custom behavior when launching an app (e.g. novnc)
  * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
  */
-const customAppCommands: CustomAppCommands = {
-    [NOVNC_URL]: () => {
-        openLink(NOVNC_URL);
+const customAppCallbacks: CustomAppCallbacks = {
+    [CustomAppCommands.NOVNC_COMMAND]: (ctx: Winboat) => {
+        const novncHostPort = ctx.getHostPort(GUEST_NOVNC_PORT);
+        openLink(`http://127.0.0.1:${novncHostPort}`);
     }
 }
 
@@ -440,7 +444,8 @@ export class Winboat {
 
     async #connectQMPManager() {
         try {
-            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", QMP_PORT).catch(e => {logger.error(e); throw e});
+            const qmpHostPort = this.getHostPort(GUEST_QMP_PORT)
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", qmpHostPort).catch(e => {logger.error(e); throw e});
             const capabilities = await this.qmpMgr.executeCommand("qmp_capabilities");
             assert("return" in capabilities);
 
@@ -608,9 +613,9 @@ export class Winboat {
     async launchApp(app: WinApp) {
         if (!this.isOnline) throw new Error('Cannot launch app, Winboat is offline');
 
-        if(customAppCommands[app.Path]) {
+        if(customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
-            customAppCommands[app.Path]!();
+            customAppCallbacks[app.Path]!(this);
             this.appMgr?.incrementAppUsage(app);
             this.appMgr?.writeToDisk();
             return;

@@ -5,10 +5,6 @@ const path: typeof import('path') = require('path');
 // Should be {home}/.winboat
 export const WINBOAT_DIR = path.join(os.homedir(), '.winboat');
 
-export const WINBOAT_GUEST_API = "http://127.0.0.1:7148";
-export const NOVNC_URL = "http://127.0.0.0:8006";
-export const DEFAULT_NOVNC_URL = "http://127.0.0.0:8006";
-
 export const WINDOWS_VERSIONS = {
     "11": "Windows 11 Pro",
     "11l": "Windows 11 LTSC 2024",
