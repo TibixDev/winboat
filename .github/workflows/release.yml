@@ -26,7 +26,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'guest-server-only')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Update USB IDs database
         run: |
           echo "Removing old usb.ids file..."
@@ -46,9 +46,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "npm"
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -128,7 +128,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Show build type
         run: |
           echo "Manual workflow triggered with build type: guest-server-only"
@@ -151,7 +151,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'all')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Update USB IDs database
         run: |
           echo "Removing old usb.ids file..."
@@ -171,9 +171,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "npm"
       - name: Set up Go
         uses: actions/setup-go@v5

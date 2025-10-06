@@ -1,8 +1,13 @@
-const Path = require('path');
-const Chalk = require('chalk');
-const FileSystem = require('fs');
-const Vite = require('vite');
-const compileTs = require('./private/tsc');
+import Path from 'path';
+import Chalk from 'chalk';
+import FileSystem from 'fs';
+import * as Vite from 'vite';
+import compileTs from './private/tsc.ts';
+// ^ Extension can't be omitted because Node expects it
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = Path.dirname(__filename);
 
 function buildRenderer() {
     return Vite.build({

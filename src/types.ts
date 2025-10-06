@@ -2,9 +2,8 @@ import { type WindowsVersionKey } from "./renderer/lib/constants";
 import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {
-    cpuThreads: number;
+    cpuCores: number;
     ramGB: number;
-    diskSpaceGB: number;
     kvmEnabled: boolean;
     dockerInstalled: boolean;
     dockerComposeInstalled: boolean,
@@ -18,8 +17,9 @@ export type Specs = {
 export type InstallConfiguration = {
     windowsVersion: WindowsVersionKey;
     windowsLanguage: string;
-    cpuThreads: number;
+    cpuCores: number;
     ramGB: number;
+    installFolder: string;
     diskSpaceGB: number;
     username: string;
     password: string;

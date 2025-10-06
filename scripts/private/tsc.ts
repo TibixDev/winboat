@@ -1,18 +1,18 @@
-const ChildProcess = require('child_process');
-const Chalk = require('chalk');
+import ChildProcess from 'child_process';
+import Chalk from 'chalk';
 
-function compile(directory) {
-  return new Promise((resolve, reject) => {
+export default function compile(directory) {
+  return new Promise<void>((resolve, reject) => {
     const tscProcess = ChildProcess.exec('tsc', {
       cwd: directory,
     });
 
-    tscProcess.stdout.on('data', data => 
+    tscProcess.stdout!.on('data', data => 
         process.stdout.write(Chalk.yellowBright(`[tsc] `) + Chalk.white(data.toString()))
     );
 
     tscProcess.on('exit', exitCode => {
-      if (exitCode > 0) {
+      if (exitCode ?? 1 > 0) {
         reject(exitCode);
       } else {
         resolve();
@@ -21,4 +21,3 @@ function compile(directory) {
   });
 }
 
-module.exports = compile;

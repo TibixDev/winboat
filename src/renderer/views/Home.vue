@@ -126,7 +126,7 @@ const wallpaper = ref("");
 
 onMounted(async () => {
     compose.value = winboat.parseCompose();
-    wallpaper.value = compose.value.services.windows.environment.VERSION.includes("11")
+    wallpaper.value = compose.value?.services.windows.environment.VERSION.includes("11")
         ? "./img/wallpaper/win11.webp"
         : "./img/wallpaper/win10.webp";
     

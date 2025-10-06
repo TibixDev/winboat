@@ -116,10 +116,16 @@ export class InstallManager {
     async createComposeFile() {
         this.changeState(InstallStates.CREATING_COMPOSE_FILE);
 
-        // Ensure the directory exists
+        // Ensure the .winboat directory exists
         if (!fs.existsSync(WINBOAT_DIR)) {
             fs.mkdirSync(WINBOAT_DIR);
             logger.info(`Created WinBoat directory: ${WINBOAT_DIR}`);
+        }
+
+        // Ensure the installation directory exists
+        if (!fs.existsSync(this.conf.installFolder)) {
+            fs.mkdirSync(this.conf.installFolder, { recursive: true });
+            logger.info(`Created installation directory: ${this.conf.installFolder}`);
         }
 
         // Configure the compose file
@@ -128,7 +134,7 @@ export class InstallManager {
 
         composeContent.services.windows.ports = this.portMgr.value.composeFormat;
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
-        composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuThreads}`;
+        composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
         composeContent.services.windows.environment.VERSION = this.conf.windowsVersion;
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
@@ -137,6 +143,14 @@ export class InstallManager {
         
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
+        }
+
+        const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/storage'));
+        if (storageFolderIdx !== -1) {
+            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
+        } else {
+            logger.warn("No /storage volume found in compose template, adding one...");
+            composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
         }
 
         // Write the compose file
