@@ -30,7 +30,7 @@
                     <div v-if="currentStep.id === StepID.WELCOME" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is a full fledged app that helps you natively run Windows applications on your Linux machine with ease.
+                            WinBoat is a full-fledged app that helps you natively run Windows applications on your Linux machine with ease.
                         </p>
                         <p class="text-lg text-gray-400">
                             We will go through a few required steps to get you started in no time.
@@ -467,7 +467,7 @@
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
-                            Sharing your home folder exposes your Linux files to Windows specific malware and viruses.
+                            Sharing your home folder exposes your Linux files to Windows-specific malware and viruses.
                             Only enable this feature if you understand the risks involved. Always be careful with the files you download and open in Windows.
                         </p>
 
@@ -478,7 +478,7 @@
                         >
                             <x-label><strong>Enable home folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
-                                By checking this box, you aknowledge the risks mentioned above
+                                By checking this box, you acknowledge the risks mentioned above
                             </x-label>
                         </x-checkbox>
 
