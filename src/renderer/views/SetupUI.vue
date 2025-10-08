@@ -459,6 +459,35 @@
                         </div>
                     </div>
     
+                    <!-- Home Folder Sharing -->
+                    <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
+                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <p class="text-lg text-gray-400">
+                            WinBoat allows you to share your Linux home folder with the Windows virtual machine, here you can choose whether to enable this feature or not.
+                        </p>
+                        <p class="text-lg text-gray-400">
+                            <b>⚠️ WARNING:</b>
+                            Sharing your home folder exposes your Linux files to Windows specific malware and viruses.
+                            Only enable this feature if you understand the risks involved. Always be careful with the files you download and open in Windows.
+                        </p>
+
+                        <x-checkbox
+                            class="my-4"
+                            @toggle="homeFolderSharing = !homeFolderSharing"
+                            :toggled="homeFolderSharing"
+                        >
+                            <x-label><strong>Enable home folder sharing</strong></x-label>
+                            <x-label class="text-gray-400">
+                                By checking this box, you aknowledge the risks mentioned above
+                            </x-label>
+                        </x-checkbox>
+
+                        <div class="flex flex-row gap-4 mt-6">
+                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                        </div>
+                    </div>
+
                     <!-- Review -->
                     <div v-if="currentStep.id === StepID.REVIEW" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
@@ -591,6 +620,7 @@ enum StepID {
     WINDOWS_CONFIG = "STEP_WINDOWS_CONFIG",
     HARDWARE_CONFIG = "STEP_HARDWARE_CONFIG",
     USER_CONFIG = "STEP_USER_CONFIG",
+    SHOULD_SHARE_HOME_FOLDER = "STEP_SHOULD_SHARE_HOME_FOLDER",
     REVIEW = "STEP_OVERVIEW",
     INSTALL = "STEP_INSTALL",
     FINISH = "STEP_FINISH",
@@ -632,6 +662,11 @@ const steps: Step[] = [
         title: "Hardware Configuration",
         icon: "famicons:hardware-chip-outline",
     },
+        {
+        id: StepID.SHOULD_SHARE_HOME_FOLDER,
+        title: "Home Folder Sharing",
+        icon: "line-md:link",
+    },
     {
         id: StepID.REVIEW,
         title: "Review",
@@ -669,6 +704,7 @@ const diskSpaceGB = ref(32);
 const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");
+const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 
@@ -822,6 +858,7 @@ function install() {
         diskSpaceGB: diskSpaceGB.value,
         username: username.value,
         password: password.value,
+        shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
     }
 

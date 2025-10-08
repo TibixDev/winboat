@@ -134,16 +134,29 @@ export class InstallManager {
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
         
+        // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
         }
 
+        // Storage folder mapping
         const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/storage'));
         if (storageFolderIdx !== -1) {
             composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
         } else {
             logger.warn("No /storage volume found in compose template, adding one...");
             composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
+        }
+
+        // Home folder mapping
+        if (!this.conf.shareHomeFolder) {
+            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/shared'));
+            if (sharedFolderIdx !== -1) {
+                composeContent.services.windows.volumes.splice(sharedFolderIdx, 1);
+                logger.info("Removed home folder sharing as per user configuration");
+            } else {
+                logger.info("No home folder sharing volume found, nothing to remove");
+            }
         }
 
         
