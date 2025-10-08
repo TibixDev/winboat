@@ -467,7 +467,7 @@
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
-                            Sharing your home folder exposes your Linux files to Windows specific malware and viruses.
+                            Sharing your home folder exposes your Linux files to Windows-specific malware and viruses.
                             Only enable this feature if you understand the risks involved. Always be careful with the files you download and open in Windows.
                         </p>
 
