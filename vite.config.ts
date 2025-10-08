@@ -1,20 +1,20 @@
-const Path = require('path');
-const vuePlugin = require('@vitejs/plugin-vue');
-const { defineConfig } = require('vite');
-const packageJson = require('./package.json');
+import path from 'path';
+import vuePlugin from '@vitejs/plugin-vue';
+import { defineConfig } from 'vite';
+import * as packageJson from './package.json';
 
 const config = defineConfig({
-    root: Path.join(__dirname, 'src', 'renderer'),
+    root: path.join(__dirname, 'src', 'renderer'),
     publicDir: 'public',
     server: {
         port: 8080,
     },
     define: {
         'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
+        open: false,
     },
-    open: false,
     build: {
-        outDir: Path.join(__dirname, 'build', 'renderer'),
+        outDir: path.join(__dirname, 'build', 'renderer'),
         emptyOutDir: true,
         rollupOptions: {
             external: ['fs', 'os', 'child_process', 'util'], // For build
@@ -37,4 +37,4 @@ const config = defineConfig({
     },
 });
 
-module.exports = config;
+export default config;

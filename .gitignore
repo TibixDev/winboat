@@ -5,6 +5,8 @@ build
 .vscode
 .idea
 
+result
+
 package-lock.json
 # src/renderer/public/*
 

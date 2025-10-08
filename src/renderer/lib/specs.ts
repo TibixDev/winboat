@@ -7,36 +7,36 @@ const execAsync = promisify(exec);
 
 export function satisfiesPrequisites(specs: Specs) {
     return specs.dockerInstalled &&
-        specs.dockerComposeInstalled && 
+        specs.dockerComposeInstalled &&
         specs.dockerIsRunning &&
         specs.dockerIsInUserGroups &&
         specs.freeRDP3Installed &&
-        specs.ipTablesLoaded &&
-        specs.iptableNatLoaded &&
         specs.kvmEnabled &&
         specs.ramGB >= 4 &&
-        specs.cpuThreads >= 2 &&
-        specs.diskSpaceGB >= 32
+        specs.cpuCores >= 2
 }
 
-export const defaultSpecs: Specs = { 
-    cpuThreads: 0,
+export const defaultSpecs: Specs = {
+    cpuCores: 0,
     ramGB: 0,
-    diskSpaceGB: 0,
     kvmEnabled: false,
     dockerInstalled: false,
     dockerComposeInstalled: false,
     dockerIsRunning: false,
     dockerIsInUserGroups: false,
-    freeRDP3Installed: false,
-    ipTablesLoaded: false,
-    iptableNatLoaded: false
+    freeRDP3Installed: false
 }
 
 export async function getSpecs() {
     const specs: Specs = { ...defaultSpecs };
 
-    specs.cpuThreads = os.cpus().length;
+    // Physical CPU cores check
+    try {
+        const res = (await execAsync('lscpu -p | egrep -v "^#" | sort -u -t, -k 2,4 | wc -l')).stdout;
+        specs.cpuCores = parseInt(res.trim(), 10);
+    } catch(e) {
+        console.error('Error getting CPU cores:', e);
+    }
 
     // TODO: These commands might silently fail
     // But if they do, it means something wasn't right to begin with
@@ -45,18 +45,6 @@ export async function getSpecs() {
         specs.ramGB = memoryInfo.totalGB;
     } catch (e) {
         console.error('Error reading /proc/meminfo:', e);
-    }
-
-    // Docker check
-    try {
-        // We use /var here because /var/lib/docker is _the_ location for Docker data.
-        // Also it covers cases of immutable distros using Podman (hello Bazzite!), since
-        // /home is a symlink to /var/home there.
-        // TODO:hdkv where does Podman stores the images and the data on non-immutables (aka regular Fedora)?
-        const diskStats = fs.statfsSync('/var');
-        specs.diskSpaceGB = Math.round(diskStats.bavail * diskStats.bsize / 1024 / 1024 / 1024 * 100) / 100;
-    } catch (e) {
-        console.error('Error getting disk space for /var:', e);
     }
 
     // KVM check
@@ -119,22 +107,6 @@ export async function getSpecs() {
         specs.freeRDP3Installed = !!freeRDPBin;
     } catch(e) {
         console.error('Error checking FreeRDP 3.x.x installation (most likely not installed):', e);
-    }
-
-    // iptables kernel module check
-    try {
-        const { stdout: ipTablesOutput } = await execAsync('lsmod | grep ip_tables');
-        specs.ipTablesLoaded = !!ipTablesOutput.trim();
-    } catch (e) {
-        console.error('Error checking ip_tables module:', e);
-    }
-
-    // iptables_nat kernel module check
-    try {
-        const { stdout: iptableNatOutput } = await execAsync('lsmod | grep iptable_nat');
-        specs.iptableNatLoaded = !!iptableNatOutput.trim();
-    } catch (e) {
-        console.error('Error checking iptable_nat module:', e);
     }
 
     console.log('Specs:', specs);

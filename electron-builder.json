@@ -44,6 +44,11 @@
       "from": "./guest_server",
       "to": "guest_server",
       "filter": ["**/*"]
+    },
+    {
+      "from": "./data",
+      "to": "data",
+      "filter": ["**/*"]
     }
   ]
 }

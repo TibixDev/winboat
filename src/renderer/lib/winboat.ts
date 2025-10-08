@@ -1,12 +1,13 @@
 import { ref, type Ref } from "vue";
-import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
-import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp } from "../../types";
+import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API, NOVNC_URL } from "./constants";
+import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCommands } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from 'yaml';
 import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { openLink } from '../utils/openLink';
 import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
@@ -40,8 +41,25 @@ const presetApps: WinApp[] = [
         Source: "internal",
         Path: "%windir%\\explorer.exe",
         Usage: 0
+    },
+    {
+        Name: "🖥️ Browser Display",
+        Icon: AppIcons[InternalApps.NOVNC_BROWSER],
+        Source: "internal",
+        Path: NOVNC_URL,
+        Usage: 0
     }
-]
+];
+
+/**
+ * For specifying custom behavior when launching an app (e.g. novnc)
+ * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
+ */
+const customAppCommands: CustomAppCommands = {
+    [NOVNC_URL]: () => {
+        openLink(NOVNC_URL);
+    }
+}
 
 export const ContainerStatus = {
     "Created": "created",
@@ -539,14 +557,24 @@ export class Winboat {
         await execAsync("docker rm WinBoat")
         console.info("Removed container")
 
-        // 3. Remove the container volume
-        await execAsync("docker volume rm winboat_data");
-        console.info("Removed volume");
-        
-        // 4. Close logger
-        logger.close();
+        // 3. Remove the container volume or folder
+        const compose = this.parseCompose();
+        const storage = compose.services.windows.volumes.find(vol => vol.includes('/storage'));
+        if (storage?.startsWith("data:")) {
+            // In this case we have a volume (legacy)
+            await execAsync("docker volume rm winboat_data");
+            console.info("Removed volume");
+        } else {
+            const storageFolder = storage?.split(":").at(0) ?? null;
+            if (storageFolder && fs.existsSync(storageFolder)) {
+                fs.rmSync(storageFolder, { recursive: true, force: true });
+                console.info(`Removed storage folder at ${storageFolder}`);
+            } else {
+                console.warn("Storage folder does not exist, skipping removal");
+            }
+        }
 
-        // 5. Remove WinBoat directory
+        // 4. Remove WinBoat directory
         fs.rmSync(WINBOAT_DIR,  { recursive: true, force: true });
         console.info(`Removed ${WINBOAT_DIR}`);
         console.info("So long and thanks for all the fish!");
@@ -554,6 +582,14 @@ export class Winboat {
 
     async launchApp(app: WinApp) {
         if (!this.isOnline) throw new Error('Cannot launch app, Winboat is offline');
+
+        if(customAppCommands[app.Path]) {
+            logger.info(`Found custom app command for '${app.Name}'`);
+            customAppCommands[app.Path]!();
+            this.appMgr?.incrementAppUsage(app);
+            this.appMgr?.writeToDisk();
+            return;
+        }
 
         const { username, password } = this.getCredentials();
         const compose = this.parseCompose();
@@ -573,11 +609,13 @@ export class Winboat {
         /v:127.0.0.1\
         /port:${rdpPort}\
         /cert:ignore\
+        ${this.#wbConfig?.config.multiMonitor == 2 ? '+span' : ''}\
         +clipboard\
         -wallpaper\
         /sound:sys:pulse\
         /microphone:sys:pulse\
         /floatbar\
+        ${this.#wbConfig?.config.multiMonitor == 1 ? '/multimon' : ''}\
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
         /scale:${this.#wbConfig?.config.scale ?? 100}\

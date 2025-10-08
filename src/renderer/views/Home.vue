@@ -18,6 +18,15 @@
                         <Icon class="size-7" icon="material-symbols:api"></Icon>
                         <p class="!my-0 font-semibold text-lg">WinBoat Guest API -
                             {{ winboat.isOnline.value ? 'Online' : 'Offline' }}
+                            <a
+                                v-if="!winboat.isOnline.value"
+                                title="Get Help"
+                                href="https://rentry.org/winboat_guest_server_borked"
+                                @click="openAnchorLink"
+                                class="text-red-400 hover:text-red-500 hover:underline inline-flex translate-y-1 transition"
+                            >
+                                <Icon icon="mingcute:question-fill" class="size-6 pointer-events-none"></Icon>
+                            </a>
                         </p>
                     </div>
                     <div class="flex flex-row items-center gap-1.5" :class="{
@@ -109,6 +118,7 @@ import { type ComposeConfig } from '../../types';
 import { WINDOWS_VERSIONS } from '../lib/constants';
 import { Icon } from '@iconify/vue';
 import { capitalizeFirstLetter } from '../utils/capitalize';
+import { openAnchorLink } from '../utils/openLink';
 
 const winboat = new Winboat();
 const compose = ref<ComposeConfig | null>(null);
@@ -116,7 +126,7 @@ const wallpaper = ref("");
 
 onMounted(async () => {
     compose.value = winboat.parseCompose();
-    wallpaper.value = compose.value.services.windows.environment.VERSION.includes("11")
+    wallpaper.value = compose.value?.services.windows.environment.VERSION.includes("11")
         ? "./img/wallpaper/win11.webp"
         : "./img/wallpaper/win10.webp";
     

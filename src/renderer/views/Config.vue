@@ -1,8 +1,9 @@
 <template>
     <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ 'hidden': !maxNumCores }">
         <div>
-            <x-label class="mb-4 text-neutral-300">Resources</x-label>
+            <x-label class="mb-4 text-neutral-300">Container</x-label>
             <div class="flex flex-col gap-4">
+                <!-- RAM Allocation -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
@@ -28,6 +29,8 @@
                         <p class="text-neutral-100">GB</p>
                     </div>
                 </x-card>
+
+                <!-- CPU Cores -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
@@ -53,6 +56,8 @@
                         <p class="text-neutral-100">Cores</p>
                     </div>
                 </x-card>
+
+                <!-- Shared Home Folder -->
                 <x-card class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
                         <div class="flex flex-row items-center gap-2 mb-2">
@@ -74,6 +79,30 @@
                         ></x-switch>
                     </div>
                 </x-card>
+
+                <!-- Auto Start Container -->
+                <x-card class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="clarity:power-solid"></Icon>
+                            <h1 class="text-lg my-0 font-semibold">
+                                Auto Start Container
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, the Windows container will automatically be started when the system boots up
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                            :toggled="autoStartContainer"
+                            @toggle="(_: any) => autoStartContainer = !autoStartContainer"
+                            size="large"
+                        ></x-switch>
+                    </div>
+                </x-card>
+
+                <!-- FreeRDP Port -->
                 <x-card
                     class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
                     <div>
@@ -105,7 +134,7 @@
                 </div>
                 <x-button
                     :disabled="saveButtonDisabled || isUpdatingUSBPrerequisites"
-                    @click="applyChanges()"
+                    @click="saveDockerCompose()"
                     class="w-24"
                 >
                     <span v-if="!isApplyingChanges || isUpdatingUSBPrerequisites">Save</span>
@@ -116,6 +145,7 @@
         <div v-show="wbConfig.config.experimentalFeatures" :key="rerenderExperimental">
             <x-label class="mb-4 text-neutral-300">Devices</x-label>
             <div class="flex flex-col gap-4">
+                <!-- USB Passthrough -->
                 <x-card class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div class="w-full">
                         <div class="flex flex-row gap-2 items-center mb-2">
@@ -227,6 +257,7 @@
         <div>
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
+                <!-- Display Scaling -->
                 <x-card
                     class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
@@ -258,6 +289,41 @@
                         </x-select>
                     </div>
                 </x-card>
+
+                <!-- Multi Monitor -->
+                <x-card
+                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:monitor"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                Multi-Monitor Support
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Controls how multiple monitors are handled. MultiMon creates separate displays for each monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may work better depending on your setup.
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-select class="w-20" @change="(e: any) => wbConfig.config.multiMonitor = Number(e.detail.newValue)">
+                            <x-menu>
+                                <x-menuitem value="0" :toggled="wbConfig.config.multiMonitor === 0">
+                                    <x-label>None</x-label>
+                                </x-menuitem>
+
+                                <x-menuitem value="1" :toggled="wbConfig.config.multiMonitor === 1">
+                                    <x-label>MultiMon</x-label>
+                                </x-menuitem>
+
+                                <x-menuitem value="2" :toggled="wbConfig.config.multiMonitor === 2">
+                                    <x-label>Span</x-label>
+                                </x-menuitem>
+                            </x-menu>
+                        </x-select>
+                    </div>
+                </x-card>
+
+                <!-- Smartcard Passthrough -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
@@ -279,6 +345,8 @@
                         ></x-switch>
                     </div>
                 </x-card>
+
+                <!-- RDP Monitoring -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
@@ -305,6 +373,8 @@
 
         <div>
             <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
+
+            <!-- Experimental Features -->
             <x-card
                 class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
                 <div>
@@ -367,7 +437,9 @@ import { type Device } from "usb";
 import {
     RDP_PORT,
     PORT_MAX,
-    USB_VID_BLACKLIST
+    USB_VID_BLACKLIST,
+    RESTART_ON_FAILURE,
+    RESTART_NO
 } from '../lib/constants';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
@@ -393,6 +465,8 @@ const origRamGB = ref(0);
 const maxRamGB = ref(0);
 const origShareHomeFolder = ref(false);
 const shareHomeFolder = ref(false);
+const origAutoStartContainer = ref(false);
+const autoStartContainer = ref(false);
 const freerdpPort = ref(0);
 const origFreerdpPort = ref(0);
 const isApplyingChanges = ref(false);
@@ -413,6 +487,10 @@ onMounted(async () => {
     await assignValues();
 });
 
+/**
+ * Assigns the initial values from the Docker Compose file to the reactive refs
+ * so we can display them and track when a change has been made
+ */
 async function assignValues() {
     compose.value = winboat.parseCompose();
 
@@ -425,17 +503,24 @@ async function assignValues() {
     shareHomeFolder.value = compose.value.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
     origShareHomeFolder.value = shareHomeFolder.value;
 
+    autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
+    origAutoStartContainer.value = autoStartContainer.value;
+
     const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
     freerdpPort.value = Number(rdpEntry?.split(":")?.at(0) ?? RDP_PORT);
     origFreerdpPort.value = freerdpPort.value;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
-    maxNumCores.value = specs.cpuThreads;
+    maxNumCores.value = specs.cpuCores;
 
     refreshAvailableDevices();
 }
 
+/**
+ * Saves the currently specified values to the Docker Compose file
+ * and then re-assigns the initial values to the reactive refs
+ */
 async function saveDockerCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
@@ -447,6 +532,8 @@ async function saveDockerCompose() {
     } else if (!shareHomeFolder.value && composeHasHomefolderShare) {
         compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(v => v !== HOMEFOLDER_SHARE_STR);
     }
+
+    compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
     const newPortEntries = compose.value!.services.windows.ports.filter(x => !x.includes(`:${RDP_PORT}`));
 
@@ -466,21 +553,10 @@ async function saveDockerCompose() {
     }
 }
 
-async function applyChanges() {
-    compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
-    compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
-
-    const composeHasHomefolderShare = compose.value!.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
-
-    if (shareHomeFolder.value && !composeHasHomefolderShare) {
-        compose.value!.services.windows.volumes.push(HOMEFOLDER_SHARE_STR);
-    } else if (!shareHomeFolder.value && composeHasHomefolderShare) {
-        compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(v => v !== HOMEFOLDER_SHARE_STR);
-    }
-
-    await saveDockerCompose();
-}
-
+/**
+ * Adds the required fields for USB passthrough to work
+ * to the Docker Compose file if they don't already exist
+ */
 async function addRequiredComposeFieldsUSB() {
     if (!usbPassthroughDisabled.value) {
         return;
@@ -551,7 +627,8 @@ const saveButtonDisabled = computed(() => {
         origNumCores.value !== numCores.value || 
         origRamGB.value !== ramGB.value || 
         shareHomeFolder.value !== origShareHomeFolder.value || 
-        freerdpPort.value !== origFreerdpPort.value;
+        freerdpPort.value !== origFreerdpPort.value ||
+        autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = 
         errors.value.length || 

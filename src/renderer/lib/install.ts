@@ -1,5 +1,5 @@
 import { type ComposeConfig, type InstallConfiguration } from "../../types";
-import { WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
+import { RESTART_ON_FAILURE, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
 import YAML from "json-to-pretty-yaml";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
@@ -21,7 +21,7 @@ export const DefaultCompose: ComposeConfig = {
     },
     "services": {
         "windows": {
-            "image": "ghcr.io/dockur/windows:4.35",
+            "image": "ghcr.io/dockur/windows:5.07",
             "container_name": "WinBoat",
             "environment": {
                 "VERSION": "11",
@@ -33,7 +33,7 @@ export const DefaultCompose: ComposeConfig = {
                 "HOME": "${HOME}",
                 "LANGUAGE": "English",
                 "HOST_PORTS": "7149",
-                "ARGUMENTS": "-cpu host,arch_capabilities=off \n-qmp tcp:0.0.0.0:7149,server,wait=off\n"
+                "ARGUMENTS": "-qmp tcp:0.0.0.0:7149,server,wait=off"
             },
             "cap_add": [
                 "NET_ADMIN"
@@ -47,7 +47,7 @@ export const DefaultCompose: ComposeConfig = {
                 "3389:3389/udp" // RDP
             ],
             "stop_grace_period": "120s",
-            "restart": "on-failure",
+            "restart": RESTART_ON_FAILURE,
             "volumes": [
                 "data:/storage",
                 "${HOME}:/shared",
@@ -111,26 +111,54 @@ export class InstallManager {
     createComposeFile() {
         this.changeState(InstallStates.CREATING_COMPOSE_FILE);
 
-        // Ensure the directory exists
+        // Ensure the .winboat directory exists
         if (!fs.existsSync(WINBOAT_DIR)) {
             fs.mkdirSync(WINBOAT_DIR);
             logger.info(`Created WinBoat directory: ${WINBOAT_DIR}`);
+        }
+
+        // Ensure the installation directory exists
+        if (!fs.existsSync(this.conf.installFolder)) {
+            fs.mkdirSync(this.conf.installFolder, { recursive: true });
+            logger.info(`Created installation directory: ${this.conf.installFolder}`);
         }
 
         // Configure the compose file
         const composeContent = { ...DefaultCompose }
 
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
-        composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuThreads}`;
+        composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
         composeContent.services.windows.environment.VERSION = this.conf.windowsVersion;
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
         
+        // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
         }
+
+        // Storage folder mapping
+        const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/storage'));
+        if (storageFolderIdx !== -1) {
+            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
+        } else {
+            logger.warn("No /storage volume found in compose template, adding one...");
+            composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
+        }
+
+        // Home folder mapping
+        if (!this.conf.shareHomeFolder) {
+            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/shared'));
+            if (sharedFolderIdx !== -1) {
+                composeContent.services.windows.volumes.splice(sharedFolderIdx, 1);
+                logger.info("Removed home folder sharing as per user configuration");
+            } else {
+                logger.info("No home folder sharing volume found, nothing to remove");
+            }
+        }
+
         
         // Write the compose file
         const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");

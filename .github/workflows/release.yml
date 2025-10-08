@@ -20,13 +20,20 @@ on:
           - guest-server-only
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: >-
       (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'guest-server-only')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+      - name: Update USB IDs database
+        run: |
+          echo "Removing old usb.ids file..."
+          rm -f data/usb.ids
+          echo "Downloading latest usb.ids from linux-usb.org..."
+          curl -o data/usb.ids http://www.linux-usb.org/usb.ids
+          echo "USB IDs database updated successfully"
       - name: Show build type
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -39,9 +46,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "npm"
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -117,11 +124,11 @@ jobs:
       #       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
       #     if-no-files-found: ignore
   guest-server-only:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Show build type
         run: |
           echo "Manual workflow triggered with build type: guest-server-only"
@@ -138,13 +145,20 @@ jobs:
           name: guest-server-artifacts
           path: guest_server/
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: >-
       startsWith(github.ref, 'refs/tags/') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'all')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+      - name: Update USB IDs database
+        run: |
+          echo "Removing old usb.ids file..."
+          rm -f data/usb.ids
+          echo "Downloading latest usb.ids from linux-usb.org..."
+          curl -o data/usb.ids http://www.linux-usb.org/usb.ids
+          echo "USB IDs database updated successfully"
       - name: Show build type
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -157,9 +171,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "npm"
       - name: Set up Go
         uses: actions/setup-go@v5

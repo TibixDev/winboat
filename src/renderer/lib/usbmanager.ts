@@ -1,14 +1,13 @@
 const { usb, getDeviceList }: typeof import("usb") = require("usb");
 const fs: typeof import("fs") = require("fs");
 const  { execSync }: typeof import('child_process') = require('child_process');
+const remote: typeof import('@electron/remote') = require('@electron/remote');
+const path: typeof import('path') = require('path')
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
 import { Winboat, logger } from "./winboat";
 import { WinboatConfig } from "./config";
-import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
-
-const LINUX_DEVICE_DATABASE_PATH = "/usr/share/hwdata/usb.ids";
 
 type LinuxDeviceDatabase = Record<string, { name: string; devices: Record<string, string> }>;
 
@@ -52,7 +51,7 @@ export class USBManager {
             return USBManager.instance;
         }
 
-        this.#linuxDeviceDatabase = readLinuxDeviceDatabase(LINUX_DEVICE_DATABASE_PATH);
+        this.#linuxDeviceDatabase = readLinuxDeviceDatabase();
         this.devices.value = getDeviceList();
         // Pre-cache existing devices, otherwise on detach we won't have any info about them
         // if they are not in the database
@@ -390,12 +389,23 @@ export class USBManager {
 }
 
 /**
- * Reads the Linux USB device database from the specified file path and returns a JSON representation.
- * @param filePath Path to the usb.ids file
+ * Reads the Linux USB device database and returns a JSON representation.
  * @returns A JSON object representing the USB device database
  */
-function readLinuxDeviceDatabase(filePath: string): LinuxDeviceDatabase {
-    const content = fs.readFileSync(filePath, "utf-8");
+function readLinuxDeviceDatabase(): LinuxDeviceDatabase {
+    const LINUX_DEVICE_DATABASE_PATH = "/usr/share/hwdata/usb.ids";
+    let dbFilePath = LINUX_DEVICE_DATABASE_PATH;
+
+    // Fallback to static file if the distro doesn't ship with usb.ids
+    if (!fs.existsSync(dbFilePath)) {
+        dbFilePath = remote.app.isPackaged
+        ? path.join(process.resourcesPath, 'data', 'usb.ids') // For packaged app
+        : path.join(remote.app.getAppPath(), '..', '..', 'data', 'usb.ids'); // For dev mode
+    }
+
+    logger.info(`Final USB database file path: ${dbFilePath}`);
+
+    const content = fs.readFileSync(dbFilePath, "utf-8");
     const lines = content.split("\n");
 
     const vendors: LinuxDeviceDatabase = {};

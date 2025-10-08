@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
@@ -44,14 +45,13 @@ type Metrics struct {
 }
 
 func getApps(w http.ResponseWriter, r *http.Request) {
-	// Run the PowerShell script
-	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\apps.ps1")
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-Command", "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & '.\\scripts\\apps.ps1'")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(output)
 }
@@ -237,9 +237,10 @@ func main() {
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
+	handler := cors.Default().Handler(r)
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
-	if err := http.ListenAndServe(":7148", r); err != nil {
+	if err := http.ListenAndServe(":7148", handler); err != nil {
 		log.Fatal("Server failed: ", err)
 	}
 }

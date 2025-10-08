@@ -1,12 +1,16 @@
 {
     "name": "winboat",
-    "version": "0.8.0",
+    "version": "0.8.7",
     "description": "Windows for Penguins",
+    "type": "module",
     "main": "main/main.js",
+    "engines": {
+        "node": ">=23.6.0"
+    },
     "scripts": {
-        "dev": "node scripts/dev-server.js",
+        "dev": "node scripts/dev-server.ts",
         "build-guest-server": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.js && electron-builder --linux"
+        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.ts && electron-builder --linux"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
@@ -38,6 +42,9 @@
         "@vueuse/motion": "^2.2.6",
         "7zip-bin-full": "^25.1.1",
         "apexcharts": "^4.5.0",
+        "check-disk-space": "^3.4.0",
+        "consola": "^3.4.2",
+        "electron-store": "^11.0.0",
         "form-data": "^4.0.4",
         "jimp": "^1.6.0",
         "json-to-pretty-yaml": "^1.2.2",
@@ -50,7 +57,6 @@
         "vue": "^3.5.13",
         "vue-router": "^4.5.0",
         "vue3-apexcharts": "^1.8.0",
-        "winston": "^3.17.0",
         "xel": "^0.33.7",
         "yaml": "^2.7.1"
     }
