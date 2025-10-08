@@ -7,18 +7,16 @@ const execAsync = promisify(exec);
 
 export function satisfiesPrequisites(specs: Specs) {
     return specs.dockerInstalled &&
-        specs.dockerComposeInstalled && 
+        specs.dockerComposeInstalled &&
         specs.dockerIsRunning &&
         specs.dockerIsInUserGroups &&
         specs.freeRDP3Installed &&
-        specs.ipTablesLoaded &&
-        specs.iptableNatLoaded &&
         specs.kvmEnabled &&
         specs.ramGB >= 4 &&
         specs.cpuCores >= 2
 }
 
-export const defaultSpecs: Specs = { 
+export const defaultSpecs: Specs = {
     cpuCores: 0,
     ramGB: 0,
     kvmEnabled: false,
@@ -26,9 +24,7 @@ export const defaultSpecs: Specs = {
     dockerComposeInstalled: false,
     dockerIsRunning: false,
     dockerIsInUserGroups: false,
-    freeRDP3Installed: false,
-    ipTablesLoaded: false,
-    iptableNatLoaded: false
+    freeRDP3Installed: false
 }
 
 export async function getSpecs() {
@@ -111,22 +107,6 @@ export async function getSpecs() {
         specs.freeRDP3Installed = !!freeRDPBin;
     } catch(e) {
         console.error('Error checking FreeRDP 3.x.x installation (most likely not installed):', e);
-    }
-
-    // iptables kernel module check
-    try {
-        const { stdout: ipTablesOutput } = await execAsync('lsmod | grep ip_tables');
-        specs.ipTablesLoaded = !!ipTablesOutput.trim();
-    } catch (e) {
-        console.error('Error checking ip_tables module:', e);
-    }
-
-    // iptables_nat kernel module check
-    try {
-        const { stdout: iptableNatOutput } = await execAsync('lsmod | grep iptable_nat');
-        specs.iptableNatLoaded = !!iptableNatOutput.trim();
-    } catch (e) {
-        console.error('Error checking iptable_nat module:', e);
     }
 
     console.log('Specs:', specs);

@@ -9,8 +9,6 @@ export type Specs = {
     dockerIsRunning: boolean,
     dockerIsInUserGroups: boolean;
     freeRDP3Installed: boolean;
-    ipTablesLoaded: boolean;
-    iptableNatLoaded: boolean;
 }
 
 export type InstallConfiguration = {

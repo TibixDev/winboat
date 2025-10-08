@@ -112,13 +112,6 @@
                                 FreeRDP 3.x.x installed
                                 <a href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
-                            <li class="flex items-center gap-2">
-                                <span v-if="specs.ipTablesLoaded && specs.iptableNatLoaded" class="text-green-500">✔</span>
-                                <span v-else class="text-red-500">✘</span>
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">iptables</span> and 
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">iptable_nat</span> modules loaded
-                                <a href="https://rentry.org/rmfq2e5e" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
-                            </li>                            
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
