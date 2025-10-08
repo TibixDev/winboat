@@ -17,7 +17,7 @@
 
         src = pkgs.fetchurl {
           url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}-x64.tar.gz";
-          sha256 = "1mvvd6y0wcpqh6wmjzpax7pkdpwcibhb9y7hnrd7x79fr0s5f3mp";
+          sha256 = "1s8nwxylp693yj2vzyqw68livy36j7rldiizf9p82hjw8xgsid13";
         };
         
         nativeBuildInputs = [
