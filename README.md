@@ -32,7 +32,7 @@ WinBoat is currently in beta, so expect to occasionally run into hiccups and bug
 - **✨ And many more**: Smartcard passthrough, resource monitoring, and more features being added regularly
 
 ## How Does It Work?
-WinBoat is an Electron app which allows you to run Windows apps on Linux using a containerized approach. Windows runs as a VM inside a Docker container, we communicate with it using the [WinBoat Guest Server](https://github.com/TibixDev/winboat/tree/main/guest_server) to retrieve data we need from Windows. For compositing applications as native OS-level windows, we use FreeRDP together with Windows's RemoteApp protocol.
+WinBoat is an Electron app which allows you to run Windows apps on Linux using a containerised approach. Windows runs as a VM inside a Docker container, we communicate with it using the [WinBoat Guest Server](https://github.com/TibixDev/winboat/tree/main/guest_server) to retrieve data we need from Windows. For compositing applications as native OS-level windows, we use FreeRDP together with Windows's RemoteApp protocol.
 
 ## Prerequisites
 Before running WinBoat, ensure your system meets the following requirements:
