@@ -67,3 +67,11 @@ jobs:
             git add flake.nix || true
             git commit -m "chore: update flake.nix for version ${VERSION}" || echo "No changes to commit"
             git push origin HEAD:main || echo "Push failed"
+            
+            # Also update the tag with the corrected flake hash
+            if [ "${{ github.event_name }}" = "release" ]; then
+              TAG="${{ github.event.release.tag_name }}"
+              echo "Updating tag ${TAG} with corrected flake hash"
+              git tag -f "${TAG}" HEAD
+              git push -f origin "${TAG}" || echo "Failed to update tag"
+            fi
