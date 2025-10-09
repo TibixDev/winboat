@@ -110,7 +110,39 @@
                         </x-menuitem>
                     </x-menu>
                 </x-select>
-
+                <x-select 
+                    @change="(e: any) => filterBy = e.detail.newValue"
+                    :disabled="!winboat.isOnline.value"
+                >
+                    <x-menu class="">
+                        <x-menuitem value="all" toggled>
+                            <x-icon href="#sort" class="qualifier"></x-icon>
+                            <x-label>
+                                <span class="qualifier">
+                                    Filter:
+                                </span>
+                                All</x-label>
+                        </x-menuitem>
+                        <x-menuitem value="custom">
+                            <x-icon href="#sort" class="qualifier"></x-icon>
+                            <x-label>
+                                <span class="qualifier">
+                                    Filter:
+                                </span>
+                                Custom
+                            </x-label>
+                        </x-menuitem>
+                        <x-menuitem value="default">
+                            <x-icon href="#sort" class="qualifier"></x-icon>
+                            <x-label>
+                                <span class="qualifier">
+                                    Filter:
+                                </span>
+                                Default
+                            </x-label>
+                        </x-menuitem>
+                    </x-menu>
+                </x-select>
 
                 <!-- Search Input -->
                 <x-input
@@ -188,19 +220,29 @@ const winboat = new Winboat();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref('');
 const sortBy = ref('');
+const filterBy = ref('');
 const addCustomAppDialog = useTemplateRef('addCustomAppDialog');
 const customAppName = ref('');
 const customAppPath = ref('');
 const customAppIcon = ref(`data:image/png;base64,${AppIcons[DEFAULT_ICON]}`);
 
 const computedApps = computed(() => {
-    if (!searchInput.value) return apps.value.sort((a, b) => { 
+    var appsCache = apps.value;
+
+    if (filterBy.value == "custom") {
+        appsCache = appsCache.filter(app => app.Source === "custom");
+    } else if (filterBy.value == "default") {
+        appsCache = appsCache.filter(app => app.Source !== "custom");
+    }
+
+    if (!searchInput.value) return appsCache.sort((a, b) => { 
         if(sortBy.value == 'usage' && a.Usage !== b.Usage) {
             return b.Usage! - a.Usage!;
         }
         return a.Name.localeCompare(b.Name)
     });
-    return apps.value
+
+    return appsCache
         .filter(app => app.Name.toLowerCase().includes(searchInput.value.toLowerCase()))
         .sort((a, b) => a.Name.localeCompare(b.Name));
 })
