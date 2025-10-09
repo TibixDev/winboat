@@ -32,8 +32,10 @@ export async function getSpecs() {
 
     // Physical CPU cores check
     try {
+        if (os.platform() === 'darwin') {
+            specs.cpuCores = os.cpus().length;
+        }
         const res = (await execAsync('lscpu -p | egrep -v "^#" | sort -u -t, -k 2,4 | wc -l')).stdout;
-        specs.cpuCores = parseInt(res.trim(), 10);
     } catch(e) {
         console.error('Error getting CPU cores:', e);
     }
@@ -41,6 +43,9 @@ export async function getSpecs() {
     // TODO: These commands might silently fail
     // But if they do, it means something wasn't right to begin with
     try {
+        if (os.platform() === 'darwin') {
+            specs.ramGB = Math.round(os.totalmem() / 1024 / 1024 / 1024 * 100) / 100;
+        }
         const memoryInfo = await getMemoryInfo();
         specs.ramGB = memoryInfo.totalGB;
     } catch (e) {
@@ -49,6 +54,9 @@ export async function getSpecs() {
 
     // KVM check
     try {
+        if (os.platform() === 'darwin') {
+            specs.kvmEnabled = true;
+        }
         const cpuInfo = fs.readFileSync('/proc/cpuinfo', 'utf8');
         if ((cpuInfo.includes('vmx') || cpuInfo.includes('svm')) && fs.existsSync('/dev/kvm')) {
             specs.kvmEnabled = true;
@@ -67,7 +75,12 @@ export async function getSpecs() {
 
     // Docker Compose plugin check with version validation
     try {
-        const { stdout: dockerComposeOutput } = await execAsync('docker compose version');
+        let dockerComposeOutput: string;
+        if (os.platform() === 'darwin') {
+            ({ stdout: dockerComposeOutput } = await execAsync('docker-compose version'));
+        } else {
+            ({ stdout: dockerComposeOutput } = await execAsync('docker compose version'));
+        }
         if (dockerComposeOutput) {
             // Example output: "Docker Compose version v2.35.1"
             // Example output 2: "Docker Compose version 2.36.2"
@@ -95,8 +108,12 @@ export async function getSpecs() {
 
     // Docker user group check
     try {
-        const userGroups = (await execAsync('id -Gn')).stdout;
-        specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes('docker');
+        if (os.platform() === 'darwin') {
+            specs.dockerIsInUserGroups = true;
+        }else{
+            const userGroups = (await execAsync('id -Gn')).stdout;
+            specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes('docker');
+        }
     } catch (e) {
         console.error('Error checking user groups for docker:', e);
     }
