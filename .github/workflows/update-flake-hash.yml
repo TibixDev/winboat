@@ -1,8 +1,12 @@
 name: Update Flake Hash on Release
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Build WinBoat"]
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -12,6 +16,10 @@ on:
 jobs:
   update-hash:
     runs-on: ubuntu-latest
+    # Only run if the workflow succeeded and was triggered by a tag
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'refs/tags/')
     permissions:
       contents: write
       
@@ -35,16 +43,33 @@ jobs:
           script: |
             set -euo pipefail
 
-            if [ "${{ github.event_name }}" = "release" ]; then
-              VERSION="${{ github.event.release.tag_name }}"
+            if [ "${{ github.event_name }}" = "workflow_run" ]; then
+              # Extract version from the tag ref (refs/tags/v0.8.7 -> v0.8.7)
+              VERSION="${{ github.event.workflow_run.head_branch }}"
+              VERSION="${VERSION#refs/tags/}"
             else
-              VERSION="${{ github.event.inputs.version }}"
+              # Manual workflow_dispatch trigger
+              VERSION="${{ inputs.version }}"
             fi
 
             VERSION="${VERSION#v}"
 
             URL="https://github.com/TibixDev/winboat/releases/download/v${VERSION}/winboat-${VERSION}-x64.tar.gz"
 
+            echo "Checking if release asset is available..."
+            for i in {1..30}; do
+              if curl --head --fail "$URL" &>/dev/null; then
+                echo "✓ Release asset is available"
+                break
+              fi
+              if [ $i -eq 30 ]; then
+                echo "✗ Release asset not available after 5 minutes"
+                exit 1
+              fi
+              echo "Waiting for asset... (attempt $i/30)"
+              sleep 10
+            done
+            
             echo "Prefetching from: $URL"
             HASH=$(nix-prefetch-url "$URL")
 
