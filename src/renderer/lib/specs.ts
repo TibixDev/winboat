@@ -32,9 +32,8 @@ export async function getSpecs() {
 
     // Physical CPU cores check
     try {
-        if (os.platform() === 'darwin') {
-            specs.cpuCores = os.cpus().length;
-        }
+        specs.cpuCores = os.cpus().length;
+        
         const res = (await execAsync('lscpu -p | egrep -v "^#" | sort -u -t, -k 2,4 | wc -l')).stdout;
     } catch(e) {
         console.error('Error getting CPU cores:', e);
@@ -45,9 +44,10 @@ export async function getSpecs() {
     try {
         if (os.platform() === 'darwin') {
             specs.ramGB = Math.round(os.totalmem() / 1024 / 1024 / 1024 * 100) / 100;
+        }else{
+            const memoryInfo = await getMemoryInfo();
+            specs.ramGB = memoryInfo.totalGB;
         }
-        const memoryInfo = await getMemoryInfo();
-        specs.ramGB = memoryInfo.totalGB;
     } catch (e) {
         console.error('Error reading /proc/meminfo:', e);
     }
