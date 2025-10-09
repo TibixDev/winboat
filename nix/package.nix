@@ -3,22 +3,35 @@
   lib,
   fetchurl,
   makeWrapper,
-  freerdp3,
-  usbutils,
   electron,
-  gcc,
-  glibc,
+  autoPatchelfHook,
+  wrapGAppsHook3,
+  makeDesktopItem,
+  usbutils,
+  copyDesktopItems,
+  asar,
   libusb1,
 }: let
   packageJson = builtins.fromJSON (builtins.readFile ../package.json);
   inherit (packageJson) version;
 
-  usb_ids = ../data/usb.ids;
   iconFile = ../icons/icon.png;
+
+  desktopItems = [
+    (makeDesktopItem {
+      name = "winboat";
+      desktopName = "WinBoat";
+      type = "Application";
+      exec = "winboat %U";
+      terminal = false;
+      icon = "winboat";
+      categories = ["Utility"];
+    })
+  ];
 in
   stdenv.mkDerivation {
+    inherit desktopItems version;
     pname = "winboat";
-    version = version;
 
     src = fetchurl {
       url = "https://github.com/TibixDev/winboat/releases/download/v${version}/winboat-${version}-x64.tar.gz";
@@ -27,65 +40,49 @@ in
 
     nativeBuildInputs = [
       makeWrapper
-      freerdp3
-      usbutils
-      libusb1
+      wrapGAppsHook3
+      copyDesktopItems
+      autoPatchelfHook
+      asar
     ];
-    buildInputs = [
-      electron
-      gcc
-      glibc
-      stdenv.cc.cc.lib
-    ];
+
+    buildInputs = [libusb1 usbutils];
+
+    dontBuild = true;
+    dontWrapGApps = true;
+    autoPatchelfIgnoreMissingDeps = ["libc.musl-x86_64.so.1"];
 
     installPhase = ''
-                mkdir -p $out/bin $out/share/winboat
-                (cd . && tar cf - .) | (cd $out/share/winboat && tar xf -)
-                cat > $out/bin/winboat <<EOF
-      #!/bin/sh
-      export LD_LIBRARY_PATH=${gcc}/lib:${glibc}/lib:${electron}/lib:${stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
-      exec ${electron}/bin/electron $out/share/winboat/resources/app.asar "$@"
-      EOF
-                chmod +x $out/bin/winboat
+      runHook preInstall
 
-                mkdir -p $out/share/icons/hicolor/256x256/apps
-                mkdir -p $out/share/winboat
+      mkdir -p $out/bin $out/share/winboat
+      cp -r ./* $out/share/winboat
+      rm $out/share/winboat/{*.so*,winboat,chrome_crashpad_handler,chrome-sandbox}
 
-                cp ${iconFile} $out/share/icons/hicolor/256x256/apps/winboat.png
-                cp ${iconFile} $out/share/winboat/icon.png
+      mkdir -p $out/share/icons/hicolor/256x256/apps
+      cp ${iconFile} $out/share/icons/hicolor/256x256/apps/winboat.png
 
-                # desktop entry
-                mkdir -p $out/share/applications
-                cat > $out/share/applications/winboat.desktop <<EOF
-      [Desktop Entry]
-      Name=WinBoat
-      Exec=$out/bin/winboat %U
-      Type=Application
-      Terminal=false
-      Icon=winboat
-      Categories=Utility;
-      EOF
+      mkdir -p $out/share/winboat/data
+      cp resources/data/usb.ids $out/share/winboat/data/usb.ids
 
-                mkdir -p $out/share/winboat/data
-                mkdir -p $out/share/winboat/resources/data
+      mkdir -p $out/lib
+      cp -r resources/guest_server $out/lib/guest_server
+      cp -r resources/guest_server $out/share/winboat/guest_server
 
-                cp ${usb_ids} $out/share/winboat/data/usb.ids
-                cp ${usb_ids} $out/share/winboat/resources/data/usb.ids
+      # Rebuild the ASAR archive to patchelf native module.
+      tmp=$(mktemp -d)
+      asar extract $out/share/winboat/resources/app.asar $tmp
+      rm $out/share/winboat/resources/app.asar
+      autoPatchelf $tmp
+      asar pack $tmp/ $out/share/winboat/resources/app.asar
+      rm -rf $tmp
 
-                mkdir -p $out/lib/guest_server
+      makeWrapper ${electron}/bin/electron $out/bin/winboat \
+        --add-flag "$out/share/winboat/resources/app.asar" \
+        --suffix PATH : "${usbutils}/bin" \
+        ''${gappsWrapperArgs[@]}
 
-                if [ -d guest_server ]; then
-                  cp -a guest_server/. $out/share/winboat/resources/guest_server/
-                  cp -a guest_server/. $out/share/winboat/guest_server/
-                  cp -a guest_server/. $out/lib/guest_server/
-                elif [ -d resources/guest_server ]; then
-                  cp -a resources/guest_server/. $out/share/winboat/resources/guest_server/
-                  cp -a resources/guest_server/. $out/share/winboat/guest_server/
-                  cp -a resources/guest_server/. $out/lib/guest_server/
-                else
-                  ls -la
-                  exit 1
-                fi
+      runHook postInstall
     '';
 
     meta = {
