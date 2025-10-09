@@ -1,4 +1,4 @@
-name: Update Flake Hash on Release
+name: Update Nix Package Hash on Release
 
 on:
   release:
@@ -46,7 +46,7 @@ jobs:
             URL="https://github.com/TibixDev/winboat/releases/download/v${VERSION}/winboat-${VERSION}-x64.tar.gz"
 
             echo "Prefetching from: $URL"
-            HASH=$(nix-prefetch-url "$URL")
+            HASH=$(nix hash convert --hash-algo sha256 --to sri $(nix-prefetch-url "$URL"))
 
             echo "Calculated SHA256: $HASH"
             echo "nix_sha256=${HASH}" >> $GITHUB_OUTPUT
@@ -61,9 +61,8 @@ jobs:
             git fetch origin main
             git merge --no-edit -X theirs origin/main
 
-            sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" flake.nix
+            sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" nix/package.nix
 
-
-            git add flake.nix || true
-            git commit -m "chore: update flake.nix for version ${VERSION}" || echo "No changes to commit"
+            git add nix/package.nix || echo "No change in package hash"
+            git commit -m "chore: update package.nix for version ${VERSION}" || echo "No changes to commit"
             git push origin HEAD:main || echo "Push failed"
