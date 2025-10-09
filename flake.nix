@@ -15,5 +15,13 @@
       winboat = pkgs.callPackage ./nix/package.nix {};
       default = self'.winboat;
     };
+
+    nixosModules = {
+      winboat = {
+        imports = [./nix/module.nix];
+        services.winboat.package = self'.default;
+      };
+      default = self.nixosModules.winboat;
+    };
   };
 }
