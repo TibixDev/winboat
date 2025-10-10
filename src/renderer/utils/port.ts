@@ -1,5 +1,5 @@
 import { type ComposeConfig } from "../../types";
-import { GUEST_RDP_PORT, PORT_MAX, WINBOAT_DIR } from "../lib/constants";
+import { GUEST_RDP_PORT, PORT_MAX, PORT_SEARCH_RANGE, PORT_SPACING, WINBOAT_DIR } from "../lib/constants";
 import { createLogger } from "./log";
 import path from "path";
 const { createServer, connect }: typeof import("net") = require("net");
@@ -75,20 +75,24 @@ export class PortManager {
      */
     static async parseCompose(compose: ComposeConfig, options: PortManagerConfig = { findOpenPorts: true }): Promise<PortManager> {
         const portManager = new PortManager();
-        const configPortEntries = compose.services.windows.ports;
+        const rawConfigPortEntries = compose.services.windows.ports;
+        const parsedConfigPortEntries = compose.services.windows.ports.map(rawEntry => new ComposePortEntry(rawEntry));
         let rdpHostPort = GUEST_RDP_PORT; // by default we map the rdp host port to the same value as in the guest, so it's a great default value.
 
         // Parse port entries and populate the ports map, skipping over the RDP entries.
         // TODO: check for duplicates
-        for(const portEntry of configPortEntries) {
-            const parsedEntry = new ComposePortEntry(portEntry);
+        for(const portEntry of parsedConfigPortEntries) {
+            // Avoid overlapping port lookups
+            if(portManager.ports.values().find(entry => PortManager.getPortDistance(entry.hostPort, portEntry.hostPort) <= PORT_SEARCH_RANGE)) {
+                portEntry.hostPort += PORT_SPACING;            
+            }
 
-            if(parsedEntry.guestPort === GUEST_RDP_PORT) {
-                rdpHostPort = parsedEntry.hostPort;
+            if(portEntry.guestPort === GUEST_RDP_PORT) {
+                rdpHostPort = portEntry.hostPort;
                 continue;
             }
 
-            await portManager.setPortMapping(parsedEntry.guestPort, parsedEntry.hostPort, { ...options });
+            await portManager.setPortMapping(portEntry.guestPort, portEntry.hostPort, { ...options });
         }
 
         // Handle the RDP entries separately since those are duplicates.
@@ -125,11 +129,11 @@ export class PortManager {
         }
         
         if(!await PortManager.isPortOpen(hostPort) && options?.findOpenPorts) {
-            const randomOpenPort = await PortManager.getOpenPortInRange(hostPort + 1, hostPort + 101);
+            const randomOpenPort = await PortManager.getOpenPortInRange(hostPort + 1, hostPort + PORT_SEARCH_RANGE);
 
             if(!randomOpenPort) {
-                logger.error(`No open port found in range ${hostPort}:${hostPort + 101}`); // TODO: handle this case with a dialog possibly
-                throw new Error(`No open port found in range ${hostPort}:${hostPort + 101}`);
+                logger.error(`No open port found in range ${hostPort}:${hostPort + PORT_SEARCH_RANGE}`); // TODO: handle this case with a dialog possibly
+                throw new Error(`No open port found in range ${hostPort}:${hostPort + PORT_SEARCH_RANGE}`);
             }
 
             logger.info(`Port ${hostPort} is in use, remapping to ${randomOpenPort}`);
@@ -235,6 +239,13 @@ export class PortManager {
     static getHostPortFromCompose(guestPort: number | string, compose: ComposeConfig): number | null {
         const res = compose.services.windows.ports.find(x => x.split(":")[1].includes(guestPort.toString()));
         return res ? parseInt(res.split(":")[0]) : null;
+    }
+
+    /**
+     * Calculates the distance between two ports
+     */
+    static getPortDistance(port1: number, port2: number): number {
+        return Math.abs(port1 - port2);
     }
 }
 
