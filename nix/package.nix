@@ -81,7 +81,8 @@ stdenv.mkDerivation (final: {
   '';
 
   meta = {
-    description = "WinBoat";
+    mainProgram = "winboat";
+    description = "Run Windows apps on Linux with seamless integration";
     license = lib.licenses.mit;
     platforms = ["x86_64-linux"];
   };
