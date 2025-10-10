@@ -1,6 +1,7 @@
 import { getFreeRDP } from '../utils/getFreeRDP';
 const fs: typeof import('fs') = require('fs');
 const os: typeof import('os') = require('os');
+import { WinboatConfig } from './config';
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const execAsync = promisify(exec);
@@ -20,6 +21,7 @@ export const defaultSpecs: Specs = {
     cpuCores: 0,
     ramGB: 0,
     kvmEnabled: false,
+    usingDocker: true,
     dockerInstalled: false,
     dockerComposeInstalled: false,
     dockerIsRunning: false,
@@ -29,6 +31,9 @@ export const defaultSpecs: Specs = {
 
 export async function getSpecs() {
     const specs: Specs = { ...defaultSpecs };
+
+    let wbConfig: WinboatConfig | null = new WinboatConfig(); // Instantiate singleton class
+    specs.usingDocker = (wbConfig!.config.containerRuntime == "docker")
 
     // Physical CPU cores check
     try {
@@ -59,15 +64,15 @@ export async function getSpecs() {
 
     // Docker check
     try {
-        const { stdout: dockerOutput } = await execAsync('docker --version');
-        specs.dockerInstalled = !!dockerOutput;
+        let { stdout: dockerOutput } = await execAsync(`${wbConfig!.config.containerRuntime} --version`);
+        specs.dockerInstalled = (!!dockerOutput || !!podmanOutput);
     } catch (e) {
         console.error('Error checking for Docker installation:', e);
     }
 
     // Docker Compose plugin check with version validation
     try {
-        const { stdout: dockerComposeOutput } = await execAsync('docker compose version');
+        const { stdout: dockerComposeOutput } = await execAsync(`${wbConfig!.config.containerRuntime} compose version`);
         if (dockerComposeOutput) {
             // Example output: "Docker Compose version v2.35.1"
             // Example output 2: "Docker Compose version 2.36.2"
@@ -87,16 +92,16 @@ export async function getSpecs() {
 
     // Docker is running check
     try {
-        const { stdout: dockerOutput } = await execAsync('docker ps');
+        const { stdout: dockerOutput } = await execAsync(`${wbConfig!.config.containerRuntime} ps`);
         specs.dockerIsRunning = !!dockerOutput;
     } catch (e) {
-        console.error('Error checking if Docker is running:', e);
+        console.error('Error checking if Container Manager is running:', e);
     }
 
     // Docker user group check
     try {
         const userGroups = (await execAsync('id -Gn')).stdout;
-        specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes('docker');
+        specs.dockerIsInUserGroups = (wbConfig!.config.containerRuntime != "docker" || userGroups.split(/\s+/).includes('docker'));
     } catch (e) {
         console.error('Error checking user groups for docker:', e);
     }

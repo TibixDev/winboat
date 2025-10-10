@@ -9,6 +9,7 @@ const path: typeof import('path') = require('path');
 const { promisify }: typeof import('util') = require('util');
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const remote: typeof import('@electron/remote') = require('@electron/remote');
+import { WinboatConfig } from './config';
 
 const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
@@ -83,12 +84,14 @@ export class InstallManager {
     emitter: Emitter<InstallEvents>;
     state: InstallState;
     preinstallMsg: string;
+    wbConfig: WinboatConfig | null
 
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
         this.state = InstallStates.IDLE;
         this.preinstallMsg = ""
         this.emitter = createNanoEvents<InstallEvents>();
+        this.wbConfig = new WinboatConfig();
     }
 
     changeState(newState: InstallState) {
@@ -240,7 +243,7 @@ export class InstallManager {
         // Start the container
         try {
             // execSync(`docker compose -f ${composeFilePath} up -d`, { stdio: 'inherit' });
-            const { stdout, stderr } = await execAsync(`docker compose -f ${composeFilePath} up -d`);
+            const { stdout, stderr } = await execAsync(`${this.wbConfig!.config.containerRuntime} compose -f ${composeFilePath} up -d`);
             if (stderr) {
                 logger.error(stderr);
             }
@@ -331,8 +334,9 @@ export class InstallManager {
 
 export async function isInstalled() {
     // Check if a docker container named WinBoat exists
+    const wbConfig: WinboatConfig | null = new WinboatConfig();
     try {
-        const { stdout: res } = await execAsync('docker ps -a --filter "name=WinBoat" --format "{{.Names}}"');
+        const { stdout: res } = await execAsync(`${wbConfig!.config.containerRuntime} ps -a --filter "name=WinBoat" --format "{{.Names}}"`);
         return res.includes('WinBoat');
     } catch(e) {
         logger.error("Failed to get WinBoat status, is Docker installed?");
