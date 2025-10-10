@@ -290,6 +290,39 @@
                     </div>
                 </x-card>
 
+                <!-- Multi Monitor -->
+                <x-card
+                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:monitor"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                Multi-Monitor Support
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Controls how multiple monitors are handled. MultiMon creates separate displays for each monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may work better depending on your setup.
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-select class="w-20" @change="(e: any) => wbConfig.config.multiMonitor = Number(e.detail.newValue)">
+                            <x-menu>
+                                <x-menuitem value="0" :toggled="wbConfig.config.multiMonitor === 0">
+                                    <x-label>None</x-label>
+                                </x-menuitem>
+
+                                <x-menuitem value="1" :toggled="wbConfig.config.multiMonitor === 1">
+                                    <x-label>MultiMon</x-label>
+                                </x-menuitem>
+
+                                <x-menuitem value="2" :toggled="wbConfig.config.multiMonitor === 2">
+                                    <x-label>Span</x-label>
+                                </x-menuitem>
+                            </x-menu>
+                        </x-select>
+                    </div>
+                </x-card>
+
                 <!-- Smartcard Passthrough -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">

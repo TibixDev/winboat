@@ -651,11 +651,13 @@ export class Winboat {
         /v:127.0.0.1\
         /port:${rdpHostPort}\
         /cert:ignore\
+        ${this.#wbConfig?.config.multiMonitor == 2 ? '+span' : ''}\
         +clipboard\
         -wallpaper\
         /sound:sys:pulse\
         /microphone:sys:pulse\
         /floatbar\
+        ${this.#wbConfig?.config.multiMonitor == 1 ? '/multimon' : ''}\
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
         /scale:${this.#wbConfig?.config.scale ?? 100}\

@@ -112,13 +112,6 @@
                                 FreeRDP 3.x.x installed
                                 <a href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
-                            <li class="flex items-center gap-2">
-                                <span v-if="specs.ipTablesLoaded && specs.iptableNatLoaded" class="text-green-500">✔</span>
-                                <span v-else class="text-red-500">✘</span>
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">iptables</span> and 
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">iptable_nat</span> modules loaded
-                                <a href="https://rentry.org/rmfq2e5e" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
-                            </li>                            
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
@@ -466,6 +459,35 @@
                         </div>
                     </div>
     
+                    <!-- Home Folder Sharing -->
+                    <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
+                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <p class="text-lg text-gray-400">
+                            WinBoat allows you to share your Linux home folder with the Windows virtual machine, here you can choose whether to enable this feature or not.
+                        </p>
+                        <p class="text-lg text-gray-400">
+                            <b>⚠️ WARNING:</b>
+                            Sharing your home folder exposes your Linux files to Windows specific malware and viruses.
+                            Only enable this feature if you understand the risks involved. Always be careful with the files you download and open in Windows.
+                        </p>
+
+                        <x-checkbox
+                            class="my-4"
+                            @toggle="homeFolderSharing = !homeFolderSharing"
+                            :toggled="homeFolderSharing"
+                        >
+                            <x-label><strong>Enable home folder sharing</strong></x-label>
+                            <x-label class="text-gray-400">
+                                By checking this box, you aknowledge the risks mentioned above
+                            </x-label>
+                        </x-checkbox>
+
+                        <div class="flex flex-row gap-4 mt-6">
+                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                        </div>
+                    </div>
+
                     <!-- Review -->
                     <div v-if="currentStep.id === StepID.REVIEW" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
@@ -519,7 +541,7 @@
                         <h1 class="text-3xl font-semibold">Installation</h1>
                         <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour.
-                            In the meantime you can grab coffee and check the status <a :href="novncURL" @click="openAnchorLink">{{ novncURL }} in your browser</a>.
+                            In the meantime, you can grab a coffee and check the installation status <a :href="novncURL" @click="openAnchorLink">in your browser</a>.
                         </p>
     
                         <!-- Installing -->
@@ -573,7 +595,7 @@ import { useRouter } from 'vue-router';
 import { computedAsync } from '@vueuse/core'
 import { InstallConfiguration, Specs } from '../../types';
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, DEFAULT_NOVNC_URL, GUEST_NOVNC_PORT } from "../lib/constants";
+import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVNC_PORT } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
@@ -599,6 +621,7 @@ enum StepID {
     WINDOWS_CONFIG = "STEP_WINDOWS_CONFIG",
     HARDWARE_CONFIG = "STEP_HARDWARE_CONFIG",
     USER_CONFIG = "STEP_USER_CONFIG",
+    SHOULD_SHARE_HOME_FOLDER = "STEP_SHOULD_SHARE_HOME_FOLDER",
     REVIEW = "STEP_OVERVIEW",
     INSTALL = "STEP_INSTALL",
     FINISH = "STEP_FINISH",
@@ -640,6 +663,11 @@ const steps: Step[] = [
         title: "Hardware Configuration",
         icon: "famicons:hardware-chip-outline",
     },
+        {
+        id: StepID.SHOULD_SHARE_HOME_FOLDER,
+        title: "Home Folder Sharing",
+        icon: "line-md:link",
+    },
     {
         id: StepID.REVIEW,
         title: "Review",
@@ -677,6 +705,7 @@ const diskSpaceGB = ref(32);
 const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");
+const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 
@@ -837,6 +866,7 @@ function install() {
         diskSpaceGB: diskSpaceGB.value,
         username: username.value,
         password: password.value,
+        shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
     };
 

@@ -10,8 +10,6 @@ export type Specs = {
     dockerIsRunning: boolean,
     dockerIsInUserGroups: boolean;
     freeRDP3Installed: boolean;
-    ipTablesLoaded: boolean;
-    iptableNatLoaded: boolean;
 }
 
 export type InstallConfiguration = {
@@ -24,6 +22,7 @@ export type InstallConfiguration = {
     username: string;
     password: string;
     customIsoPath?: string;
+    shareHomeFolder: boolean;
 }
 
 export type WinApp = {
