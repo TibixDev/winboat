@@ -62,10 +62,9 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - **.rpm:** The intended format for Fedora based distributions
 
 ## Known Issues About Container Runtimes
-- Podman is **unsupported** for now
 - Docker Desktop is **unsupported** for now
 - Distros that emulate Docker through a Podman socket are **unsupported**
-- Any rootless containerization solution is currently **unsupported**
+- Rootless podman cannot do USB passthrough.
 
 ## Building WinBoat
 - For building you need to have NodeJS and Go installed on your system
