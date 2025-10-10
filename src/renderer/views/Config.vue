@@ -268,7 +268,7 @@
                             </h1>
                         </div>
                         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how large the display scaling is. This applies for both the desktop view and applications
+                            Controls how large the display scaling is.
                         </p>
                     </div>
                     <div class="flex flex-row gap-2 justify-center items-center">
@@ -287,6 +287,32 @@
                                 </x-menuitem>
                             </x-menu>
                         </x-select>
+                    </div>
+                </x-card>
+
+                <x-card
+                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:apps"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                Application Scaling
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Controls how large the application scaling is.
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-button type="button" class="px-2 py-1 text-neutral-200" @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)">-</x-button>
+                        <x-input
+                            type="text"
+                            v-model="origApplicationScale"
+                            class="w-20"
+                            v-on:keydown="(e: any) => ensureNumericInput(e)"
+                            v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
+                        ></x-input>
+                        <x-button type="button" class="px-2 py-1" @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)">+</x-button>
                     </div>
                 </x-card>
 
@@ -473,6 +499,7 @@ const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
+const origApplicationScale = ref(0);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -486,6 +513,23 @@ const wbConfig = new WinboatConfig();
 onMounted(async () => {
     await assignValues();
 });
+
+function ensureNumericInput(e: any) {
+    if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        return;
+    }
+    
+    if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+    }
+}
+
+function updateApplicationScale(value: string | number) {
+    let val = typeof value === 'string' ? parseInt(value) : value;
+    const clamped = typeof val !== 'number' || isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
+    wbConfig.config.scaleDesktop = clamped;
+    origApplicationScale.value = clamped;
+}
 
 /**
  * Assigns the initial values from the Docker Compose file to the reactive refs
@@ -509,6 +553,8 @@ async function assignValues() {
     const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
     freerdpPort.value = Number(rdpEntry?.split(":")?.at(0) ?? RDP_PORT);
     origFreerdpPort.value = freerdpPort.value;
+
+    origApplicationScale.value = wbConfig.config.scaleDesktop;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;

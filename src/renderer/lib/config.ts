@@ -6,6 +6,7 @@ import { type PTSerializableDeviceInfo } from "./usbmanager";
 
 export type WinboatConfigObj = {
     scale: number;
+    scaleDesktop: number,
     smartcardEnabled: boolean
     rdpMonitoringEnabled: boolean
     passedThroughDevices: PTSerializableDeviceInfo[];
@@ -16,6 +17,7 @@ export type WinboatConfigObj = {
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
+    scaleDesktop: 100,
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,
     passedThroughDevices: [],

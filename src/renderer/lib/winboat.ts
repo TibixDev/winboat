@@ -618,7 +618,7 @@ export class Winboat {
         ${this.#wbConfig?.config.multiMonitor == 1 ? '/multimon' : ''}\
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
-        /scale:${this.#wbConfig?.config.scale ?? 100}\
+        /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         /wm-class:"${cleanAppName}"\
         /app:program:"${app.Path}",name:"${cleanAppName}" &`;
 
