@@ -23,7 +23,7 @@ const defaultConfig: WinboatConfigObj = {
     customApps: [],
     experimentalFeatures: false,
     multiMonitor: 0,
-    containerRuntime: "podman",
+    containerRuntime: "docker",
 };
 
 export class WinboatConfig { 
