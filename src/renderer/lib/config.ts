@@ -13,6 +13,7 @@ export type WinboatConfigObj = {
     customApps: WinApp[]
     experimentalFeatures: boolean
     multiMonitor: number
+    containerRuntime: string
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -24,6 +25,7 @@ const defaultConfig: WinboatConfigObj = {
     customApps: [],
     experimentalFeatures: false,
     multiMonitor: 0,
+    containerRuntime: "docker",
 };
 
 export class WinboatConfig { 
