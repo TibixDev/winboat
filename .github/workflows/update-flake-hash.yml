@@ -62,6 +62,7 @@ jobs:
             git merge --no-edit -X theirs origin/main
 
             sed -i "s/sha256 = \".*\";/sha256 = \"${ESC_HASH}\";/" nix/package.nix
+            sed -i "s/version = \".*\";/version = \"${VERSION}\";/" nix/package.nix
 
             git add nix/package.nix || echo "No change in package hash"
             git commit -m "chore: update package.nix for version ${VERSION}" || echo "No changes to commit"
