@@ -65,7 +65,7 @@ export async function getSpecs() {
     // Docker check
     try {
         let { stdout: dockerOutput } = await execAsync(`${wbConfig!.config.containerRuntime} --version`);
-        specs.dockerInstalled = (!!dockerOutput || !!podmanOutput);
+        specs.dockerInstalled = !!dockerOutput;
     } catch (e) {
         console.error('Error checking for Docker installation:', e);
     }
