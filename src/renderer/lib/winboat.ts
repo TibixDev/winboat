@@ -231,9 +231,9 @@ export class Winboat {
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
                 if (_containerStatus === ContainerStatus.Running) {
-                    await this.createAPIInvervals();
+                    await this.createAPIIntervals();
                 } else {
-                    await this.destroyAPIInvervals();
+                    await this.destroyAPIIntervals();
                 }
             }
         }, 1000);
@@ -250,7 +250,7 @@ export class Winboat {
     /**
      * Creates the intervals which rely on the Winboat Guest API.
      */
-    async createAPIInvervals() {
+    async createAPIIntervals() {
         logger.info("Creating Winboat API intervals...");
         const HEALTH_WAIT_MS = 1000;
         const METRICS_WAIT_MS = 1000;
@@ -339,7 +339,7 @@ export class Winboat {
      * Destroys the intervals which rely on the Winboat Guest API.
      * This is called when the container is in any state other than Running.
      */
-    async destroyAPIInvervals() {
+    async destroyAPIIntervals() {
         logger.info("Destroying Winboat API intervals...");
         if (this.#healthInterval) {
             clearInterval(this.#healthInterval);
@@ -370,9 +370,9 @@ export class Winboat {
                     this.qmpMgr.qmpSocket.destroy();
                 }
                 this.qmpMgr = null;
-                logger.info("[destroyAPIInvervals] QMP Manager destroyed because container is no longer running");
+                logger.info("[destroyAPIIntervals] QMP Manager destroyed because container is no longer running");
             } catch(e) {
-                logger.error("[destroyAPIInvervals] Failed to destroy QMP Manager");
+                logger.error("[destroyAPIIntervals] Failed to destroy QMP Manager");
                 logger.error(e);
             }
         }
