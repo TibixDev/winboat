@@ -1,12 +1,14 @@
 name: Build WinBoat
 permissions:
   contents: write
+  pull-requests: write
 on:
   push:
     branches:
       - main
     tags:
       - "v*"
+  pull_request:
   workflow_dispatch:
     inputs:
       build_type:
@@ -23,6 +25,7 @@ jobs:
     runs-on: ubuntu-22.04
     if: >-
       (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) ||
+      (github.event_name == 'pull_request') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'guest-server-only')
     steps:
       - name: Checkout code
@@ -80,36 +83,42 @@ jobs:
             esac
           fi
       - name: Upload AppImage
+        id: UploadAppImage
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.appimage
           path: dist/*.AppImage
           if-no-files-found: ignore
       - name: Upload DEB
+        id: UploadDEB
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.deb
           path: dist/*.deb
           if-no-files-found: ignore
       - name: Upload RPM
+        id: UploadRPM
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.rpm
           path: dist/*.rpm
           if-no-files-found: ignore
       - name: Upload TAR.GZ
+        id: UploadTARGZ
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.tar.gz
           path: dist/*.tar.gz
           if-no-files-found: ignore
       - name: Upload unpacked directory
+        id: UploadUnpacked
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-unpacked.zip
           path: dist/linux-unpacked/**
           if-no-files-found: ignore
       - name: Upload guest server zip
+        id: UploadGuestServer
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-guest_server.zip
@@ -123,6 +132,20 @@ jobs:
       #       dist/latest-linux.yml
       #       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
       #     if-no-files-found: ignore
+
+      - name: Upsert build version
+        if: (github.event_name == 'pull_request')
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.number }}
+          body: |
+            [AppImage](${{ steps.UploadAppImage.outputs.artifact-url }})
+            [DEB](${{ steps.UploadDEB.outputs.artifact-url }})
+            [RPM](${{ steps.UploadRPM.outputs.artifact-url }})
+            [TAR.GZ](${{ steps.UploadTARGZ.outputs.artifact-url }})
+            [Unpacked](${{ steps.UploadUnpacked.outputs.artifact-url }})
+            [Guest Server](${{ steps.UploadGuestServer.outputs.artifact-url }})
+
   guest-server-only:
     runs-on: ubuntu-22.04
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
