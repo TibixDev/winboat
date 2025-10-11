@@ -1,8 +1,10 @@
 import { type ComposeConfig, type InstallConfiguration } from "../../types";
-import { RESTART_ON_FAILURE, WINBOAT_DIR, WINBOAT_GUEST_API } from "./constants";
+import { GUEST_API_PORT, GUEST_NOVNC_PORT, RESTART_ON_FAILURE, WINBOAT_DIR } from "./constants";
 import YAML from "json-to-pretty-yaml";
+import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
+import { PortManager } from "../utils/port";
 const fs: typeof import('fs') = require('fs');
 const { exec }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
@@ -14,6 +16,7 @@ const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
 
 const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
+
 export const DefaultCompose: ComposeConfig = {
     "name": "winboat",
     "volumes": {
@@ -42,7 +45,7 @@ export const DefaultCompose: ComposeConfig = {
             "ports": [
                 "8006:8006", // VNC Web Interface
                 "7148:7148", // Winboat Guest Server API
-                "7149:7149", // QEMU QMP Port
+                "8149:7149", // QEMU QMP Port
                 "3389:3389/tcp", // RDP
                 "3389:3389/udp" // RDP
             ],
@@ -83,12 +86,14 @@ export class InstallManager {
     emitter: Emitter<InstallEvents>;
     state: InstallState;
     preinstallMsg: string;
+    portMgr: Ref<PortManager | null>;
 
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
         this.state = InstallStates.IDLE;
         this.preinstallMsg = ""
         this.emitter = createNanoEvents<InstallEvents>();
+        this.portMgr = ref(null);
     }
 
     changeState(newState: InstallState) {
@@ -108,7 +113,7 @@ export class InstallManager {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    createComposeFile() {
+    async createComposeFile() {
         this.changeState(InstallStates.CREATING_COMPOSE_FILE);
 
         // Ensure the .winboat directory exists
@@ -124,8 +129,10 @@ export class InstallManager {
         }
 
         // Configure the compose file
-        const composeContent = { ...DefaultCompose }
+        const composeContent = { ...DefaultCompose };
+        this.portMgr.value = await PortManager.parseCompose(composeContent);
 
+        composeContent.services.windows.ports = this.portMgr.value.composeFormat;
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
@@ -159,7 +166,6 @@ export class InstallManager {
             }
         }
 
-        
         // Write the compose file
         const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");
         fs.writeFileSync(composeFilePath, composeYAML, { encoding: 'utf8' });
@@ -262,7 +268,8 @@ export class InstallManager {
 
         while (true) {
             try {
-                const response = await nodeFetch('http://127.0.0.1:8006/msg.html');
+                const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
+                const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`);
                 if (response.status === 404) {
                     logger.info('Received 404, preinstall completed');
                     return; // Exit the method when we get 404
@@ -294,7 +301,8 @@ export class InstallManager {
 
         while (true) {
             try {
-                const res = await nodeFetch(`${WINBOAT_GUEST_API}/health`);
+                const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
+                const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`);
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
@@ -316,15 +324,16 @@ export class InstallManager {
         }
     }
 
-
     async install() {
         logger.info('Starting installation...');
-        this.createComposeFile();
+
+        await this.createComposeFile();
         this.createOEMAssets();
         await this.startContainer();
         await this.monitorContainerPreinstall();
         await this.monitorAPIHealth();
         this.changeState(InstallStates.COMPLETED);
+
         logger.info('Installation completed successfully.');
     }
 }

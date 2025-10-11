@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
-import { RDP_PORT, WINBOAT_DIR, WINBOAT_GUEST_API, NOVNC_URL } from "./constants";
-import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCommands } from "../../types";
+import { WINBOAT_DIR, GUEST_API_PORT, GUEST_RDP_PORT, GUEST_QMP_PORT, GUEST_NOVNC_PORT } from "./constants";
+import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metrics, WinApp, CustomAppCallbacks } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from 'yaml';
@@ -12,6 +12,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
+import { ComposePortEntry, PortManager } from "../utils/port";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const fs: typeof import('fs') = require('fs');
@@ -24,8 +25,11 @@ const FormData: typeof import('form-data') = require('form-data');
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, 'appUsage.json');
-const QMP_PORT = 7149;
 export const logger = createLogger(path.join(WINBOAT_DIR, 'winboat.log'));
+
+enum CustomAppCommands {
+    NOVNC_COMMAND = "NOVNC_COMMAND"
+};
 
 const presetApps: WinApp[] = [
     {
@@ -46,7 +50,7 @@ const presetApps: WinApp[] = [
         Name: "🖥️ Browser Display",
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
-        Path: NOVNC_URL,
+        Path: CustomAppCommands.NOVNC_COMMAND,
         Usage: 0
     }
 ];
@@ -55,9 +59,10 @@ const presetApps: WinApp[] = [
  * For specifying custom behavior when launching an app (e.g. novnc)
  * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
  */
-const customAppCommands: CustomAppCommands = {
-    [NOVNC_URL]: () => {
-        openLink(NOVNC_URL);
+const customAppCallbacks: CustomAppCallbacks = {
+    [CustomAppCommands.NOVNC_COMMAND]: (ctx: Winboat) => {
+        const novncHostPort = ctx.getHostPort(GUEST_NOVNC_PORT);
+        openLink(`http://127.0.0.1:${novncHostPort}`);
     }
 }
 
@@ -87,8 +92,8 @@ class AppManager {
         this.#wbConfig = new WinboatConfig();
     }
 
-    async updateAppCache(options: { forceRead: boolean } = { forceRead: false }) {
-        const res = await nodeFetch(`${WINBOAT_GUEST_API}/apps`);
+    async updateAppCache(apiURL: string, options: { forceRead: boolean } = { forceRead: false }) {
+        const res = await nodeFetch(`${apiURL}/apps`);
         const newApps = await res.json() as WinApp[];
         newApps.push(...presetApps);
         newApps.push(...this.#wbConfig!.config.customApps);
@@ -103,7 +108,7 @@ class AppManager {
         this.appCache = newApps;
     }
 
-    async getApps(): Promise<WinApp[]> {
+    async getApps(apiURL: string): Promise<WinApp[]> {
         if(this.appCache.length > 0) {
             return this.appCache;
         }
@@ -121,7 +126,7 @@ class AppManager {
             });
         }
 
-        await this.updateAppCache({ forceRead: true });
+        await this.updateAppCache(apiURL, { forceRead: true });
 
         const appCacheHumanReadable = this.appCache.map(obj => {
             const res = { ...obj } as any;
@@ -187,8 +192,8 @@ export class Winboat {
     // Variables
     isOnline: Ref<boolean> = ref(false);
     isUpdatingGuestServer: Ref<boolean> = ref(false);
-    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited)
-    containerActionLoading: Ref<boolean> = ref(false)
+    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited);
+    containerActionLoading: Ref<boolean> = ref(false);
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
@@ -205,10 +210,12 @@ export class Winboat {
             total: 0,
             percentage: 0
         }
-    })
-    #wbConfig: WinboatConfig | null = null
-    appMgr: AppManager | null = null
-    qmpMgr: QMPManager | null = null
+    });
+    #wbConfig: WinboatConfig | null = null;
+    appMgr: AppManager | null = null;
+    qmpMgr: QMPManager | null = null;
+    portMgr: Ref<PortManager | null> = ref(null);
+
 
     constructor() {
         if (Winboat.instance) {
@@ -224,9 +231,9 @@ export class Winboat {
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
                 if (_containerStatus === ContainerStatus.Running) {
-                    await this.createAPIInvervals();
+                    await this.createAPIIntervals();
                 } else {
-                    await this.destroyAPIInvervals();
+                    await this.destroyAPIIntervals();
                 }
             }
         }, 1000);
@@ -243,11 +250,20 @@ export class Winboat {
     /**
      * Creates the intervals which rely on the Winboat Guest API.
      */
-    async createAPIInvervals() {
+    async createAPIIntervals() {
         logger.info("Creating Winboat API intervals...");
         const HEALTH_WAIT_MS = 1000;
         const METRICS_WAIT_MS = 1000;
         const RDP_STATUS_WAIT_MS = 1000;
+
+        // *** Port Manager ***
+        // If the container was already running before opening WinBoat, the ports will already be used by the container
+        // So we don't need to remap any ports
+        // TODO: Investigate whether we need to remap user ports
+        if(!this.portMgr.value) {
+            const compose = this.parseCompose();
+            this.portMgr.value = await PortManager.parseCompose(compose, { findOpenPorts: false });
+        }
 
         // *** Health Interval ***
         // Make sure we don't have any existing intervals
@@ -323,7 +339,7 @@ export class Winboat {
      * Destroys the intervals which rely on the Winboat Guest API.
      * This is called when the container is in any state other than Running.
      */
-    async destroyAPIInvervals() {
+    async destroyAPIIntervals() {
         logger.info("Destroying Winboat API intervals...");
         if (this.#healthInterval) {
             clearInterval(this.#healthInterval);
@@ -354,9 +370,9 @@ export class Winboat {
                     this.qmpMgr.qmpSocket.destroy();
                 }
                 this.qmpMgr = null;
-                logger.info("[destroyAPIInvervals] QMP Manager destroyed because container is no longer running");
+                logger.info("[destroyAPIIntervals] QMP Manager destroyed because container is no longer running");
             } catch(e) {
-                logger.error("[destroyAPIInvervals] Failed to destroy QMP Manager");
+                logger.error("[destroyAPIIntervals] Failed to destroy QMP Manager");
                 logger.error(e);
             }
         }
@@ -365,7 +381,10 @@ export class Winboat {
     async getHealth() {
         // If /health returns 200, then the guest is ready
         try {
-            const res = await nodeFetch(`${WINBOAT_GUEST_API}/health`);
+            const apiPort = this.getHostPort(GUEST_API_PORT);
+            const apiUrl = `http://127.0.0.1:${apiPort}`;
+
+            const res = await nodeFetch(`${apiUrl}/health`);
             return res.status === 200;
         } catch(e) {
             return false;
@@ -383,13 +402,18 @@ export class Winboat {
     }
 
     async getMetrics() {
-        const res = await nodeFetch(`${WINBOAT_GUEST_API}/metrics`);
+        const apiPort = this.getHostPort(GUEST_API_PORT);
+        const apiUrl = `http://127.0.0.1:${apiPort}`;
+        const res = await nodeFetch(`${apiUrl}/metrics`);
         const metrics = await res.json() as Metrics;
         return metrics;
     }
 
     async getRDPConnectedStatus() {
-        const res = await nodeFetch(`${WINBOAT_GUEST_API}/rdp/status`);
+
+        const apiPort = this.getHostPort(GUEST_API_PORT);
+        const apiUrl = `http://127.0.0.1:${apiPort}`;
+        const res = await nodeFetch(`${apiUrl}/rdp/status`);
         const status = await res.json() as { rdpConnected: boolean };
         return status.rdpConnected;
     }
@@ -398,6 +422,16 @@ export class Winboat {
         const composeFile = fs.readFileSync(path.join(WINBOAT_DIR, 'docker-compose.yml'), 'utf-8');
         const composeContents = YAML.parse(composeFile) as ComposeConfig;
         return composeContents;
+    }
+
+    /**
+     * Returns the host port that maps to the given guest port
+     * 
+     * @param guestPort The port that gets looked up
+     * @returns The host port that maps to the given guest port, or null if not found
+     */
+    getHostPort(guestPort: number | string): number {
+        return this.portMgr.value?.getHostPort(guestPort) ?? parseInt(guestPort.toString());;
     }
 
     getCredentials() {
@@ -410,7 +444,8 @@ export class Winboat {
 
     async #connectQMPManager() {
         try {
-            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", QMP_PORT).catch(e => {logger.error(e); throw e});
+            const qmpHostPort = this.getHostPort(GUEST_QMP_PORT)
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", qmpHostPort).catch(e => {logger.error(e); throw e});
             const capabilities = await this.qmpMgr.executeCommand("qmp_capabilities");
             assert("return" in capabilities);
 
@@ -448,6 +483,14 @@ export class Winboat {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
+            const compose = this.parseCompose();
+            this.portMgr.value = await PortManager.parseCompose(compose);
+
+            if(!this.portMgr.value!.composeFormat.every((elem) => compose.services.windows.ports.includes(elem))) {
+                compose.services.windows.ports = this.portMgr.value!.composeFormat;
+                await this.replaceCompose(compose);
+            }
+
             const { stdout } = await execAsync("docker container start WinBoat");
             logger.info(`Container response: ${stdout}`);
         } catch(e) {
@@ -583,9 +626,9 @@ export class Winboat {
     async launchApp(app: WinApp) {
         if (!this.isOnline) throw new Error('Cannot launch app, Winboat is offline');
 
-        if(customAppCommands[app.Path]) {
+        if(customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
-            customAppCommands[app.Path]!();
+            customAppCallbacks[app.Path]!(this);
             this.appMgr?.incrementAppUsage(app);
             this.appMgr?.writeToDisk();
             return;
@@ -593,8 +636,7 @@ export class Winboat {
 
         const { username, password } = this.getCredentials();
         const compose = this.parseCompose();
-        const rdpPortEntry = compose.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
-        const rdpPort = rdpPortEntry?.split(":")?.at(0) ?? RDP_PORT.toString();
+        const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
         
@@ -607,7 +649,7 @@ export class Winboat {
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
-        /port:${rdpPort}\
+        /port:${rdpHostPort}\
         /cert:ignore\
         ${this.#wbConfig?.config.multiMonitor == 2 ? '+span' : ''}\
         +clipboard\
@@ -618,7 +660,7 @@ export class Winboat {
         ${this.#wbConfig?.config.multiMonitor == 1 ? '/multimon' : ''}\
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /compression\
-        /scale:${this.#wbConfig?.config.scale ?? 100}\
+        /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         /wm-class:"${cleanAppName}"\
         /app:program:"${app.Path}",name:"${cleanAppName}" &`;
 
@@ -626,7 +668,7 @@ export class Winboat {
             cmd = `${freeRDPBin} /u:"${username}"\
                 /p:"${password}"\
                 /v:127.0.0.1\
-                /port:${rdpPort}\
+                /port:${rdpHostPort}\
                 /cert:ignore\
                 +clipboard\
                 +f\
@@ -650,7 +692,9 @@ export class Winboat {
 
     async checkVersionAndUpdateGuestServer() {
         // 1. Get the version of the guest server and compare it to the current version
-        const versionRes = await nodeFetch(`${WINBOAT_GUEST_API}/version`);
+        const apiPort = this.getHostPort(GUEST_API_PORT);
+        const apiUrl = `http://127.0.0.1:${apiPort}`;
+        const versionRes = await nodeFetch(`${apiUrl}/version`);
         const version = await versionRes.json() as GuestServerVersion;
 
         const appVersion = import.meta.env.VITE_APP_VERSION;
@@ -678,7 +722,9 @@ export class Winboat {
         formData.append('updateFile', fs.createReadStream(zipPath));
 
         try {
-            const res = await nodeFetch(`${WINBOAT_GUEST_API}/update`, {
+            const apiPort = this.getHostPort(GUEST_API_PORT);
+            const apiUrl = `http://127.0.0.1:${apiPort}`;
+            const res = await nodeFetch(`${apiUrl}/update`, {
                 method: 'POST',
                 body: formData as any
             });

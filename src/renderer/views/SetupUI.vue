@@ -478,7 +478,7 @@
                         >
                             <x-label><strong>Enable home folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
-                                By checking this box, you aknowledge the risks mentioned above
+                                By checking this box, you acknowledge the risks mentioned above
                             </x-label>
                         </x-checkbox>
 
@@ -541,7 +541,7 @@
                         <h1 class="text-3xl font-semibold">Installation</h1>
                         <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour.
-                            In the meantime, you can grab a coffee and check the installation status <a href="http://127.0.0.1:8006" @click="openAnchorLink">in your browser</a>.
+                            In the meantime, you can grab a coffee and check the installation status <a :href="novncURL" @click="openAnchorLink">in your browser</a>.
                         </p>
     
                         <!-- Installing -->
@@ -595,10 +595,11 @@ import { useRouter } from 'vue-router';
 import { computedAsync } from '@vueuse/core'
 import { InstallConfiguration, Specs } from '../../types';
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
+import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVNC_PORT } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
+import { PortManager } from '../utils/port';
 
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
@@ -682,7 +683,7 @@ const steps: Step[] = [
         title: "Finish",
         icon: "bx:bxs-check-circle",
     },
-]
+];
 
 const MIN_CPU_CORES = 1;
 const MIN_RAM_GB = 2;
@@ -707,6 +708,8 @@ const confirmPassword = ref("");
 const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
+
+let installManager: InstallManager | null = null;
 
 onMounted(async () => {
     specs.value = await getSpecs();
@@ -765,6 +768,11 @@ const passwordErrors = computed(() => {
     return errors;
 })
 
+const novncURL = computed(() => {
+    const port = installManager?.portMgr.value?.getHostPort(GUEST_NOVNC_PORT) ?? GUEST_NOVNC_PORT;
+
+    return `http://127.0.0.1:${port}`;
+})
 
 function selectIsoFile() {
     electron.dialog.showOpenDialog({
@@ -860,10 +868,11 @@ function install() {
         password: password.value,
         shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
-    }
+    };
+
+    installManager = new InstallManager(installConfig);
 
     // Begin installation and attach event listeners
-    const installManager = new InstallManager(installConfig);
     installManager.emitter.on("stateChanged", newState => {
         installState.value = newState;
         console.log("Install state changed", newState);

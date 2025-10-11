@@ -210,7 +210,7 @@ import { type WinApp } from '../../types';
 import WBContextMenu from '../components/WBContextMenu.vue';
 import WBMenuItem from '../components/WBMenuItem.vue';
 import { AppIcons, DEFAULT_ICON } from '../data/appicons';
-import { WINBOAT_GUEST_API } from '../lib/constants';
+import { GUEST_API_PORT } from '../lib/constants';
 import { debounce } from '../utils/debounce';
 import { Jimp, JimpMime } from 'jimp';
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
@@ -225,6 +225,12 @@ const addCustomAppDialog = useTemplateRef('addCustomAppDialog');
 const customAppName = ref('');
 const customAppPath = ref('');
 const customAppIcon = ref(`data:image/png;base64,${AppIcons[DEFAULT_ICON]}`);
+
+const apiURL = computed(() => {
+    const port = winboat.portMgr.value?.getHostPort(GUEST_API_PORT) ?? GUEST_API_PORT;
+
+    return `http://127.0.0.1:${port}`;
+})
 
 const computedApps = computed(() => {
     var appsCache = apps.value;
@@ -265,9 +271,9 @@ onMounted(async () => {
 
 async function refreshApps() {
     if (winboat.isOnline.value) {
-        apps.value = await winboat.appMgr!.getApps();
+        apps.value = await winboat.appMgr!.getApps(apiURL.value);
         // Run in background, won't impact UX
-        await winboat.appMgr!.updateAppCache();
+        await winboat.appMgr!.updateAppCache(apiURL.value);
         if(winboat.appMgr!.appCache.length !== apps.value.length) {
             apps.value = winboat!.appMgr!.appCache;
         }
@@ -278,7 +284,7 @@ const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {
     if (newVal !== oldVal && newVal !== '') {
         const formData = new FormData();
         formData.append('path', newVal);
-        const iconRes = await nodeFetch(`${WINBOAT_GUEST_API}/get-icon`, {
+        const iconRes = await nodeFetch(`${apiURL.value}/get-icon`, {
             method: 'POST',
             body: formData as any
         });
@@ -358,7 +364,7 @@ function cancelAddCustomApp() {
 async function addCustomApp() {
     const iconRaw = customAppIcon.value.split('data:image/png;base64,')[1];
     await winboat.appMgr!.addCustomApp(customAppName.value, customAppPath.value, iconRaw);
-    apps.value = await winboat.appMgr!.getApps();
+    apps.value = await winboat.appMgr!.getApps(apiURL.value);
     addCustomAppDialog.value!.close();
     resetCustomAppForm();
 }
@@ -368,7 +374,7 @@ async function addCustomApp() {
  */
 async function removeCustomApp(app: WinApp) {
     await winboat.appMgr!.removeCustomApp(app);
-    apps.value = await winboat.appMgr!.getApps();
+    apps.value = await winboat.appMgr!.getApps(apiURL.value);
 }
 
 /**

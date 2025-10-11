@@ -122,7 +122,7 @@
                             min="0"
                             :max="PORT_MAX"
                             :value="freerdpPort"
-                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || RDP_PORT)"
+                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || winboat.getHostPort(GUEST_RDP_PORT))"
                             required
                         ></x-input>
                     </div>
@@ -268,7 +268,7 @@
                             </h1>
                         </div>
                         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how large the display scaling is. This applies for both the desktop view and applications
+                            Controls how large the display scaling is.
                         </p>
                     </div>
                     <div class="flex flex-row gap-2 justify-center items-center">
@@ -287,6 +287,32 @@
                                 </x-menuitem>
                             </x-menu>
                         </x-select>
+                    </div>
+                </x-card>
+
+                <x-card
+                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:apps"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                Application Scaling
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Controls how large the application scaling is.
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-button type="button" class="px-2 py-1 text-neutral-200" @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)">-</x-button>
+                        <x-input
+                            type="text"
+                            v-model="origApplicationScale"
+                            class="w-20"
+                            v-on:keydown="(e: any) => ensureNumericInput(e)"
+                            v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
+                        ></x-input>
+                        <x-button type="button" class="px-2 py-1" @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)">+</x-button>
                     </div>
                 </x-card>
 
@@ -435,12 +461,14 @@ import { WinboatConfig } from '../lib/config';
 import { USBManager, type PTSerializableDeviceInfo } from '../lib/usbmanager';
 import { type Device } from "usb";
 import {
-    RDP_PORT,
     PORT_MAX,
     USB_VID_BLACKLIST,
     RESTART_ON_FAILURE,
-    RESTART_NO
+    RESTART_NO,
+    GUEST_RDP_PORT,
+    DEFAULT_HOST_QMP_PORT
 } from '../lib/constants';
+import { PortManager } from '../utils/port';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 // Emits
@@ -452,8 +480,8 @@ const usbManager = new USBManager();
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
-const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off";
-const QMP_PORT = "7149";
+const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
+const GUEST_QMP_PORT = "7149";
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -473,12 +501,18 @@ const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
+const origApplicationScale = ref(0);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
 const rerenderExperimental = ref(0);
 // ^ This ref is needed because reactivity fails on wbConfig. 
 //   We manually increment this value in toggleExperimentalFeatures() to force rerender.
+
+// For handling the QMP port, as we can't rely on the winboat instance doing this for us.
+// A great example is when the container is offline. In that case, winboat's portManager isn't instantiated.
+let qmpPortManager = ref<PortManager | null>(null);
+// ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
 const wbConfig = new WinboatConfig();
@@ -487,15 +521,34 @@ onMounted(async () => {
     await assignValues();
 });
 
+function ensureNumericInput(e: any) {
+    if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        return;
+    }
+    
+    if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+    }
+}
+
+function updateApplicationScale(value: string | number) {
+    let val = typeof value === 'string' ? parseInt(value) : value;
+    const clamped = typeof val !== 'number' || isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
+    wbConfig.config.scaleDesktop = clamped;
+    origApplicationScale.value = clamped;
+}
+
 /**
  * Assigns the initial values from the Docker Compose file to the reactive refs
  * so we can display them and track when a change has been made
  */
 async function assignValues() {
     compose.value = winboat.parseCompose();
+    qmpPortManager.value = await PortManager.parseCompose(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
+
 
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
@@ -506,9 +559,10 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    const rdpEntry = compose.value.services.windows.ports.find(x => x.includes(`:${RDP_PORT}`))
-    freerdpPort.value = Number(rdpEntry?.split(":")?.at(0) ?? RDP_PORT);
+    freerdpPort.value = qmpPortManager.value.getHostPort(GUEST_RDP_PORT);
     origFreerdpPort.value = freerdpPort.value;
+
+    origApplicationScale.value = wbConfig.config.scaleDesktop;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
@@ -535,11 +589,8 @@ async function saveDockerCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    const newPortEntries = compose.value!.services.windows.ports.filter(x => !x.includes(`:${RDP_PORT}`));
-
-    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/tcp`);
-    newPortEntries.push(`${freerdpPort.value}:${RDP_PORT}/udp`);
-    compose.value!.services.windows.ports = newPortEntries;
+    qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value);
+    compose.value!.services.windows.ports = qmpPortManager.value!.composeFormat;
 
     isApplyingChanges.value = true;
     try {
@@ -563,12 +614,13 @@ async function addRequiredComposeFieldsUSB() {
     }
     
     isUpdatingUSBPrerequisites.value = true;
+    await winboat.stopContainer();
 
     if(!hasUsbVolume(compose)) {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
-    if(!hasQmpPort(compose)) {
-        compose.value!.services.windows.ports.push(`${QMP_PORT}:${QMP_PORT}`);
+    if(!hasQmpPort()) {
+        await qmpPortManager.value!.setPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT);
     }
 
     if(!compose.value!.services.windows.environment.ARGUMENTS) {
@@ -583,7 +635,7 @@ async function addRequiredComposeFieldsUSB() {
     }
     if(!hasHostPort(compose)) {
         const delimeter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? '' : ',';
-        compose.value!.services.windows.environment.HOST_PORTS += delimeter + QMP_PORT;
+        compose.value!.services.windows.environment.HOST_PORTS += delimeter + GUEST_QMP_PORT;
     }
     
     await saveDockerCompose();
@@ -615,11 +667,11 @@ const errors = computed(() => {
 
 const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
 const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
-const hasQmpPort = (_compose: typeof compose) => _compose.value?.services.windows.ports?.includes(`${QMP_PORT}:${QMP_PORT}`)
-const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(QMP_PORT);
+const hasQmpPort = () => qmpPortManager.value?.hasPortMapping(GUEST_QMP_PORT) ?? false;
+const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
 
 const usbPassthroughDisabled = computed(() => {
-    return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort(compose) || !hasHostPort(compose);
+    return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
 })
 
 const saveButtonDisabled = computed(() => {

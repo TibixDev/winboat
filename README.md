@@ -39,7 +39,7 @@ Before running WinBoat, ensure your system meets the following requirements:
 
 - **RAM**: At least 4 GB of RAM
 - **CPU**: At least 2 CPU threads  
-- **Storage**: At least 32 GB free space in `/var`
+- **Storage**: At least 32 GB free space on the drive your selected install folder corresponds to
 - **Virtualization**: KVM enabled in BIOS/UEFI
   - [How to enable virtualization](https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web)
 - **Docker**: Required for containerization
