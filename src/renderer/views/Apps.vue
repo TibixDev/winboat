@@ -110,7 +110,39 @@
                         </x-menuitem>
                     </x-menu>
                 </x-select>
-
+                <x-select 
+                    @change="(e: any) => filterBy = e.detail.newValue"
+                    :disabled="!winboat.isOnline.value"
+                >
+                    <x-menu class="">
+                        <x-menuitem value="all" toggled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="qualifier" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M15 19.88c.04.3-.06.62-.29.83a.996.996 0 0 1-1.41 0L9.29 16.7a.99.99 0 0 1-.29-.83v-5.12L4.21 4.62a1 1 0 0 1 .17-1.4c.19-.14.4-.22.62-.22h14c.22 0 .43.08.62.22a1 1 0 0 1 .17 1.4L15 10.75zM7.04 5L11 10.06v5.52l2 2v-7.53L16.96 5z"/></svg>
+                            <x-label>
+                                <span class="qualifier">
+                                    Filter:
+                                </span>
+                                All</x-label>
+                        </x-menuitem>
+                        <x-menuitem value="custom">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="qualifier" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M15 19.88c.04.3-.06.62-.29.83a.996.996 0 0 1-1.41 0L9.29 16.7a.99.99 0 0 1-.29-.83v-5.12L4.21 4.62a1 1 0 0 1 .17-1.4c.19-.14.4-.22.62-.22h14c.22 0 .43.08.62.22a1 1 0 0 1 .17 1.4L15 10.75zM7.04 5L11 10.06v5.52l2 2v-7.53L16.96 5z"/></svg>
+                            <x-label>
+                                <span class="qualifier">
+                                    Filter:
+                                </span>
+                                Custom
+                            </x-label>
+                        </x-menuitem>
+                        <x-menuitem value="default">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="qualifier" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M15 19.88c.04.3-.06.62-.29.83a.996.996 0 0 1-1.41 0L9.29 16.7a.99.99 0 0 1-.29-.83v-5.12L4.21 4.62a1 1 0 0 1 .17-1.4c.19-.14.4-.22.62-.22h14c.22 0 .43.08.62.22a1 1 0 0 1 .17 1.4L15 10.75zM7.04 5L11 10.06v5.52l2 2v-7.53L16.96 5z"/></svg>
+                            <x-label>
+                                <span class="qualifier">
+                                    Filter:
+                                </span>
+                                Default
+                            </x-label>
+                        </x-menuitem>
+                    </x-menu>
+                </x-select>
 
                 <!-- Search Input -->
                 <x-input
@@ -188,6 +220,7 @@ const winboat = new Winboat();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref('');
 const sortBy = ref('');
+const filterBy = ref('');
 const addCustomAppDialog = useTemplateRef('addCustomAppDialog');
 const customAppName = ref('');
 const customAppPath = ref('');
@@ -200,13 +233,22 @@ const apiURL = computed(() => {
 })
 
 const computedApps = computed(() => {
-    if (!searchInput.value) return apps.value.sort((a, b) => { 
+    var appsCache = apps.value;
+
+    if (filterBy.value == "custom") {
+        appsCache = appsCache.filter(app => app.Source === "custom");
+    } else if (filterBy.value == "default") {
+        appsCache = appsCache.filter(app => app.Source !== "custom");
+    }
+
+    if (!searchInput.value) return appsCache.sort((a, b) => { 
         if(sortBy.value == 'usage' && a.Usage !== b.Usage) {
             return b.Usage! - a.Usage!;
         }
         return a.Name.localeCompare(b.Name)
     });
-    return apps.value
+
+    return appsCache
         .filter(app => app.Name.toLowerCase().includes(searchInput.value.toLowerCase()))
         .sort((a, b) => a.Name.localeCompare(b.Name));
 })
