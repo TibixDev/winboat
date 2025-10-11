@@ -478,7 +478,7 @@
                         >
                             <x-label><strong>Enable home folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
-                                By checking this box, you aknowledge the risks mentioned above
+                                By checking this box, you acknowledge the risks mentioned above
                             </x-label>
                         </x-checkbox>
 
