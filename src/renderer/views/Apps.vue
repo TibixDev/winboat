@@ -115,7 +115,7 @@
                     :disabled="!winboat.isOnline.value"
                     class="flex flex-row-reverse gap-1 items-center justify-center"
                 >
-                    <Icon icon="mdi:filter-outline" style="width: 24; height: 24;"></Icon>
+                    <Icon icon="mdi:filter-outline" style="width: 17; height: 17;"></Icon>
                     <x-menu class="">
                         <x-menuitem value="all" toggled>
                             <x-label>
