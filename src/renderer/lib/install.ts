@@ -5,6 +5,7 @@ import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { PortManager } from "../utils/port";
+import { Container } from "./container";
 const fs: typeof import('fs') = require('fs');
 const { exec }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
@@ -15,54 +16,6 @@ const remote: typeof import('@electron/remote') = require('@electron/remote');
 const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
 
-const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
-
-export const DefaultCompose: ComposeConfig = {
-    "name": "winboat",
-    "volumes": {
-        "data": null
-    },
-    "services": {
-        "windows": {
-            "image": "ghcr.io/dockur/windows:5.07",
-            "container_name": "WinBoat",
-            "environment": {
-                "VERSION": "11",
-                "RAM_SIZE": "4G",
-                "CPU_CORES": "4",
-                "DISK_SIZE": "64G",
-                "USERNAME": "MyWindowsUser",
-                "PASSWORD": "MyWindowsPassword",
-                "HOME": "${HOME}",
-                "LANGUAGE": "English",
-                "HOST_PORTS": "7149",
-                "ARGUMENTS": "-qmp tcp:0.0.0.0:7149,server,wait=off"
-            },
-            "cap_add": [
-                "NET_ADMIN"
-            ],
-            "privileged": true,
-            "ports": [
-                "8006:8006", // VNC Web Interface
-                "7148:7148", // Winboat Guest Server API
-                "8149:7149", // QEMU QMP Port
-                "3389:3389/tcp", // RDP
-                "3389:3389/udp" // RDP
-            ],
-            "stop_grace_period": "120s",
-            "restart": RESTART_ON_FAILURE,
-            "volumes": [
-                "data:/storage",
-                "${HOME}:/shared",
-                "/dev/bus/usb:/dev/bus/usb", // QEMU Synamic USB Passthrough
-                "./oem:/oem",
-            ],
-            "devices": [
-                "/dev/kvm",
-            ]
-        }
-    }
-}
 export const InstallStates = {
     IDLE: 'Preparing',
     CREATING_COMPOSE_FILE: 'Creating Compose File',
@@ -86,6 +39,7 @@ export class InstallManager {
     emitter: Emitter<InstallEvents>;
     state: InstallState;
     preinstallMsg: string;
+    container: Container;
     portMgr: Ref<PortManager | null>;
 
     constructor(conf: InstallConfiguration) {
@@ -94,6 +48,7 @@ export class InstallManager {
         this.preinstallMsg = ""
         this.emitter = createNanoEvents<InstallEvents>();
         this.portMgr = ref(null);
+        this.container = conf.container;
     }
 
     changeState(newState: InstallState) {
@@ -129,7 +84,7 @@ export class InstallManager {
         }
 
         // Configure the compose file
-        const composeContent = { ...DefaultCompose };
+        const composeContent = this.container.defaultCompose;
         this.portMgr.value = await PortManager.parseCompose(composeContent);
 
         composeContent.services.windows.ports = this.portMgr.value.composeFormat;
@@ -167,10 +122,7 @@ export class InstallManager {
         }
 
         // Write the compose file
-        const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");
-        fs.writeFileSync(composeFilePath, composeYAML, { encoding: 'utf8' });
-        logger.info(`Creating compose file at: ${composeFilePath}`);
-        logger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
+        this.container.writeCompose(composeContent);
     }
 
     createOEMAssets() {
@@ -244,18 +196,7 @@ export class InstallManager {
         logger.info('Starting container...');
 
         // Start the container
-        try {
-            // execSync(`docker compose -f ${composeFilePath} up -d`, { stdio: 'inherit' });
-            const { stdout, stderr } = await execAsync(`docker compose -f ${composeFilePath} up -d`);
-            if (stderr) {
-                logger.error(stderr);
-            }
-        } catch (e) {
-            this.changeState(InstallStates.INSTALL_ERROR);
-            logger.error('Failed to start container.');
-            logger.error(e);
-            throw e;
-        }
+        await this.container.compose("up");
         logger.info('Container started successfully.');
     }
 

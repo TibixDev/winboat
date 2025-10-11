@@ -1,4 +1,5 @@
 import { type WindowsVersionKey } from "./renderer/lib/constants";
+import { Container } from "./renderer/lib/container";
 import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {
@@ -23,6 +24,7 @@ export type InstallConfiguration = {
     password: string;
     customIsoPath?: string;
     shareHomeFolder: boolean;
+    container: Container;
 }
 
 export type WinApp = {
