@@ -18,17 +18,16 @@
                                 How many gigabytes of RAM are allocated to the Windows virtual machine
                             </p>
                         </div>
-                        <div class="flex flex-row gap-3 justify-center items-center">
-                            <input
-                                type="number"
-                                class="w-24 text-right text-[1.1rem] bg-neutral-800 border border-neutral-600 rounded px-3 py-1.5 text-neutral-100 [&::-webkit-inner-spin-button]:ml-2 [&::-webkit-outer-spin-button]:ml-2"
+                        <div class="flex flex-row gap-2 justify-center items-center">
+                            <x-input
+                                class="max-w-16 text-right text-[1.1rem]"
                                 min="4"
                                 :max="maxRamGB"
-                                v-model.number="ramGB"
-                                step="1"
+                                :value="ramGB"
+                                @input="(e: any) => ramGB = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
                                 required
-                            />
-                            <p class="text-neutral-100 font-medium">GB</p>
+                            ></x-input>
+                            <p class="text-neutral-100">GB</p>
                         </div>
                     </div>
                     <p v-if="ramWarning" class="text-yellow-400 text-xs mt-2 mb-0">
@@ -51,17 +50,16 @@
                                 How many CPU Cores are allocated to the Windows virtual machine
                             </p>
                         </div>
-                        <div class="flex flex-row gap-3 justify-center items-center">
-                            <input
-                                type="number"
-                                class="w-24 text-right text-[1.1rem] bg-neutral-800 border border-neutral-600 rounded px-3 py-1.5 text-neutral-100 [&::-webkit-inner-spin-button]:ml-2 [&::-webkit-outer-spin-button]:ml-2"
+                        <div class="flex flex-row gap-2 justify-center items-center">
+                            <x-input
+                                class="max-w-16 text-right text-[1.1rem]"
                                 min="2"
                                 :max="maxNumCores"
-                                v-model.number="numCores"
-                                step="1"
+                                :value="numCores"
+                                @input="(e: any) => numCores = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
                                 required
-                            />
-                            <p class="text-neutral-100 font-medium">Cores</p>
+                            ></x-input>
+                            <p class="text-neutral-100">Cores</p>
                         </div>
                     </div>
                     <p v-if="cpuWarning" class="text-yellow-400 text-xs mt-2 mb-0">
