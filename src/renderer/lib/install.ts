@@ -5,6 +5,7 @@ import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { PortManager } from "../utils/port";
+import { Winboat } from "./winboat";
 const fs: typeof import('fs') = require('fs');
 const { exec }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
@@ -306,6 +307,16 @@ export class InstallManager {
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
+                    
+                    const winboat = new Winboat();
+                    const config = winboat.parseCompose();
+                    const filteredVolumes = config.services.windows.volumes.filter(volume => !volume.endsWith('/boot.iso'));
+
+                    if (config.services.windows.volumes.length !== filteredVolumes.length) {
+                        config.services.windows.volumes = filteredVolumes;
+                        await winboat.replaceCompose(config)
+                    }
+                   
                     return;
                 }
                 // Log every 60 seconds (every 12th attempt with 5-second intervals)
