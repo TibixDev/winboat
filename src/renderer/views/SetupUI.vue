@@ -30,7 +30,7 @@
                     <div v-if="currentStep.id === StepID.WELCOME" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is a full fledged app that helps you natively run Windows applications on your Linux machine with ease.
+                            WinBoat is a full-fledged app that helps you natively run Windows applications on your Linux machine with ease.
                         </p>
                         <p class="text-lg text-gray-400">
                             We will go through a few required steps to get you started in no time.
