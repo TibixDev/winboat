@@ -314,7 +314,7 @@ export class InstallManager {
 
                     if (config.services.windows.volumes.length !== filteredVolumes.length) {
                         config.services.windows.volumes = filteredVolumes;
-                        await winboat.replaceCompose(config)
+                        await winboat.replaceCompose(config, false);
                     }
                    
                     return;

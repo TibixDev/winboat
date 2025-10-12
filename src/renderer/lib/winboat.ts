@@ -550,22 +550,20 @@ export class Winboat {
         this.containerActionLoading.value = false;
     }
 
-    async replaceCompose(composeConfig: ComposeConfig) {
+    async replaceCompose(composeConfig: ComposeConfig, restart=true) {
         logger.info("Going to replace compose config");
         this.containerActionLoading.value = true;
 
         const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
-
-        // 0. Stop the current container if it's online
-        if (this.containerStatus.value === ContainerStatus.Running) {
-            await this.stopContainer();
+        
+        if (restart) {
+            // 1. Compose down the current container
+            await execAsync(`docker compose -f ${composeFilePath} down`);
         }
-
-        // 1. Compose down the current container
-        await execAsync(`docker compose -f ${composeFilePath} down`);
 
         // 2. Create a backup directory if it doesn't exist
         const backupDir = path.join(WINBOAT_DIR, 'backup');
+        
         if (!fs.existsSync(backupDir)) {
             fs.mkdirSync(backupDir);
             logger.info(`Created compose backup dir: ${backupDir}`)
@@ -580,10 +578,13 @@ export class Winboat {
         const newComposeYAML = PrettyYAML.stringify(composeConfig).replaceAll("null", "");
         fs.writeFileSync(composeFilePath, newComposeYAML, { encoding: 'utf8' });
         logger.info(`Wrote new compose file to: ${composeFilePath}`);
-
-        // 5. Deploy the container with the new compose file
-        await execAsync(`docker compose -f ${composeFilePath} up -d`);
-
+        
+        if (restart) {
+            // 5. Deploy the container with the new compose file
+            await execAsync(`docker compose -f ${composeFilePath} up -d`);
+            remote.getCurrentWindow().reload();
+        }
+      
         logger.info("Replace compose config completed, successfully deployed new container");
 
         this.containerActionLoading.value = false;
