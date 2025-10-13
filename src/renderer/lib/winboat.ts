@@ -22,6 +22,7 @@ const { promisify }: typeof import('util') = require('util');
 const { exec }: typeof import('child_process') = require('child_process');
 const remote: typeof import('@electron/remote') = require('@electron/remote');
 const FormData: typeof import('form-data') = require('form-data');
+const crypto: typeof import('crypto') = require('crypto');
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, 'appUsage.json');
@@ -662,7 +663,7 @@ export class Winboat {
         /compression\
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         /wm-class:"${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
+        /app:program:"C:\\OEM\\rdp_exec\\rdp_exec.exe",cmd:"-cmd \\\"${app.Path}\\\" -dummy ${crypto.randomUUID().toString()}",name:"${cleanAppName}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
