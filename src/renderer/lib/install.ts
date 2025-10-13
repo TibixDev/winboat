@@ -5,7 +5,7 @@ import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { PortManager } from "../utils/port";
-import { Container } from "./container";
+import { ContainerManager } from "./container";
 const fs: typeof import('fs') = require('fs');
 const { exec }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
@@ -39,7 +39,7 @@ export class InstallManager {
     emitter: Emitter<InstallEvents>;
     state: InstallState;
     preinstallMsg: string;
-    container: Container;
+    container: ContainerManager;
     portMgr: Ref<PortManager | null>;
 
     constructor(conf: InstallConfiguration) {

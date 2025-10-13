@@ -80,7 +80,7 @@
                             </li>
 
                             <li class="flex items-center gap-2">
-                                <span v-if="specs.dockerInstalled" class="text-green-500">✔</span>
+                                <span v-if="containerInstalled(containerSpecs)" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 <div>
                                     <x-select
@@ -89,10 +89,10 @@
                                     >
                                         <x-menu>
                                             <x-menuitem
-                                                v-for="(runtime, key) in Object.values(ContainerType)" 
+                                                v-for="(runtime, key) in Object.values(ContainerRuntimes)" 
                                                 :key="key"
                                                 :value="runtime"
-                                                :toggled="runtime === ContainerType.DOCKER"
+                                                :toggled="runtime === containerRuntime"
                                             >
                                                 <x-label>{{ runtime }}</x-label>
                                             </x-menuitem>
@@ -104,16 +104,16 @@
                             </li>
 
                             <!-- Docker Specific Requirements -->
-                            <template v-if="containerRuntime == ContainerType.DOCKER">
+                            <template v-if="containerRuntime == ContainerRuntimes.DOCKER">
                                 <li class="flex items-center gap-2">
-                                    <span v-if="specs.dockerComposeInstalled" class="text-green-500">✔</span>
+                                    <span v-if="'dockerComposeInstalled' in containerSpecs && containerSpecs.dockerComposeInstalled" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     Docker Compose v2 installed
                                     <a href="https://docs.docker.com/compose/install/#plugin-linux-only" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                                 </li>
 
                                 <li class="flex items-center gap-2">
-                                    <span v-if="specs.dockerIsInUserGroups" class="text-green-500">✔</span>
+                                    <span v-if="'dockerIsInUserGroups' in containerSpecs && containerSpecs.dockerIsInUserGroups" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     User added to the <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
                                     <span class="text-gray-600">
@@ -123,7 +123,7 @@
                                 </li>
 
                                 <li class="flex items-center gap-2">
-                                    <span v-if="specs.dockerIsRunning" class="text-green-500">✔</span>
+                                    <span v-if="'dockerIsRunning' in containerSpecs && containerSpecs.dockerIsRunning" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     Docker daemon is running
                                     <span class="text-gray-600">
@@ -136,7 +136,7 @@
                             <!-- Podman Specific Requirements -->
                             <template v-else>
                                 <li class="flex items-center gap-2">
-                                    <span v-if="specs.dockerComposeInstalled" class="text-green-500">✔</span>
+                                    <span v-if="'podmanComposeInstalled' in containerSpecs && containerSpecs.podmanComposeInstalled" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     Podman Compose v2 installed
                                     <a href="https://docs.podman.io/en/latest/markdown/podman-compose.1.html" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
@@ -634,12 +634,12 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { computedAsync } from '@vueuse/core'
 import { InstallConfiguration, Specs } from '../../types';
-import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
+import { getSpecs, getMemoryInfo, defaultSpecs, type MemoryInfo } from '../lib/specs';
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVNC_PORT } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
-import { DockerContainer } from '../lib/container';
+import { ContainerManager, ContainerRuntimes, DockerContainer, DockerSpecs, PodmanSpecs } from '../lib/container';
 
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
@@ -725,11 +725,6 @@ const steps: Step[] = [
     },
 ];
 
-enum ContainerType {
-    DOCKER = "Docker",
-    PODMAN = "Podman"
-};
-
 const MIN_CPU_CORES = 1;
 const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
@@ -753,7 +748,7 @@ const confirmPassword = ref("");
 const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
-const containerRuntime = ref(ContainerType.DOCKER);
+const containerRuntime = ref(ContainerRuntimes.DOCKER);
 
 
 let installManager: InstallManager | null = null;
@@ -777,6 +772,28 @@ onUnmounted(() => {
         clearInterval(memoryInterval.value);
     }
 })
+
+const containerSpecs = computed(() => {
+    return ContainerManager.getSpecs(containerRuntime.value);
+})
+
+const satisfiesContainerPrerequisites = computed(() => {
+    return Object.values(containerSpecs.value).every(x => x);
+})
+
+function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs) {
+    if('dockerInstalled' in containerSpecs) return containerSpecs.dockerInstalled;
+    if('podmanInstalled' in containerSpecs) return containerSpecs.podmanInstalled;
+    return false;
+}
+
+function satisfiesPrequisites(specs: Specs) {
+    return satisfiesContainerPrerequisites.value &&
+        specs.freeRDP3Installed &&
+        specs.kvmEnabled &&
+        specs.ramGB >= 4 &&
+        specs.cpuCores >= 2
+}
 
 const usernameErrors = computed(() => {
     let errors: string[] = [];
@@ -915,7 +932,7 @@ function install() {
         password: password.value,
         shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
-        container: new DockerContainer() // Hardcdde for now
+        container: ContainerManager.createContainer(containerRuntime.value) // Hardcdde for now
     };
 
     installManager = new InstallManager(installConfig);

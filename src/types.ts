@@ -1,15 +1,11 @@
 import { type WindowsVersionKey } from "./renderer/lib/constants";
-import { Container } from "./renderer/lib/container";
+import { ContainerManager } from "./renderer/lib/container";
 import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {
     cpuCores: number;
     ramGB: number;
     kvmEnabled: boolean;
-    dockerInstalled: boolean;
-    dockerComposeInstalled: boolean,
-    dockerIsRunning: boolean,
-    dockerIsInUserGroups: boolean;
     freeRDP3Installed: boolean;
 }
 
@@ -24,7 +20,7 @@ export type InstallConfiguration = {
     password: string;
     customIsoPath?: string;
     shareHomeFolder: boolean;
-    container: Container;
+    container: ContainerManager;
 }
 
 export type WinApp = {
