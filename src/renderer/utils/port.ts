@@ -139,7 +139,7 @@ export class PortManager {
             logger.info(`Port ${hostPort} is in use, remapping to ${randomOpenPort}`);
             hostPort = randomOpenPort;
         }
-
+        
         this.ports.set(guestPort, ComposePortEntry.fromPorts(hostPort, guestPort, options?.protocol));
     }
 
@@ -150,8 +150,6 @@ export class PortManager {
         if(typeof guestPort === "string") {
             guestPort = parseInt(guestPort);
         }
-
-        console.log("hasPortMapping", guestPort, this.ports.has(guestPort));
 
         return this.ports.has(guestPort);
     }

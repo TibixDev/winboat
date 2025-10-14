@@ -544,6 +544,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import { ContainerStatus, Winboat } from '../lib/winboat';
 import type { ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
@@ -642,7 +643,7 @@ function updateApplicationScale(value: string | number) {
  */
 async function assignValues() {
     compose.value = winboat.parseCompose();
-    qmpPortManager.value = await PortManager.parseCompose(compose.value);
+    qmpPortManager.value = winboat.portMgr.value ?? await PortManager.parseCompose(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -689,7 +690,7 @@ async function saveDockerCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value);
+    await qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value, { findOpenPorts: false }); // no need to find open ports, since we already check that in the 'errors' computed
     compose.value!.services.windows.ports = qmpPortManager.value!.composeFormat;
 
     isApplyingChanges.value = true;
@@ -743,7 +744,7 @@ async function addRequiredComposeFieldsUSB() {
     isUpdatingUSBPrerequisites.value = false;
 }
 
-const errors = computed(() => {
+const errors = computedAsync(async () => {
     let errCollection: string[] = [];
 
     if (!numCores.value || numCores.value < 2) {
@@ -760,6 +761,10 @@ const errors = computed(() => {
 
     if (ramGB.value > maxRamGB.value) {
         errCollection.push("You cannot allocate more RAM to Windows than you have available")
+    }
+
+    if(freerdpPort.value !== origFreerdpPort.value && !await PortManager.isPortOpen(freerdpPort.value)) {
+        errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
     return errCollection;
@@ -783,7 +788,7 @@ const saveButtonDisabled = computed(() => {
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = 
-        errors.value.length || 
+        errors.value?.length || 
         !hasResourceChanges || 
         isApplyingChanges.value;
         
