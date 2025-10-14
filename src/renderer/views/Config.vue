@@ -304,15 +304,21 @@
                         </p>
                     </div>
                     <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-button type="button" class="px-2 py-1 text-neutral-200" @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)">-</x-button>
+                        <x-button type="button" class="size-8 !p-0" @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)">
+                            <Icon icon="mdi:minus" class="size-4"></Icon>
+                            <x-label class="sr-only">Subtract</x-label>
+                        </x-button>
                         <x-input
                             type="text"
                             v-model="origApplicationScale"
-                            class="w-20"
+                            class="!max-w-16"
                             v-on:keydown="(e: any) => ensureNumericInput(e)"
                             v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
                         ></x-input>
-                        <x-button type="button" class="px-2 py-1" @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)">+</x-button>
+                        <x-button type="button" class="size-8 !p-0" @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)">
+                            <Icon icon="mdi:plus" class="size-4"></Icon>
+                            <x-label class="sr-only">Add</x-label>
+                        </x-button>
                     </div>
                 </x-card>
 
