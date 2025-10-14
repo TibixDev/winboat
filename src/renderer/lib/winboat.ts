@@ -37,7 +37,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
-        Usage: 0 
+        Usage: 0
     },
     {
         Name: "⚙️ Windows Explorer",

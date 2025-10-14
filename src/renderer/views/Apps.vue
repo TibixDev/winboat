@@ -172,10 +172,18 @@
                             <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                         </div>
                         <Icon icon="cuida:caret-right-outline"></Icon>
-                        <WBContextMenu v-if="app.Source === 'custom'">
-                            <WBMenuItem @click="removeCustomApp(app)">
+                        <WBContextMenu>
+                            <WBMenuItem v-if="app.Source === 'custom'" @click="removeCustomApp(app)">
                                 <Icon class="size-4" icon="mdi:trash-can"></Icon>
                                 <x-label>Remove Custom App</x-label>
+                            </WBMenuItem>
+                            <WBMenuItem v-if="!wbConfig.config.hasDesktopShortcut" @click="addDesktopShortcut(app)">
+                                <Icon class="size-4" icon="mdi:plus"></Icon>
+                                <x-label>Add Desktop Shortcut</x-label>
+                            </WBMenuItem>
+                            <WBMenuItem v-if="wbConfig.config.hasDesktopShortcut" @click="removeDesktopShortcut(app)">
+                                <Icon class="size-4" icon="mdi:minus"></Icon>
+                                <x-label>Remove Desktop Shortcut</x-label>
                             </WBMenuItem>
                         </WBContextMenu>
                     </x-card>
@@ -212,11 +220,13 @@ import WBMenuItem from '../components/WBMenuItem.vue';
 import { AppIcons, DEFAULT_ICON } from '../data/appicons';
 import { GUEST_API_PORT } from '../lib/constants';
 import { debounce } from '../utils/debounce';
+import { WinboatConfig } from '../lib/config';
 import { Jimp, JimpMime } from 'jimp';
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const FormData: typeof import('form-data') = require('form-data');
 
 const winboat = new Winboat();
+const wbConfig = new WinboatConfig();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref('');
 const sortBy = ref('');
@@ -375,6 +385,14 @@ async function addCustomApp() {
 async function removeCustomApp(app: WinApp) {
     await winboat.appMgr!.removeCustomApp(app);
     apps.value = await winboat.appMgr!.getApps(apiURL.value);
+}
+
+function addDesktopShortcut(app: WinApp) {
+    wbConfig.config.hasDesktopShortcut = true;
+}   
+
+function removeDesktopShortcut(app: WinApp) {
+    wbConfig.config.hasDesktopShortcut = false;
 }
 
 /**
