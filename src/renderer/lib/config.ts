@@ -4,6 +4,12 @@ import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
 
+export type RdpArg ={
+    original?: string
+    newArg: string
+    isReplacement:boolean
+}
+
 export type WinboatConfigObj = {
     scale: number;
     scaleDesktop: number,
@@ -12,7 +18,9 @@ export type WinboatConfigObj = {
     passedThroughDevices: PTSerializableDeviceInfo[];
     customApps: WinApp[]
     experimentalFeatures: boolean
+    advancedFeatures: boolean
     multiMonitor: number
+    rdpArgs: RdpArg[]
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -23,7 +31,9 @@ const defaultConfig: WinboatConfigObj = {
     passedThroughDevices: [],
     customApps: [],
     experimentalFeatures: false,
+    advancedFeatures: false,
     multiMonitor: 0,
+    rdpArgs:[]
 };
 
 export class WinboatConfig { 
