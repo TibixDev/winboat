@@ -1,7 +1,7 @@
 import { ComposeConfig } from "../../../types";
 import { DOCKER_DEFAULT_COMPOSE } from "../../data/docker";
 import { WINBOAT_DIR } from "../constants";
-import { ComposeDirection, containerLogger, ContainerManager } from "./container";
+import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from "json-to-pretty-yaml";
 const { execSync }: typeof import('child_process') = require('child_process');
 const { exec }: typeof import('child_process') = require('child_process');
@@ -26,6 +26,51 @@ export class DockerContainer extends ContainerManager {
 
     constructor() {
         super();
+    }
+
+    writeCompose(compose: ComposeConfig): void {
+        const composeContent = YAML.stringify(this.defaultCompose);
+        fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
+
+        containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
+        containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
+    }
+
+    async compose(direction: ComposeDirection): Promise<void> {
+        const extraArguments = direction == "up" ? "-d" : ""; // Run compose in detached mode if we are running compose up TODO: maybe we need to run both in detached mode
+        const command = `${this.executableAlias} compose -f ${this.composeFilePath} ${direction} ${extraArguments}`;
+
+        try {
+            const { stdout, stderr } = await execAsync(command);
+            if (stderr) {
+                containerLogger.error(stderr);
+            }
+        } catch (e) {
+            containerLogger.error(`Failed to run compose command '${command}'`);
+            containerLogger.error(e);
+            throw e;
+        }
+    }
+
+    get status(): ContainerStatus {
+        const statusMap = {
+            "created": ContainerStatus.CREATED,
+            "restarting": ContainerStatus.UKNOWN,
+            "running": ContainerStatus.RUNNING,
+            "paused": ContainerStatus.PAUSED,
+            "exited": ContainerStatus.EXITED,
+            "dead": ContainerStatus.UKNOWN
+        } as const;
+        const command = `${this.executableAlias} inspect --format="{{.State.Status}}" ${this.defaultCompose.services.windows.container_name}`;
+
+        try {
+            const status = execSync(command).toString().trim() as keyof typeof statusMap;
+            return statusMap[status];
+        } catch(e) {
+            containerLogger.error(`Failed to get status of docker container ${this.defaultCompose.name}.\nCommand '${command} failed:'`);
+            containerLogger.error(e);
+            return ContainerStatus.UKNOWN;
+        }
     }
 
     static override _getSpecs(): DockerSpecs  {
@@ -80,29 +125,5 @@ export class DockerContainer extends ContainerManager {
         }
 
         return specs;
-    }
-
-    writeCompose(compose: ComposeConfig): void {
-        const composeContent = YAML.stringify(this.defaultCompose);
-        fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
-
-        containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
-        containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
-    }
-
-    async compose(direction: ComposeDirection): Promise<void> {
-        const extraArguments = direction == "up" ? "-d" : ""; // Run compose in detached mode if we are running compose up TODO: maybe we need to run both in detached mode
-        const command = `${this.executableAlias} compose -f ${this.composeFilePath} ${direction} ${extraArguments}`;
-
-        try {
-            const { stdout, stderr } = await execAsync(command);
-            if (stderr) {
-                containerLogger.error(stderr);
-            }
-        } catch (e) {
-            containerLogger.error(`Failed to run compose command '${command}'`);
-            containerLogger.error(e);
-            throw e;
-        }
     }
 }

@@ -63,7 +63,7 @@
             class="flex justify-between items-center mb-6"
             :class="{
                 'opacity-50 pointer-events-none':
-                    winboat.containerStatus.value !== ContainerStatus.Running ||
+                    winboat.containerStatus.value !== ContainerStatus.RUNNING ||
                     !winboat.isOnline.value
             }"
         >
@@ -158,7 +158,7 @@
                 <h1
                     class="text-xl font-semibold w-[30vw] text-center leading-16"
                 >
-                    <span v-if="winboat.containerStatus.value === ContainerStatus.Exited || winboat.containerStatus.value === ContainerStatus.Dead">
+                    <span v-if="winboat.containerStatus.value === ContainerStatus.EXITED || winboat.containerStatus.value === ContainerStatus.UKNOWN">
                         The WinBoat Container is not running, please start it to view your apps list.
                     </span>
                     <span v-else>
@@ -173,7 +173,8 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { ContainerStatus, Winboat } from '../lib/winboat';
+import { Winboat } from '../lib/winboat';
+import { ContainerStatus } from '../lib/containers/common';
 import { type WinApp } from '../../types';
 import WBContextMenu from '../components/WBContextMenu.vue';
 import WBMenuItem from '../components/WBMenuItem.vue';

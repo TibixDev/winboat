@@ -4,6 +4,7 @@ import { PodmanContainer, PodmanSpecs } from "./podman";
 // For convenience
 export { type DockerSpecs } from "./docker";
 export { type PodmanSpecs } from "./podman";
+export { ContainerStatus } from "./container";
 
 export enum ContainerRuntimes {
     DOCKER = "Docker",

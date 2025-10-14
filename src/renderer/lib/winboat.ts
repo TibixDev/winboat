@@ -13,7 +13,7 @@ import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ComposePortEntry, PortManager } from "../utils/port";
-import { ContainerManager } from "./containers/container";
+import { ContainerManager, ContainerStatus } from "./containers/container";
 import { createContainer } from "./containers/common";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
@@ -68,18 +68,7 @@ const customAppCallbacks: CustomAppCallbacks = {
     }
 }
 
-export const ContainerStatus = {
-    "Created": "created",
-    "Restarting": "restarting",
-    "Running": "running",
-    "Paused": "paused",
-    "Exited": "exited",
-    "Dead": "dead"
-} as const;
-
 const QMP_WAIT_MS = 2000;
-
-type ContainerStatusValue = typeof ContainerStatus[keyof typeof ContainerStatus];
 
 class AppManager {
     appCache: WinApp[] = []
@@ -194,7 +183,7 @@ export class Winboat {
     // Variables
     isOnline: Ref<boolean> = ref(false);
     isUpdatingGuestServer: Ref<boolean> = ref(false);
-    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited);
+    containerStatus: Ref<ContainerStatus> = ref(ContainerStatus.EXITED);
     containerActionLoading: Ref<boolean> = ref(false);
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
@@ -230,13 +219,13 @@ export class Winboat {
         
         // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
-            const _containerStatus = await this.getContainerStatus();
+            const _containerStatus = this.containerMgr!.status;
 
             if (_containerStatus !== this.containerStatus.value) {
                 this.containerStatus.value = _containerStatus;
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
-                if (_containerStatus === ContainerStatus.Running) {
+                if (_containerStatus === ContainerStatus.RUNNING) {
                     await this.createAPIInvervals();
                 } else {
                     await this.destroyAPIInvervals();
@@ -396,16 +385,6 @@ export class Winboat {
         }
     }
 
-    async getContainerStatus() {
-        try {
-            const { stdout: _containerStatus } = await execAsync(`docker inspect --format="{{.State.Status}}" WinBoat`);
-            return _containerStatus.trim() as ContainerStatusValue;
-        } catch(e) {
-            console.error("Failed to get container status, most likely we are in the process of resetting");
-            return ContainerStatus.Dead;
-        }
-    }
-
     async getMetrics() {
         const apiPort = this.getHostPort(GUEST_API_PORT);
         const apiUrl = `http://127.0.0.1:${apiPort}`;
@@ -562,7 +541,7 @@ export class Winboat {
         const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
 
         // 0. Stop the current container if it's online
-        if (this.containerStatus.value === ContainerStatus.Running) {
+        if (this.containerStatus.value === ContainerStatus.RUNNING) {
             await this.stopContainer();
         }
 

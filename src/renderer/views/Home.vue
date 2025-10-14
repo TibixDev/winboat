@@ -30,10 +30,10 @@
                         </p>
                     </div>
                     <div class="flex flex-row items-center gap-1.5" :class="{
-                        'text-green-500': winboat.containerStatus.value === ContainerStatus.Running,
-                        'text-red-500': winboat.containerStatus.value === ContainerStatus.Exited,
-                        'text-yellow-500': winboat.containerStatus.value === ContainerStatus.Paused,
-                        'text-orange-500': winboat.containerStatus.value === ContainerStatus.Dead,
+                        'text-green-500': winboat.containerStatus.value === ContainerStatus.RUNNING,
+                        'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
+                        'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
+                        'text-orange-500': winboat.containerStatus.value === ContainerStatus.UKNOWN,
 
                     }">
                         <Icon class="size-7" icon="mdi:docker"></Icon>
@@ -47,19 +47,19 @@
             <!-- Buttons -->
             <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
                 <button title="Start" class="generic-hover" v-if="
-                    winboat.containerStatus.value === ContainerStatus.Exited ||
-                    winboat.containerStatus.value === ContainerStatus.Dead
+                    winboat.containerStatus.value === ContainerStatus.EXITED ||
+                    winboat.containerStatus.value === ContainerStatus.UKNOWN
                 " @click="winboat.startContainer()">
                     <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
                 </button>
-                <button title="Stop" class="generic-hover" v-if="winboat.containerStatus.value === ContainerStatus.Running"
+                <button title="Stop" class="generic-hover" v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     @click="winboat.stopContainer()">
                     <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
                 </button>
 
                 <button title="Pause / Unpause" class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.Running || winboat.containerStatus.value === ContainerStatus.Paused"
-                    @click="winboat.containerStatus.value === ContainerStatus.Paused ? winboat.unpauseContainer() : winboat.pauseContainer()">
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING || winboat.containerStatus.value === ContainerStatus.PAUSED"
+                    @click="winboat.containerStatus.value === ContainerStatus.PAUSED ? winboat.unpauseContainer() : winboat.pauseContainer()">
                     <Icon class="w-20 h-20 text-yellow-100" icon="mingcute:pause-line"></Icon>
                 </button>
             </div>
@@ -113,7 +113,8 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ContainerStatus, Winboat } from '../lib/winboat';
+import { Winboat } from '../lib/winboat';
+import { ContainerStatus } from '../lib/containers/common';
 import { type ComposeConfig } from '../../types';
 import { WINDOWS_VERSIONS } from '../lib/constants';
 import { Icon } from '@iconify/vue';

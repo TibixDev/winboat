@@ -453,7 +453,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { ContainerStatus, Winboat } from '../lib/winboat';
+import { Winboat } from '../lib/winboat';
+import { ContainerStatus } from '../lib/containers/common';
 import type { ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';

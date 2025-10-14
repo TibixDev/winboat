@@ -14,7 +14,7 @@ export abstract class ContainerManager {
 
     abstract writeCompose(compose: ComposeConfig): void;
     abstract compose(direction: ComposeDirection): Promise<void>;
-    // abstract get status(): number;
+    abstract get status(): ContainerStatus;
 
     // static "abstract" function
     static _getSpecs(): any {
@@ -23,6 +23,7 @@ export abstract class ContainerManager {
 }
 
 export enum ContainerStatus {
+    CREATED = "Created", // unused
     RUNNING = "Running",
     PAUSED = "Paused",
     EXITED = "Exited",
