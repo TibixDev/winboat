@@ -3,7 +3,7 @@ const path: typeof import("path") = require("path");
 import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
-import { ContainerRuntimes } from "./container";
+import { ContainerRuntimes } from "./containers/common";
 
 export type WinboatConfigObj = {
     scale: number;

@@ -639,7 +639,9 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVN
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
-import { ContainerManager, ContainerRuntimes, DockerContainer, DockerSpecs, PodmanSpecs } from '../lib/container';
+import { ContainerRuntimes, DockerSpecs, PodmanSpecs } from '../lib/containers/common';
+import { WinboatConfig } from '../lib/config';
+import { createContainer, getContainerSpecs } from '../lib/containers/common';
 
 const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
@@ -774,7 +776,7 @@ onUnmounted(() => {
 })
 
 const containerSpecs = computed(() => {
-    return ContainerManager.getSpecs(containerRuntime.value);
+    return getContainerSpecs(containerRuntime.value);
 })
 
 const satisfiesContainerPrerequisites = computed(() => {
@@ -850,13 +852,13 @@ function selectIsoFile() {
         properties: ['openFile']
     })
     .then(result => {
-      if (!result.canceled && result.filePaths.length > 0) {
-        customIsoPath.value = result.filePaths[0];
-        customIsoFileName.value = path.basename(result.filePaths[0]);
-        windowsLanguage.value = 'English'; // Language can't be custom
-        windowsVersion.value = 'custom';
-        console.log('ISO path updated:', customIsoPath.value);
-      }
+        if (!result.canceled && result.filePaths.length > 0) {
+            customIsoPath.value = result.filePaths[0];
+            customIsoFileName.value = path.basename(result.filePaths[0]);
+            windowsLanguage.value = 'English'; // Language can't be custom
+            windowsVersion.value = 'custom';
+            console.log('ISO path updated:', customIsoPath.value);
+        }
     });
 }
 
@@ -932,8 +934,11 @@ function install() {
         password: password.value,
         shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
-        container: ContainerManager.createContainer(containerRuntime.value) // Hardcdde for now
+        container: createContainer(containerRuntime.value) // Hardcdde for now
     };
+
+    const wbConfig = new WinboatConfig(); // Create winboat config.
+    wbConfig.config.containerRuntime = containerRuntime.value // Save which runtime to use.
 
     installManager = new InstallManager(installConfig);
 

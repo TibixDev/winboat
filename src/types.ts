@@ -1,5 +1,5 @@
 import { type WindowsVersionKey } from "./renderer/lib/constants";
-import { ContainerManager } from "./renderer/lib/container";
+import { ContainerManager } from "./renderer/lib/containers/container";
 import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {

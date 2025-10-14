@@ -13,6 +13,8 @@ import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ComposePortEntry, PortManager } from "../utils/port";
+import { ContainerManager } from "./containers/container";
+import { createContainer } from "./containers/common";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const fs: typeof import('fs') = require('fs');
@@ -214,6 +216,7 @@ export class Winboat {
     #wbConfig: WinboatConfig | null = null;
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
+    containerMgr: ContainerManager | null = null;
     portMgr: Ref<PortManager | null> = ref(null);
 
 
@@ -221,6 +224,9 @@ export class Winboat {
         if (Winboat.instance) {
             return Winboat.instance;
         }
+
+        this.#wbConfig = new WinboatConfig();
+        this.containerMgr = createContainer(this.#wbConfig.config.containerRuntime);
         
         // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
@@ -238,7 +244,6 @@ export class Winboat {
             }
         }, 1000);
 
-        this.#wbConfig = new WinboatConfig();
 
         this.appMgr = new AppManager();
 
