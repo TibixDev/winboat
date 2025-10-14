@@ -61,6 +61,13 @@ const presetApps: WinApp[] = [
 const stockArgs = ["/cert:ignore", "+clipboard", "/sound:sys:pulse", "/microphone:sys:pulse", "/floatbar", "/compression"];
 
 /**
+ * Returns second/original param if first is undefined or null, else first/test param
+ */
+const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string) => {
+    return (test === undefined || test === null) ? original : test
+}
+
+/**
  * For specifying custom behavior when launching an app (e.g. novnc)
  * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
  */
@@ -656,7 +663,8 @@ export class Winboat {
         // Additional (new) arguments added by user
         const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => !a.isReplacement).map(v => v.newArg) ?? [];
         // The stock arguments after any replacements have been made and new arguments have been added
-        const combinedArgs = stockArgs.map(argStr=> replacementArgs?.find(r => argStr === r.original?.trim())?.newArg || argStr).concat(newArgs).join(" ");
+        const combinedArgs = stockArgs.map(argStr => useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr))
+            .concat(newArgs).join(" ");
 
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
