@@ -265,7 +265,7 @@
                             <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-24-filled"></Icon>
                             <h1 class="my-0 text-lg font-semibold">
                                 FreeRDP Arguments
-                                <span class="bg-yellow-500 rounded-full px-3 py-0.5 text-sm ml-2">
+                                <span class="bg-blue-500 rounded-full px-3 py-0.5 text-sm ml-2">
                                     Advanced
                                 </span>
                             </h1>
