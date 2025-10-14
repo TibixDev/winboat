@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import { join } from 'path';
+import { createTray } from './tray.js';
 import { initialize, enable } from '@electron/remote/main/index.js';
 import Store from 'electron-store';
 
@@ -21,41 +22,43 @@ type SchemaType = {
     }
 };
 
-const windowStore = new Store<SchemaType>({ schema: {
-    dimensions: {
-        type: 'object',
-        properties: {
-            width: {
-                type: 'number',
-                minimum: WINDOW_MIN_WIDTH,
-                default: WINDOW_MIN_WIDTH
+const windowStore = new Store<SchemaType>({
+    schema: {
+        dimensions: {
+            type: 'object',
+            properties: {
+                width: {
+                    type: 'number',
+                    minimum: WINDOW_MIN_WIDTH,
+                    default: WINDOW_MIN_WIDTH
+                },
+                height: {
+                    type: 'number',
+                    minimum: WINDOW_MIN_HEIGHT,
+                    default: WINDOW_MIN_HEIGHT
+                },
             },
-            height: {
-                type: 'number',
-                minimum: WINDOW_MIN_HEIGHT,
-                default: WINDOW_MIN_HEIGHT
-            },
+            required: ['width', 'height']
         },
-        required: ['width', 'height']
-    },
-    position: {
-        type: 'object',
-        properties: {
-            x: {
-                type: 'number'
+        position: {
+            type: 'object',
+            properties: {
+                x: {
+                    type: 'number'
+                },
+                y: {
+                    type: 'number'
+                }
             },
-            y: {
-                type: 'number'
-            }
-        },
-        required: ['x', 'y']
+            required: ['x', 'y']
+        }
     }
-}});
+});
 
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
-    if(!app.requestSingleInstanceLock()) {
+    if (!app.requestSingleInstanceLock()) {
         // @ts-ignore property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
         dialog.showMessageBoxSync(null, {
             type: "error",
@@ -82,7 +85,9 @@ function createWindow() {
         }
     });
 
-    mainWindow.on('close', () => {
+    mainWindow.on('close', (e) => {
+        e.preventDefault();
+        mainWindow?.hide();
         const bounds = mainWindow?.getBounds();
 
         windowStore.set('dimensions', {
@@ -97,6 +102,7 @@ function createWindow() {
     });
 
     enable(mainWindow.webContents);
+    createTray(mainWindow);
 
     if (process.env.NODE_ENV === 'development') {
         const rendererPort = process.argv[2];
@@ -135,16 +141,17 @@ app.whenReady().then(() => {
     });
 });
 
-app.on('window-all-closed', function () {
-    if (process.platform !== 'darwin') app.quit()
+app.on('window-all-closed', () => {
+    // Do nothing — app stays alive in tray
 });
 
+
 app.on("second-instance", _ => {
-    if(mainWindow) {
+    if (mainWindow) {
         mainWindow.focus();
     }
 })
 
-ipcMain.on('message', (event, message) => {
+ipcMain.on('message', (message) => {
     console.log(message);
 })
