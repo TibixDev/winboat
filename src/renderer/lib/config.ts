@@ -3,16 +3,18 @@ const path: typeof import("path") = require("path");
 import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
+import { ContainerRuntimes } from "./container";
 
 export type WinboatConfigObj = {
     scale: number;
-    scaleDesktop: number,
-    smartcardEnabled: boolean
-    rdpMonitoringEnabled: boolean
+    scaleDesktop: number;
+    smartcardEnabled: boolean;
+    rdpMonitoringEnabled: boolean;
     passedThroughDevices: PTSerializableDeviceInfo[];
-    customApps: WinApp[]
-    experimentalFeatures: boolean
-    multiMonitor: number
+    customApps: WinApp[];
+    experimentalFeatures: boolean;
+    multiMonitor: number;
+    containerRuntime: ContainerRuntimes
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -24,6 +26,7 @@ const defaultConfig: WinboatConfigObj = {
     customApps: [],
     experimentalFeatures: false,
     multiMonitor: 0,
+    containerRuntime: ContainerRuntimes.DOCKER // TODO: Ideally should be podman once we flesh out everything
 };
 
 export class WinboatConfig { 
