@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"log"
 	"os"
 	"strings"
 	"syscall"
@@ -19,28 +17,25 @@ func main() {
 	flag.Parse()
 
 	if *cmd == "" || *dummy == "" {
-		log.Fatal("Missing arguments!")
 		os.Exit(1)
 	}
 
-	fmt.Println(*cmd)
-	fmt.Println(*dummy)
-
 	args := strings.Fields(*cmd)
+
 	if len(args) == 0 {
-		log.Fatal("Command is empty!")
+		os.Exit(1)
 	}
 
 	appName := syscall.StringToUTF16Ptr(args[0])
-
 	commandLine := syscall.StringToUTF16Ptr(*cmd)
+	workingDir := syscall.StringToUTF16Ptr(`C:\Windows\System32`)
 
 	var startupInfo syscall.StartupInfo
 	var processInfo syscall.ProcessInformation
 
 	startupInfo.Cb = uint32(unsafe.Sizeof(startupInfo))
 
-	err := syscall.CreateProcess(
+	syscall.CreateProcess(
 		appName,
 		commandLine,
 		nil,   // Default process security attributes
@@ -48,20 +43,12 @@ func main() {
 		false, // Inherit handles
 		0,     // Creation flags
 		nil,   // Use parent's environment
-		nil,   // Use parent's current directory
+		workingDir,
 		&startupInfo,
 		&processInfo,
 	)
 
-	if err != nil {
-		log.Fatalf("Error calling CreateProcess: %v", err)
-	}
-
-	fmt.Printf("Process started with PID: %d\n", processInfo.ProcessId)
-
 	syscall.WaitForSingleObject(processInfo.Process, syscall.INFINITE)
-	fmt.Println("Process finished.")
-
 	syscall.CloseHandle(processInfo.Process)
 	syscall.CloseHandle(processInfo.Thread)
 }
