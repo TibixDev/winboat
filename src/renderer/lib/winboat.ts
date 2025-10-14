@@ -654,7 +654,7 @@ export class Winboat {
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
         // Additional (new) arguments added by user
-        const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement).map(v => v.newArg) ?? [];
+        const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => !a.isReplacement).map(v => v.newArg) ?? [];
         // The stock arguments after any replacements have been made and new arguments have been added
         const combinedArgs = stockArgs.map(argStr=> replacementArgs?.find(r => argStr === r.original?.trim())?.newArg || argStr).concat(newArgs).join(" ");
 
