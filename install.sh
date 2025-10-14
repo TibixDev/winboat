@@ -12,10 +12,10 @@ command_exists() {
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     case "$ID" in
-        ubuntu|lubuntu|kubuntu|ubuntu-budgie|pop)
+        ubuntu|lubuntu|kubuntu|ubuntu-budgie|xubuntu|pop|kde-neon)
             DISTRO="ubuntu"
             ;;
-        fedora)
+        fedora|nobara)
             DISTRO="fedora"
             ;;
         arch|manjaro)
@@ -58,12 +58,43 @@ if [ -z "$WINBOAT_URL" ]; then
     exit 1
 fi
 
+# Download AppImage
 echo "Downloading WinBoat from: $WINBOAT_URL"
 curl -L -o "$HOME/bin/WinBoat.AppImage" "$WINBOAT_URL"
 chmod +x "$HOME/bin/WinBoat.AppImage"
 
-echo "WinBoat installed at: $HOME/bin/WinBoat.AppImage"
-echo "Make sure $HOME/bin is in your PATH to run it easily."
-echo "You can start it with: WinBoat.AppImage"
+# Create symlink in /usr/local/bin
+if [ -w /usr/local/bin ]; then
+    sudo ln -sf "$HOME/bin/WinBoat.AppImage" /usr/local/bin/winboat
+    echo "Symlink created: /usr/local/bin/winboat"
+else
+    echo "Cannot write to /usr/local/bin. You may need to run:"
+    echo "sudo ln -sf \"$HOME/bin/WinBoat.AppImage\" /usr/local/bin/winboat"
+fi
 
+# Detect shell and give PATH instructions
+USER_SHELL=$(basename "$SHELL")
+echo ""
+echo "=== Post-install instructions ==="
+case "$USER_SHELL" in
+    bash)
+        echo "Add ~/bin to your PATH if not already:"
+        echo 'echo "export PATH=\"$HOME/bin:\$PATH\"" >> ~/.bashrc && source ~/.bashrc'
+        ;;
+    zsh)
+        echo "Add ~/bin to your PATH if not already:"
+        echo 'echo "export PATH=\"$HOME/bin:\$PATH\"" >> ~/.zshrc && source ~/.zshrc'
+        ;;
+    fish)
+        echo "Add ~/bin to your PATH if not already:"
+        echo 'set -Ux fish_user_paths $HOME/bin $fish_user_paths'
+        ;;
+    *)
+        echo "Your shell ($USER_SHELL) is not automatically handled."
+        echo "Ensure ~/bin is in your PATH to run WinBoat.AppImage"
+        ;;
+esac
+
+echo ""
+echo "You can now run WinBoat with: winboat"
 echo "=== Installation complete! ==="
