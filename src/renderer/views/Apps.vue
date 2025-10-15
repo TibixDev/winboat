@@ -172,8 +172,14 @@
                             <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                         </div>
                         <Icon icon="cuida:caret-right-outline"></Icon>
-                        <WBContextMenu v-if="app.Source === 'custom'">
-                            <WBMenuItem @click="removeCustomApp(app)">
+                        <!-- Redacted ContextMenu -bl4ckk -->
+                        <WBContextMenu>
+                            <WBMenuItem @click="createShortcut(app)">
+                                <Icon class="size-4" icon="lucide:link"></Icon>
+                                <x-label>Create Desktop Shortcut</x-label>
+                            </WBMenuItem>
+                            <!-- Remove only for custom apps -->
+                            <WBMenuItem v-if="app.Source === 'custom'" @click="removeCustomApp(app)">
                                 <Icon class="size-4" icon="mdi:trash-can"></Icon>
                                 <x-label>Remove Custom App</x-label>
                             </WBMenuItem>
@@ -378,6 +384,21 @@ async function removeCustomApp(app: WinApp) {
 }
 
 /**
+ * Strange way to comment... anyway, this is new
+ */
+
+async function createShortcut(app: WinApp) {
+    try {
+        const result = await winboat.createDesktopShortcut(app);
+        console.log('Shortcut created:', result);
+        // Opzionale: mostra notifica di successo nell'UI
+    } catch (e) {
+        console.error('Failed to create shortcut:', e);
+        // Opzionale: mostra errore nell'UI
+    }
+}
+
+/**
  * Resets the custom app form to its default values
  */
 async function resetCustomAppForm() {
@@ -422,5 +443,10 @@ x-menu
    animations can be calculated correctly. */
 .apps-leave-active {
   position: absolute;
+}
+
+/* Forse hand cursor pointer - bl4ckk */
+:deep(.wb-contextmenu-trigger) {
+    cursor: pointer !important;
 }
 </style>

@@ -701,6 +701,210 @@ export class Winboat {
         await execAsync(cmd);
     }
 
+    // New function by bl4ckk
+    async createDesktopShortcut(app: WinApp): Promise<{ scriptPath: string; desktopPath: string; iconPath: string }> {
+        const fs: typeof import('fs') = require('fs');
+        const path: typeof import('path') = require('path');
+        const os: typeof import('os') = require('os');
+        const guestApiUrl = `http://127.0.0.1:${GUEST_API_PORT}`;
+
+        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
+        const appFile = app.Name.replace(/\s+/g, '_');
+
+        // Paths on best effort
+        const homeDir = os.homedir();
+        const binDir = path.join(homeDir, '.local', 'bin');
+        const appDir = path.join(homeDir, '.local', 'share', 'applications');
+        const iconDir = path.join(homeDir, '.local', 'share', 'icons', 'winboat');
+
+        fs.mkdirSync(binDir, { recursive: true });
+        fs.mkdirSync(appDir, { recursive: true });
+        fs.mkdirSync(iconDir, { recursive: true });
+
+        const scriptPath = path.join(binDir, `${appFile}.sh`);
+        const desktopPath = path.join(appDir, `${appFile}.desktop`);
+        const iconPath = path.join(iconDir, `${appFile}.png`);
+
+        // Extract icon
+        let iconValue = 'utilities-terminal';
+        if (app.Path && app.Path !== InternalApps.WINDOWS_DESKTOP && app.Path !== CustomAppCommands.NOVNC_COMMAND) {
+            try {
+                const formData = new FormData();
+                formData.append('path', app.Path);
+                const iconRes = await nodeFetch(`${guestApiUrl}/get-icon`, {
+                    method: 'POST',
+                    body: formData as any
+                });
+                if (iconRes.ok) {
+                    const iconB64 = await iconRes.text();
+                    fs.writeFileSync(iconPath, Buffer.from(iconB64, 'base64'));
+                    iconValue = iconPath;
+                }
+            } catch (e) {
+                logger.warn(`Failed to fetch icon for ${app.Name}: ${e}`);
+            }
+        }
+
+        // Get credentials and port
+        const { username, password } = this.getCredentials();
+        const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
+        const freeRDPBin = await getFreeRDP();
+
+        // get stockArgs as string
+        const stockArgsStr = stockArgs.join(' ');
+
+        // Generate launcher script to dinamically read configs
+        const launcherScript = `#!/usr/bin/env bash
+    set -euo pipefail
+
+    CONFIG_FILE="$HOME/.winboat/winboat.config.json"
+    CONTAINER="WinBoat"
+    GUEST_API_URL="http://127.0.0.1:${GUEST_API_PORT}"
+    HEALTH_URL="\${GUEST_API_URL}/health"
+    WAIT_TIMEOUT=60
+    HEALTH_INTERVAL=1
+    EXTRA_DELAY_AFTER_READY=5
+
+    timestamp(){ date '+%Y-%m-%d %H:%M:%S'; }
+    log(){ echo "[\$(timestamp)] \$*"; }
+    have(){ command -v "\$1" >/dev/null 2>&1; }
+
+    notify(){
+        local message="\$1"
+        log "\$message"
+        if have notify-send; then
+            notify-send -u normal -a "WinBoat" "WinBoat" "\$message" || true
+            elif have kdialog; then
+            kdialog --passivepopup "\$message" 5 --title "WinBoat" || true
+            fi
+    }
+
+    is_running(){ docker inspect -f '{{.State.Running}}' "\$CONTAINER" 2>/dev/null | grep -qi true; }
+
+    health_ok(){
+        local code
+        if have curl; then
+            code="\$(curl -fsS -m 2 -o /dev/null -w '%{http_code}' "\$HEALTH_URL" 2>/dev/null || echo "")"
+        elif have wget; then
+            code="\$(wget -q --server-response --timeout=2 --tries=1 "\$HEALTH_URL" -O /dev/null 2>&1 | awk '/^  HTTP/{c=\$2} END{print c}')"
+        fi
+        [[ "\$code" == "200" ]]
+    }
+
+    wait_for_health(){
+        local start=\$(date +%s)
+        while true; do
+            if health_ok; then
+                log "Health OK after \$(( \$(date +%s) - start ))s"
+                return 0
+            fi
+            local elapsed=\$(( \$(date +%s) - start ))
+            (( elapsed >= WAIT_TIMEOUT )) && return 1
+            sleep "\$HEALTH_INTERVAL"
+        done
+    }
+
+    # Read from config file
+    if ! have jq; then
+        notify "Error: jq is required but not installed"
+        exit 1
+    fi
+
+    SCALE_DESKTOP=\$(jq -r '.scaleDesktop // 100' "\$CONFIG_FILE")
+    SCALE=\$(jq -r '.scale // 100' "\$CONFIG_FILE")
+    MULTIMON=\$(jq -r '.multiMonitor // 0' "\$CONFIG_FILE")
+    SMARTCARD=\$(jq -r '.smartcardEnabled // false' "\$CONFIG_FILE")
+
+    # Get base command with stockArgs
+    CMD="${freeRDPBin} /u:\\"${username}\\" /p:\\"${password}\\" /v:127.0.0.1 /port:${rdpHostPort}"
+    CMD="\$CMD ${stockArgsStr}"
+
+    # Apply custom rdpArgs from config file (replacements)
+    while IFS= read -r line; do
+        ORIGINAL=\$(echo "\$line" | jq -r '.original // ""')
+        NEW_ARG=\$(echo "\$line" | jq -r '.newArg')
+        if [[ -n "\$ORIGINAL" ]]; then
+            # Substitute original argument with new one
+            CMD=\$(echo "\$CMD" | sed "s|\$ORIGINAL|\$NEW_ARG|g")
+        fi
+    done < <(jq -c '.rdpArgs[] | select(.isReplacement == true)' "\$CONFIG_FILE")
+
+    # Add new args (non replacements)
+    NEW_ARGS=\$(jq -r '.rdpArgs[] | select(.isReplacement == false) | .newArg' "\$CONFIG_FILE" | tr '\\n' ' ')
+    CMD="\$CMD \$NEW_ARGS"
+
+    # Add configs
+    ${app.Path === InternalApps.WINDOWS_DESKTOP ? `
+    # Desktop mode
+    CMD="\$CMD +f /scale:\$SCALE"
+    ` : `
+    # App mode
+    CMD="\$CMD -wallpaper /scale-desktop:\$SCALE_DESKTOP"
+    CMD="\$CMD /wm-class:\\"${cleanAppName}\\""
+    CMD="\$CMD /app:program:\\"${app.Path}\\",name:\\"${cleanAppName}\\""
+    `}
+
+    # Multimonitor
+    if [[ "\$MULTIMON" == "1" ]]; then
+        CMD="\$CMD /multimon"
+    elif [[ "\$MULTIMON" == "2" ]]; then
+        CMD="\$CMD +span"
+    fi
+
+    # Smartcard
+    if [[ "\$SMARTCARD" == "true" ]]; then
+        CMD="\$CMD /smartcard"
+    fi
+
+    # Check container and run
+    STARTED_NOW=false
+    log "Launch requested for '${cleanAppName}'"
+
+    if is_running; then
+        log "Container already running"
+        wait_for_health || true
+    else
+        log "Starting container..."
+        notify "Starting WinBoat..."
+        docker start "\$CONTAINER" >/dev/null 2>&1 || { notify "Failed to start container"; exit 1; }
+        STARTED_NOW=true
+        wait_for_health || true
+    fi
+
+    if \$STARTED_NOW; then
+        log "Waiting \${EXTRA_DELAY_AFTER_READY}s for warmup"
+        sleep "\$EXTRA_DELAY_AFTER_READY"
+    fi
+
+    # Directly start freerdp
+    log "Launching app: ${cleanAppName}"
+    notify "Launching ${cleanAppName}..."
+    log "Command: \$CMD"
+
+    eval "\$CMD &"
+
+    log "App launched"
+    `;
+
+        fs.writeFileSync(scriptPath, launcherScript, { mode: 0o755 });
+
+        // Generate .desktop file
+        const desktopEntry = `[Desktop Entry]
+        Type=Application
+        Name=WinBoat ${app.Name}
+        Exec=/usr/bin/env bash -lc '${scriptPath}'
+        Icon=${iconValue}
+        Terminal=false
+        Categories=Utility;
+        `;
+
+        fs.writeFileSync(desktopPath, desktopEntry, { mode: 0o644 });
+
+        logger.info(`Created desktop shortcut for ${app.Name}`);
+
+        return { scriptPath, desktopPath, iconPath: iconValue };
+    }
+
     async checkVersionAndUpdateGuestServer() {
         // 1. Get the version of the guest server and compare it to the current version
         const apiPort = this.getHostPort(GUEST_API_PORT);

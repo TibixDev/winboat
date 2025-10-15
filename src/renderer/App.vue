@@ -134,7 +134,7 @@ import { Winboat } from './lib/winboat';
 import { openAnchorLink } from './utils/openLink';
 import { WinboatConfig } from './lib/config';
 import { USBManager } from './lib/usbmanager';
-import { GUEST_NOVNC_PORT, NOVNC_URL } from './lib/constants';
+import { GUEST_NOVNC_PORT, NOVNC_URL, GUEST_API_PORT } from './lib/constants'; // Added GUEST_API_PORT - bl4ckk
 const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
 const os: typeof import('os') = require('os')
 const path: typeof import('path') = require('path')
@@ -143,8 +143,8 @@ const remote: typeof import('@electron/remote') = require('@electron/remote');
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
-let winboat: Winboat | null;
-let wbConfig: WinboatConfig | null;
+let winboat: Winboat | null = null; // changed - bl4ckk
+let wbConfig: WinboatConfig | null = null; // changed - bl4ckk
 
 let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
@@ -153,7 +153,37 @@ const updateDialog = useTemplateRef('updateDialog');
 const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
 const novncURL = ref("");
 
+// New - bl4ckk
+const { ipcRenderer } = require('electron');
+
+// Wait (actually listen) for CLI launch requests - bl4ckk
+ipcRenderer.on('launch-app-from-cli', async (event: any, appPath: string) => {
+    console.log('[Renderer] Received launch request for:', appPath);
+
+    // Wait for Winboat
+    while (!winboat) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Build API URL
+    const guestApiUrl = `http://127.0.0.1:${GUEST_API_PORT}`;
+
+    // Pass URL to getApps
+    const apps = await winboat!.appMgr!.getApps(guestApiUrl);
+    console.log('[Renderer] Available apps:', apps.map(a => a.Path));
+
+    const app = apps.find(a => a.Path === appPath);
+    if (app) {
+        console.log('[Renderer] Found app, launching:', app.Name);
+        await winboat!.launchApp(app);
+    } else {
+        console.error('[Renderer] App not found with path:', appPath);
+    }
+});
+
 onMounted(async () => {
+    console.log("WinBoat app path:", path.join(remote.app.getAppPath(), "..", ".."));
+
     new USBManager(); // Instantiate singleton class
     const winboatInstalled = await isInstalled();
     if (!winboatInstalled) {
@@ -162,7 +192,6 @@ onMounted(async () => {
     } else {
         winboat = new Winboat(); // Instantiate singleton class
         wbConfig = new WinboatConfig(); // Instantiate singleton class
-        $router.push('/home');
     }
 
     // Watch for guest server updates and show dialog
@@ -183,6 +212,12 @@ onMounted(async () => {
             manualUpdateRequired.value = false;
         }
     })
+
+    // Let's say "app is ready" to main process - bl4ckk
+    console.log('[Renderer] Sending winboat-ready');
+    ipcRenderer.send('winboat-ready');
+
+    $router.push('/home');
 })
 
 function handleMinimize() {
