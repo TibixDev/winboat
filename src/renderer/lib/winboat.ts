@@ -703,62 +703,26 @@ export class Winboat {
 
     // New function by bl4ckk
     async createDesktopShortcut(app: WinApp): Promise<{ scriptPath: string; desktopPath: string; iconPath: string }> {
-        const fs: typeof import('fs') = require('fs');
-        const path: typeof import('path') = require('path');
         const os: typeof import('os') = require('os');
-        const guestApiUrl = `http://127.0.0.1:${GUEST_API_PORT}`;
-
-        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
-        const appFile = app.Name.replace(/\s+/g, '_');
-
-        // Paths on best effort
-        const homeDir = os.homedir();
-        const binDir = path.join(homeDir, '.local', 'bin');
-        const appDir = path.join(homeDir, '.local', 'share', 'applications');
-        const iconDir = path.join(homeDir, '.local', 'share', 'icons', 'winboat');
-
-        fs.mkdirSync(binDir, { recursive: true });
-        fs.mkdirSync(appDir, { recursive: true });
-        fs.mkdirSync(iconDir, { recursive: true });
-
-        const scriptPath = path.join(binDir, `${appFile}.sh`);
-        const desktopPath = path.join(appDir, `${appFile}.desktop`);
-        const iconPath = path.join(iconDir, `${appFile}.png`);
-
-        // Extract icon
-        let iconValue = 'utilities-terminal';
-        if (app.Path && app.Path !== InternalApps.WINDOWS_DESKTOP && app.Path !== CustomAppCommands.NOVNC_COMMAND) {
-            try {
-                const formData = new FormData();
-                formData.append('path', app.Path);
-                const iconRes = await nodeFetch(`${guestApiUrl}/get-icon`, {
-                    method: 'POST',
-                    body: formData as any
-                });
-                if (iconRes.ok) {
-                    const iconB64 = await iconRes.text();
-                    fs.writeFileSync(iconPath, Buffer.from(iconB64, 'base64'));
-                    iconValue = iconPath;
-                }
-            } catch (e) {
-                logger.warn(`Failed to fetch icon for ${app.Name}: ${e}`);
-            }
-        }
-
-        // Get credentials and port
         const { username, password } = this.getCredentials();
         const freeRDPBin = await getFreeRDP();
 
-        // get stockArgs as string
-        const stockArgsStr = stockArgs.join(' ');
+        // Path for centralized script
+        const centralScriptPath = path.join(os.homedir(), '.local', 'bin', 'winboat-helper.sh');
 
-        // Generate launcher script to dinamically read configs
-        const launcherScript = `#!/usr/bin/env bash
+        // Creat script only if it does not exist
+        if (!fs.existsSync(centralScriptPath)) {
+            const centralScript = `#!/usr/bin/env bash
     set -euo pipefail
+
+    # WinBoat Centralized App Launcher
+    # Usage: winboat-launcher.sh "C:\\\\Windows\\\\System32\\\\cmd.exe" "Command Prompt"
+
+    APP_PATH="$1"
+    APP_NAME="$2"
 
     CONFIG_FILE="$HOME/.winboat/winboat.config.json"
     COMPOSE_FILE="$HOME/.winboat/docker-compose.yml"
-    RDP_PORT=$(grep -oP '^\\s*-\\s*"\\K\\d+(?=:3389/tcp)' "$COMPOSE_FILE" || echo "3389")
     CONTAINER="WinBoat"
     GUEST_API_URL="http://127.0.0.1:${GUEST_API_PORT}"
     HEALTH_URL="\${GUEST_API_URL}/health"
@@ -767,99 +731,100 @@ export class Winboat {
     EXTRA_DELAY_AFTER_READY=5
 
     timestamp(){ date '+%Y-%m-%d %H:%M:%S'; }
-    log(){ echo "[\$(timestamp)] \$*"; }
-    have(){ command -v "\$1" >/dev/null 2>&1; }
+    log(){ echo "[\$(timestamp)] $*"; }
+    have(){ command -v "$1" >/dev/null 2>&1; }
 
     notify(){
-        local message="\$1"
-        log "\$message"
+        local message="$1"
         if have notify-send; then
-            notify-send -u normal -a "WinBoat" "WinBoat" "\$message" || true
-            elif have kdialog; then
-            kdialog --passivepopup "\$message" 5 --title "WinBoat" || true
-            fi
+            notify-send "WinBoat" "$message"
+        fi
     }
 
-    is_running(){ docker inspect -f '{{.State.Running}}' "\$CONTAINER" 2>/dev/null | grep -qi true; }
-
-    health_ok(){
-        local code
-        if have curl; then
-            code="\$(curl -fsS -m 2 -o /dev/null -w '%{http_code}' "\$HEALTH_URL" 2>/dev/null || echo "")"
-        elif have wget; then
-            code="\$(wget -q --server-response --timeout=2 --tries=1 "\$HEALTH_URL" -O /dev/null 2>&1 | awk '/^  HTTP/{c=\$2} END{print c}')"
-        fi
-        [[ "\$code" == "200" ]]
+    is_running(){
+        docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -q true
     }
 
     wait_for_health(){
-        local start=\$(date +%s)
-        while true; do
-            if health_ok; then
-                log "Health OK after \$(( \$(date +%s) - start ))s"
+        local elapsed=0
+        while [ $elapsed -lt $WAIT_TIMEOUT ]; do
+            if curl -sf "$HEALTH_URL" >/dev/null 2>&1; then
+                log "Health OK after \${elapsed}s"
                 return 0
             fi
-            local elapsed=\$(( \$(date +%s) - start ))
-            (( elapsed >= WAIT_TIMEOUT )) && return 1
-            sleep "\$HEALTH_INTERVAL"
+            sleep $HEALTH_INTERVAL
+            elapsed=$((elapsed + HEALTH_INTERVAL))
         done
+        log "Health check timeout after \${WAIT_TIMEOUT}s"
+        return 1
     }
 
-    # Read from config file
+    # Check dependencies
     if ! have jq; then
-        notify "Error: jq is required but not installed"
+        notify "jq is required but not installed"
         exit 1
     fi
 
-    SCALE_DESKTOP=\$(jq -r '.scaleDesktop // 100' "\$CONFIG_FILE")
-    SCALE=\$(jq -r '.scale // 100' "\$CONFIG_FILE")
-    MULTIMON=\$(jq -r '.multiMonitor // 0' "\$CONFIG_FILE")
-    SMARTCARD=\$(jq -r '.smartcardEnabled // false' "\$CONFIG_FILE")
+    if ! have docker; then
+        notify "Docker is required but not installed"
+        exit 1
+    fi
 
-    # Get base command with stockArgs
-    CMD="${freeRDPBin} /u:\\"${username}\\" /p:\\"${password}\\" /v:127.0.0.1 /port:\$RDP_PORT"
-    CMD="\$CMD ${stockArgsStr}"
+    # Read configurations
+    SCALE=$(jq -r '.scale // 100' "$CONFIG_FILE")
+    SCALE_DESKTOP=$(jq -r '.scaleDesktop // 100' "$CONFIG_FILE")
+    MULTIMON=$(jq -r '.multiMonitor // 0' "$CONFIG_FILE")
+    SMARTCARD=$(jq -r '.smartcardEnabled // false' "$CONFIG_FILE")
 
-    # Apply custom rdpArgs from config file (replacements)
+    # Read RDP port from docker-compose.yml
+    RDP_PORT=$(grep -oP '^\\\\s*-\\\\s*"\\\\K\\\\d+(?=:${GUEST_RDP_PORT}/tcp)' "$COMPOSE_FILE" || echo "${GUEST_RDP_PORT}")
+
+
+    # Build base command
+    CMD="${freeRDPBin} /u:\\"${username}\\" /p:\\"${password}\\" /v:127.0.0.1 /port:$RDP_PORT"
+
+
+    # Add stock args
+    CMD="$CMD /cert:ignore +clipboard /sound:sys:pulse /microphone:sys:pulse /floatbar /compression"
+
+    # Apply rdpArgs replacements
     while IFS= read -r line; do
-        ORIGINAL=\$(echo "\$line" | jq -r '.original // ""')
-        NEW_ARG=\$(echo "\$line" | jq -r '.newArg')
-        if [[ -n "\$ORIGINAL" ]]; then
-            # Substitute original argument with new one
-            CMD=\$(echo "\$CMD" | sed "s|\$ORIGINAL|\$NEW_ARG|g")
-        fi
-    done < <(jq -c '.rdpArgs[] | select(.isReplacement == true)' "\$CONFIG_FILE")
+        ORIGINAL=$(echo "$line" | jq -r '.original')
+        NEW_ARG=$(echo "$line" | jq -r '.newArg')
+        CMD=$(echo "$CMD" | sed "s|$ORIGINAL|$NEW_ARG|g")
+    done < <(jq -c '.rdpArgs[] | select(.isReplacement == true)' "$CONFIG_FILE")
 
-    # Add new args (non replacements)
-    NEW_ARGS=\$(jq -r '.rdpArgs[] | select(.isReplacement == false) | .newArg' "\$CONFIG_FILE" | tr '\\n' ' ')
-    CMD="\$CMD \$NEW_ARGS"
+    # Add new rdpArgs
+    NEW_ARGS=$(jq -r '.rdpArgs[] | select(.isReplacement == false) | .newArg' "$CONFIG_FILE" | tr '\\n' ' ')
+    CMD="$CMD $NEW_ARGS"
 
-    # Add configs
-    ${app.Path === InternalApps.WINDOWS_DESKTOP ? `
-    # Desktop mode
-    CMD="\$CMD +f /scale:\$SCALE"
-    ` : `
-    # App mode
-    CMD="\$CMD -wallpaper /scale-desktop:\$SCALE_DESKTOP"
-    CMD="\$CMD /wm-class:\\"${cleanAppName}\\""
-    CMD="\$CMD /app:program:\\"${app.Path}\\",name:\\"${cleanAppName}\\""
-    `}
+    # Check if it's Windows Desktop or regular app
+    if [[ "$APP_PATH" == "${InternalApps.WINDOWS_DESKTOP}" ]]; then
+        # Full desktop mode
+        CMD="$CMD +f /scale:$SCALE"
+    else
+        # RemoteApp mode
+        CLEAN_APP_NAME=$(echo "$APP_NAME" | sed 's/[,.'"'"']//g')
+        CMD="$CMD -wallpaper /scale-desktop:$SCALE_DESKTOP"
+        CMD="$CMD /wm-class:\\"$CLEAN_APP_NAME\\""
+        CMD="$CMD /app:program:\\"$APP_PATH\\",name:\\"$CLEAN_APP_NAME\\""
+    fi
 
     # Multimonitor
-    if [[ "\$MULTIMON" == "1" ]]; then
-        CMD="\$CMD /multimon"
-    elif [[ "\$MULTIMON" == "2" ]]; then
-        CMD="\$CMD +span"
+    if [[ "$MULTIMON" == "1" ]]; then
+        CMD="$CMD /multimon"
+    elif [[ "$MULTIMON" == "2" ]]; then
+        CMD="$CMD +span"
     fi
 
     # Smartcard
-    if [[ "\$SMARTCARD" == "true" ]]; then
-        CMD="\$CMD /smartcard"
+    if [[ "$SMARTCARD" == "true" ]]; then
+        CMD="$CMD /smartcard"
     fi
 
     # Check container and run
     STARTED_NOW=false
-    log "Launch requested for '${cleanAppName}'"
+    log "Launch requested for '$APP_NAME'"
 
     if is_running; then
         log "Container already running"
@@ -867,43 +832,63 @@ export class Winboat {
     else
         log "Starting container..."
         notify "Starting WinBoat..."
-        docker start "\$CONTAINER" >/dev/null 2>&1 || { notify "Failed to start container"; exit 1; }
+        docker start "$CONTAINER" >/dev/null 2>&1 || { notify "Failed to start container"; exit 1; }
         STARTED_NOW=true
         wait_for_health || true
     fi
 
-    if \$STARTED_NOW; then
+    if $STARTED_NOW; then
         log "Waiting \${EXTRA_DELAY_AFTER_READY}s for warmup"
-        sleep "\$EXTRA_DELAY_AFTER_READY"
+        sleep "$EXTRA_DELAY_AFTER_READY"
     fi
 
-    # Directly start freerdp
-    log "Launching app: ${cleanAppName}"
-    notify "Launching ${cleanAppName}..."
-    log "Command: \$CMD"
+    # Launch app
+    log "Launching app: $APP_NAME"
+    notify "Launching $APP_NAME..."
+    log "Command: $CMD"
 
-    eval "\$CMD &"
+    eval "$CMD &"
 
     log "App launched"
     `;
 
-        fs.writeFileSync(scriptPath, launcherScript, { mode: 0o755 });
+            fs.mkdirSync(path.dirname(centralScriptPath), { recursive: true });
+            fs.writeFileSync(centralScriptPath, centralScript, { mode: 0o755 });
+            logger.info(`Created centralized launcher at ${centralScriptPath}`);
+        }
 
-        // Generate .desktop file
+        // Extract and save icon
+        const iconDir = path.join(os.homedir(), '.local', 'share', 'icons', 'winboat');
+        fs.mkdirSync(iconDir, { recursive: true });
+
+        const sanitizedAppName = app.Name.replace(/[^a-zA-Z0-9]/g, '_');
+        const iconPath = path.join(iconDir, `${sanitizedAppName}.png`);
+
+        // Save base64 decoded icon
+        const iconBase64 = app.Icon.replace(/^data:image\/png;base64,/, '');
+        fs.writeFileSync(iconPath, Buffer.from(iconBase64, 'base64'));
+
+        // Create .desktop
+        const desktopDir = path.join(os.homedir(), '.local', 'share', 'applications');
+        fs.mkdirSync(desktopDir, { recursive: true });
+
+        const desktopPath = path.join(desktopDir, `winboat-${sanitizedAppName}.desktop`);
+        const escapedAppPath = app.Path.replace(/\\/g, '\\\\');
+
         const desktopEntry = `[Desktop Entry]
-        Type=Application
-        Name=WinBoat ${app.Name}
-        Exec=/usr/bin/env bash -lc '${scriptPath}'
-        Icon=${iconValue}
-        Terminal=false
-        Categories=Utility;
-        `;
+    Type=Application
+    Name=${app.Name}
+    Comment=WinBoat App
+    Exec=${centralScriptPath} "${escapedAppPath}" "${app.Name}"
+    Icon=${iconPath}
+    Terminal=false
+    `;
 
         fs.writeFileSync(desktopPath, desktopEntry, { mode: 0o644 });
 
         logger.info(`Created desktop shortcut for ${app.Name}`);
 
-        return { scriptPath, desktopPath, iconPath: iconValue };
+        return { scriptPath: centralScriptPath, desktopPath, iconPath };
     }
 
     async checkVersionAndUpdateGuestServer() {

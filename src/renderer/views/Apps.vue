@@ -391,10 +391,8 @@ async function createShortcut(app: WinApp) {
     try {
         const result = await winboat.createDesktopShortcut(app);
         console.log('Shortcut created:', result);
-        // Opzionale: mostra notifica di successo nell'UI
     } catch (e) {
         console.error('Failed to create shortcut:', e);
-        // Opzionale: mostra errore nell'UI
     }
 }
 
@@ -445,7 +443,7 @@ x-menu
   position: absolute;
 }
 
-/* Forse hand cursor pointer - bl4ckk */
+/* Force hand cursor pointer - bl4ckk */
 :deep(.wb-contextmenu-trigger) {
     cursor: pointer !important;
 }
