@@ -61,7 +61,6 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - **.deb:** The intended format for Debian based distributions
 - **.rpm:** The intended format for Fedora based distributions
 - **Arch/Manjaro/CachyOS**: curl -O https://raw.githubusercontent.com/TibixDev/winboat/main/PKGBUILD && makepkg -si
-
 ## Known Issues About Container Runtimes
 - Podman is **unsupported** for now
 - Docker Desktop is **unsupported** for now
