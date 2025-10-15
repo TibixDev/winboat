@@ -602,7 +602,7 @@
                                 An error occurred while installing Windows. Please check the logs in
                                 <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
                                 and verify
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker logs WinBoat</span>
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">{{ installManager!.container.executableAlias }} logs WinBoat</span>
                                 in your terminal for more information.
                             </x-label>
                             <x-label class="text-lg text-gray-400 text-center">
@@ -639,7 +639,7 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVN
 import { InstallManager, type InstallState, InstallStates } from '../lib/install';
 import { openAnchorLink } from '../utils/openLink';
 import license from '../assets/LICENSE.txt?raw'
-import { ContainerRuntimes, DockerSpecs, PodmanSpecs } from '../lib/containers/common';
+import { ContainerImplementations, ContainerRuntimes, DockerSpecs, PodmanSpecs } from '../lib/containers/common';
 import { WinboatConfig } from '../lib/config';
 import { createContainer, getContainerSpecs } from '../lib/containers/common';
 
@@ -753,7 +753,7 @@ const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 
 
-let installManager: InstallManager | null = null;
+let installManager: InstallManager | null;
 
 onMounted(async () => {
     specs.value = await getSpecs();

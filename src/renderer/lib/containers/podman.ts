@@ -2,7 +2,8 @@ import { ComposeConfig } from "../../../types";
 import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
 import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus } from "./container";
-import YAML from "json-to-pretty-yaml";
+import YAML from 'yaml';
+import { stringify } from "json-to-pretty-yaml";
 const { execSync }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
 const fs: typeof import('fs') = require('fs');
@@ -12,6 +13,27 @@ export type PodmanSpecs = {
     podmanComposeInstalled: boolean;
 }
 
+export enum PodmanAPIStatus {
+    AVAILABLE = "Available",
+    UNAVAILABLE = "Unavailable"
+};
+
+type PodmanInfo = {
+    host: {
+        remoteSocket: {
+            exists: boolean;
+            path: string;
+        };
+        [Key: string]: any;
+    };
+    plugins: object;
+    registries: {
+        search: string[];
+    };
+    store: object;
+    version: object;
+};
+
 /**
  * @todo NOT IMPLEMENTED
  */
@@ -19,13 +41,14 @@ export class PodmanContainer extends ContainerManager {
     defaultCompose = PODMAN_DEFAULT_COMPOSE;
     composeFilePath = path.join(WINBOAT_DIR, "podman-compose.yml");
     executableAlias = "podman";
+    cachedPodmanInfo: PodmanInfo | null = null;
 
     constructor() {
         super();
     }
 
     writeCompose(compose: ComposeConfig): void {
-        const composeContent = YAML.stringify(this.defaultCompose);
+        const composeContent = stringify(this.defaultCompose);
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
@@ -34,6 +57,19 @@ export class PodmanContainer extends ContainerManager {
 
     async compose(direction: ComposeDirection): Promise<void> {
         containerLogger.error("NOT IMPLEMENTED");
+    }
+
+    get info(): PodmanInfo {
+        const command = `${this.executableAlias} info`;
+
+        try {
+            const podmanInfo = execSync(command).toString();
+            this.cachedPodmanInfo = YAML.parse(podmanInfo);
+            return this.cachedPodmanInfo!;
+        } catch(e) {
+            containerLogger.error(`Failed to get podman info ${e}`);
+            throw e;
+        }
     }
 
     get status(): ContainerStatus {
@@ -49,8 +85,7 @@ export class PodmanContainer extends ContainerManager {
             const status = execSync(command).toString().trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch(e) {
-            containerLogger.error(`Failed to get status of podman container ${this.defaultCompose.name}.\nCommand '${command} failed:'`);
-            containerLogger.error(e);
+            containerLogger.error(`Failed to get status of podman container ${e}:'`);
             return ContainerStatus.UKNOWN;
         }
     }

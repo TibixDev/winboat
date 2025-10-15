@@ -67,8 +67,7 @@ export class DockerContainer extends ContainerManager {
             const status = execSync(command).toString().trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch(e) {
-            containerLogger.error(`Failed to get status of docker container ${this.defaultCompose.name}.\nCommand '${command} failed:'`);
-            containerLogger.error(e);
+            containerLogger.error(`Failed to get status of docker container ${e}'`);
             return ContainerStatus.UKNOWN;
         }
     }
