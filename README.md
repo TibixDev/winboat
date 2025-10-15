@@ -60,6 +60,9 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
 - **.deb:** The intended format for Debian based distributions
 - **.rpm:** The intended format for Fedora based distributions
+- **One liner** for building WinBoat from sourced (stable):
+-   cURL: curl -fsSL https://raw.githubusercontent.com/TibixDev/WinBoat/main/install.sh | bash
+-   wget: wget -qO- https://raw.githubusercontent.com/TibixDev/WinBoat/main/install.sh | bash
   
 ## Known Issues About Container Runtimes
 - Podman is **unsupported** for now
