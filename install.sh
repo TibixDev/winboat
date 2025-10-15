@@ -10,6 +10,17 @@
 # ==================================================
 set -e
 
+# --- Ensure at least curl or wget exists ---
+if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
+    echo -e "\033[0;31m❌ Error: Neither 'curl' nor 'wget' is installed.\033[0m"
+    echo "Please install one of these tools to run this installer."
+    echo "For example:"
+    echo "  Ubuntu/Debian: sudo apt install curl wget"
+    echo "  Fedora: sudo dnf install curl wget"
+    echo "  openSUSE: sudo zypper install curl wget"
+    exit 1
+fi
+
 # --- Colors ---
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
@@ -19,7 +30,7 @@ NC="\033[0m" # No color
 
 REPO_URL="https://github.com/TibixDev/WinBoat.git"
 REPO_DIR="WinBoat"
-INSTALLER_VERSION="v1.3"
+INSTALLER_VERSION="v1.0"
 
 # --- Help option ---
 if [[ "$1" == "--help" || "$1" == "-h" ]]; then
@@ -37,6 +48,7 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     echo
     echo "Example:"
     echo "  curl -fsSL https://raw.githubusercontent.com/TibixDev/WinBoat/main/install.sh | bash"
+    echo "  wget -qO- https://raw.githubusercontent.com/TibixDev/WinBoat/main/install.sh | bash"
     echo
     exit 0
 fi
