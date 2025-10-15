@@ -52,7 +52,13 @@
                 <h3 class="mt-2" v-if="winboat?.isUpdatingGuestServer.value">Updating Guest Server</h3>
                 <h3 class="mt-2" v-else>Guest Server update successful!</h3>
                 <p v-if="winboat?.isUpdatingGuestServer.value" class="max-w-[40vw]">
-                    The guest is currently running an outdated version of the WinBoat Guest Server. Please wait while we update it to the current version.
+                    The guest is currently run// New second instance handling to support --launch-app -bl4ckk
+app.on("second-instance", (event, commandLine, workingDirectory) => {
+    if(mainWindow) {
+        mainWindow.focus();
+    }
+    handleAppLaunch(commandLine);
+});ning an outdated version of the WinBoat Guest Server. Please wait while we update it to the current version.
                 </p>
                 <p v-else class="max-w-[40vw]">
                     The WinBoat Guest Server has been updated successfully! You can now close this dialog and continue using the application.
@@ -153,34 +159,6 @@ const updateDialog = useTemplateRef('updateDialog');
 const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
 const novncURL = ref("");
 
-// New - bl4ckk
-const { ipcRenderer } = require('electron');
-
-// Wait (actually listen) for CLI launch requests - bl4ckk
-ipcRenderer.on('launch-app-from-cli', async (event: any, appPath: string) => {
-    console.log('[Renderer] Received launch request for:', appPath);
-
-    // Wait for Winboat
-    while (!winboat) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    // Build API URL
-    const guestApiUrl = `http://127.0.0.1:${GUEST_API_PORT}`;
-
-    // Pass URL to getApps
-    const apps = await winboat!.appMgr!.getApps(guestApiUrl);
-    console.log('[Renderer] Available apps:', apps.map(a => a.Path));
-
-    const app = apps.find(a => a.Path === appPath);
-    if (app) {
-        console.log('[Renderer] Found app, launching:', app.Name);
-        await winboat!.launchApp(app);
-    } else {
-        console.error('[Renderer] App not found with path:', appPath);
-    }
-});
-
 onMounted(async () => {
     console.log("WinBoat app path:", path.join(remote.app.getAppPath(), "..", ".."));
 
@@ -212,10 +190,6 @@ onMounted(async () => {
             manualUpdateRequired.value = false;
         }
     })
-
-    // Let's say "app is ready" to main process - bl4ckk
-    console.log('[Renderer] Sending winboat-ready');
-    ipcRenderer.send('winboat-ready');
 
     $router.push('/home');
 })

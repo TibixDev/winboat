@@ -747,7 +747,6 @@ export class Winboat {
 
         // Get credentials and port
         const { username, password } = this.getCredentials();
-        const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
         const freeRDPBin = await getFreeRDP();
 
         // get stockArgs as string
@@ -758,6 +757,8 @@ export class Winboat {
     set -euo pipefail
 
     CONFIG_FILE="$HOME/.winboat/winboat.config.json"
+    COMPOSE_FILE="$HOME/.winboat/docker-compose.yml"
+    RDP_PORT=$(grep -oP '^\\s*-\\s*"\\K\\d+(?=:3389/tcp)' "$COMPOSE_FILE" || echo "3389")
     CONTAINER="WinBoat"
     GUEST_API_URL="http://127.0.0.1:${GUEST_API_PORT}"
     HEALTH_URL="\${GUEST_API_URL}/health"
@@ -816,7 +817,7 @@ export class Winboat {
     SMARTCARD=\$(jq -r '.smartcardEnabled // false' "\$CONFIG_FILE")
 
     # Get base command with stockArgs
-    CMD="${freeRDPBin} /u:\\"${username}\\" /p:\\"${password}\\" /v:127.0.0.1 /port:${rdpHostPort}"
+    CMD="${freeRDPBin} /u:\\"${username}\\" /p:\\"${password}\\" /v:127.0.0.1 /port:\$RDP_PORT"
     CMD="\$CMD ${stockArgsStr}"
 
     # Apply custom rdpArgs from config file (replacements)
