@@ -254,6 +254,72 @@
                 </x-card>
             </div>
         </div>
+        <div v-show="wbConfig.config.advancedFeatures" :key="rerenderAdvanced">
+            <x-label class="mb-4 text-neutral-300">FreeRDP</x-label>
+            <div class="flex flex-col gap-4">
+                <!-- RDP args -->
+                <x-card
+                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div class="w-full">
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-24-filled"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                FreeRDP Arguments
+                                <span class="bg-blue-500 rounded-full px-3 py-0.5 text-sm ml-2">
+                                    Advanced
+                                </span>
+                            </h1>
+                        </div>
+
+                        <x-label
+                            v-if="wbConfig.config.rdpArgs.length == 0"
+                            class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
+                        >
+                            Press the buttons below to add arguments to FreeRDP, you can choose to either add a new argument or modify an existing one to your liking via replacement
+                        </x-label>
+                        <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
+                            <x-card class="flex justify-between items-center gap-2 px-2 py-0 m-0 bg-white/5"
+                                v-for="(arg, index) in rdpArgs" :key="index"
+                            >
+                                <div class="grid grid-cols-2 gap-2 items-center w-full">
+                                    <x-input type="text" class="!max-w-full" v-if="arg.isReplacement"
+                                        :value="arg.original" @input="(e: any) => arg.original = e.target.value"
+                                    >
+                                        <x-label>Original Argument</x-label>
+                                    </x-input>
+                                    <x-input type="text" class="!max-w-full !mt-0"
+                                        :class="{ 'col-span-2': !arg.isReplacement }"
+                                        :value="arg.newArg" @input="(e: any) => arg.newArg = e.target.value"
+                                    >
+                                        <x-label>New Argument</x-label>
+                                    </x-input>
+                                </div>
+                                <x-button class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
+                                    @click="rdpArgs.splice(index, 1);"
+                                >
+                                    <x-icon href="#remove"></x-icon>
+                                </x-button>
+                            </x-card>
+                        </TransitionGroup>
+                        <div class="flex flex-row gap-2" :class="{ 'mt-4': rdpArgs.length }">
+                            <x-button class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                @click="rdpArgs.push({newArg:'', isReplacement:false})
+                                "
+                            >
+                                <x-icon href="#add"></x-icon>
+                                <x-label>Add Argument</x-label>
+                            </x-button>
+                            <x-button class="!bg-gradient-to-tl from-yellow-400/20 shadow-md shadow-yellow-950/20 to-transparent hover:from-yellow-400/30 transition"
+                                @click="rdpArgs.push({newArg:'', original:'', isReplacement:true})"
+                            >
+                                <Icon class="inline-flex size-6" icon="codex:replace" />
+                                <x-label>Replace Argument</x-label>
+                            </x-button>
+                        </div>
+                    </div>
+                </x-card>
+            </div>
+        </div>
         <div>
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
@@ -291,7 +357,7 @@
                 </x-card>
 
                 <x-card
-                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
                     <div>
                         <div class="flex flex-row gap-2 items-center mb-2">
                             <Icon class="inline-flex text-violet-400 size-8" icon="uil:apps"></Icon>
@@ -304,15 +370,21 @@
                         </p>
                     </div>
                     <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-button type="button" class="px-2 py-1 text-neutral-200" @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)">-</x-button>
+                        <x-button type="button" class="size-8 !p-0" @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)">
+                            <Icon icon="mdi:minus" class="size-4"></Icon>
+                            <x-label class="sr-only">Subtract</x-label>
+                        </x-button>
                         <x-input
                             type="text"
                             v-model="origApplicationScale"
-                            class="w-20"
+                            class="!max-w-16"
                             v-on:keydown="(e: any) => ensureNumericInput(e)"
                             v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
                         ></x-input>
-                        <x-button type="button" class="px-2 py-1" @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)">+</x-button>
+                        <x-button type="button" class="size-8 !p-0" @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)">
+                            <Icon icon="mdi:plus" class="size-4"></Icon>
+                            <x-label class="sr-only">Add</x-label>
+                        </x-button>
                     </div>
                 </x-card>
 
@@ -419,7 +491,26 @@
                         :toggled="wbConfig.config.experimentalFeatures"
                         @toggle="toggleExperimentalFeatures"
                         size="large"
-                    ></x-switch>
+                        ></x-switch>
+                </div>
+            </x-card>
+            <x-card
+                class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl">
+                <div>
+                    <div class="flex flex-row items-center gap-2 mb-2">
+                        <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator">
+                        </Icon>
+                        <h1 class="text-lg my-0 font-semibold">
+                            Advanced Settings
+                        </h1>
+                    </div>
+                    <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                        If enabled, you'll have access to advanced settings that may prevent WinBoat from working if misconfigured
+                    </p>
+                </div>
+                <div class="flex flex-row justify-center items-center gap-2">
+                    <x-switch :toggled="wbConfig.config.advancedFeatures" @toggle="toggleAdvancedFeatures"
+                        size="large"></x-switch>
                 </div>
             </x-card>
         </div>
@@ -452,12 +543,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import { ContainerStatus, Winboat } from '../lib/winboat';
 import type { ComposeConfig } from '../../types';
 import { getSpecs } from '../lib/specs';
 import { Icon } from '@iconify/vue';
-import { WinboatConfig } from '../lib/config';
+import { RdpArg, WinboatConfig } from '../lib/config';
 import { USBManager, type PTSerializableDeviceInfo } from '../lib/usbmanager';
 import { type Device } from "usb";
 import {
@@ -502,10 +594,13 @@ const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
 const origApplicationScale = ref(0);
+const rdpArgs = ref<RdpArg[]>([]);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
 const rerenderExperimental = ref(0);
+// For RDP Args
+const rerenderAdvanced = ref(0);
 // ^ This ref is needed because reactivity fails on wbConfig. 
 //   We manually increment this value in toggleExperimentalFeatures() to force rerender.
 
@@ -520,6 +615,10 @@ const wbConfig = new WinboatConfig();
 onMounted(async () => {
     await assignValues();
 });
+
+watch(rdpArgs, newArgs => {
+    wbConfig.config.rdpArgs = newArgs;
+}, {deep:2});
 
 function ensureNumericInput(e: any) {
     if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
@@ -544,7 +643,7 @@ function updateApplicationScale(value: string | number) {
  */
 async function assignValues() {
     compose.value = winboat.parseCompose();
-    qmpPortManager.value = await PortManager.parseCompose(compose.value);
+    qmpPortManager.value = winboat.portMgr.value ?? await PortManager.parseCompose(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -563,6 +662,8 @@ async function assignValues() {
     origFreerdpPort.value = freerdpPort.value;
 
     origApplicationScale.value = wbConfig.config.scaleDesktop;
+
+    rdpArgs.value = wbConfig.config.rdpArgs;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
@@ -589,7 +690,7 @@ async function saveDockerCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value);
+    await qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value, { findOpenPorts: false }); // no need to find open ports, since we already check that in the 'errors' computed
     compose.value!.services.windows.ports = qmpPortManager.value!.composeFormat;
 
     isApplyingChanges.value = true;
@@ -643,7 +744,7 @@ async function addRequiredComposeFieldsUSB() {
     isUpdatingUSBPrerequisites.value = false;
 }
 
-const errors = computed(() => {
+const errors = computedAsync(async () => {
     let errCollection: string[] = [];
 
     if (!numCores.value || numCores.value < 2) {
@@ -660,6 +761,10 @@ const errors = computed(() => {
 
     if (ramGB.value > maxRamGB.value) {
         errCollection.push("You cannot allocate more RAM to Windows than you have available")
+    }
+
+    if(freerdpPort.value !== origFreerdpPort.value && !await PortManager.isPortOpen(freerdpPort.value)) {
+        errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
     return errCollection;
@@ -683,7 +788,7 @@ const saveButtonDisabled = computed(() => {
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = 
-        errors.value.length || 
+        errors.value?.length || 
         !hasResourceChanges || 
         isApplyingChanges.value;
         
@@ -746,6 +851,11 @@ async function toggleExperimentalFeatures() {
         console.log("Creating QMP interval because experimental features were turned on");
         winboat.createQMPInterval();
     }
+}
+
+async function toggleAdvancedFeatures() {
+    wbConfig.config.advancedFeatures = !wbConfig.config.advancedFeatures;
+    rerenderAdvanced.value++;
 }
 
 </script>

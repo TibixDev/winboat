@@ -57,6 +57,18 @@ const presetApps: WinApp[] = [
 ];
 
 /**
+ * The stock RDP args that apply to all app launches by default
+ */
+const stockArgs = ["/cert:ignore", "+clipboard", "/sound:sys:pulse", "/microphone:sys:pulse", "/floatbar", "/compression"];
+
+/**
+ * Returns second/original param if first is undefined or null, else first/test param
+ */
+const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string) => {
+    return (test === undefined || test === null) ? original : test
+}
+
+/**
  * For specifying custom behavior when launching an app (e.g. novnc)
  * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
  */
@@ -647,22 +659,25 @@ export class Winboat {
 
         const cleanAppName = app.Name.replace(/[,.'"]/g, "");
 
+        // Arguments specified by user to override stock arguments
+        const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
+        // Additional (new) arguments added by user
+        const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => !a.isReplacement).map(v => v.newArg) ?? [];
+        // The stock arguments after any replacements have been made and new arguments have been added
+        const combinedArgs = stockArgs.map(argStr => useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr))
+            .concat(newArgs).join(" ");
+
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
         /port:${rdpHostPort}\
-        /cert:ignore\
         ${this.#wbConfig?.config.multiMonitor == 2 ? '+span' : ''}\
-        +clipboard\
         -wallpaper\
-        /sound:sys:pulse\
-        /microphone:sys:pulse\
-        /floatbar\
         ${this.#wbConfig?.config.multiMonitor == 1 ? '/multimon' : ''}\
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
-        /compression\
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
-        /wm-class:"${cleanAppName}"\
+        ${combinedArgs}\
+        /wm-class:"winboat-${cleanAppName}"\
         /app:program:"C:\\OEM\\rdp_exec\\rdp_exec.exe",cmd:"-cmd \\\"${app.Path}\\\" -dummy ${crypto.randomUUID().toString()}",name:"${cleanAppName}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
@@ -670,15 +685,11 @@ export class Winboat {
                 /p:"${password}"\
                 /v:127.0.0.1\
                 /port:${rdpHostPort}\
-                /cert:ignore\
-                +clipboard\
+                ${combinedArgs}\
                 +f\
-                /sound:sys:pulse\
-                /microphone:sys:pulse\
-                /floatbar\
                 ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
                 /scale:${this.#wbConfig?.config.scale ?? 100}\
-                /compression &`;
+                &`;
         }
 
         // Multiple spaces become one
