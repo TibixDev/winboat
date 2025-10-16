@@ -676,7 +676,7 @@ export class Winboat {
         ${this.#wbConfig?.config.smartcardEnabled ? '/smartcard' : ''}\
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         ${combinedArgs}\
-        /wm-class:"${cleanAppName}"\
+        /wm-class:"winboat-${cleanAppName}"\
         /app:program:"${app.Path}",name:"${cleanAppName}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
