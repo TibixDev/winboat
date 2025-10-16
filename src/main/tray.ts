@@ -1,4 +1,4 @@
-import { Tray, Menu, nativeImage, NativeImage, app, BrowserWindow, shell } from 'electron';
+import { Tray, Menu, nativeImage, NativeImage, app, BrowserWindow, Notification } from 'electron';
 import { execSync } from 'child_process';
 import { join } from 'path';
 import Canvas from 'canvas';
@@ -8,9 +8,8 @@ let trayUpdateInterval: NodeJS.Timer | null = null;
 
 const CONTAINER_NAME = 'WinBoat';
 const BASE_ICON_PATH = join(app.getAppPath(), '..', '..', 'icons', 'icon.png');
-const WEB_UI_URL = 'http://localhost:8006';
-const REFRESH_INTERVAL = 2000;
 const ICON_SIZE = 64;
+const REFRESH_INTERVAL = 1000;
 
 type Status = 'running' | 'paused' | 'stopped';
 const STATUS_COLORS: Record<Status, string> = {
@@ -59,40 +58,34 @@ async function createStatusIcon(status: Status): Promise<NativeImage> {
     return nativeImage.createFromDataURL(canvas.toDataURL());
 }
 
-// Tray Actions
-function startStop() {
-    const status = getContainerStatus();
-    if (status === 'running' || status === 'paused') run(`docker stop ${CONTAINER_NAME}`);
-    else run(`docker start ${CONTAINER_NAME}`);
-    refreshTray();
-}
-
-function playPause() {
-    const status = getContainerStatus();
-    if (status === 'running') run(`docker pause ${CONTAINER_NAME}`);
-    else if (status === 'paused') run(`docker unpause ${CONTAINER_NAME}`);
-    refreshTray();
-}
-
-
-function openWebUI() {
-    shell.openExternal(WEB_UI_URL);
-}
-
+// Exit Logic
 async function exitApp() {
     if (trayUpdateInterval) {
         clearInterval(trayUpdateInterval as unknown as number);
         trayUpdateInterval = null;
     }
+
     const status = getContainerStatus();
-    if (status === 'running') run(`docker stop ${CONTAINER_NAME}`);
+
+    if (status === 'running') {
+        // Non-blocking system notification
+        new Notification({
+            title: 'WinBoat',
+            body: 'WinBoat is running. Shutting it down now...',
+        }).show();
+
+        run(`docker stop ${CONTAINER_NAME}`);
+    }
+
     if (tray) {
         tray.destroy();
         tray = null;
     }
+
     await new Promise((resolve) => setTimeout(resolve, 50));
     app.exit(0);
 }
+
 
 
 // Refresh Tray
@@ -112,16 +105,11 @@ export async function createTray(mainWindow?: BrowserWindow) {
     tray.setToolTip('WinBoat');
 
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Start/Stop', click: startStop },
-        { label: 'Play/Pause', click: playPause },
-        { label: 'Open Web UI', click: openWebUI },
-        { type: 'separator' },
         { label: 'Exit', click: exitApp },
     ]);
-
     tray.setContextMenu(contextMenu);
 
-    // Click tray to toggle/focus window
+    // Tray click toggles window
     tray.on('click', () => {
         if (!mainWindow) return;
         if (!mainWindow.isVisible()) {
@@ -134,7 +122,7 @@ export async function createTray(mainWindow?: BrowserWindow) {
         }
     });
 
-    // Prevent closing window from quitting app
+    // Prevent window close from quitting
     if (mainWindow) {
         mainWindow.on('close', (e) => {
             e.preventDefault();
