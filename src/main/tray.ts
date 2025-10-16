@@ -21,15 +21,24 @@ const STATUS_COLORS: Record<Status, string> = {
 // Docker Helpers
 function run(cmd: string) {
     try {
-        execSync(cmd, { stdio: 'ignore' });
-    } catch { }
+        execSync(cmd, { stdio: 'pipe', encoding: 'utf-8' });
+    } catch (err) {
+        const msg = (err as Error).message || '';   // to avoid log spam '[electron] Error: No such object: WinBoat'
+        if (!msg.includes('No such object')) {
+            console.error(`[Tray] Command failed: ${cmd}\n${msg}`);
+        }
+        // Otherwise ignore silently
+    }
 }
+
 
 function getContainerStatus(): Status {
     try {
-        const output = execSync(`docker inspect -f '{{.State.Status}}' ${CONTAINER_NAME}`, {
-            encoding: 'utf-8',
-        }).trim();
+        const output = execSync(
+            `docker inspect -f '{{.State.Status}}' ${CONTAINER_NAME} 2>/dev/null`,
+            { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
+        ).trim();
+
         if (output === 'running' || output === 'paused') return output as Status;
         return 'stopped';
     } catch {
@@ -66,14 +75,11 @@ async function exitApp() {
     }
 
     const status = getContainerStatus();
-
     if (status === 'running') {
-        // Non-blocking system notification
         new Notification({
             title: 'WinBoat',
             body: 'WinBoat is running. Shutting it down now...',
         }).show();
-
         run(`docker stop ${CONTAINER_NAME}`);
     }
 
@@ -86,8 +92,6 @@ async function exitApp() {
     app.exit(0);
 }
 
-
-
 // Refresh Tray
 async function refreshTray() {
     if (!tray) return;
@@ -96,7 +100,7 @@ async function refreshTray() {
     tray.setImage(icon);
 }
 
-// Main Tray
+// Main Tray Creation
 export async function createTray(mainWindow?: BrowserWindow) {
     if (tray) return;
 
