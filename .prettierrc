@@ -1,5 +1,7 @@
 {
   "tabWidth": 4,
   "bracketSameLine": true,
-  "printWidth": 160
+  "printWidth": 160,
+  "semi": true,
+  "singleQuote": false
 }
