@@ -442,24 +442,12 @@
                     <div v-if="currentStep.id === StepID.SHOULD_ADD_HOST_DOCKER_INTERNAL" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat allows you to share your host machine network with the Windows virtual machine, here
-                            you can choose whether to enable this feature or not.
-                        </p>
-                        <p class="text-lg text-gray-400">
-                            <b>⚠️ WARNING:</b>
-                            Allowing host network access grants the Windows VM full visibility into your Linux environment and increases the risk of malware or unwanted access.
-                            Enable this option only if you accept the risk, and note that disabling it later requires recreating the container.
-                        </p>
-                        <p class="text-lg text-gray-400">
-                            This option is intended for advanced users who understand the implications of sharing the host network.
+                            Enable access to <code>host.docker.internal</code> so the Windows VM can connect to services on your Linux host. This does not enable host networking. Changing this setting later will recreate the container.
                         </p>
 
                         <x-checkbox class="my-4" @toggle="hostDockerInternal = !hostDockerInternal"
                             :toggled="hostDockerInternal">
-                            <x-label><strong>Enable host Docker internals</strong></x-label>
-                            <x-label class="text-gray-400">
-                                By checking this box, you acknowledge the risks mentioned above
-                            </x-label>
+                            <x-label><strong>Enable access to host.docker.internal</strong></x-label>
                         </x-checkbox>
 
                         <div class="flex flex-row gap-4 mt-6">
