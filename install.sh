@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==================================================
-# 🚀 WinBoat Source Installer v1.8
+# 🚀 WinBoat Source Installer v1.2
 # Description: Builds and installs WinBoat from source.
 # Supported OS:
 #   Ubuntu, Debian, Pop!_OS, Kubuntu, Lubuntu, Ubuntu Budgie,
