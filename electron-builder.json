@@ -49,6 +49,11 @@
       "from": "./data",
       "to": "data",
       "filter": ["**/*"]
+    },
+    {
+      "from": "icons",
+      "to": "icons",
+      "filter": ["**/*"]
     }
-  ]
+    ]
 }
