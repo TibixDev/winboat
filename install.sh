@@ -1,165 +1,200 @@
 #!/usr/bin/env bash
 # ==================================================
-# 🚀 WinBoat Source Installer v1.0
+# 🚀 WinBoat Source Installer v1.8
 # Description: Builds and installs WinBoat from source.
 # Supported OS:
 #   Ubuntu, Debian, Pop!_OS, Kubuntu, Lubuntu, Ubuntu Budgie,
-#   Linux Mint, Zorin OS, Elementary OS, Fedora, openSUSE
+#   Linux Mint, Zorin OS, Elementary OS, Edubuntu, Peppermint,
+#   Kali, Parrot, Deepin, MX Linux, Raspberry Pi OS,
+#   Fedora, Nobara, Bazzite, Qubes, Rocky, CentOS Stream, AlmaLinux,
+#   openSUSE, Arch, Manjaro, Garuda, EndeavourOS, ArcoLinux, Artix, CachyOS,
+#   Gentoo, NixOS, Solus, Alpine, Void, Slackware, Clear Linux,
+#   Linux From Scratch (LFS), Beyond LFS (BLFS), Hardened LFS (HLFS)
 # Author: TibixDev (community installer version)
 # License: MIT
 # ==================================================
 set -e
-
-# --- Ensure at least curl or wget exists ---
-if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
-    echo -e "\033[0;31m❌ Error: Neither 'curl' nor 'wget' is installed.\033[0m"
-    echo "Please install one of these tools to run this installer."
-    echo "For example:"
-    echo "  Ubuntu/Debian: sudo apt install curl wget"
-    echo "  Fedora: sudo dnf install curl wget"
-    echo "  openSUSE: sudo zypper install curl wget"
-    exit 1
-fi
 
 # --- Colors ---
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
 RED="\033[0;31m"
 BLUE="\033[1;34m"
-NC="\033[0m" # No color
+NC="\033[0m"
 
 REPO_URL="https://github.com/TibixDev/WinBoat.git"
 REPO_DIR="WinBoat"
-INSTALLER_VERSION="v1.0"
-
-# --- Help option ---
-if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-    echo -e "${BLUE}WinBoat Source Installer ${INSTALLER_VERSION}${NC}"
-    echo
-    echo "Usage:"
-    echo "  bash install.sh [options]"
-    echo
-    echo "Options:"
-    echo "  --help, -h    Show this help message and exit"
-    echo
-    echo "Description:"
-    echo "  Automatically installs dependencies (NodeJS, Go, Git)"
-    echo "  and builds WinBoat from source on supported Linux distributions."
-    echo
-    echo "Example:"
-    echo "  curl -fsSL https://raw.githubusercontent.com/TibixDev/WinBoat/main/install.sh | bash"
-    echo "  wget -qO- https://raw.githubusercontent.com/TibixDev/WinBoat/main/install.sh | bash"
-    echo
-    exit 0
-fi
+INSTALLER_VERSION="v1.8"
 
 # --- Root check ---
 if [ "$EUID" -eq 0 ]; then
-    echo -e "${RED}⚠️  Please do NOT run this script as root.${NC}"
-    echo "    It will request sudo privileges when needed."
+    echo -e "${RED}⚠️  Do NOT run this script as root.${NC}"
     exit 1
 fi
 
-# --- Banner ---
-echo -e "${BLUE}🚀 WinBoat Source Installer ${INSTALLER_VERSION}${NC}"
-echo "=========================================="
-echo
-
-# --- Detect Distro ---
+# --- Detect distro ---
 detect_distro() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        echo "$ID"
+        case "$ID" in
+            ubuntu|debian|mint|pop|popos|kubuntu|lubuntu|ubuntu-budgie|budgie|zorin|elementary|edubuntu|peppermint|kali|parrot|deepin|mx|raspbian|raspberrypi)
+                echo "debian" ;;
+            fedora|nobara|bazzite|qubes|rocky|centos|alma)
+                echo "fedora" ;;
+            opensuse*|suse|geckolinux)
+                echo "opensuse" ;;
+            arch|manjaro|garuda|endeavouros|arcolinux|artix|cachyos)
+                echo "arch" ;;
+            gentoo|funtoo|calculate)
+                echo "gentoo" ;;
+            nixos)
+                echo "nixos" ;;
+            alpine)
+                echo "alpine" ;;
+            void)
+                echo "void" ;;
+            slackware)
+                echo "slackware" ;;
+            solus)
+                echo "solus" ;;
+            clear)
+                echo "clear" ;;
+            *)
+                echo "unknown" ;;
+        esac
     else
         echo "unknown"
     fi
 }
+
 DISTRO=$(detect_distro)
 echo -e "${YELLOW}🧠 Detected distro:${NC} $DISTRO"
 
+# --- Detect LFS variants ---
+detect_lfs_variants() {
+    if [ -f /etc/LFS ] || [ "$ID" = "lfs" ]; then
+        echo "LFS"
+    elif [ -f /etc/BLFS ] || [ "$ID" = "blfs" ]; then
+        echo "BLFS"
+    elif [ -f /etc/HLFS ] || [ "$ID" = "hlfs" ]; then
+        echo "HLFS"
+    else
+        echo ""
+    fi
+}
+
+LFS_DETECTED=$(detect_lfs_variants)
+
+if [ -n "$LFS_DETECTED" ]; then
+    echo -e "${YELLOW}⚠️ Detected $LFS_DETECTED system.${NC}"
+    echo "   Automatic dependency installation is NOT supported."
+    echo "   Please manually install the following packages:"
+    echo "     git, curl or wget, nodejs, npm, go"
+    echo
+    echo "   After installing dependencies, run the installer again."
+    exit 1
+fi
+
 # --- Package installer function ---
+REBOOT_REQUIRED=false
 install_pkg() {
     local pkg=$1
     if ! command -v "$pkg" &>/dev/null; then
         echo -e "${YELLOW}📦 Installing ${pkg}...${NC}"
         case "$DISTRO" in
-            ubuntu|debian|pop|popos|kubuntu|lubuntu|ubuntu-budgie|budgie|mint|zorin|elementary)
-                sudo apt update -y && sudo apt install -y "$pkg"
-                ;;
+            debian)
+                sudo apt update -y && sudo apt install -y "$pkg" ;;
             fedora)
-                sudo dnf install -y "$pkg"
-                ;;
-            opensuse*|suse)
-                sudo zypper install -y "$pkg"
-                ;;
+                if command -v rpm-ostree &>/dev/null; then
+                    sudo rpm-ostree install "$pkg" || true
+                    REBOOT_REQUIRED=true
+                else
+                    sudo dnf install -y "$pkg"
+                fi ;;
+            opensuse)
+                sudo zypper install -y "$pkg" ;;
+            arch)
+                sudo pacman -Sy --noconfirm "$pkg" ;;
+            gentoo)
+                sudo emerge --noreplace --quiet "$pkg" ;;
+            alpine)
+                sudo apk add "$pkg" ;;
+            void)
+                sudo xbps-install -Sy "$pkg" ;;
+            slackware)
+                sudo slackpkg install "$pkg" ;;
+            solus)
+                sudo eopkg install -y "$pkg" ;;
+            clear)
+                sudo swupd bundle-add "$pkg" ;;
+            nixos)
+                echo -e "${YELLOW}⚠️ Please install '${pkg}' manually using nix-shell.${NC}" ;;
             *)
-                echo -e "${RED}⚠️ Unsupported distro for auto-install: ${DISTRO}${NC}"
-                echo "   Please install '${pkg}' manually."
-                ;;
+                echo -e "${RED}⚠️ Unsupported distro for auto-install.${NC}" ;;
         esac
     else
         echo -e "${GREEN}✅ Found ${pkg}${NC}"
     fi
 }
 
-echo
+# --- Check core dependencies ---
 echo -e "${BLUE}🔍 Checking and installing dependencies...${NC}"
-
 for dep in git curl wget; do
     install_pkg "$dep"
 done
 
-# --- Node.js + npm ---
+# --- Node.js ---
 if ! command -v node &>/dev/null; then
-    echo -e "${YELLOW}📦 Installing Node.js (LTS)...${NC}"
     case "$DISTRO" in
-        ubuntu|debian|pop|popos|kubuntu|lubuntu|ubuntu-budgie|budgie|mint|zorin|elementary)
+        debian)
             curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-            sudo apt install -y nodejs
-            ;;
+            sudo apt install -y nodejs ;;
         fedora)
-            sudo dnf module install -y nodejs:20
-            ;;
-        opensuse*|suse)
-            sudo zypper install -y nodejs
-            ;;
+            sudo dnf module install -y nodejs:20 ;;
+        opensuse)
+            sudo zypper install -y nodejs ;;
+        arch)
+            sudo pacman -Sy --noconfirm nodejs npm ;;
+        gentoo)
+            sudo emerge --noreplace --quiet nodejs npm ;;
+        alpine)
+            sudo apk add nodejs npm ;;
+        void)
+            sudo xbps-install -Sy nodejs npm ;;
+        slackware)
+            sudo slackpkg install nodejs npm ;;
+        solus)
+            sudo eopkg install -y nodejs npm ;;
+        clear)
+            sudo swupd bundle-add node-basic ;;
+        nixos)
+            echo -e "${YELLOW}⚠️ Please use nix-shell -p nodejs${NC}" ;;
         *)
-            echo -e "${RED}⚠️ Unsupported distro for Node.js auto-install.${NC}"
-            ;;
+            echo -e "${RED}⚠️ Unsupported distro for Node.js auto-install.${NC}" ;;
     esac
-else
-    echo -e "${GREEN}✅ Found Node.js${NC}"
 fi
 
 # --- Go ---
 if ! command -v go &>/dev/null; then
-    echo -e "${YELLOW}📦 Installing Go...${NC}"
     case "$DISTRO" in
-        ubuntu|debian|pop|popos|kubuntu|lubuntu|ubuntu-budgie|budgie|mint|zorin|elementary)
-            sudo apt install -y golang
-            ;;
-        fedora)
-            sudo dnf install -y golang
-            ;;
-        opensuse*|suse)
-            sudo zypper install -y golang
-            ;;
-        *)
-            echo -e "${RED}⚠️ Unsupported distro for Go auto-install.${NC}"
-            ;;
+        debian) sudo apt install -y golang ;;
+        fedora) sudo dnf install -y golang ;;
+        opensuse) sudo zypper install -y golang ;;
+        arch) sudo pacman -Sy --noconfirm go ;;
+        gentoo) sudo emerge --noreplace --quiet go ;;
+        alpine) sudo apk add go ;;
+        void) sudo xbps-install -Sy go ;;
+        slackware) sudo slackpkg install go ;;
+        solus) sudo eopkg install -y golang ;;
+        clear) sudo swupd bundle-add go-basic ;;
+        nixos) echo -e "${YELLOW}⚠️ Please use nix-shell -p go${NC}" ;;
+        *) echo -e "${RED}⚠️ Unsupported distro for Go auto-install.${NC}" ;;
     esac
-else
-    echo -e "${GREEN}✅ Found Go${NC}"
 fi
 
-# --- Git ---
-install_pkg git
-
-# --- Clone or update repo ---
-echo
+# --- Clone repository ---
 echo -e "${BLUE}📦 Cloning WinBoat repository...${NC}"
 if [ -d "$REPO_DIR" ]; then
-    echo -e "${YELLOW}➡️  Directory '$REPO_DIR' already exists. Updating...${NC}"
     cd "$REPO_DIR"
     git pull
 else
@@ -167,20 +202,19 @@ else
     cd "$REPO_DIR"
 fi
 
-# --- Install dependencies ---
-echo
+# --- Install Node dependencies ---
 echo -e "${BLUE}📥 Installing Node dependencies...${NC}"
 npm install
 
 # --- Build project ---
-echo
 echo -e "${BLUE}⚙️  Building WinBoat (Linux Guest Server)...${NC}"
 npm run build:linux-gs
 
-echo
 echo -e "${GREEN}✅ Build completed successfully!${NC}"
 echo "📂 Output directory: dist/"
-echo "   - AppImage: dist/*.AppImage"
-echo "   - Unpacked: dist/unpacked/"
-echo
-echo -e "${BLUE}🎉 Installation complete. Enjoy WinBoat!${NC}"
+
+# --- Reboot prompt for rpm-ostree ---
+if [ "$REBOOT_REQUIRED" = true ]; then
+    read -rp "Some packages were layered via rpm-ostree. Reboot now? (y/N): " ans
+    [[ $ans =~ ^[Yy]$ ]] && sudo systemctl reboot
+fi
