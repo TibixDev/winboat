@@ -7,14 +7,14 @@ let tray: Tray | null = null;
 let trayUpdateInterval: NodeJS.Timer | null = null;
 
 const CONTAINER_NAME = 'WinBoat';
-const BASE_ICON_PATH = join(app.getAppPath(), '..', '..', 'icons', 'icon.png');
+const BASE_ICON_PATH = join(process.resourcesPath, 'icons', 'icon.png');
 const ICON_SIZE = 64;
 const REFRESH_INTERVAL = 1000;
 
 type Status = 'running' | 'paused' | 'stopped';
 const STATUS_COLORS: Record<Status, string> = {
     running: '#00FF00',
-    paused: '#0000FF',
+    paused: '#FFFF00',
     stopped: '#FF0000',
 };
 
@@ -75,10 +75,10 @@ async function exitApp() {
     }
 
     const status = getContainerStatus();
-    if (status === 'running') {
+    if (status === 'running' || status === 'paused') {
         new Notification({
             title: 'WinBoat',
-            body: 'WinBoat is running. Shutting it down now...',
+            body: `WinBoat is ${status}. Shutting it down now...`,
         }).show();
         run(`docker stop ${CONTAINER_NAME}`);
     }
