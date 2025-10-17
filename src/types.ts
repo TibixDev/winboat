@@ -23,6 +23,7 @@ export type InstallConfiguration = {
     password: string;
     customIsoPath?: string;
     shareHomeFolder: boolean;
+    addHostDockerInternal: boolean;
 }
 
 export type WinApp = {
@@ -66,6 +67,7 @@ export type ComposeConfig = {
             restart: string;
             volumes: string[];
             devices: string[];
+            extra_hosts?: string[];
         };
     };
 };
