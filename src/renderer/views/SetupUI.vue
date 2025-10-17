@@ -692,7 +692,7 @@ const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
-const installFolder = ref("");
+const installFolder = ref(path.join(os.homedir(), 'winboat'));
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
 const customIsoPath = ref("");
