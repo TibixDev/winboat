@@ -3,23 +3,26 @@
         <div class="size-full rounded-3xl bg-[#1F1F1F] shadow-lg shadow-black/50 gap-4 p-5 grid grid-cols-2">
             <div>
                 <div id="stepStatus" class="flex flex-row justify-center gap-4 pt-2">
-                    <div
-                        v-for="(step, idx) of steps"
-                        :key="idx"
-                        class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000"
-                        :class="{
+                    <div v-for="(step, idx) of steps" :key="idx"
+                        class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000" :class="{
                             'bg-neutral-500': idx < currentStepIdx,
                             'bg-violet-400': idx === currentStepIdx,
                             'bg-neutral-700': idx > currentStepIdx,
-                        }"
-                    ></div>
+                        }"></div>
                 </div>
                 <Transition name="bounce" mode="out-in">
                     <div :key="currentStepIdx" id="stepIcon" class="flex items-center justify-center relative h-full">
-                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.icon"></Icon>
-                        <Icon key="icon-gradient" class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl" :icon="currentStep.icon"></Icon>
-                        <Icon key="icon2" class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]" :icon="currentStep.icon"></Icon>
-                        <Icon key="icon3" class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]" :icon="currentStep.icon"></Icon>                    
+                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.icon">
+                        </Icon>
+                        <Icon key="icon-gradient"
+                            class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"
+                            :icon="currentStep.icon"></Icon>
+                        <Icon key="icon2"
+                            class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]"
+                            :icon="currentStep.icon"></Icon>
+                        <Icon key="icon3"
+                            class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]"
+                            :icon="currentStep.icon"></Icon>
                     </div>
                 </Transition>
             </div>
@@ -30,7 +33,8 @@
                     <div v-if="currentStep.id === StepID.WELCOME" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is a full-fledged app that helps you natively run Windows applications on your Linux machine with ease.
+                            WinBoat is a full-fledged app that helps you natively run Windows applications on your Linux
+                            machine with ease.
                         </p>
                         <p class="text-lg text-gray-400">
                             We will go through a few required steps to get you started in no time.
@@ -39,14 +43,16 @@
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
                         </div>
                     </div>
-    
+
                     <!-- License -->
                     <div v-if="currentStep.id === StepID.LICENSE" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is open-source software licensed under the MIT License. Please review the license agreement below.
+                            WinBoat is open-source software licensed under the MIT License. Please review the license
+                            agreement below.
                         </p>
-                        <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">{{ license }}</pre>
+                        <pre
+                            class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">{{ license }}</pre>
                         <div class="flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">I Agree</x-button>
@@ -74,28 +80,36 @@
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 Virtualization (KVM) enabled
-                                <a href="https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web"
+                                    @click="openAnchorLink" target="_blank"
+                                    class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 Docker installed
-                                <a href="https://docs.docker.com/engine/install/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://docs.docker.com/engine/install/" @click="openAnchorLink"
+                                    target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerComposeInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 Docker Compose v2 installed
-                                <a href="https://docs.docker.com/compose/install/#plugin-linux-only" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://docs.docker.com/compose/install/#plugin-linux-only"
+                                    @click="openAnchorLink" target="_blank"
+                                    class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerIsInUserGroups" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                User added to the <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
+                                User added to the <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span>
+                                group
                                 <span class="text-gray-600">
                                     (Relog required)
                                 </span>
-                                <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
+                                    @click="openAnchorLink" target="_blank"
+                                    class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerIsRunning" class="text-green-500">✔</span>
@@ -104,23 +118,21 @@
                                 <span class="text-gray-600">
                                     (Also enable on boot)
                                 </span>
-                                <a href="https://docs.docker.com/config/daemon/start/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://docs.docker.com/config/daemon/start/" @click="openAnchorLink"
+                                    target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 FreeRDP 3.x.x installed
-                                <a href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds" @click="openAnchorLink"
+                                    target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                             </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button 
-                                toggled 
-                                class="px-6" 
-                                @click="currentStepIdx++" 
-                                :disabled="!satisfiesPrequisites(specs)"
-                            >
+                            <x-button toggled class="px-6" @click="currentStepIdx++"
+                                :disabled="!satisfiesPrequisites(specs)">
                                 Next
                             </x-button>
                         </div>
@@ -130,21 +142,17 @@
                     <div v-if="currentStep.id === StepID.INSTALL_LOCATION" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            Choose where you want to install WinBoat. Files related to the Windows virtual machine will be stored in this location.
+                            Choose where you want to install WinBoat. Files related to the Windows virtual machine will
+                            be stored in this location.
                         </p>
                         <p class="text-lg text-gray-400">
-                            Make sure you have at least {{ MIN_DISK_GB }}GB of disk space available in the selected location.
+                            Make sure you have at least {{ MIN_DISK_GB }}GB of disk space available in the selected
+                            location.
                         </p>
 
                         <div class="flex flex-row items-center mt-4">
-                            <x-input
-                                id="install-location"
-                                type="text"
-                                placeholder="Select Install Location"
-                                readonly
-                                :value="installFolder"
-                                class="!max-w-full w-[300px] rounded-r-none"
-                            >
+                            <x-input id="install-location" type="text" placeholder="Select Install Location" readonly
+                                :value="installFolder" class="!max-w-full w-[300px] rounded-r-none">
                                 <x-icon href="#folder"></x-icon>
                                 <x-label>/your/install/folder</x-label>
                             </x-input>
@@ -158,7 +166,8 @@
                                 <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                 {{ error }}
                             </div>
-                            <div v-if="installFolder && !installFolderErrors?.length" class="text-green-400 font-semibold">
+                            <div v-if="installFolder && !installFolderErrors?.length"
+                                class="text-green-400 font-semibold">
                                 <Icon icon="line-md:check-all" class="inline size-4 -translate-y-0.5"></Icon>
                                 Valid install folder
                             </div>
@@ -166,15 +175,11 @@
 
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button
-                                toggled
-                                class="px-6"
-                                :disabled="!installFolder || installFolderErrors?.length"
-                                @click="currentStepIdx++"
-                            >Next</x-button>
+                            <x-button toggled class="px-6" :disabled="!installFolder || installFolderErrors?.length"
+                                @click="currentStepIdx++">Next</x-button>
                         </div>
                     </div>
-    
+
                     <!-- Windows Configuration -->
                     <div v-if="currentStep.id === StepID.WINDOWS_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
@@ -182,24 +187,16 @@
                             Pick the version of Windows you want to install, and the language you'd like to use.
                         </p>
                         <p class="text-lg text-gray-400">
-                            You can only change these settings now. Once the installation is complete, you will not be able to change them unless you reinstall.
+                            You can only change these settings now. Once the installation is complete, you will not be
+                            able to change them unless you reinstall.
                         </p>
                         <div>
                             <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
-                            <x-select
-                                id="select-edition"
-                                @change="(e: any) => windowsVersion = e.detail.newValue"
-                                class="w-64"
-                                :disabled="!!customIsoPath"
-                            >
+                            <x-select id="select-edition" @change="(e: any) => windowsVersion = e.detail.newValue"
+                                class="w-64" :disabled="!!customIsoPath">
                                 <x-menu>
-                                    <x-menuitem
-                                        v-for="(version, key) in WINDOWS_VERSIONS"
-                                        :key="key"
-                                        :value="key"
-                                        :toggled="windowsVersion === key"
-                                        v-show="key !== 'custom'"
-                                    >
+                                    <x-menuitem v-for="(version, key) in WINDOWS_VERSIONS" :key="key" :value="key"
+                                        :toggled="windowsVersion === key" v-show="key !== 'custom'">
                                         <x-label>{{ version }}</x-label>
                                     </x-menuitem>
                                 </x-menu>
@@ -207,23 +204,16 @@
                         </div>
                         <div>
                             <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
-                            <x-select
-                                id="select-language"
-                                @change="(e: any) => windowsLanguage = e.detail.newValue"
-                                class="w-64"
-                                :disabled="!!customIsoPath"
-                            >
+                            <x-select id="select-language" @change="(e: any) => windowsLanguage = e.detail.newValue"
+                                class="w-64" :disabled="!!customIsoPath">
                                 <x-menu @change="(e: any) => windowsLanguage = e.detail.newValue">
-                                    <x-menuitem
-                                        v-for="(language, languageWithBanner) in WINDOWS_LANGUAGES"
-                                        :key="language"
-                                        :value="language"
-                                        :toggled="windowsLanguage === language"
-                                        :disabled="['German', 'Hungarian'].includes(language)"
-                                    >
+                                    <x-menuitem v-for="(language, languageWithBanner) in WINDOWS_LANGUAGES"
+                                        :key="language" :value="language" :toggled="windowsLanguage === language"
+                                        :disabled="['German', 'Hungarian'].includes(language)">
                                         <x-label>
                                             {{ languageWithBanner }}
-                                            <span v-if="['German', 'Hungarian'].includes(language)" class="text-red-400">
+                                            <span v-if="['German', 'Hungarian'].includes(language)"
+                                                class="text-red-400">
                                                 (Broken, use Language Pack)
                                             </span>
                                         </x-label>
@@ -235,21 +225,25 @@
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
                                 <div class="flex items-center gap-2">
-                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile">Select ISO File</x-button>
+                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile">Select ISO
+                                        File</x-button>
                                     <span class="relative group">
                                         <Icon icon="line-md:alert" class="text-neutral-400 cursor-pointer" />
                                         <span
                                             class="absolute bottom-5 left-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
-                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
-                                        >
-                                            We offer you the possibility of using a custom Windows ISO for your convenience,
-                                            however we can't provide any support if your custom ISO breaks or certain features within WinBoat stop working.
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none">
+                                            We offer you the possibility of using a custom Windows ISO for your
+                                            convenience,
+                                            however we can't provide any support if your custom ISO breaks or certain
+                                            features within WinBoat stop working.
                                         </span>
                                     </span>
                                 </div>
-                                <span v-if="customIsoPath" class="text-xs text-gray-400 font-semibold flex items-center gap-2">
+                                <span v-if="customIsoPath"
+                                    class="text-xs text-gray-400 font-semibold flex items-center gap-2">
                                     Selected: {{ customIsoFileName }}
-                                    <x-button size="small" class="ml-2 px-2 py-0" @click="deselectIsoFile">Remove</x-button>
+                                    <x-button size="small" class="ml-2 px-2 py-0"
+                                        @click="deselectIsoFile">Remove</x-button>
                                 </span>
                             </div>
                         </div>
@@ -265,63 +259,41 @@
                         <p class="text-lg text-gray-400">
                             Configure the username and password for Windows.
                         </p>
-    
+
                         <p class="text-lg text-gray-400">
-                            These credentials will be used to log in to the Windows virtual machine and to access it through Remote Desktop Protocol (RDP).
+                            These credentials will be used to log in to the Windows virtual machine and to access it
+                            through Remote Desktop Protocol (RDP).
                             You will not be able to change these settings later on unless you reinstall.
                         </p>
-    
+
                         <div class="flex flex-row gap-4">
                             <div class="flex flex-col gap-4">
                                 <div>
                                     <label for="select-username" class="text-sm mb-4 text-neutral-400">Username</label>
-                                    <x-input
-                                        id="select-username"
-                                        class="w-64 max-w-64"
-                                        type="text"
-                                        minlength="2"
-                                        maxlength="32"
-                                        required 
-                                        size="large"
-                                        :value="username"
-                                        @input="(e: any) => username = e.target.value"
-                                    >
+                                    <x-input id="select-username" class="w-64 max-w-64" type="text" minlength="2"
+                                        maxlength="32" required size="large" :value="username"
+                                        @input="(e: any) => username = e.target.value">
                                         <x-icon href="#person"></x-icon>
                                         <x-label>Name</x-label>
                                     </x-input>
                                 </div>
-            
+
                                 <div>
                                     <label for="select-password" class="text-sm mb-4 text-neutral-400">Password</label>
-                                    <x-input 
-                                        id="select-password" 
-                                        class="w-64 max-w-64" 
-                                        type="password" 
-                                        minlength="2" 
-                                        maxlength="64"
-                                        required 
-                                        size="large"
-                                        :value="password"
-                                        @input="(e: any) => password = e.target.value"
-                                    >
+                                    <x-input id="select-password" class="w-64 max-w-64" type="password" minlength="2"
+                                        maxlength="64" required size="large" :value="password"
+                                        @input="(e: any) => password = e.target.value">
                                         <x-icon href="#lock"></x-icon>
                                         <x-label>Password</x-label>
                                     </x-input>
                                 </div>
-                                
+
                                 <div>
-                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400">Confirm Password</label>
-                                    <x-input 
-                                        id="confirm-password" 
-                                        class="w-64 max-w-64" 
-                                        type="password" 
-                                        minlength="2" 
-                                        maxlength="64"
-                                        required 
-                                        size="large"
-                                        :value="confirmPassword"
-                                        @input="(e: any) => confirmPassword = e.target.value"
-                                    >
+                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400">Confirm
+                                        Password</label>
+                                    <x-input id="confirm-password" class="w-64 max-w-64" type="password" minlength="2"
+                                        maxlength="64" required size="large" :value="confirmPassword"
+                                        @input="(e: any) => confirmPassword = e.target.value">
                                         <x-icon href="#lock"></x-icon>
                                         <x-label>Confirm Password</x-label>
                                     </x-input>
@@ -343,140 +315,148 @@
                                 </div>
                             </div>
                         </div>
-    
+
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button
-                                :disabled="usernameErrors.length || passwordErrors.length"
-                                toggled
-                                class="px-6"
-                                @click="currentStepIdx++"
-                            >Next</x-button>
+                            <x-button :disabled="usernameErrors.length || passwordErrors.length" toggled class="px-6"
+                                @click="currentStepIdx++">Next</x-button>
                         </div>
                     </div>
-    
+
                     <!-- Hardware Configuration -->
                     <div v-if="currentStep.id === StepID.HARDWARE_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat utilizes a containerized KVM virtual machine to run Windows applications. Please configure the hardware settings for the virtual machine.
+                            WinBoat utilizes a containerized KVM virtual machine to run Windows applications. Please
+                            configure the hardware settings for the virtual machine.
                         </p>
-    
+
                         <p class="text-lg text-gray-400">
-                            It is not recommended to allocate more than half of your system resources to Windows. You will be able to change these settings later on if needed.
+                            It is not recommended to allocate more than half of your system resources to Windows. You
+                            will be able to change these settings later on if needed.
                         </p>
-    
-    
+
+
                         <div class="flex flex-col gap-6">
                             <div>
                                 <label for="select-cpu-cores" class="text-sm text-neutral-400">Select CPU Cores</label>
                                 <div class="flex flex-row gap-4 items-center">
-                                    <x-slider
-                                        id="select-cpu-cores"
-                                        @change="(e: any) => cpuCores = Number(e.target.value)"
-                                        class="w-[50%]"
-                                        :value="cpuCores"
-                                        :min="MIN_CPU_CORES"
-                                        :max="specs.cpuCores"
-                                        step="1"
-                                        ticks
-                                    ></x-slider>
+                                    <x-slider id="select-cpu-cores"
+                                        @change="(e: any) => cpuCores = Number(e.target.value)" class="w-[50%]"
+                                        :value="cpuCores" :min="MIN_CPU_CORES" :max="specs.cpuCores" step="1"
+                                        ticks></x-slider>
                                     <x-label>{{ cpuCores }} Core{{ cpuCores > 1 ? 's' : '' }}</x-label>
                                 </div>
                             </div>
-        
+
                             <div>
                                 <label for="select-ram" class="text-sm text-neutral-400">
                                     Select RAM
-                                    <span 
-                                        v-if="memoryInfo.availableGB < ramGB"
-                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
-                                    >
+                                    <span v-if="memoryInfo.availableGB < ramGB"
+                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                         Warning
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
-                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
-                                        >
-                                            You don't have enough unused memory available to allocate the requested amount of RAM.
-                                            You currently have ~{{ memoryInfo.availableGB }} GB of unused memory available.
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none">
+                                            You don't have enough unused memory available to allocate the requested
+                                            amount of RAM.
+                                            You currently have ~{{ memoryInfo.availableGB }} GB of unused memory
+                                            available.
                                             If you continue with this amount of RAM, the container will likely crash.
                                         </span>
                                     </span>
                                 </label>
                                 <div class="flex flex-row gap-4 items-center">
-                                    <x-slider
-                                        id="select-ram"
-                                        @change="(e: any) => ramGB = Number(e.target.value)"
-                                        class="w-[50%]"
-                                        :value="ramGB"
-                                        :min="MIN_RAM_GB"
-                                        :max="specs.ramGB"
-                                        step="1"
-                                    ></x-slider>
+                                    <x-slider id="select-ram" @change="(e: any) => ramGB = Number(e.target.value)"
+                                        class="w-[50%]" :value="ramGB" :min="MIN_RAM_GB" :max="specs.ramGB"
+                                        step="1"></x-slider>
                                     <x-label>{{ ramGB }} GB</x-label>
                                 </div>
                             </div>
-        
+
                             <div>
                                 <label for="select-disk" class="text-sm text-neutral-400">
                                     Select Disk Size
-                                    <span
-                                        v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5"
-                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
-                                    >
+                                    <span v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5"
+                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                         Warning
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
-                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none"
-                                        >
-                                            You're about to allocate most of your remaining disk space with less than 5GB in excess.
-                                            You currently have ~{{ installFolderDiskSpaceGB }} GB of disk space available for the drive corresponding to {{ installFolder }}.
-                                            If you continue with this disk size, you may run out of space and encounter unexpected issues.
+                                            hidden group-hover:block transition-opacity duration-200 pointer-events-none">
+                                            You're about to allocate most of your remaining disk space with less than
+                                            5GB in excess.
+                                            You currently have ~{{ installFolderDiskSpaceGB }} GB of disk space
+                                            available for the drive corresponding to {{ installFolder }}.
+                                            If you continue with this disk size, you may run out of space and encounter
+                                            unexpected issues.
                                         </span>
                                     </span>
                                 </label>
                                 <div class="flex flex-row gap-4 items-center">
-                                    <x-slider
-                                        id="select-disk"
-                                        @change="(e: any) => diskSpaceGB = Number(e.target.value)"
-                                        class="w-[50%]"
-                                        :value="diskSpaceGB"
-                                        :min="MIN_DISK_GB"
-                                        :max="installFolderDiskSpaceGB || 0"
-                                        step="8"
-                                    ></x-slider>
+                                    <x-slider id="select-disk"
+                                        @change="(e: any) => diskSpaceGB = Number(e.target.value)" class="w-[50%]"
+                                        :value="diskSpaceGB" :min="MIN_DISK_GB" :max="installFolderDiskSpaceGB || 0"
+                                        step="8"></x-slider>
                                     <x-label>{{ diskSpaceGB }} GB</x-label>
                                 </div>
                             </div>
                         </div>
 
-    
+
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
                         </div>
                     </div>
-    
+
                     <!-- Home Folder Sharing -->
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat allows you to share your Linux home folder with the Windows virtual machine, here you can choose whether to enable this feature or not.
+                            WinBoat allows you to share your Linux home folder with the Windows virtual machine, here
+                            you can choose whether to enable this feature or not.
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
                             Sharing your home folder exposes your Linux files to Windows-specific malware and viruses.
-                            Only enable this feature if you understand the risks involved. Always be careful with the files you download and open in Windows.
+                            Only enable this feature if you understand the risks involved. Always be careful with the
+                            files you download and open in Windows.
                         </p>
 
-                        <x-checkbox
-                            class="my-4"
-                            @toggle="homeFolderSharing = !homeFolderSharing"
-                            :toggled="homeFolderSharing"
-                        >
+                        <x-checkbox class="my-4" @toggle="homeFolderSharing = !homeFolderSharing"
+                            :toggled="homeFolderSharing">
                             <x-label><strong>Enable home folder sharing</strong></x-label>
+                            <x-label class="text-gray-400">
+                                By checking this box, you acknowledge the risks mentioned above
+                            </x-label>
+                        </x-checkbox>
+
+                        <div class="flex flex-row gap-4 mt-6">
+                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                        </div>
+                    </div>
+
+                    <div v-if="currentStep.id === StepID.SHOULD_ADD_HOST_DOCKER_INTERNAL" class="step-block">
+                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <p class="text-lg text-gray-400">
+                            WinBoat allows you to share your host machine network with the Windows virtual machine, here
+                            you can choose whether to enable this feature or not.
+                        </p>
+                        <p class="text-lg text-gray-400">
+                            <b>⚠️ WARNING:</b>
+                            Allowing host network access grants the Windows VM full visibility into your Linux environment and increases the risk of malware or unwanted access.
+                            Enable this option only if you accept the risk, and note that disabling it later requires recreating the container.
+                        </p>
+                        <p class="text-lg text-gray-400">
+                            This option is intended for advanced users who understand the implications of sharing the host network.
+                        </p>
+
+                        <x-checkbox class="my-4" @toggle="hostDockerInternal = !hostDockerInternal"
+                            :toggled="hostDockerInternal">
+                            <x-label><strong>Enable host Docker internals</strong></x-label>
                             <x-label class="text-gray-400">
                                 By checking this box, you acknowledge the risks mentioned above
                             </x-label>
@@ -492,12 +472,13 @@
                     <div v-if="currentStep.id === StepID.REVIEW" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            Please review the settings you've chosen for your WinBoat installation. If everything looks correct, click "Install" to begin.
+                            Please review the settings you've chosen for your WinBoat installation. If everything looks
+                            correct, click "Install" to begin.
                         </p>
-    
+
                         <div class="bg-neutral-800 p-6 rounded-lg flex flex-col gap-4">
                             <h2 class="text-xl font-medium text-white mt-0 mb-2">Your Configuration</h2>
-                            
+
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">Windows Version</span>
@@ -529,25 +510,28 @@
                                 </div>
                             </div>
                         </div>
-    
+
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++; install()">Install</x-button>
                         </div>
                     </div>
-    
+
                     <!-- Installation -->
                     <div v-if="currentStep.id === StepID.INSTALL" class="step-block">
                         <h1 class="text-3xl font-semibold">Installation</h1>
                         <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour.
-                            In the meantime, you can grab a coffee and check the installation status <a :href="novncURL" @click="openAnchorLink">in your browser</a>.
+                            In the meantime, you can grab a coffee and check the installation status <a :href="novncURL"
+                                @click="openAnchorLink">in your browser</a>.
                         </p>
-    
+
                         <!-- Installing -->
-                        <div v-if="installState !== InstallStates.COMPLETED && installState !== InstallStates.INSTALL_ERROR" class="flex flex-col h-full items-center justify-center gap-4">
+                        <div v-if="installState !== InstallStates.COMPLETED && installState !== InstallStates.INSTALL_ERROR"
+                            class="flex flex-col h-full items-center justify-center gap-4">
                             <x-throbber class="size-16"></x-throbber>
-                            <x-label v-if="installState !== InstallStates.MONITORING_PREINSTALL" class="text-lg text-gray-400 text-center">
+                            <x-label v-if="installState !== InstallStates.MONITORING_PREINSTALL"
+                                class="text-lg text-gray-400 text-center">
                                 {{ installState }}...
                             </x-label>
                             <x-label v-else class="text-lg text-gray-400 text-center">
@@ -556,7 +540,8 @@
                         </div>
 
                         <!-- Error -->
-                         <div v-if="installState === InstallStates.INSTALL_ERROR" class="flex flex-col h-full items-center justify-center gap-4">
+                        <div v-if="installState === InstallStates.INSTALL_ERROR"
+                            class="flex flex-col h-full items-center justify-center gap-4">
                             <Icon icon="line-md:alert" class="size-16 text-red-500"></Icon>
                             <x-label class="text-lg text-gray-400 text-center">
                                 An error occurred while installing Windows. Please check the logs in
@@ -573,13 +558,14 @@
                         </div>
 
                         <!-- Completed -->
-                         <div v-if="installState === InstallStates.COMPLETED" class="flex flex-col h-full items-center justify-center gap-4">
+                        <div v-if="installState === InstallStates.COMPLETED"
+                            class="flex flex-col h-full items-center justify-center gap-4">
                             <Icon icon="line-md:confirm-circle" class="size-16 text-green-500"></Icon>
                             <x-label class="text-lg text-gray-400 text-center">
                                 Windows has been installed successfully!
                             </x-label>
                             <x-button @click="$router.push('/home')">Finish</x-button>
-                         </div>
+                        </div>
                     </div>
                 </div>
             </Transition>
@@ -605,7 +591,7 @@ const path: typeof import('path') = require('path')
 const electron: typeof import('electron') = require('electron').remote || require('@electron/remote');
 const fs: typeof import('fs') = require('fs');
 const os: typeof import('os') = require('os');
-const checkDiskSpace: typeof import('check-disk-space').default = require('check-disk-space').default; 
+const checkDiskSpace: typeof import('check-disk-space').default = require('check-disk-space').default;
 
 type Step = {
     id: string,
@@ -622,6 +608,7 @@ enum StepID {
     HARDWARE_CONFIG = "STEP_HARDWARE_CONFIG",
     USER_CONFIG = "STEP_USER_CONFIG",
     SHOULD_SHARE_HOME_FOLDER = "STEP_SHOULD_SHARE_HOME_FOLDER",
+    SHOULD_ADD_HOST_DOCKER_INTERNAL = "STEP_SHOULD_ADD_HOST_DOCKER_INTERNAL",
     REVIEW = "STEP_OVERVIEW",
     INSTALL = "STEP_INSTALL",
     FINISH = "STEP_FINISH",
@@ -663,9 +650,14 @@ const steps: Step[] = [
         title: "Hardware Configuration",
         icon: "famicons:hardware-chip-outline",
     },
-        {
+    {
         id: StepID.SHOULD_SHARE_HOME_FOLDER,
         title: "Home Folder Sharing",
+        icon: "line-md:link",
+    },
+    {
+        id: StepID.SHOULD_ADD_HOST_DOCKER_INTERNAL,
+        title: "Add Host Docker Internal",
         icon: "line-md:link",
     },
     {
@@ -706,6 +698,7 @@ const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");
 const homeFolderSharing = ref(false);
+const hostDockerInternal = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 
@@ -778,22 +771,22 @@ function selectIsoFile() {
     electron.dialog.showOpenDialog({
         title: 'Select ISO File',
         filters: [
-          {
-            name: 'ISO Files',
-            extensions: ['iso']
-          }
+            {
+                name: 'ISO Files',
+                extensions: ['iso']
+            }
         ],
         properties: ['openFile']
     })
-    .then(result => {
-      if (!result.canceled && result.filePaths.length > 0) {
-        customIsoPath.value = result.filePaths[0];
-        customIsoFileName.value = path.basename(result.filePaths[0]);
-        windowsLanguage.value = 'English'; // Language can't be custom
-        windowsVersion.value = 'custom';
-        console.log('ISO path updated:', customIsoPath.value);
-      }
-    });
+        .then(result => {
+            if (!result.canceled && result.filePaths.length > 0) {
+                customIsoPath.value = result.filePaths[0];
+                customIsoFileName.value = path.basename(result.filePaths[0]);
+                windowsLanguage.value = 'English'; // Language can't be custom
+                windowsVersion.value = 'custom';
+                console.log('ISO path updated:', customIsoPath.value);
+            }
+        });
 }
 
 function deselectIsoFile() {
@@ -808,12 +801,12 @@ function selectInstallFolder() {
         title: 'Select Install Folder',
         properties: ['openDirectory', 'createDirectory']
     }).then(result => {
-      if (!result.canceled && result.filePaths.length > 0) {
-        const selectedPath = result.filePaths[0];
-        const finalPath = path.join(selectedPath, 'winboat');
-        console.log('Install path selected:', finalPath);
-        installFolder.value = finalPath;
-      }
+        if (!result.canceled && result.filePaths.length > 0) {
+            const selectedPath = result.filePaths[0];
+            const finalPath = path.join(selectedPath, 'winboat');
+            console.log('Install path selected:', finalPath);
+            installFolder.value = finalPath;
+        }
     });
 }
 
@@ -867,6 +860,7 @@ function install() {
         username: username.value,
         password: password.value,
         shareHomeFolder: homeFolderSharing.value,
+        addHostDockerInternal: hostDockerInternal.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
     };
 
@@ -908,35 +902,40 @@ function install() {
 
 /* Transitions */
 .bounce-enter-active {
-  animation: bounce-in 0.4s;
+    animation: bounce-in 0.4s;
 }
+
 .bounce-leave-active {
-  animation: bounce-in 0.4s reverse;
+    animation: bounce-in 0.4s reverse;
 }
 
 @keyframes bounce-in {
-  0% {
-    transform: scale(0.7) translateY(-20%);
-    opacity: 0%;
-  }
-  100% {
-    transform: scale(1) translateY(0);
-  }
+    0% {
+        transform: scale(0.7) translateY(-20%);
+        opacity: 0%;
+    }
+
+    100% {
+        transform: scale(1) translateY(0);
+    }
 }
 
 .bouncedown-enter-active {
-  animation: bouncedown-in 0.5s;
+    animation: bouncedown-in 0.5s;
 }
+
 .bouncedown-leave-active {
-  animation: bouncedown-in 0.5s reverse;
+    animation: bouncedown-in 0.5s reverse;
 }
+
 @keyframes bouncedown-in {
-  0% {
-    transform: scale(0.7) translateY(-20%);
-    opacity: 0%;
-  }
-  100% {
-    transform: scale(1) translateY(0);
-  }
+    0% {
+        transform: scale(0.7) translateY(-20%);
+        opacity: 0%;
+    }
+
+    100% {
+        transform: scale(1) translateY(0);
+    }
 }
 </style>

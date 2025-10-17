@@ -141,6 +141,12 @@ export class InstallManager {
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
         
+        
+        if (this.conf.addHostDockerInternal) {
+            composeContent.services.windows.extra_hosts = ["host.docker.internal:host-gateway"];
+            logger.info("Enabled host Docker internal access in compose file");
+        }
+
         // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
