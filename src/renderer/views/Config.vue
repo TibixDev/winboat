@@ -743,7 +743,7 @@ async function toggleExperimentalFeatures() {
     // but a scenario could also occur where the user is re-enabling experimental features
     // after the compose changes, which then would cause a bug
     // TODO: Remove after USB passthrough is no longer experimental
-    } else if (winboat.containerStatus.value == ContainerStatus.Running && !winboat.hasQMPInterval) {
+    } else if (winboat.containerStatus.value == ContainerStatus.RUNNING && !winboat.hasQMPInterval) {
         console.log("Creating QMP interval because experimental features were turned on");
         winboat.createQMPInterval();
     }

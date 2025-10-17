@@ -138,8 +138,8 @@
                                 <li class="flex items-center gap-2">
                                     <span v-if="'podmanComposeInstalled' in containerSpecs && containerSpecs.podmanComposeInstalled" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
-                                    Podman Compose v2 installed
-                                    <a href="https://docs.podman.io/en/latest/markdown/podman-compose.1.html" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                    Podman Compose installed
+                                    <a href="https://github.com/containers/podman-compose?tab=readme-ov-file#installation" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                                 </li>
                             </template>
                             <li class="flex items-center gap-2">

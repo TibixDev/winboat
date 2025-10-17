@@ -134,7 +134,7 @@ import { Winboat } from './lib/winboat';
 import { openAnchorLink } from './utils/openLink';
 import { WinboatConfig } from './lib/config';
 import { USBManager } from './lib/usbmanager';
-import { GUEST_NOVNC_PORT, NOVNC_URL } from './lib/constants';
+import { GUEST_NOVNC_PORT } from './lib/constants';
 const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
 const os: typeof import('os') = require('os')
 const path: typeof import('path') = require('path')
@@ -154,7 +154,6 @@ const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
 const novncURL = ref("");
 
 onMounted(async () => {
-    new USBManager(); // Instantiate singleton class
     const winboatInstalled = await isInstalled();
     if (!winboatInstalled) {
         console.log("Not installed, redirecting to setup...")
@@ -162,6 +161,7 @@ onMounted(async () => {
     } else {
         winboat = new Winboat(); // Instantiate singleton class
         wbConfig = new WinboatConfig(); // Instantiate singleton class
+        new USBManager(); // Instantiate singleton class
         $router.push('/home');
     }
 
