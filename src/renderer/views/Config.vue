@@ -5,56 +5,66 @@
             <div class="flex flex-col gap-4">
                 <!-- RAM Allocation -->
                 <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="game-icons:ram"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">
-                                RAM Allocation
-                            </h1>
+                    class="flex flex-col p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div class="flex flex-row justify-between items-center">
+                        <div>
+                            <div class="flex flex-row gap-2 items-center mb-2">
+                                <Icon class="inline-flex text-violet-400 size-8" icon="game-icons:ram"></Icon>
+                                <h1 class="my-0 text-lg font-semibold">
+                                    RAM Allocation
+                                </h1>
+                            </div>
+                            <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                                How many gigabytes of RAM are allocated to the Windows virtual machine
+                            </p>
                         </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            How many gigabytes of RAM are allocated to the Windows virtual machine
-                        </p>
+                        <div class="flex flex-row gap-2 justify-center items-center">
+                            <x-input
+                                class="max-w-16 text-right text-[1.1rem]"
+                                min="4"
+                                :max="maxRamGB"
+                                :value="ramGB"
+                                @input="(e: any) => ramGB = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
+                                required
+                            ></x-input>
+                            <p class="text-neutral-100">GB</p>
+                        </div>
                     </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-input
-                            class="max-w-16 text-right text-[1.1rem]"
-                            min="4"
-                            :max="maxRamGB"
-                            :value="ramGB"
-                            @input="(e: any) => ramGB = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
-                            required
-                        ></x-input>
-                        <p class="text-neutral-100">GB</p>
-                    </div>
+                    <p v-if="ramWarning" class="text-yellow-400 text-xs mt-2 mb-0">
+                        {{ ramWarning }}
+                    </p>
                 </x-card>
 
                 <!-- CPU Cores -->
                 <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="solar:cpu-bold"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">
-                                CPU Cores
-                            </h1>
+                    class="flex flex-col p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div class="flex flex-row justify-between items-center">
+                        <div>
+                            <div class="flex flex-row gap-2 items-center mb-2">
+                                <Icon class="inline-flex text-violet-400 size-8" icon="solar:cpu-bold"></Icon>
+                                <h1 class="my-0 text-lg font-semibold">
+                                    CPU Cores
+                                </h1>
+                            </div>
+                            <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                                How many CPU Cores are allocated to the Windows virtual machine
+                            </p>
                         </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            How many CPU Cores are allocated to the Windows virtual machine
-                        </p>
+                        <div class="flex flex-row gap-2 justify-center items-center">
+                            <x-input
+                                class="max-w-16 text-right text-[1.1rem]"
+                                min="2"
+                                :max="maxNumCores"
+                                :value="numCores"
+                                @input="(e: any) => numCores = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
+                                required
+                            ></x-input>
+                            <p class="text-neutral-100">Cores</p>
+                        </div>
                     </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-input
-                            class="max-w-16 text-right text-[1.1rem]"
-                            min="2"
-                            :max="maxNumCores"
-                            :value="numCores"
-                            @input="(e: any) => numCores = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
-                            required
-                        ></x-input>
-                        <p class="text-neutral-100">Cores</p>
-                    </div>
+                    <p v-if="cpuWarning" class="text-yellow-400 text-xs mt-2 mb-0">
+                        {{ cpuWarning }}
+                    </p>
                 </x-card>
 
                 <!-- Shared Home Folder -->
@@ -636,6 +646,23 @@ function updateApplicationScale(value: string | number) {
     wbConfig.config.scaleDesktop = clamped;
     origApplicationScale.value = clamped;
 }
+
+// Computed properties for resource warnings
+const ramWarning = computed(() => {
+    const percentage = (ramGB.value / maxRamGB.value) * 100;
+    if (percentage > 40) {
+        return `⚠️ Using ${percentage.toFixed(0)}% of total RAM - high allocation may impact host performance`;
+    }
+    return null;
+});
+
+const cpuWarning = computed(() => {
+    const percentage = (numCores.value / maxNumCores.value) * 100;
+    if (percentage > 50) {
+        return `⚠️ Using ${percentage.toFixed(0)}% of total CPU cores - high allocation may impact host performance`;
+    }
+    return null;
+});
 
 /**
  * Assigns the initial values from the Docker Compose file to the reactive refs
