@@ -4,23 +4,26 @@ import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
 
-export type RdpArg ={
-    original?: string
-    newArg: string
-    isReplacement:boolean
-}
+export type RdpArg = {
+    original?: string;
+    newArg: string;
+    isReplacement: boolean;
+};
 
 export type WinboatConfigObj = {
     scale: number;
-    scaleDesktop: number,
-    smartcardEnabled: boolean
-    rdpMonitoringEnabled: boolean
+    scaleDesktop: number;
+    smartcardEnabled: boolean;
+    rdpMonitoringEnabled: boolean;
     passedThroughDevices: PTSerializableDeviceInfo[];
-    customApps: WinApp[]
-    experimentalFeatures: boolean
-    advancedFeatures: boolean
-    multiMonitor: number
-    rdpArgs: RdpArg[]
+    customApps: WinApp[];
+    experimentalFeatures: boolean;
+    advancedFeatures: boolean;
+    multiMonitor: number;
+    snapshotMaxCount: number;
+    snapshotCompression: boolean;
+    snapshotPath: string;
+    rdpArgs: RdpArg[];
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -33,10 +36,13 @@ const defaultConfig: WinboatConfigObj = {
     experimentalFeatures: false,
     advancedFeatures: false,
     multiMonitor: 0,
-    rdpArgs:[]
+    snapshotMaxCount: 3,
+    snapshotCompression: true,
+    snapshotPath: path.join(WINBOAT_DIR, "snapshots"),
+    rdpArgs: [],
 };
 
-export class WinboatConfig { 
+export class WinboatConfig {
     private static instance: WinboatConfig;
     #configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     #configData: WinboatConfigObj = { ...defaultConfig };
