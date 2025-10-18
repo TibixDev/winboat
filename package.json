@@ -10,7 +10,8 @@
     "scripts": {
         "dev": "node scripts/dev-server.ts",
         "build-guest-server": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.ts && electron-builder --linux"
+        "build-rdp-exec": "bash build-rdp-exec.sh",
+        "build:linux-gs": "bash build-guest-server.sh && bash build-rdp-exec.sh && node scripts/build.ts && electron-builder --linux"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
