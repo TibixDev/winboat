@@ -22,43 +22,41 @@ type SchemaType = {
     }
 };
 
-const windowStore = new Store<SchemaType>({
-    schema: {
-        dimensions: {
-            type: 'object',
-            properties: {
-                width: {
-                    type: 'number',
-                    minimum: WINDOW_MIN_WIDTH,
-                    default: WINDOW_MIN_WIDTH
-                },
-                height: {
-                    type: 'number',
-                    minimum: WINDOW_MIN_HEIGHT,
-                    default: WINDOW_MIN_HEIGHT
-                },
+const windowStore = new Store<SchemaType>({ schema: {
+    dimensions: {
+        type: 'object',
+        properties: {
+            width: {
+                type: 'number',
+                minimum: WINDOW_MIN_WIDTH,
+                default: WINDOW_MIN_WIDTH
             },
-            required: ['width', 'height']
+            height: {
+                type: 'number',
+                minimum: WINDOW_MIN_HEIGHT,
+                default: WINDOW_MIN_HEIGHT
+            },
         },
-        position: {
-            type: 'object',
-            properties: {
-                x: {
-                    type: 'number'
-                },
-                y: {
-                    type: 'number'
-                }
+        required: ['width', 'height']
+    },
+    position: {
+        type: 'object',
+        properties: {
+            x: {
+                type: 'number'
             },
-            required: ['x', 'y']
-        }
+            y: {
+                type: 'number'
+            }
+        },
+        required: ['x', 'y']
     }
-});
+}});
 
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
-    if (!app.requestSingleInstanceLock()) {
+    if(!app.requestSingleInstanceLock()) {
         // @ts-ignore property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
         dialog.showMessageBoxSync(null, {
             type: "error",
@@ -145,13 +143,12 @@ app.on('window-all-closed', () => {
     // Do nothing — app stays alive in tray
 });
 
-
 app.on("second-instance", _ => {
-    if (mainWindow) {
+    if(mainWindow) {
         mainWindow.focus();
     }
 })
 
-ipcMain.on('message', (message) => {
+ipcMain.on('message', (event, message) => {
     console.log(message);
 })
