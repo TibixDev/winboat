@@ -76,7 +76,7 @@ async function exitApp() {
     }
 
     const status = getContainerStatus();
-    if (status === 'running' || status === 'paused' || output === 'restarting') {
+    if (status === 'running' || status === 'paused' || status === 'restarting') {
         new Notification({
             title: 'WinBoat',
             body: `WinBoat is ${status}. Shutting it down now...`,
