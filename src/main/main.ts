@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import { join } from 'path';
+import { createTray } from './tray.js';
 import { initialize, enable } from '@electron/remote/main/index.js';
 import Store from 'electron-store';
 
@@ -82,7 +83,9 @@ function createWindow() {
         }
     });
 
-    mainWindow.on('close', () => {
+    mainWindow.on('close', (e) => {
+        e.preventDefault();
+        mainWindow?.hide();
         const bounds = mainWindow?.getBounds();
 
         windowStore.set('dimensions', {
@@ -97,6 +100,7 @@ function createWindow() {
     });
 
     enable(mainWindow.webContents);
+    createTray(mainWindow);
 
     if (process.env.NODE_ENV === 'development') {
         const rendererPort = process.argv[2];
@@ -135,8 +139,8 @@ app.whenReady().then(() => {
     });
 });
 
-app.on('window-all-closed', function () {
-    if (process.platform !== 'darwin') app.quit()
+app.on('window-all-closed', () => {
+    // Do nothing — app stays alive in tray
 });
 
 app.on("second-instance", _ => {
