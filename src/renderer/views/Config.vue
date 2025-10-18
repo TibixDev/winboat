@@ -67,7 +67,7 @@
                             </h1>
                         </div>
                         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, you will be able to access your Linux home folder within Windows under 
+                            If enabled, you will be able to access your Linux home folder within Windows under
                             <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
                         </p>
                     </div>
@@ -158,7 +158,7 @@
                             </h1>
                         </div>
                         <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
-                            <x-card 
+                            <x-card
                                 class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
                             >
                                 <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
@@ -166,7 +166,7 @@
                                     We need to update your Docker Compose in order to use this feature!
                                 </h1>
 
-                                <x-button 
+                                <x-button
                                     :disabled="isUpdatingUSBPrerequisites"
                                     class="mt-1 !bg-gradient-to-tl from-yellow-200/20 to-transparent ml-auto hover:from-yellow-300/30 transition !border-0"
                                     @click="addRequiredComposeFieldsUSB"
@@ -183,28 +183,28 @@
                             </x-card>
                         </template>
                         <template v-else>
-                            <x-label 
-                                class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0" 
+                            <x-label
+                                class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
                                 v-if="usbManager.ptDevices.value.length == 0"
                             >
                                 Press the button below to add USB devices to your passthrough list
                             </x-label>
                             <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
-                                <x-card 
+                                <x-card
                                     class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
-                                    v-for="device of usbManager.ptDevices.value" 
+                                    v-for="device of usbManager.ptDevices.value"
                                     :key="`${device.vendorId}-${device.productId}`"
                                     :class="{ 'bg-white/[calc(0.05*0.75)] [&_*:not(div):not(span)]:opacity-75': !usbManager.isPTDeviceConnected(device) }"
                                 >
-                                    <div class="flex flex-row gap-2 items-center"> 
+                                    <div class="flex flex-row gap-2 items-center">
                                         <span v-if="usbManager.isMTPDevice(device) || usbManager.stringifyPTSerializableDevice(device).toLowerCase().includes('mtp')" class="relative group">
                                             <Icon icon="clarity:warning-solid" class="text-yellow-300 size-7 cursor-pointer" />
                                             <span
                                                 class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
-                                                hidden group-hover:block transition-opacity duration-200 pointer-events-none" 
+                                                hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                             >
                                                 This device appears to be using the MTP protocol, which is known for being problematic.
-                                                Some Desktop Environments automatically mount MTP devices, which in turn causes WinBoat to not be able 
+                                                Some Desktop Environments automatically mount MTP devices, which in turn causes WinBoat to not be able
                                                 to pass the device through.
                                             </span>
                                         </span>
@@ -213,7 +213,7 @@
                                             <Icon icon="ix:connection-fail" class="text-red-500 size-7 cursor-pointer" />
                                             <span
                                                 class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2
-                                                hidden group-hover:block transition-opacity duration-200 pointer-events-none" 
+                                                hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                             >
                                                 This device is currently not connected.
                                             </span>
@@ -228,7 +228,7 @@
                                     </x-button>
                                 </x-card>
                             </TransitionGroup>
-                            <x-button 
+                            <x-button
                                 v-if="availableDevices.length > 0"
                                 class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
                                 :class="{ 'mt-4': usbManager.ptDevices.value.length }"
@@ -237,8 +237,8 @@
                                 <x-icon href="#add"></x-icon>
                                 <x-label>Add Device</x-label>
                                 <TransitionGroup ref="usbMenu" name="menu" tag="x-menu" class="max-h-52">
-                                    <x-menuitem 
-                                        v-for="device, k of availableDevices as Device[]" 
+                                    <x-menuitem
+                                        v-for="device, k of availableDevices as Device[]"
                                         :key="device.portNumbers.join(',')"
                                         @click="addDevice(device)"
                                     >
@@ -470,6 +470,151 @@
         </div>
 
         <div>
+            <x-label class="mb-4 text-neutral-300">Snapshot Settings</x-label>
+            <div class="flex flex-col gap-4">
+
+                <!-- Snapshot Path -->
+                <!-- Snapshot Path Configuration Card -->
+                <x-card class="flex flex-row items-center justify-between gap-4 p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div class="flex-1">
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:folder"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">Snapshot Storage Path</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Directory where VM snapshots are stored
+                        </p>
+                        <p class="text-neutral-300 text-sm mt-2">
+                            Current: <code class="bg-neutral-700/50 px-2 py-1 rounded">{{ wbConfig.config.snapshotPath || '~/.winboat/snapshots' }}</code>
+                        </p>
+                    </div>
+                    <x-button
+                        @click="showSnapshotPathDialog = true"
+                        class="!bg-gradient-to-tl from-blue-400/20 to-transparent hover:from-blue-400/30 transition"
+                    >
+                        Change
+                    </x-button>
+                </x-card>
+
+                <!-- Snapshot Path Change Dialog (inline, not modal) -->
+                <x-card
+                    v-if="showSnapshotPathDialog"
+                    class="flex flex-col gap-4 p-4 my-4 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-900/40 border-2 border-violet-500/30"
+                >
+                    <div class="flex flex-row items-center justify-between">
+                        <h2 class="text-lg font-semibold text-violet-300">Change Snapshot Storage Path</h2>
+                        <x-button
+                            @click="cancelSnapshotPathChange"
+                            class="!bg-transparent !border-0 hover:bg-red-500/20"
+                        >
+                            <Icon icon="mdi:close" class="size-6" />
+                        </x-button>
+                    </div>
+
+                    <!-- Current Path Display -->
+                    <div>
+                        <x-label class="text-sm text-neutral-400 mb-1">Current Path</x-label>
+                        <code class="block bg-neutral-800/50 px-3 py-2 rounded text-neutral-200">
+                            {{ wbConfig.config.snapshotPath || '~/.winboat/snapshots' }}
+                        </code>
+                    </div>
+
+                    <!-- New Path Input -->
+                    <div>
+                        <x-label class="text-sm text-neutral-400 mb-1">New Path</x-label>
+                        <x-input
+                            v-model="newSnapshotPath"
+                            type="text"
+                            placeholder="/absolute/path/to/snapshots"
+                            class="w-full"
+                            :class="{ 'border-red-500 border-2': snapshotPathError }"
+                        />
+
+                        <!-- Inline Error Messages -->
+                        <div v-if="snapshotPathError" class="mt-2 flex flex-col gap-1">
+                            <p class="text-red-400 text-sm flex items-center gap-2">
+                                <Icon icon="mdi:alert-circle" class="size-5" />
+                                {{ snapshotPathError }}
+                            </p>
+                        </div>
+
+                        <!-- Warning about existing snapshots -->
+                        <div v-if="existingSnapshotsWarning" class="mt-2">
+                            <p class="text-yellow-400 text-sm flex items-start gap-2">
+                                <Icon icon="mdi:alert" class="size-5 mt-0.5" />
+                                <span>{{ existingSnapshotsWarning }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-row gap-2 justify-end">
+                        <x-button
+                            @click="cancelSnapshotPathChange"
+                            class="!bg-neutral-700/50 hover:!bg-neutral-700/70"
+                        >
+                            Cancel
+                        </x-button>
+                        <x-button
+                            @click="saveSnapshotPath"
+                            :disabled="!isValidSnapshotPath || isSavingSnapshotPath"
+                            class="!bg-gradient-to-tl from-violet-500/30 to-transparent hover:from-violet-500/40"
+                        >
+                            <span v-if="!isSavingSnapshotPath">Save</span>
+                            <x-throbber v-else class="w-6" />
+                        </x-button>
+                    </div>
+                </x-card>
+
+                <!-- Snapshot limit -->
+                <x-card class="flex flex-row items-center justify-between gap-4 p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:camera"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                Snapshot Limit
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Maximum number of snapshots to keep (oldest will be automatically deleted)
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-input
+                            v-model.number="wbConfig.config.snapshotMaxCount"
+                            type="number"
+                            min="1"
+                            max="20"
+                            class="max-w-16 text-right text-[1.1rem]"
+                        />
+                    </div>
+                </x-card>
+
+                <!-- Snapshot compression -->
+                <x-card class="flex flex-row items-center justify-between gap-4 p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:zip-box"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                Compress Snapshots
+                            </h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, snapshots will be compressed to save disk space
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-switch
+                            :toggled="wbConfig.config.snapshotCompression"
+                            @toggle="() => wbConfig.config.snapshotCompression = !wbConfig.config.snapshotCompression"
+                            size="large"
+                        />
+                    </div>
+                </x-card>
+            </div>
+        </div>
+
+        <div>
             <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
 
             <!-- Experimental Features -->
@@ -561,6 +706,7 @@ import {
     DEFAULT_HOST_QMP_PORT
 } from '../lib/constants';
 import { PortManager } from '../utils/port';
+import { SnapshotManager } from '../lib/snapshot';
 const { app }: typeof import('@electron/remote') = require('@electron/remote');
 
 // Emits
@@ -580,7 +726,7 @@ const compose = ref<ComposeConfig | null>(null);
 const numCores = ref(0);
 const origNumCores = ref(0);
 const maxNumCores = ref(0);
-const ramGB = ref(0); 
+const ramGB = ref(0);
 const origRamGB = ref(0);
 const maxRamGB = ref(0);
 const origShareHomeFolder = ref(false);
@@ -601,7 +747,7 @@ const availableDevices = ref<Device[]>([]);
 const rerenderExperimental = ref(0);
 // For RDP Args
 const rerenderAdvanced = ref(0);
-// ^ This ref is needed because reactivity fails on wbConfig. 
+// ^ This ref is needed because reactivity fails on wbConfig.
 //   We manually increment this value in toggleExperimentalFeatures() to force rerender.
 
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
@@ -611,6 +757,13 @@ let qmpPortManager = ref<PortManager | null>(null);
 
 // For General
 const wbConfig = new WinboatConfig();
+
+// For Snapshots
+const showSnapshotPathDialog = ref(false);
+const newSnapshotPath = ref('');
+const snapshotPathError = ref('');
+const existingSnapshotsWarning = ref('');
+const isSavingSnapshotPath = ref(false);
 
 onMounted(async () => {
     await assignValues();
@@ -624,7 +777,7 @@ function ensureNumericInput(e: any) {
     if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
         return;
     }
-    
+
     if (!/[0-9]/.test(e.key)) {
         e.preventDefault();
     }
@@ -713,7 +866,7 @@ async function addRequiredComposeFieldsUSB() {
     if (!usbPassthroughDisabled.value) {
         return;
     }
-    
+
     isUpdatingUSBPrerequisites.value = true;
     await winboat.stopContainer();
 
@@ -738,7 +891,7 @@ async function addRequiredComposeFieldsUSB() {
         const delimeter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? '' : ',';
         compose.value!.services.windows.environment.HOST_PORTS += delimeter + GUEST_QMP_PORT;
     }
-    
+
     await saveDockerCompose();
 
     isUpdatingUSBPrerequisites.value = false;
@@ -780,18 +933,18 @@ const usbPassthroughDisabled = computed(() => {
 })
 
 const saveButtonDisabled = computed(() => {
-    const hasResourceChanges = 
-        origNumCores.value !== numCores.value || 
-        origRamGB.value !== ramGB.value || 
-        shareHomeFolder.value !== origShareHomeFolder.value || 
+    const hasResourceChanges =
+        origNumCores.value !== numCores.value ||
+        origRamGB.value !== ramGB.value ||
+        shareHomeFolder.value !== origShareHomeFolder.value ||
         freerdpPort.value !== origFreerdpPort.value ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
-    const shouldBeDisabled = 
-        errors.value?.length || 
-        !hasResourceChanges || 
+    const shouldBeDisabled =
+        errors.value?.length ||
+        !hasResourceChanges ||
         isApplyingChanges.value;
-        
+
     return shouldBeDisabled;
 })
 
@@ -858,13 +1011,143 @@ async function toggleAdvancedFeatures() {
     rerenderAdvanced.value++;
 }
 
+
+// For Snapshot Path Dialog
+
+const isValidSnapshotPath = computed(() => {
+    if (!newSnapshotPath.value) return false;
+
+    const path: typeof import('path') = require('path');
+    const fs: typeof import('fs') = require('fs');
+
+    // Clear previous error
+    snapshotPathError.value = '';
+    existingSnapshotsWarning.value = '';
+
+    // Check if path is absolute
+    if (!path.isAbsolute(newSnapshotPath.value)) {
+        snapshotPathError.value = 'Path must be absolute (e.g., /home/user/snapshots)';
+        return false;
+    }
+
+    // Check if path exists or parent directory is writable
+    try {
+        if (fs.existsSync(newSnapshotPath.value)) {
+            // Path exists, check if it's writable
+            fs.accessSync(newSnapshotPath.value, fs.constants.W_OK);
+        } else {
+            // Path doesn't exist, check if parent directory is writable
+            const parentPath = path.dirname(newSnapshotPath.value);
+            if (!fs.existsSync(parentPath)) {
+                snapshotPathError.value = `Parent directory does not exist: ${parentPath}`;
+                return false;
+            }
+            fs.accessSync(parentPath, fs.constants.W_OK);
+        }
+    } catch (error) {
+        snapshotPathError.value = `Path is not writable: ${(error as Error).message}`;
+        return false;
+    }
+
+    // Check for existing snapshots in old location
+    const oldPath = wbConfig.config.snapshotPath || path.join(WINBOAT_DIR, 'snapshots');
+    if (fs.existsSync(oldPath)) {
+        try {
+            const files = fs.readdirSync(oldPath);
+            const snapshotCount = files.filter(f => !f.startsWith('backup-')).length;
+            if (snapshotCount > 0) {
+                existingSnapshotsWarning.value = `${snapshotCount} existing snapshot(s) found in old location. They will not be automatically migrated.`;
+            }
+        } catch (e) {
+            console.warn('Could not check for existing snapshots:', e);
+        }
+    }
+
+    return true;
+});
+
+function openSnapshotPathDialog() {
+    const fs: typeof import('fs') = require('fs');
+    const path: typeof import('path') = require('path');
+
+    // Reset form
+    newSnapshotPath.value = wbConfig.config.snapshotPath;
+
+    // Check for existing snapshots
+    const currentSnapshotsDir = path.join(wbConfig.config.snapshotPath, 'snapshots');
+    existingSnapshotsCount.value = 0;
+
+    if (fs.existsSync(currentSnapshotsDir)) {
+        try {
+            existingSnapshotsCount.value = fs.readdirSync(currentSnapshotsDir)
+                .filter((entry: string) => !entry.startsWith('backup-')).length;
+        } catch (error) {
+            console.error('Failed to count existing snapshots:', error);
+        }
+    }
+}
+
+function cancelSnapshotPathChange() {
+    showSnapshotPathDialog.value = false;
+    newSnapshotPath.value = '';
+    snapshotPathError.value = '';
+    existingSnapshotsWarning.value = '';
+}
+
+async function saveSnapshotPath() {
+    if (!isValidSnapshotPath.value) return;
+
+    isSavingSnapshotPath.value = true;
+
+    try {
+        const path: typeof import('path') = require('path');
+        const fs: typeof import('fs') = require('fs');
+
+        // 1. Validate and create directory
+        if (!fs.existsSync(newSnapshotPath.value)) {
+            fs.mkdirSync(newSnapshotPath.value, { recursive: true });
+        }
+
+        // 2. Verify it's writable
+        fs.accessSync(newSnapshotPath.value, fs.constants.W_OK);
+
+        // 3. Try to load SnapshotManager module
+        winboat.snapshotMgr = new SnapshotManager();
+
+        // 4. Save to config (this triggers immediate disk write)
+        wbConfig.config.snapshotPath = newSnapshotPath.value;
+
+        // 5. Recreate SnapshotManager instance
+        winboat.snapshotMgr = new SnapshotManager();
+
+        console.log(`SnapshotManager recreated with new path: ${newSnapshotPath.value}`);
+
+        // Close dialog
+        showSnapshotPathDialog.value = false;
+        newSnapshotPath.value = '';
+        snapshotPathError.value = '';
+        existingSnapshotsWarning.value = '';
+
+    } catch (error) {
+        console.error('Failed to save snapshot path:', error);
+        snapshotPathError.value = `Failed to save: ${(error as Error).message}`;
+    } finally {
+        isSavingSnapshotPath.value = false;
+    }
+}
+
+function isAbsolutePath(p: string): boolean {
+    const path: typeof import('path') = require('path');
+    return path.isAbsolute(p);
+}
+
 </script>
 
 <style scoped>
-.devices-move, 
+.devices-move,
 .devices-enter-active,
 .devices-leave-active,
-.menu-move, 
+.menu-move,
 .menu-enter-active,
 .menu-leave-active {
   transition: all 0.5s ease;
