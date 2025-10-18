@@ -4,7 +4,7 @@ This document outlines the general contribution guidelines that apply to WinBoat
 > [!TIP]
 > If you're new to open source, the [Open Source Etiquette](https://developer.mozilla.org/en-US/docs/MDN/Community/Open_source_etiquette) is an excellent read that you should check out before reading the rest of this document.
 
-> [!CAUTION]
+> [!IMPORTANT]
 > Basic familiarity with Git and GitHub is required: If you are also new to these tools, visit [GitHub for complete beginners](https://github.com/git-guides#learning-git-basics) for a comprehensive introduction to them.
 
 ## General 
