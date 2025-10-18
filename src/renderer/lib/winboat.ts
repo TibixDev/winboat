@@ -20,6 +20,7 @@ import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ComposePortEntry, PortManager } from "../utils/port";
+import { SnapshotManager } from "./snapshot";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("fs");
@@ -241,6 +242,7 @@ export class Winboat {
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
     portMgr: Ref<PortManager | null> = ref(null);
+    snapshotMgr: SnapshotManager | null = null;
 
     constructor() {
         if (Winboat.instance) {
@@ -265,11 +267,41 @@ export class Winboat {
 
         this.#wbConfig = new WinboatConfig();
 
+        this.snapshotMgr = new SnapshotManager();
+
         this.appMgr = new AppManager();
 
         Winboat.instance = this;
 
         return Winboat.instance;
+    }
+
+    // Helper method to get storage folder
+    getStorageInfo(): { type: "volume" | "bind"; path: string } {
+        const compose = this.parseCompose();
+        const storageVol = compose.services.windows.volumes.find((v) => v.includes("/storage"));
+
+        if (!storageVol) {
+            throw new Error("Storage volume not found in compose file");
+        }
+
+        // Check if it's a named volume (eg. "data:/storage")
+        if (storageVol.startsWith("data:")) {
+            return { type: "volume", path: "winboat_data" };
+        }
+
+        // Bind mount otherwise (es. "/path/to/folder:/storage")
+        return { type: "bind", path: storageVol.split(":")[0] };
+    }
+
+    /**
+     * Recreates the SnapshotManager instance with updated configuration.
+     * Call this when the snapshot path changes.
+     */
+    recreateSnapshotManager(): void {
+        logger.info("Recreating SnapshotManager with updated configuration...");
+        this.snapshotMgr = new SnapshotManager();
+        logger.info("SnapshotManager recreated successfully");
     }
 
     /**

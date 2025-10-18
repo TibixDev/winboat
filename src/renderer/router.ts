@@ -7,6 +7,7 @@ import Apps from "./views/Apps.vue";
 import About from "./views/About.vue";
 import Blank from "./views/Blank.vue";
 import Config from "./views/Config.vue";
+import Snapshots from "./views/Snapshots.vue";
 
 export const routes: RouteRecordRaw[] = [
     { path: "/", name: "Loading", component: Blank, meta: { icon: "line-md:loading-loop" } },
@@ -14,6 +15,7 @@ export const routes: RouteRecordRaw[] = [
     { path: "/setup", name: "SetupUI", component: SetupUI, meta: { icon: "fluent-mdl2:install-to-drive" } },
     { path: "/apps", name: "Apps", component: Apps, meta: { icon: "fluent:apps-32-filled" } },
     { path: "/configuration", name: "Configuration", component: Config, meta: { icon: "icon-park-outline:config" } },
+    { path: "/snapshots", name: "Snapshots", component: Snapshots, meta: { icon: "mdi:camera" } },
     { path: "/about", name: "About", component: About, meta: { icon: "fluent:info-32-filled" } },
 ];
 
