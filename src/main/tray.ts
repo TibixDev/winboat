@@ -11,11 +11,12 @@ const BASE_ICON_PATH = join(process.resourcesPath, 'icons', 'icon.png');
 const ICON_SIZE = 64;
 const REFRESH_INTERVAL = 1000;
 
-type Status = 'running' | 'paused' | 'stopped';
+type Status = 'running' | 'paused' | 'stopped' | 'restarting';
 const STATUS_COLORS: Record<Status, string> = {
     running: '#00FF00',
     paused: '#FFFF00',
     stopped: '#FF0000',
+    restarting: '#FFFFFF',
 };
 
 // Docker Helpers
@@ -39,7 +40,7 @@ function getContainerStatus(): Status {
             { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
         ).trim();
 
-        if (output === 'running' || output === 'paused') return output as Status;
+        if (output === 'running' || output === 'paused' || output === 'restarting') return output as Status;
         return 'stopped';
     } catch {
         return 'stopped';
@@ -75,7 +76,7 @@ async function exitApp() {
     }
 
     const status = getContainerStatus();
-    if (status === 'running' || status === 'paused') {
+    if (status === 'running' || status === 'paused' || output === 'restarting') {
         new Notification({
             title: 'WinBoat',
             body: `WinBoat is ${status}. Shutting it down now...`,
