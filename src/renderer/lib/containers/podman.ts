@@ -1,10 +1,11 @@
 import { ComposeConfig } from "../../../types";
 import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
 import { WINBOAT_DIR } from "../constants";
-import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus } from "./container";
+import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus, ContainerAction } from "./container";
 import YAML from 'yaml';
 import { stringify } from "json-to-pretty-yaml";
-const { execSync }: typeof import('child_process') = require('child_process');
+import { capitalizeFirstLetter } from "../../utils/capitalize";
+const { execSync }: typeof import('child_process') = require('child_process'); // TODO: migrate to execAsync
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const path: typeof import('path') = require('path');
@@ -15,6 +16,7 @@ const execAsync = promisify(exec);
 export type PodmanSpecs = {
     podmanInstalled: boolean;
     podmanComposeInstalled: boolean;
+
 }
 
 export enum PodmanAPIStatus {
@@ -45,7 +47,6 @@ export class PodmanContainer extends ContainerManager {
     defaultCompose = PODMAN_DEFAULT_COMPOSE;
     composeFilePath = path.join(WINBOAT_DIR, "podman-compose.yml");
     executableAlias = "podman";
-    cachedPodmanInfo: PodmanInfo | null = null;
 
     constructor() {
         super();
@@ -75,15 +76,16 @@ export class PodmanContainer extends ContainerManager {
         }
     }
 
-    get info(): PodmanInfo {
-        const command = `${this.executableAlias} info`;
-
+    async container(action: ContainerAction): Promise<void> {
+        const command = `${this.executableAlias} container ${action} ${this.defaultCompose.services.windows.container_name}`;
+        
         try {
-            const podmanInfo = execSync(command).toString();
-            this.cachedPodmanInfo = YAML.parse(podmanInfo);
-            return this.cachedPodmanInfo!;
-        } catch(e) {
-            containerLogger.error(`Failed to get podman info ${e}`);
+            const { stdout } = await execAsync(command);
+            containerLogger.info(`Container action '${action}' response: '${stdout}'`);
+        }
+        catch(e) {
+            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(e);
             throw e;
         }
     }
@@ -94,9 +96,10 @@ export class PodmanContainer extends ContainerManager {
             "exited": ContainerStatus.EXITED,
             "paused": ContainerStatus.PAUSED,
             "running": ContainerStatus.RUNNING,
+            "stopping": ContainerStatus.EXITED, // TODO: investigate this status value
             "unknown": ContainerStatus.UKNOWN
         } as const;
-        const command = `${this.executableAlias} inspect --format "{{.State.Status}} ${this.defaultCompose.services.windows.container_name}"`;
+        const command = `${this.executableAlias} inspect --format "{{.State.Status}}" ${this.defaultCompose.services.windows.container_name}`;
 
         try {
             const status = execSync(command).toString().trim() as keyof typeof statusMap;
@@ -104,6 +107,19 @@ export class PodmanContainer extends ContainerManager {
         } catch(e) {
             containerLogger.error(`Failed to get status of podman container ${e}:'`);
             return ContainerStatus.UKNOWN;
+        }
+    }
+
+    get exists(): boolean {
+        const command = `${this.executableAlias} ps -a --filter "name=${this.defaultCompose.services.windows.container_name}" --format "{{.Names}}"`
+
+        try {
+            const exists = execSync(command).toString();
+            return exists.includes('WinBoat');
+        } catch(e) {
+            containerLogger.error(`Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`);
+            containerLogger.error(e);
+            return false;
         }
     }
 

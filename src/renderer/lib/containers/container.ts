@@ -6,6 +6,7 @@ const path: typeof import('path') = require('path');
 export const containerLogger = createLogger(path.join(WINBOAT_DIR, 'container.log'));
 
 export type ComposeDirection = "up" | "down";
+export type ContainerAction = "start" | "stop" | "pause" | "unpause";
 
 export abstract class ContainerManager {
     abstract readonly defaultCompose: ComposeConfig;
@@ -14,7 +15,9 @@ export abstract class ContainerManager {
 
     abstract writeCompose(compose: ComposeConfig): void;
     abstract compose(direction: ComposeDirection): Promise<void>;
+    abstract container(action: ContainerAction): Promise<void>;
     abstract get status(): ContainerStatus;
+    abstract get exists(): boolean;
 
     // static "abstract" function
     static _getSpecs(): any {

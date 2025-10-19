@@ -233,7 +233,6 @@ export class Winboat {
             }
         }, 1000);
 
-
         this.appMgr = new AppManager();
 
         Winboat.instance = this;
@@ -403,7 +402,7 @@ export class Winboat {
     }
 
     parseCompose() {
-        const composeFile = fs.readFileSync(path.join(WINBOAT_DIR, 'docker-compose.yml'), 'utf-8');
+        const composeFile = fs.readFileSync(this.containerMgr!.composeFilePath, 'utf-8');
         const composeContents = YAML.parse(composeFile) as ComposeConfig;
         return composeContents;
     }
@@ -475,8 +474,7 @@ export class Winboat {
                 await this.replaceCompose(compose);
             }
 
-            const { stdout } = await execAsync("docker container start WinBoat");
-            logger.info(`Container response: ${stdout}`);
+            await this.containerMgr!.container("start");
         } catch(e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
@@ -489,14 +487,7 @@ export class Winboat {
     async stopContainer() {
         logger.info("Stopping WinBoat container...");
         this.containerActionLoading.value = true;
-        try {
-            const { stdout } = await execAsync("docker container stop WinBoat");
-            logger.info(`Container response: ${stdout}`);
-        } catch(e) {
-            logger.error("There was an error performing the container action.");
-            logger.error(e);
-            throw e;
-        }
+        await this.containerMgr!.container("stop");
         logger.info("Successfully stopped WinBoat container");
         this.containerActionLoading.value = false;
     }
@@ -504,17 +495,7 @@ export class Winboat {
     async pauseContainer() {
         logger.info("Pausing WinBoat container...");
         this.containerActionLoading.value = true;
-        try {
-            const { stdout } = await execAsync("docker container pause WinBoat");
-            logger.info(`Container response: ${stdout}`);
-            // TODO: The heartbeat check should set this, but it doesn't because normal fetch timeout doesn't exist
-            // Fix it once you change fetch to something else
-            this.isOnline.value = false;
-        } catch(e) {
-            logger.error("There was an error performing the container action.");
-            logger.error(e);
-            throw e;
-        }
+        await this.containerMgr!.container("pause");
         logger.info("Successfully paused WinBoat container");
         this.containerActionLoading.value = false;
     }
@@ -522,14 +503,7 @@ export class Winboat {
     async unpauseContainer() {
         logger.info("Unpausing WinBoat container...");
         this.containerActionLoading.value = true;
-        try {
-            const { stdout } = await execAsync("docker container unpause WinBoat");
-            logger.info(`Container response: ${stdout}`);
-        } catch(e) {
-            logger.error("There was an error performing the container action.");
-            logger.error(e);
-            throw e;
-        }
+        await this.containerMgr!.container("unpause");
         logger.info("Successfully unpaused WinBoat container");
         this.containerActionLoading.value = false;
     }
@@ -538,7 +512,7 @@ export class Winboat {
         logger.info("Going to replace compose config");
         this.containerActionLoading.value = true;
 
-        const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
+        const composeFilePath = this.containerMgr!.composeFilePath;
 
         // 0. Stop the current container if it's online
         if (this.containerStatus.value === ContainerStatus.RUNNING) {
@@ -546,7 +520,7 @@ export class Winboat {
         }
 
         // 1. Compose down the current container
-        await execAsync(`docker compose -f ${composeFilePath} down`);
+        await this.containerMgr!.compose("down");
 
         // 2. Create a backup directory if it doesn't exist
         const backupDir = path.join(WINBOAT_DIR, 'backup');
@@ -556,7 +530,7 @@ export class Winboat {
         }
 
         // 3. Move the current compose file to backup
-        const backupFile = `${Date.now()}-docker-compose.yml`;
+        const backupFile = `${Date.now()}-${path.basename(this.containerMgr!.composeFilePath)}`;
         fs.renameSync(composeFilePath, path.join(backupDir, backupFile));
         logger.info(`Backed up current compose at: ${path.join(backupDir, backupFile)}`);
 
@@ -566,7 +540,7 @@ export class Winboat {
         logger.info(`Wrote new compose file to: ${composeFilePath}`);
 
         // 5. Deploy the container with the new compose file
-        await execAsync(`docker compose -f ${composeFilePath} up -d`);
+        await this.containerMgr!.compose("up");
 
         logger.info("Replace compose config completed, successfully deployed new container");
 

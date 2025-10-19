@@ -29,14 +29,23 @@ const defaultConfig: WinboatConfigObj = {
     containerRuntime: ContainerRuntimes.DOCKER // TODO: Ideally should be podman once we flesh out everything
 };
 
+type WinboatConfigOptions = {
+    instantiateAsSingleton?: boolean
+};
+
 export class WinboatConfig { 
     private static instance: WinboatConfig;
+    private defaultOptions:WinboatConfigOptions = {
+        instantiateAsSingleton: true
+    };
+
     #configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     #configData: WinboatConfigObj = { ...defaultConfig };
 
-    constructor() {
+    constructor(options: WinboatConfigOptions = this.defaultOptions) {
+        if(!options.instantiateAsSingleton) return;
         if (WinboatConfig.instance) return WinboatConfig.instance;
-        this.#configData = this.readConfig();
+        this.#configData = this.readConfig()!;
         console.log("Reading current config", this.#configData);
         WinboatConfig.instance = this;
     }
@@ -66,8 +75,9 @@ export class WinboatConfig {
         fs.writeFileSync(this.#configPath, JSON.stringify(this.#configData, null, 4), "utf-8");
     }
 
-    readConfig(): WinboatConfigObj {
+    readConfig(writeDefault = true): WinboatConfigObj | null{
         if (!fs.existsSync(this.#configPath)) {
+            if(!writeDefault) return null;
             // Also the create the directory because we're not guaranteed to have it
             if (!fs.existsSync(WINBOAT_DIR)) {
                 fs.mkdirSync(WINBOAT_DIR);

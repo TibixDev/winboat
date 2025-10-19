@@ -1,9 +1,10 @@
 import { ComposeConfig } from "../../../types";
 import { DOCKER_DEFAULT_COMPOSE } from "../../data/docker";
+import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { WINBOAT_DIR } from "../constants";
-import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus } from "./container";
+import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from "json-to-pretty-yaml";
-const { execSync }: typeof import('child_process') = require('child_process');
+const { execSync }: typeof import('child_process') = require('child_process'); // TODO: migrate to execAsync
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const path: typeof import('path') = require('path');
@@ -52,6 +53,20 @@ export class DockerContainer extends ContainerManager {
         }
     }
 
+    async container(action: ContainerAction): Promise<void> {
+        const command = `${this.executableAlias} container ${action} ${this.defaultCompose.services.windows.container_name}`;
+        
+        try {
+            const { stdout } = await execAsync(command);
+            containerLogger.info(`Container action '${action}' response: '${stdout}'`);
+        }
+        catch(e) {
+            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(e);
+            throw e;
+        }
+    }
+
     get status(): ContainerStatus {
         const statusMap = {
             "created": ContainerStatus.CREATED,
@@ -69,6 +84,19 @@ export class DockerContainer extends ContainerManager {
         } catch(e) {
             containerLogger.error(`Failed to get status of docker container ${e}'`);
             return ContainerStatus.UKNOWN;
+        }
+    }
+
+    get exists(): boolean {
+        const command = `${this.executableAlias} ps -a --filter "name=${this.defaultCompose.services.windows.container_name}" --format "{{.Names}}"`
+
+        try {
+            const exists = execSync(command).toString();
+            return exists.includes('WinBoat');
+        } catch(e) {
+            containerLogger.error(`Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`);
+            containerLogger.error(e);
+            return false;
         }
     }
 

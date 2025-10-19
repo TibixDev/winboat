@@ -6,6 +6,8 @@ import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { PortManager } from "../utils/port";
 import { ContainerManager } from "./containers/container";
+import { WinboatConfig } from "./config";
+import { createContainer } from "./containers/common";
 const fs: typeof import('fs') = require('fs');
 const { exec }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
@@ -281,12 +283,12 @@ export class InstallManager {
 
 export async function isInstalled() {
     // Check if a docker container named WinBoat exists
-    try {
-        const { stdout: res } = await execAsync('docker ps -a --filter "name=WinBoat" --format "{{.Names}}"');
-        return res.includes('WinBoat');
-    } catch(e) {
-        logger.error("Failed to get WinBoat status, is Docker installed?");
-        logger.error(e);
-        return false;
-    }
+    const configInstance = new WinboatConfig({ instantiateAsSingleton: false });
+    const config = configInstance.readConfig()
+
+    if(!config) return false
+
+    const containerRuntime = createContainer(config.containerRuntime);
+
+    return containerRuntime.exists;
 }
