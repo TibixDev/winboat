@@ -11,8 +11,12 @@
 
                 <!-- Status Text -->
                 <div>
-                    <h1 class="text-3xl mt-0 mb-6">{{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ??
-                        '11'] ?? 'Unknown' }}</h1>
+                    <div class="flex flex-row gap-2 items-center justify-center mb-6 *:m-0">
+                        <h1 class="text-3xl">{{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ??
+                        '11'] ?? 'Unknown' }} </h1>
+                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold">{{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}</p >
+                    </div>
+                    
                     <div class="flex flex-row items-center gap-1.5 mb-1"
                         :class="{ 'text-green-500': winboat.isOnline.value, 'text-red-500': !winboat.isOnline.value }">
                         <Icon class="size-7" icon="material-symbols:api"></Icon>

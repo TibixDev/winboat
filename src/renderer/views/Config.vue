@@ -666,7 +666,7 @@ const errors = computed(() => {
     return errCollection;
 })
 
-const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
+const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.some(x => x.includes(USB_BUS_PATH));
 const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = () => qmpPortManager.value?.hasPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) => _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
