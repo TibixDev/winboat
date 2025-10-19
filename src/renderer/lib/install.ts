@@ -6,76 +6,72 @@ import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { PortManager } from "../utils/port";
 import { Winboat } from "./winboat";
-const fs: typeof import('fs') = require('fs');
-const { exec }: typeof import('child_process') = require('child_process');
-const path: typeof import('path') = require('path');
-const { promisify }: typeof import('util') = require('util');
-const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
-const remote: typeof import('@electron/remote') = require('@electron/remote');
+const fs: typeof import("fs") = require("fs");
+const { exec }: typeof import("child_process") = require("child_process");
+const path: typeof import("path") = require("path");
+const { promisify }: typeof import("util") = require("util");
+const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
+const remote: typeof import("@electron/remote") = require("@electron/remote");
 
 const execAsync = promisify(exec);
-const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
+const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
-const composeFilePath = path.join(WINBOAT_DIR, 'docker-compose.yml');
+const composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml");
 
 export const DefaultCompose: ComposeConfig = {
-    "name": "winboat",
-    "volumes": {
-        "data": null
+    name: "winboat",
+    volumes: {
+        data: null,
     },
-    "services": {
-        "windows": {
-            "image": "ghcr.io/dockur/windows:5.07",
-            "container_name": "WinBoat",
-            "environment": {
-                "VERSION": "11",
-                "RAM_SIZE": "4G",
-                "CPU_CORES": "4",
-                "DISK_SIZE": "64G",
-                "USERNAME": "MyWindowsUser",
-                "PASSWORD": "MyWindowsPassword",
-                "HOME": "${HOME}",
-                "LANGUAGE": "English",
-                "HOST_PORTS": "7149",
-                "ARGUMENTS": "-qmp tcp:0.0.0.0:7149,server,wait=off"
+    services: {
+        windows: {
+            image: "ghcr.io/dockur/windows:5.07",
+            container_name: "WinBoat",
+            environment: {
+                VERSION: "11",
+                RAM_SIZE: "4G",
+                CPU_CORES: "4",
+                DISK_SIZE: "64G",
+                USERNAME: "MyWindowsUser",
+                PASSWORD: "MyWindowsPassword",
+                HOME: "${HOME}",
+                LANGUAGE: "English",
+                HOST_PORTS: "7149",
+                ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
             },
-            "cap_add": [
-                "NET_ADMIN"
-            ],
-            "privileged": true,
-            "ports": [
+            cap_add: ["NET_ADMIN"],
+            privileged: true,
+            ports: [
                 "8006:8006", // VNC Web Interface
                 "7148:7148", // Winboat Guest Server API
                 "8149:7149", // QEMU QMP Port
                 "3389:3389/tcp", // RDP
-                "3389:3389/udp" // RDP
+                "3389:3389/udp", // RDP
             ],
-            "stop_grace_period": "120s",
-            "restart": RESTART_ON_FAILURE,
-            "volumes": [
+            stop_grace_period: "120s",
+            restart: RESTART_ON_FAILURE,
+            volumes: [
                 "data:/storage",
                 "${HOME}:/shared",
                 "/dev/bus/usb:/dev/bus/usb", // QEMU Synamic USB Passthrough
                 "./oem:/oem",
             ],
-            "devices": [
-                "/dev/kvm",
-            ]
-        }
-    }
-}
+            devices: ["/dev/kvm"],
+        },
+    },
+};
 export const InstallStates = {
-    IDLE: 'Preparing',
-    CREATING_COMPOSE_FILE: 'Creating Compose File',
+    IDLE: "Preparing",
+    CREATING_COMPOSE_FILE: "Creating Compose File",
     CREATING_OEM: "Creating OEM Assets",
-    STARTING_CONTAINER: 'Starting Container',
-    MONITORING_PREINSTALL: 'Monitoring Preinstall',
-    INSTALLING_WINDOWS: 'Installing Windows',
-    COMPLETED: 'Completed',
-    INSTALL_ERROR: 'Install Error'
+    STARTING_CONTAINER: "Starting Container",
+    MONITORING_PREINSTALL: "Monitoring Preinstall",
+    INSTALLING_WINDOWS: "Installing Windows",
+    COMPLETED: "Completed",
+    INSTALL_ERROR: "Install Error",
 } as const;
 
-export type InstallState = typeof InstallStates[keyof typeof InstallStates];
+export type InstallState = (typeof InstallStates)[keyof typeof InstallStates];
 interface InstallEvents {
     stateChanged: (state: InstallState) => void;
     preinstallMsg: (msg: string) => void;
@@ -92,21 +88,21 @@ export class InstallManager {
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
         this.state = InstallStates.IDLE;
-        this.preinstallMsg = ""
+        this.preinstallMsg = "";
         this.emitter = createNanoEvents<InstallEvents>();
         this.portMgr = ref(null);
     }
 
     changeState(newState: InstallState) {
         this.state = newState;
-        this.emitter.emit('stateChanged', newState);
+        this.emitter.emit("stateChanged", newState);
         logger.info(`New state: "${newState}"`);
     }
 
     setPreinstallMsg(msg: string) {
         if (msg === this.preinstallMsg) return;
         this.preinstallMsg = msg;
-        this.emitter.emit('preinstallMsg', msg);
+        this.emitter.emit("preinstallMsg", msg);
         logger.info(`Preinstall: "${msg}"`);
     }
 
@@ -141,14 +137,14 @@ export class InstallManager {
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
-        
+
         // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
         }
 
         // Storage folder mapping
-        const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/storage'));
+        const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
         if (storageFolderIdx !== -1) {
             composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
         } else {
@@ -158,7 +154,7 @@ export class InstallManager {
 
         // Home folder mapping
         if (!this.conf.shareHomeFolder) {
-            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/shared'));
+            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
             if (sharedFolderIdx !== -1) {
                 composeContent.services.windows.volumes.splice(sharedFolderIdx, 1);
                 logger.info("Removed home folder sharing as per user configuration");
@@ -169,7 +165,7 @@ export class InstallManager {
 
         // Write the compose file
         const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");
-        fs.writeFileSync(composeFilePath, composeYAML, { encoding: 'utf8' });
+        fs.writeFileSync(composeFilePath, composeYAML, { encoding: "utf8" });
         logger.info(`Creating compose file at: ${composeFilePath}`);
         logger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
     }
@@ -178,7 +174,7 @@ export class InstallManager {
         this.changeState(InstallStates.CREATING_OEM);
         logger.info("Creating OEM assets");
 
-        const oemPath = path.join(WINBOAT_DIR, 'oem'); // Fixed the path separator
+        const oemPath = path.join(WINBOAT_DIR, "oem"); // Fixed the path separator
 
         // Create OEM directory if it doesn’t exist
         if (!fs.existsSync(oemPath)) {
@@ -187,9 +183,9 @@ export class InstallManager {
         }
 
         // Determine the source path based on whether the app is bundled
-        const appPath = remote.app.isPackaged 
-            ? path.join(process.resourcesPath, 'guest_server') // For packaged app
-            : path.join(remote.app.getAppPath(), '..', '..', 'guest_server'); // For dev mode
+        const appPath = remote.app.isPackaged
+            ? path.join(process.resourcesPath, "guest_server") // For packaged app
+            : path.join(remote.app.getAppPath(), "..", "..", "guest_server"); // For dev mode
 
         logger.info(`Guest server source path: ${appPath}`);
 
@@ -203,20 +199,20 @@ export class InstallManager {
 
         const copyRecursive = (src: string, dest: string) => {
             const stats = fs.statSync(src);
-            
+
             if (stats.isDirectory()) {
                 // Create directory if it doesn't exist
                 if (!fs.existsSync(dest)) {
                     fs.mkdirSync(dest, { recursive: true });
                 }
-                
+
                 // Copy all contents
                 fs.readdirSync(src).forEach(entry => {
                     const srcPath = path.join(src, entry);
                     const destPath = path.join(dest, entry);
                     copyRecursive(srcPath, destPath);
                 });
-                
+
                 logger.info(`Copied directory ${src} to ${dest}`);
             } else {
                 // Copy file
@@ -242,7 +238,7 @@ export class InstallManager {
 
     async startContainer() {
         this.changeState(InstallStates.STARTING_CONTAINER);
-        logger.info('Starting container...');
+        logger.info("Starting container...");
 
         // Start the container
         try {
@@ -253,11 +249,11 @@ export class InstallManager {
             }
         } catch (e) {
             this.changeState(InstallStates.INSTALL_ERROR);
-            logger.error('Failed to start container.');
+            logger.error("Failed to start container.");
             logger.error(e);
             throw e;
         }
-        logger.info('Container started successfully.');
+        logger.info("Container started successfully.");
     }
 
     async monitorContainerPreinstall() {
@@ -265,14 +261,14 @@ export class InstallManager {
         await this.sleep(3000);
 
         this.changeState(InstallStates.MONITORING_PREINSTALL);
-        logger.info('Starting preinstall monitoring...');
+        logger.info("Starting preinstall monitoring...");
 
         while (true) {
             try {
                 const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
                 const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`);
                 if (response.status === 404) {
-                    logger.info('Received 404, preinstall completed');
+                    logger.info("Received 404, preinstall completed");
                     return; // Exit the method when we get 404
                 }
                 const message = await response.text();
@@ -280,8 +276,8 @@ export class InstallManager {
                 const messageFormatted = message.match(re)?.[1] || message;
                 this.setPreinstallMsg(messageFormatted);
             } catch (error) {
-                if (error instanceof Error && error.message.includes('404')) {
-                    logger.info('Received 404, preinstall completed');
+                if (error instanceof Error && error.message.includes("404")) {
+                    logger.info("Received 404, preinstall completed");
                     return; // Exit the method when fetch throws 404
                 }
                 logger.error(`Error monitoring container: ${error}`);
@@ -307,26 +303,32 @@ export class InstallManager {
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
-                    
+
                     const winboat = new Winboat();
                     const config = winboat.parseCompose();
-                    const filteredVolumes = config.services.windows.volumes.filter(volume => !volume.endsWith('/boot.iso'));
+                    const filteredVolumes = config.services.windows.volumes.filter(
+                        volume => !volume.endsWith("/boot.iso")
+                    );
 
                     if (config.services.windows.volumes.length !== filteredVolumes.length) {
                         config.services.windows.volumes = filteredVolumes;
                         await winboat.replaceCompose(config, false);
                     }
-                   
+
                     return;
                 }
                 // Log every 60 seconds (every 12th attempt with 5-second intervals)
                 if (attempts % 12 === 0) {
-                    logger.info(`API not ready yet (status: ${res.status}), still waiting after ${attempts * 5 / 60} minutes...`);
+                    logger.info(
+                        `API not ready yet (status: ${res.status}), still waiting after ${
+                            (attempts * 5) / 60
+                        } minutes...`
+                    );
                 }
             } catch (error) {
                 // Log every 60 seconds for errors too
                 if (attempts % 12 === 0) {
-                    logger.info(`API not responding yet, still waiting after ${attempts * 5 / 60} minutes...`);
+                    logger.info(`API not responding yet, still waiting after ${(attempts * 5) / 60} minutes...`);
                 }
             }
 
@@ -336,7 +338,7 @@ export class InstallManager {
     }
 
     async install() {
-        logger.info('Starting installation...');
+        logger.info("Starting installation...");
 
         await this.createComposeFile();
         this.createOEMAssets();
@@ -345,7 +347,7 @@ export class InstallManager {
         await this.monitorAPIHealth();
         this.changeState(InstallStates.COMPLETED);
 
-        logger.info('Installation completed successfully.');
+        logger.info("Installation completed successfully.");
     }
 }
 
@@ -353,8 +355,8 @@ export async function isInstalled() {
     // Check if a docker container named WinBoat exists
     try {
         const { stdout: res } = await execAsync('docker ps -a --filter "name=WinBoat" --format "{{.Names}}"');
-        return res.includes('WinBoat');
-    } catch(e) {
+        return res.includes("WinBoat");
+    } catch (e) {
         logger.error("Failed to get WinBoat status, is Docker installed?");
         logger.error(e);
         return false;

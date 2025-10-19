@@ -4,9 +4,9 @@ import { createLogger } from "./log";
 import path from "path";
 const { createServer, connect }: typeof import("net") = require("net");
 
-const logger = createLogger(path.join(WINBOAT_DIR, 'ports.log'));
+const logger = createLogger(path.join(WINBOAT_DIR, "ports.log"));
 
-// Here, undefined denotes the absence of a protocol from the port entry. 
+// Here, undefined denotes the absence of a protocol from the port entry.
 type PortEntryProtocol = "tcp" | "udp" | undefined;
 
 type PortManagerConfig = {
@@ -14,8 +14,8 @@ type PortManagerConfig = {
 };
 
 type PortMappingOptions = PortManagerConfig & {
-    protocol?: PortEntryProtocol
-}
+    protocol?: PortEntryProtocol;
+};
 
 export class ComposePortEntry extends String {
     hostPort: number;
@@ -30,7 +30,7 @@ export class ComposePortEntry extends String {
         // To parse the guest port as well, we need to remove the optional protocol from the entry. To do this, we map over our substrings, and split by "/".
         const portEntry = entry.split(":").map(x => x.split("/")[0]);
 
-        this.hostPort = parseInt(portEntry[0])
+        this.hostPort = parseInt(portEntry[0]);
         this.guestPort = parseInt(portEntry[1]);
         this.protocol = ComposePortEntry.parseProtocol(entry);
     }
@@ -67,13 +67,16 @@ export class PortManager {
 
     /**
      * Parses port entries in a {@link ComposeConfig} object, checking if the host ports specified are open.
-     * 
+     *
      * In case they aren't, it checks the followig 100 port entries and uses the first open port found.
-     * 
+     *
      * @param compose The config to be parsed
      * @returns A {@link PortManager} object
      */
-    static async parseCompose(compose: ComposeConfig, options: PortManagerConfig = { findOpenPorts: true }): Promise<PortManager> {
+    static async parseCompose(
+        compose: ComposeConfig,
+        options: PortManagerConfig = { findOpenPorts: true }
+    ): Promise<PortManager> {
         const portManager = new PortManager();
         const rawConfigPortEntries = compose.services.windows.ports;
         const parsedConfigPortEntries = compose.services.windows.ports.map(rawEntry => new ComposePortEntry(rawEntry));
@@ -81,13 +84,17 @@ export class PortManager {
 
         // Parse port entries and populate the ports map, skipping over the RDP entries.
         // TODO: check for duplicates
-        for(const portEntry of parsedConfigPortEntries) {
+        for (const portEntry of parsedConfigPortEntries) {
             // Avoid overlapping port lookups
-            if(portManager.ports.values().find(entry => PortManager.getPortDistance(entry.hostPort, portEntry.hostPort) <= PORT_SEARCH_RANGE)) {
-                portEntry.hostPort += PORT_SPACING;            
+            if (
+                portManager.ports
+                    .values()
+                    .find(entry => PortManager.getPortDistance(entry.hostPort, portEntry.hostPort) <= PORT_SEARCH_RANGE)
+            ) {
+                portEntry.hostPort += PORT_SPACING;
             }
 
-            if(portEntry.guestPort === GUEST_RDP_PORT) {
+            if (portEntry.guestPort === GUEST_RDP_PORT) {
                 rdpHostPort = portEntry.hostPort;
                 continue;
             }
@@ -97,18 +104,17 @@ export class PortManager {
 
         // Handle the RDP entries separately since those are duplicates.
         await portManager.setPortMapping(GUEST_RDP_PORT, rdpHostPort, { ...options });
-        
 
-        return portManager
+        return portManager;
     }
 
     /**
      * Returns the host port that's mapped to given guest port.
-     * 
+     *
      * If the guest port is not found in this port manager, then it's value is returned.
      */
     getHostPort(guestPort: number | string): number {
-        if(typeof guestPort === "string") {
+        if (typeof guestPort === "string") {
             guestPort = parseInt(guestPort);
         }
 
@@ -120,18 +126,22 @@ export class PortManager {
      * Creates a new port mapping or overwrites an existing one.
      * In case the host port is not open, it tries to find one.
      */
-    async setPortMapping(guestPort: number | string, hostPort: number | string, options: PortMappingOptions = { findOpenPorts: true }) {
-        if(typeof guestPort === "string") {
+    async setPortMapping(
+        guestPort: number | string,
+        hostPort: number | string,
+        options: PortMappingOptions = { findOpenPorts: true }
+    ) {
+        if (typeof guestPort === "string") {
             guestPort = parseInt(guestPort);
         }
-        if(typeof hostPort === "string") {
+        if (typeof hostPort === "string") {
             hostPort = parseInt(hostPort);
         }
-        
-        if(!await PortManager.isPortOpen(hostPort) && options?.findOpenPorts) {
+
+        if (!(await PortManager.isPortOpen(hostPort)) && options?.findOpenPorts) {
             const randomOpenPort = await PortManager.getOpenPortInRange(hostPort + 1, hostPort + PORT_SEARCH_RANGE);
 
-            if(!randomOpenPort) {
+            if (!randomOpenPort) {
                 logger.error(`No open port found in range ${hostPort}:${hostPort + PORT_SEARCH_RANGE}`); // TODO: handle this case with a dialog possibly
                 throw new Error(`No open port found in range ${hostPort}:${hostPort + PORT_SEARCH_RANGE}`);
             }
@@ -139,7 +149,7 @@ export class PortManager {
             logger.info(`Port ${hostPort} is in use, remapping to ${randomOpenPort}`);
             hostPort = randomOpenPort;
         }
-        
+
         this.ports.set(guestPort, ComposePortEntry.fromPorts(hostPort, guestPort, options?.protocol));
     }
 
@@ -147,7 +157,7 @@ export class PortManager {
      * Returns whether there's a port mapping tied to given guestPort
      */
     hasPortMapping(guestPort: string | number): boolean {
-        if(typeof guestPort === "string") {
+        if (typeof guestPort === "string") {
             guestPort = parseInt(guestPort);
         }
 
@@ -160,8 +170,8 @@ export class PortManager {
     get composeFormat(): string[] {
         const ret = [];
 
-        for(const [_, portEntry] of this.ports.entries()) {
-            if(portEntry.guestPort !== GUEST_RDP_PORT) {
+        for (const [_, portEntry] of this.ports.entries()) {
+            if (portEntry.guestPort !== GUEST_RDP_PORT) {
                 ret.push(portEntry.entry);
                 continue;
             }
@@ -177,26 +187,26 @@ export class PortManager {
     }
 
     /**
-    * Checks if a port is open
-    * 
-    * @param port The port to check
-    * @returns True if the port is open, false otherwise
-    */
-    static async isPortOpen(port: number  | string): Promise<boolean> {
-        if (typeof port === 'string') {
+     * Checks if a port is open
+     *
+     * @param port The port to check
+     * @returns True if the port is open, false otherwise
+     */
+    static async isPortOpen(port: number | string): Promise<boolean> {
+        if (typeof port === "string") {
             port = parseInt(port);
         }
-   
+
         return new Promise((resolve, reject) => {
             const server = createServer();
 
-            server.once('error', (err: any) => {
-                if (err.code === 'EADDRINUSE') {
+            server.once("error", (err: any) => {
+                if (err.code === "EADDRINUSE") {
                     resolve(false);
                 }
             });
 
-            server.once('listening', () => {
+            server.once("listening", () => {
                 resolve(true);
                 server.close();
             });
@@ -207,29 +217,32 @@ export class PortManager {
 
     /**
      * Returns the next open port starting from `minPort`, scanning up to `maxPort`
-     * 
+     *
      * @param minPort The port from which we start testing for open ports
      * @param maxPort The maximum port bound we test for
      * @returns The first open port encountered
      */
-    static async getOpenPortInRange(minPort: number | string, maxPort: number | string = PORT_MAX): Promise<number | undefined> {
+    static async getOpenPortInRange(
+        minPort: number | string,
+        maxPort: number | string = PORT_MAX
+    ): Promise<number | undefined> {
         if (typeof maxPort === "string") {
             maxPort = parseInt(maxPort);
         }
-        
+
         if (typeof minPort === "string") {
             minPort = parseInt(minPort);
         }
-        
-        for(let i = 0; i <= maxPort; i++) {
-            if(!await PortManager.isPortOpen(minPort + i)) continue;
+
+        for (let i = 0; i <= maxPort; i++) {
+            if (!(await PortManager.isPortOpen(minPort + i))) continue;
             return minPort + i;
         }
     }
 
     /**
      * Returns the host port that maps to the given guest port in the given compose object
-     * 
+     *
      * @param guestPort The port that gets looked up
      * @param compose The compose object we search in
      * @returns The host port that maps to the given guest port, or null if not found
@@ -246,6 +259,3 @@ export class PortManager {
         return Math.abs(port1 - port2);
     }
 }
-
-
-

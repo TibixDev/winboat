@@ -1,5 +1,5 @@
-const { exec }: typeof import('child_process') = require('child_process');
-const { promisify }: typeof import('util') = require('util');
+const { exec }: typeof import("child_process") = require("child_process");
+const { promisify }: typeof import("util") = require("util");
 
 const execAsync = promisify(exec);
 const freeRDPAliases = ["xfreerdp3", "xfreerdp", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];
@@ -13,7 +13,7 @@ export async function getFreeRDP() {
         try {
             const shellOutput = await execAsync(`${alias} --version`);
             if (shellOutput.stdout.includes(VERSION_3_STRING)) {
-                console.log("[getFreeRDP] Correct FreeRDP alias is", alias)
+                console.log("[getFreeRDP] Correct FreeRDP alias is", alias);
                 return alias;
             }
         } catch {}
