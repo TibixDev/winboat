@@ -134,7 +134,7 @@
                 </div>
                 <x-button
                     :disabled="saveButtonDisabled || isUpdatingUSBPrerequisites"
-                    @click="saveDockerCompose()"
+                    @click="saveCompose()"
                     class="w-24"
                 >
                     <span v-if="!isApplyingChanges || isUpdatingUSBPrerequisites">Save</span>
@@ -163,7 +163,7 @@
                             >
                                 <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
                                 <h1 class="my-0 text-base font-normal text-yellow-200">
-                                    We need to update your Docker Compose in order to use this feature!
+                                    We need to update your Compose in order to use this feature!
                                 </h1>
 
                                 <x-button 
@@ -540,7 +540,7 @@ function updateApplicationScale(value: string | number) {
 }
 
 /**
- * Assigns the initial values from the Docker Compose file to the reactive refs
+ * Assigns the initial values from the Compose file to the reactive refs
  * so we can display them and track when a change has been made
  */
 async function assignValues() {
@@ -573,10 +573,10 @@ async function assignValues() {
 }
 
 /**
- * Saves the currently specified values to the Docker Compose file
+ * Saves the currently specified values to the Compose file
  * and then re-assigns the initial values to the reactive refs
  */
-async function saveDockerCompose() {
+async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
 
@@ -607,7 +607,7 @@ async function saveDockerCompose() {
 
 /**
  * Adds the required fields for USB passthrough to work
- * to the Docker Compose file if they don't already exist
+ * to the Compose file if they don't already exist
  */
 async function addRequiredComposeFieldsUSB() {
     if (!usbPassthroughDisabled.value) {
@@ -639,7 +639,7 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.environment.HOST_PORTS += delimeter + GUEST_QMP_PORT;
     }
     
-    await saveDockerCompose();
+    await saveCompose();
 
     isUpdatingUSBPrerequisites.value = false;
 }

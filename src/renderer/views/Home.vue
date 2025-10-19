@@ -36,7 +36,7 @@
                         'text-orange-500': winboat.containerStatus.value === ContainerStatus.UKNOWN,
 
                     }">
-                        <Icon class="size-7" icon="mdi:docker"></Icon>
+                        <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>
                         <p class="!my-0 font-semibold text-lg">
                             Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
                         </p>

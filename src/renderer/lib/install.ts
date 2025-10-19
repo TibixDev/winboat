@@ -279,7 +279,7 @@ export class InstallManager {
 }
 
 export async function isInstalled(): Promise<boolean> {
-    // Check if a docker container named WinBoat exists
+    // Check if a winboat container exists
     const configInstance = new WinboatConfig({ instantiateAsSingleton: false });
     const config = configInstance.readConfig()
 
