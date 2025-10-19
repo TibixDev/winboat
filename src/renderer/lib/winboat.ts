@@ -219,7 +219,7 @@ export class Winboat {
         
         // This is a special interval which will never be destroyed
         this.#containerInterval = setInterval(async () => {
-            const _containerStatus = this.containerMgr!.status;
+            const _containerStatus = await this.containerMgr!.getStatus();
 
             if (_containerStatus !== this.containerStatus.value) {
                 this.containerStatus.value = _containerStatus;

@@ -4,7 +4,6 @@ import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from "json-to-pretty-yaml";
-const { execSync }: typeof import('child_process') = require('child_process'); // TODO: migrate to execAsync
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const path: typeof import('path') = require('path');
@@ -67,7 +66,7 @@ export class DockerContainer extends ContainerManager {
         }
     }
 
-    get status(): ContainerStatus {
+    async getStatus(): Promise<ContainerStatus> {
         const statusMap = {
             "created": ContainerStatus.CREATED,
             "restarting": ContainerStatus.UKNOWN,
@@ -79,7 +78,8 @@ export class DockerContainer extends ContainerManager {
         const command = `${this.executableAlias} inspect --format="{{.State.Status}}" ${this.defaultCompose.services.windows.container_name}`;
 
         try {
-            const status = execSync(command).toString().trim() as keyof typeof statusMap;
+            const { stdout } = await execAsync(command);
+            const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch(e) {
             containerLogger.error(`Failed to get status of docker container ${e}'`);
@@ -87,11 +87,11 @@ export class DockerContainer extends ContainerManager {
         }
     }
 
-    get exists(): boolean {
+    async exists(): Promise<boolean> {
         const command = `${this.executableAlias} ps -a --filter "name=${this.defaultCompose.services.windows.container_name}" --format "{{.Names}}"`
 
         try {
-            const exists = execSync(command).toString();
+            const { stdout: exists } = await execAsync(command);
             return exists.includes('WinBoat');
         } catch(e) {
             containerLogger.error(`Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`);
@@ -100,7 +100,7 @@ export class DockerContainer extends ContainerManager {
         }
     }
 
-    static override _getSpecs(): DockerSpecs  {
+    static override async _getSpecs(): Promise<DockerSpecs>  {
         let specs: DockerSpecs = {
             dockerInstalled: false,
             dockerComposeInstalled: false,
@@ -109,7 +109,7 @@ export class DockerContainer extends ContainerManager {
         };
         
         try {
-            const dockerOutput = execSync('docker --version');
+            const { stdout: dockerOutput } = await execAsync('docker --version');
             specs.dockerInstalled = !!dockerOutput;
         } catch (e) {
             console.error('Error checking for Docker installation:', e);
@@ -117,7 +117,7 @@ export class DockerContainer extends ContainerManager {
     
         // Docker Compose plugin check with version validation
         try {
-            const dockerComposeOutput = execSync('docker compose version').toString();
+            const { stdout: dockerComposeOutput } = await execAsync('docker compose version');
             if (dockerComposeOutput) {
                 // Example output: "Docker Compose version v2.35.1"
                 // Example output 2: "Docker Compose version 2.36.2"
@@ -137,7 +137,7 @@ export class DockerContainer extends ContainerManager {
     
         // Docker is running check
         try {
-            const dockerOutput = execSync('docker ps');
+            const { stdout: dockerOutput } = await execAsync('docker ps');
             specs.dockerIsRunning = !!dockerOutput;
         } catch (e) {
             console.error('Error checking if Docker is running:', e);
@@ -145,7 +145,7 @@ export class DockerContainer extends ContainerManager {
     
         // Docker user group check
         try {
-            const userGroups = execSync('id -Gn').toString();
+            const { stdout: userGroups } = await execAsync('id -Gn');
             specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes('docker');
         } catch (e) {
             console.error('Error checking user groups for docker:', e);

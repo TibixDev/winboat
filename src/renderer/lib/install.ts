@@ -9,13 +9,10 @@ import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { createContainer } from "./containers/common";
 const fs: typeof import('fs') = require('fs');
-const { exec }: typeof import('child_process') = require('child_process');
 const path: typeof import('path') = require('path');
-const { promisify }: typeof import('util') = require('util');
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const remote: typeof import('@electron/remote') = require('@electron/remote');
 
-const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
 
 export const InstallStates = {
@@ -281,7 +278,7 @@ export class InstallManager {
     }
 }
 
-export async function isInstalled() {
+export async function isInstalled(): Promise<boolean> {
     // Check if a docker container named WinBoat exists
     const configInstance = new WinboatConfig({ instantiateAsSingleton: false });
     const config = configInstance.readConfig()
@@ -290,5 +287,5 @@ export async function isInstalled() {
 
     const containerRuntime = createContainer(config.containerRuntime);
 
-    return containerRuntime.exists;
+    return await containerRuntime.exists();
 }

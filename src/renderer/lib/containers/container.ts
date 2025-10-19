@@ -16,11 +16,11 @@ export abstract class ContainerManager {
     abstract writeCompose(compose: ComposeConfig): void;
     abstract compose(direction: ComposeDirection): Promise<void>;
     abstract container(action: ContainerAction): Promise<void>;
-    abstract get status(): ContainerStatus;
-    abstract get exists(): boolean;
+    abstract getStatus(): Promise<ContainerStatus>;
+    abstract exists(): Promise<boolean>;
 
     // static "abstract" function
-    static _getSpecs(): any {
+    static async _getSpecs(): Promise<any> {
         throw new Error("Can't get specs of abstract class ContainerManager");
     }
 }

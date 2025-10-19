@@ -106,14 +106,14 @@
                             <!-- Docker Specific Requirements -->
                             <template v-if="containerRuntime == ContainerRuntimes.DOCKER">
                                 <li class="flex items-center gap-2">
-                                    <span v-if="'dockerComposeInstalled' in containerSpecs && containerSpecs.dockerComposeInstalled" class="text-green-500">✔</span>
+                                    <span v-if="containerSpecs && 'dockerComposeInstalled' in containerSpecs && containerSpecs.dockerComposeInstalled" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     Docker Compose v2 installed
                                     <a href="https://docs.docker.com/compose/install/#plugin-linux-only" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
                                 </li>
 
                                 <li class="flex items-center gap-2">
-                                    <span v-if="'dockerIsInUserGroups' in containerSpecs && containerSpecs.dockerIsInUserGroups" class="text-green-500">✔</span>
+                                    <span v-if="containerSpecs && 'dockerIsInUserGroups' in containerSpecs && containerSpecs.dockerIsInUserGroups" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     User added to the <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
                                     <span class="text-gray-600">
@@ -123,7 +123,7 @@
                                 </li>
 
                                 <li class="flex items-center gap-2">
-                                    <span v-if="'dockerIsRunning' in containerSpecs && containerSpecs.dockerIsRunning" class="text-green-500">✔</span>
+                                    <span v-if="containerSpecs && 'dockerIsRunning' in containerSpecs && containerSpecs.dockerIsRunning" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     Docker daemon is running
                                     <span class="text-gray-600">
@@ -136,7 +136,7 @@
                             <!-- Podman Specific Requirements -->
                             <template v-else>
                                 <li class="flex items-center gap-2">
-                                    <span v-if="'podmanComposeInstalled' in containerSpecs && containerSpecs.podmanComposeInstalled" class="text-green-500">✔</span>
+                                    <span v-if="containerSpecs && 'podmanComposeInstalled' in containerSpecs && containerSpecs.podmanComposeInstalled" class="text-green-500">✔</span>
                                     <span v-else class="text-red-500">✘</span>
                                     Podman Compose installed
                                     <a href="https://github.com/containers/podman-compose?tab=readme-ov-file#installation" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
@@ -775,15 +775,17 @@ onUnmounted(() => {
     }
 })
 
-const containerSpecs = computed(() => {
-    return getContainerSpecs(containerRuntime.value);
+const containerSpecs = computedAsync(async () => {
+    return await getContainerSpecs(containerRuntime.value);
 })
 
 const satisfiesContainerPrerequisites = computed(() => {
+    if(!containerSpecs.value) return false;
     return Object.values(containerSpecs.value).every(x => x);
 })
 
-function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs) {
+function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
+    if(!containerSpecs) return false;
     if('dockerInstalled' in containerSpecs) return containerSpecs.dockerInstalled;
     if('podmanInstalled' in containerSpecs) return containerSpecs.podmanInstalled;
     return false;

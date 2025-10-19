@@ -21,8 +21,8 @@ type ContainerSpecs = {
     [ContainerRuntimes.PODMAN]: PodmanSpecs
 };
 
-export function getContainerSpecs<T extends ContainerRuntimes>(type: T): ContainerSpecs[T] {
-    return ContainerImplementations[type]._getSpecs() as ContainerSpecs[T];
+export async function getContainerSpecs<T extends ContainerRuntimes>(type: T): Promise<ContainerSpecs[T]> {
+    return await ContainerImplementations[type]._getSpecs() as ContainerSpecs[T];
 }
 
 export function createContainer<T extends ContainerRuntimes>(type: T, ...params: ConstructorParameters<typeof ContainerImplementations[T]>) {

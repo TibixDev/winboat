@@ -5,7 +5,6 @@ import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus, C
 import YAML from 'yaml';
 import { stringify } from "json-to-pretty-yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
-const { execSync }: typeof import('child_process') = require('child_process'); // TODO: migrate to execAsync
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const path: typeof import('path') = require('path');
@@ -90,7 +89,7 @@ export class PodmanContainer extends ContainerManager {
         }
     }
 
-    get status(): ContainerStatus {
+    async getStatus(): Promise<ContainerStatus> {
         const statusMap = {
             "created": ContainerStatus.CREATED,
             "exited": ContainerStatus.EXITED,
@@ -102,7 +101,8 @@ export class PodmanContainer extends ContainerManager {
         const command = `${this.executableAlias} inspect --format "{{.State.Status}}" ${this.defaultCompose.services.windows.container_name}`;
 
         try {
-            const status = execSync(command).toString().trim() as keyof typeof statusMap;
+            const { stdout } = await execAsync(command);
+            const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch(e) {
             containerLogger.error(`Failed to get status of podman container ${e}:'`);
@@ -110,11 +110,11 @@ export class PodmanContainer extends ContainerManager {
         }
     }
 
-    get exists(): boolean {
+    async exists(): Promise<boolean> {
         const command = `${this.executableAlias} ps -a --filter "name=${this.defaultCompose.services.windows.container_name}" --format "{{.Names}}"`
 
         try {
-            const exists = execSync(command).toString();
+            const { stdout: exists } = await execAsync(command);
             return exists.includes('WinBoat');
         } catch(e) {
             containerLogger.error(`Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`);
@@ -123,21 +123,21 @@ export class PodmanContainer extends ContainerManager {
         }
     }
 
-    static override _getSpecs(): PodmanSpecs {
+    static override async _getSpecs(): Promise<PodmanSpecs> {
         let specs: PodmanSpecs = {
             podmanInstalled: false,
             podmanComposeInstalled: false
         };
 
         try {
-            const podmanOutput = execSync("podman --version");
+            const { stdout: podmanOutput } = await execAsync("podman --version");
             specs.podmanInstalled = !!podmanOutput;
         } catch(e) {
             containerLogger.error("Error checking podman version");
         }
 
         try {
-            const podmanComposeOutput = execSync(`PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --version`);
+            const { stdout: podmanComposeOutput } = await execAsync(`PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --version`);
             specs.podmanComposeInstalled = !!podmanComposeOutput;
         } catch(e) {
             containerLogger.error("Error checking podman compose version");
