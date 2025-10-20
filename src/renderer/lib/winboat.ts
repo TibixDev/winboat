@@ -666,7 +666,11 @@ export class Winboat {
         // The stock arguments after any replacements have been made and new arguments have been added
         const combinedArgs = stockArgs.map(argStr => useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr))
             .concat(newArgs).join(" ");
-
+	
+	const parts = app.Path.split(" ");
+	const exe = parts[0]; // gets exe only
+	const args = parts.slice(1).join(" "); // join rest of args. 
+	
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
@@ -678,7 +682,7 @@ export class Winboat {
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         ${combinedArgs}\
         /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
+        /app:program:"${exe}",name:"${cleanAppName}",cmd:"${args}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
