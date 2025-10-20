@@ -252,7 +252,7 @@ function Add-AppToListIfValid {
         [string]$Source,     # Source type (e.g., 'system', 'winreg', 'startmenu')
 
         [string]$logoBase64,  # Optional base64 logo, mainly for UWP logo discover system
-        [string]$launchCommand # command to launch UWP app via explorer.exe
+        [string]$launchArg # optional arg
     )
 
     $resolved = $null
@@ -261,11 +261,11 @@ function Add-AppToListIfValid {
 
     # Step 1, handle UWP app.
     if ($Source -eq "uwp") {
-        if (-not $launchCommand) {
-            return # can't use it if we can't launch it
+        if (-not $launchArg) {
+            return # launching UWP app requires Arg
         }
         
-        $normalizedPathKey = $launchCommand.ToLowerInvariant()
+        $normalizedPathKey = $InputPath.ToLowerInvariant() + $launchArg.ToLowerInvariant()
         if ($addedPaths.Contains($normalizedPathKey)) {
             return # Already added this app
         }
@@ -278,7 +278,8 @@ function Add-AppToListIfValid {
         # UWP object
         $apps.Add([PSCustomObject]@{
             Name   = $Name
-            Path   = $launchCommand
+            Path   = $InputPath
+            Args   = $launchArg
             Icon   = $icon
             Source = 'uwp'
         })
@@ -317,6 +318,7 @@ function Add-AppToListIfValid {
     $apps.Add([PSCustomObject]@{
         Name   = $Name
         Path   = $fullPath # Use the resolved, non-normalized path for output
+        Args    = ""
         Icon   = $icon
         Source = $Source
     })
@@ -522,17 +524,18 @@ if (Get-Command Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue) {
             } |
             ForEach-Object {
                 $app = $_
+                $pathValue = "explorer.exe"
 
                 # Attempt to find logo and executable using Appxmanifest.xml
                 $logo, $appId = Get-ParseUWP -instLoc $app.InstallLocation
-                $launchCommand = "explorer.exe shell:AppsFolder\" + $app.PackageFamilyName + '!' + $appId
+                $launchArgs = "shell:AppsFolder\" + $app.PackageFamilyName + '!' + $appId
 
                 if ($appId) { # check if we have appId
                     # Get the best display name (UWP properties preferred)
                     $name = Get-UWPApplicationName -exePath $exePath -app $app
                     if ($name) {
                         $base64 = Get-UWPBase64Logo -logo $logo -instLoc $app.InstallLocation
-                        Add-AppToListIfValid -Name $name -Source "uwp" -logoBase64 $base64 -launchCommand $launchCommand
+                        Add-AppToListIfValid -Name $name -InputPath $pathValue -Source "uwp" -logoBase64 $base64 -launchArg $launchArgs
                     }
                 }
             }
@@ -631,4 +634,5 @@ if ($scoopDir) {
 # This is the only output sent to the standard output stream.
 
 $apps | ConvertTo-Json -Depth 5 -Compress
+
 

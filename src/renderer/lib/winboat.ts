@@ -44,6 +44,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
+        Args: "",
         Usage: 0,
     },
     {
@@ -51,6 +52,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
         Source: "internal",
         Path: "%windir%\\explorer.exe",
+        Args: "",
         Usage: 0,
     },
     {
@@ -58,6 +60,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
         Path: CustomAppCommands.NOVNC_COMMAND,
+        Args: "",
         Usage: 0,
     },
 ];
@@ -184,6 +187,7 @@ class AppManager {
         const customWinApp: WinApp = {
             Name: name,
             Path: path,
+            Args: "", // #Todo Ability to give custom arg to custom app.
             Icon: icon,
             Source: "custom",
             Usage: 0,
@@ -683,10 +687,6 @@ export class Winboat {
         const combinedArgs = stockArgs.map(argStr => useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr))
             .concat(newArgs).join(" ");
 	
-	const parts = app.Path.split(" ");
-	const exe = parts[0]; // gets exe only
-	const args = parts.slice(1).join(" "); // join rest of args. 
-	
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
@@ -698,7 +698,7 @@ export class Winboat {
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         ${combinedArgs}\
         /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"${exe}",name:"${cleanAppName}",cmd:"${args}" &`;
+        /app:program:"${app.Path}",name:"${cleanAppName}",cmd:"${app.Args}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
