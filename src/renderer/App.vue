@@ -37,9 +37,9 @@
                     <ol class="mt-2 list-decimal list-inside">
                         <li>
                             Use VNC over at
-                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">{{
-                                novncURL
-                            }}</a>
+                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">
+                                {{ novncURL }}
+                            </a>
                             to access Windows
                         </li>
                         <li>Press Win + R or search for <code>Run</code>, type in <code>services.msc</code></li>
@@ -51,8 +51,10 @@
                                 href="https://github.com/TibixDev/winboat/releases"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                >https://github.com/TibixDev/winboat/releases</a
-                            >, you should pick version <strong>{{ appVer }}</strong>
+                            >
+                                https://github.com/TibixDev/winboat/releases
+                            </a>
+                            , you should pick version <strong>{{ appVer }}</strong>
                         </li>
                         <li>Navigate to <code>C:\Program Files\WinBoat</code> and delete the contents</li>
                         <li>Extract the freshly downloaded zip into the same folder</li>
