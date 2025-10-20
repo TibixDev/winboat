@@ -54,6 +54,37 @@
                 </div>
             </div>
 
+            <template>
+                <div class="apps-grid">
+                    <div
+                    v-for="app in apps"
+                    :key="app.id"
+                    class="app-tile"
+                    @contextmenu.prevent="openContextMenu($event, app)"
+                    >
+                    {{ app.name }}
+                    </div>
+                </div>
+            </template>
+            
+            <WBContextMenu ref="contextMenuRef" @hide="onContextMenuHide">
+                <WBMenuItem @click="launchApp">
+                    <Icon class="size-4" icon="mdi:play-circle-outline"></Icon>
+                    <x-label>Launch</x-label>
+                </WBMenuItem>
+
+                <WBMenuItem @click="editApp">
+                    <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
+                    <x-label>Edit</x-label>
+                </WBMenuItem>
+
+                <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeApp">
+                    <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
+                    <x-label>Remove</x-label>
+                </WBMenuItem>
+            </WBContextMenu>
+
+
             <footer>
                 <x-button @click="cancelAddCustomApp" id="cancel-button">
                     <x-label>Cancel</x-label>
@@ -158,23 +189,34 @@
                     class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
                     :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
                     @click="winboat.launchApp(app)"
+                    @contextmenu="openContextMenu($event, app)"
                 >
                     <div class="flex flex-row items-center gap-2 w-[85%]">
                         <img class="rounded-md size-10" :src="`data:image/png;charset=utf-8;base64,${app.Icon}`" />
                         <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                     </div>
                     <Icon icon="cuida:caret-right-outline"></Icon>
-                    <WBContextMenu v-if="app.Source === 'custom'">
-                        <WBMenuItem @click="removeCustomApp(app)">
-                            <Icon class="size-4" icon="mdi:trash-can"></Icon>
-                            <x-label>Remove Custom App</x-label>
-                        </WBMenuItem>
-                    </WBContextMenu>
                 </x-card>
             </TransitionGroup>
             <div v-else class="flex justify-center items-center mt-40">
                 <x-throbber class="w-16 h-16"></x-throbber>
             </div>
+            <WBContextMenu>
+                <WBMenuItem @click="launchApp">
+                    <Icon class="size-4" icon="mdi:play-circle-outline"></Icon>
+                    <x-label>Launch</x-label>
+                </WBMenuItem>
+
+                <WBMenuItem @click="editApp">
+                    <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
+                    <x-label>Edit</x-label>
+                </WBMenuItem>
+
+                <WBMenuItem @click="removeApp">
+                    <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
+                    <x-label>Remove</x-label>
+                </WBMenuItem>
+            </WBContextMenu>
         </div>
         <div v-else class="px-2 mt-32">
             <div class="flex flex-col gap-4 justify-center items-center">
@@ -263,7 +305,7 @@ onMounted(async () => {
     // Fetch icon for custom app path
     watch(customAppPath, async (newVal, oldVal) => {
         await debouncedFetchIcon(newVal, oldVal);
-    });
+    });    
 });
 
 async function refreshApps() {
@@ -317,6 +359,40 @@ const customAppAddErrors = computed(() => {
 
     return errors;
 });
+
+const contextMenuRef = ref();
+const contextMenuTarget = ref(null);
+
+function openContextMenu(event, app) {
+  contextMenuTarget.value = app;
+  contextMenuRef.value?.show(event); // Let WBContextMenu handle positioning
+}
+
+function onContextMenuHide() {
+  contextMenuTarget.value = null;
+}
+
+function launchApp() {
+  if (contextMenuTarget.value) {
+    winboat.launchApp(contextMenuTarget.value);
+  }
+}
+
+function editApp() {
+  if (contextMenuTarget.value?.Source != "system") {
+    console.log(contextMenuTarget.value);
+    customAppName.value = contextMenuTarget.value.Name;
+    customAppPath.value = contextMenuTarget.value.Path;
+    customAppIcon.value = `data:image/png;base64,${contextMenuTarget.value.Icon}`;
+    addCustomAppDialog.value?.showModal();
+  }
+}
+
+function removeApp() {
+  if (contextMenuTarget.value) {
+    removeCustomApp(contextMenuTarget.value);
+  }
+}
 
 /**
  * Triggers the file picker for the custom app icon, then processes the image selected
