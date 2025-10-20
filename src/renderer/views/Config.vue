@@ -640,8 +640,8 @@ const { app }: typeof import("@electron/remote") = require("@electron/remote");
 // Emits
 const $emit = defineEmits(["rerender"]);
 
-const winboat = new Winboat();
-const usbManager = new USBManager();
+const winboat = Winboat.getInstance();
+const usbManager = USBManager.getInstance();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
@@ -684,7 +684,7 @@ let qmpPortManager = ref<PortManager | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
-const wbConfig = new WinboatConfig();
+const wbConfig = WinboatConfig.getInstance();
 
 onMounted(async () => {
     await assignValues();
@@ -709,8 +709,8 @@ function ensureNumericInput(e: any) {
 }
 
 function updateApplicationScale(value: string | number) {
-    let val = typeof value === "string" ? parseInt(value) : value;
-    const clamped = typeof val !== "number" || isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
+    let val = typeof value === "string" ? Number.parseInt(value) : value;
+    const clamped = typeof val !== "number" || Number.isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
     wbConfig.config.scaleDesktop = clamped;
     origApplicationScale.value = clamped;
 }

@@ -1,5 +1,5 @@
-const fs: typeof import("fs") = require("fs");
-const path: typeof import("path") = require("path");
+const fs: typeof import("fs") = require("node:fs");
+const path: typeof import("path") = require("node:path");
 import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
@@ -39,15 +39,18 @@ const defaultConfig: WinboatConfigObj = {
 };
 
 export class WinboatConfig {
-    private static instance: WinboatConfig;
-    #configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
+    private static instance: WinboatConfig | null = null;
+    readonly #configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     #configData: WinboatConfigObj = { ...defaultConfig };
 
-    constructor() {
-        if (WinboatConfig.instance) return WinboatConfig.instance;
+    static getInstance() {
+        WinboatConfig.instance ??= new WinboatConfig();
+        return WinboatConfig.instance;
+    }
+
+    private constructor() {
         this.#configData = this.readConfig();
         console.log("Reading current config", this.#configData);
-        WinboatConfig.instance = this;
     }
 
     get config(): WinboatConfigObj {

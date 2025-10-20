@@ -160,9 +160,7 @@ import { USBManager } from "./lib/usbmanager";
 import { GUEST_NOVNC_PORT } from "./lib/constants";
 import { setIntervalImmediately } from "./utils/interval";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
-const os: typeof import("os") = require("os");
-const path: typeof import("path") = require("path");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
+const os: typeof import("os") = require("node:os");
 
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
@@ -180,14 +178,14 @@ let animationCheckInterval: NodeJS.Timeout | null = null;
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
-    if (!winboatInstalled) {
+    if (winboatInstalled) {
+        winboat = Winboat.getInstance(); // Instantiate singleton class
+        wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
+        USBManager.getInstance(); // Instantiate singleton class
+        $router.push("/home");
+    } else {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
-    } else {
-        winboat = new Winboat(); // Instantiate singleton class
-        wbConfig = new WinboatConfig(); // Instantiate singleton class
-        new USBManager(); // Instantiate singleton class
-        $router.push("/home");
     }
 
     // Apply or remove disable-animations class based on config

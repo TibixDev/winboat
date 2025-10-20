@@ -4,7 +4,7 @@
             <div>
                 <div id="stepStatus" class="flex flex-row justify-center gap-4 pt-2">
                     <div
-                        v-for="(step, idx) of steps"
+                        v-for="(_, idx) of steps"
                         :key="idx"
                         class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000"
                         :class="{
@@ -704,10 +704,10 @@ import { InstallManager, type InstallState, InstallStates } from "../lib/install
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
 
-const path: typeof import("path") = require("path");
+const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
-const fs: typeof import("fs") = require("fs");
-const os: typeof import("os") = require("os");
+const fs: typeof import("fs") = require("node:fs");
+const os: typeof import("os") = require("node:os");
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
 
 type Step = {

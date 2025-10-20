@@ -1,9 +1,9 @@
 import { WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
-const path: typeof import("path") = require("path");
+const path: typeof import("path") = require("node:path");
 import { type Socket } from "net";
 import { assert } from "@vueuse/core";
-const { createConnection }: typeof import("net") = require("net");
+const { createConnection }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(WINBOAT_DIR, "qmp.log"));
 
@@ -110,7 +110,7 @@ export type QMPResponse<T extends QMPCommand> = QMPReturn<
 >;
 
 export class QMPManager {
-    private static IS_ALIVE_TIMEOUT = 2000;
+    private static readonly IS_ALIVE_TIMEOUT = 2000;
     qmpSocket: Socket;
 
     /**

@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onUnmounted, nextTick } from "vue";
 
 interface Props {
     trigger?: "contextmenu" | "click" | "none";
@@ -34,7 +34,6 @@ const emit = defineEmits<{
     hide: [];
 }>();
 
-const contextMenuRef = ref<HTMLElement>();
 const triggerRef = ref<HTMLElement>();
 const menuRef = ref<HTMLElement>();
 
