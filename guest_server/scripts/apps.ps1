@@ -131,16 +131,37 @@ function Get-ApplicationName {
     return $appName
 }
 
+function Get-PrettifyName {
+    param (
+        [string]$Name
+    )
+
+    if ($Name -match '\.([^\.]+)$') {
+        $ProductName = $Matches[1]
+    } else {
+        # If no period is found, use the whole name.
+        $ProductName = $Name
+    }
+    
+    $PrettyName = ($ProductName -creplace  '([A-Z\W_]|\d+)(?<![a-z])',' $&').trim()
+
+    return $PrettyName
+}
+
 # Gets the display name for a UWP app.
 function Get-UWPApplicationName {
     param (
         [string]$exePath, # The resolved executable path
         $app # The AppxPackage object
     )
-
     # UWP properties are usually the best source
-    if ($app.DisplayName) { return $app.DisplayName.Trim() }
-    if ($app.Name) { return $app.Name.Trim() } # Often the package name, less ideal but a fallback
+    if ($app.DisplayName) { 
+        return $app.DisplayName.Trim()
+        #Write-Host($app)
+    }
+    if ($app.Name) { 
+        return Get-PrettifyName -Name $app.Name
+    } # Often the package name, less ideal but a fallback
 
     # If UWP properties fail, try standard name extraction on the EXE
     if (Test-Path $exePath -PathType Leaf) {
@@ -150,8 +171,7 @@ function Get-UWPApplicationName {
     return $null # Failed to get a name
 }
 
-# Parses the AppxManifest.xml to find the primary executable path for a UWP app.
-function Get-UWPExecutablePath {
+function Get-ParseUWP {
     param ([string]$instLoc) # InstallLocation from Get-AppxPackage
 
     $manifestPath = Join-Path -Path $instLoc -ChildPath "AppxManifest.xml"
@@ -159,54 +179,88 @@ function Get-UWPExecutablePath {
         return $null # Manifest doesn't exist or isn't a file
     }
 
-    try {
-        # Read manifest content, default encoding often works
-        $xmlContent = Get-Content $manifestPath -Raw -Encoding Default -ErrorAction Stop
+    $xmlContent = Get-Content $manifestPath -Raw -Encoding Default -ErrorAction Stop
+    
+    $applicationMatch = [regex]::Match($xmlContent, '<Application\b[^>]*>.*?</Application>', 'Singleline')
 
-        # Remove known namespace prefixes and xmlns attributes to simplify XML parsing
-        $prefixesToRemove = 'uap10', 'uap', 'desktop', 'rescap', 'com' # Common prefixes
-        $cleanedXml = $xmlContent
-        foreach ($prefix in $prefixesToRemove) {
-            # Regex to remove 'prefix:' from start/end tags and self-closing tags
-            $cleanedXml = $cleanedXml -replace "(</?)$prefix`:", '$1' `
-                                     -replace "<$prefix`:([^>\s]+?)\s*/>", "<$1 />"
+    if (-not $applicationMatch.Success) { return $null } # No application defined
+
+    $applicationXml = $applicationMatch.Value
+
+    # Get the 'Executable' attribute value
+    $exeRelPath = [regex]::Match($applicationXml, 'Executable\s*=\s*"([^"]+)"')
+    if (-not $exeRelPath.Success) { return $null } # No executable attribute
+    $exeRelPath = $exeRelPath.Groups[1].Value
+
+    if ($exeRelPath -like '*$targetnametoken$.exe*') {
+        $candidateExe = Get-ChildItem -Path $instLoc -Filter *.exe -File -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($candidateExe -and (Test-Path $candidateExe.FullName -PathType Leaf)) {
+            $exeRelPath = $candidateExe.FullName
         }
-        # Remove the xmlns declarations themselves
-        $cleanedXml = $cleanedXml -replace 'xmlns(:\w+)?="[^"]+"', ''
-
-        # Attempt to parse the cleaned XML
-        [xml]$manifest = $cleanedXml
-
-        # Find the first <Application> node
-        $appNode = $manifest.Package.Applications.Application | Select-Object -First 1
-        if (-not $appNode) { return $null } # No application defined
-
-        # Get the 'Executable' attribute value
-        $exeRelPath = $appNode.Executable
-        if (-not $exeRelPath) { return $null } # No executable attribute
-
-        # Handle special $targetnametoken$.exe case by finding the first EXE in the root
-        if ($exeRelPath -like '*$targetnametoken$.exe*') {
-            $candidateExe = Get-ChildItem -Path $instLoc -Filter *.exe -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($candidateExe -and (Test-Path $candidateExe.FullName -PathType Leaf)) {
-                return $candidateExe.FullName
-            }
-        } else {
-            # Handle regular relative path
-            $fullPath = Join-Path -Path $instLoc -ChildPath $exeRelPath
-            if (Test-Path $fullPath -PathType Leaf) {
-                return $fullPath
-            }
+    } else {
+        # Handle regular relative path
+        $fullPath = Join-Path -Path $instLoc -ChildPath $exeRelPath
+        if (Test-Path $fullPath -PathType Leaf) {
+            $exeRelPath = $fullPath
         }
-    } catch {
-        # Ignore any parsing errors and return null
-        return $null
     }
 
-    # Default return if no valid path found
-    return $null
+    $logoMatch = [regex]::Match($xmlContent, '<Properties.*?>.*?<Logo>(.*?)</Logo>.*?</Properties>', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    if ($logoMatch.Success) {
+        $logo = $logoMatch.Groups[1].Value
+    }
+
+    return $logo, $exeRelPath
 }
 
+function Get-UWPBase64Logo {
+    param([string]$logo, [string]$instLoc)
+
+    $logoPath = Join-Path -Path $instLoc -ChildPath $logo
+
+    if (-not (Test-Path $logoPath)) {
+        # if base file not exist, attempt to find scaled version.
+        $scaledVersions = @("scale-100", "scale-200", "scale-400")
+        foreach ($scale in $scaledVersions) {
+            $scaledLogoPath = $logoPath -replace '\.png$', ".$scale.png"
+            if (Test-Path $scaledLogoPath) {
+                $logoPath = $scaledLogoPath
+                break
+            }
+        }
+
+        # null if no valid file found.
+        if (-not (Test-Path $logoPath)) {
+            return $null
+        }
+    }
+
+    try {
+        $image = [System.Drawing.Image]::FromFile($logoPath)
+
+        # resize to 32x32
+        $resizedBmp = New-Object System.Drawing.Bitmap(32, 32)
+        $graphics = [System.Drawing.Graphics]::FromImage($resizedBmp)
+        $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $graphics.DrawImage($image, 0, 0, 32, 32)
+
+        # Save as PNG to memory stream
+        $stream = New-Object System.IO.MemoryStream
+        $resizedBmp.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
+
+        $base64 = [Convert]::ToBase64String($stream.ToArray())
+
+        # Clean up
+        $stream.Dispose()
+        $graphics.Dispose()
+        $resizedBmp.Dispose()
+        $image.Dispose()
+
+        return $base64
+    } catch {
+        return $null
+    }
+}
 
 # --- Main Application Logic ---
 
@@ -220,7 +274,8 @@ function Add-AppToListIfValid {
     param(
         [string]$Name,
         [string]$InputPath, # The path discovered (can be relative or contain variables)
-        [string]$Source     # Source type (e.g., 'system', 'winreg', 'startmenu')
+        [string]$Source,     # Source type (e.g., 'system', 'winreg', 'startmenu')
+        [string]$logoBase64  # Optional base64 logo, mainly for UWP logo discover system
     )
 
     $resolved = $null
@@ -252,7 +307,11 @@ function Add-AppToListIfValid {
     }
 
     # 4. Get Icon
-    $icon = Get-ApplicationIcon -targetPath $fullPath
+    if ($Source -eq "uwp" -and $logoBase64 -ne $null) { 
+        $icon = $logoBase64
+    } else {
+        $icon = Get-ApplicationIcon -targetPath $fullPath
+    }
 
     # 5. Add the Application Object (matching WinApp type)
     $apps.Add([PSCustomObject]@{
@@ -463,14 +522,18 @@ if (Get-Command Get-AppxPackage -ErrorAction SilentlyContinue) {
             } |
             ForEach-Object {
                 $app = $_
-                # Attempt to find the executable path using the manifest
-                $exePath = Get-UWPExecutablePath -instLoc $app.InstallLocation
+
+                # Attempt to find logo and executable using Appxmanifest.xml
+                $logo, $exePath = Get-ParseUWP -instLoc $app.InstallLocation
 
                 if ($exePath) { # Function already validates path is a file
                     # Get the best display name (UWP properties preferred)
                     $name = Get-UWPApplicationName -exePath $exePath -app $app
                     if ($name) {
-                        Add-AppToListIfValid -Name $name -InputPath $exePath -Source "uwp"
+                        $base64 = Get-UWPBase64Logo -logo $logo -instLoc $app.InstallLocation
+                        #Write-Host("start ", $base64, " end")
+                        #Write-Output($logoBase64)
+                        Add-AppToListIfValid -Name $name -InputPath $exePath -Source "uwp" -logoBase64 $base64
                     }
                 }
             }
@@ -567,4 +630,5 @@ if ($scoopDir) {
 
 # Convert the final list of application objects to a compressed JSON string.
 # This is the only output sent to the standard output stream.
+
 $apps | ConvertTo-Json -Depth 5 -Compress
