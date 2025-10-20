@@ -1,35 +1,34 @@
 name: 🧩 Feature Request
 description: Suggest a new feature, enhancement, or just share your idea
 title: "[Feature] "
-labels: 
-  - enhancement
+labels:
+    - enhancement
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thank you for taking your time submitting a Feature Request
-        Please make sure to look through the [issue tracker](https://github.com/TibixDev/winboat/issues) before submitting a Feature Request as to avoid duplicates.
-  - type: textarea
-    attributes:
-      label: Feature Description
-      description: Please take your time in outlining your Feature Request, as it helps others understand it more clearly.
-    validations:
-      required: true
-  - type: textarea
-    attributes:
-      label: Use-Case
-      description: Why do you think this Feature would be useful?
-    validations:
-      required: true
-  - type: textarea
-    attributes:
-      label: Proposed Implementation
-      description: Optionally, you could provide us with a proposal as to how you'd implement this feature.
-  - type: checkboxes
-    attributes:
-      label: Notice
-      options:
-        - label: I have checked the issue tracker and verified that this Feature Request has not been proposed before.
+    - type: markdown
+      attributes:
+          value: |
+              Thank you for taking your time submitting a Feature Request
+              Please make sure to look through the [issue tracker](https://github.com/TibixDev/winboat/issues) before submitting a Feature Request as to avoid duplicates.
+    - type: textarea
+      attributes:
+          label: Feature Description
+          description: Please take your time in outlining your Feature Request, as it helps others understand it more clearly.
+      validations:
           required: true
-        - label: I would like to help out implementing this feature
-      
+    - type: textarea
+      attributes:
+          label: Use-Case
+          description: Why do you think this Feature would be useful?
+      validations:
+          required: true
+    - type: textarea
+      attributes:
+          label: Proposed Implementation
+          description: Optionally, you could provide us with a proposal as to how you'd implement this feature.
+    - type: checkboxes
+      attributes:
+          label: Notice
+          options:
+              - label: I have checked the issue tracker and verified that this Feature Request has not been proposed before.
+                required: true
+              - label: I would like to help out implementing this feature
