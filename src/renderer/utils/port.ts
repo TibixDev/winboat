@@ -75,7 +75,7 @@ export class PortManager {
      */
     static async parseCompose(
         compose: ComposeConfig,
-        options: PortManagerConfig = { findOpenPorts: true }
+        options: PortManagerConfig = { findOpenPorts: true },
     ): Promise<PortManager> {
         const portManager = new PortManager();
         const rawConfigPortEntries = compose.services.windows.ports;
@@ -129,7 +129,7 @@ export class PortManager {
     async setPortMapping(
         guestPort: number | string,
         hostPort: number | string,
-        options: PortMappingOptions = { findOpenPorts: true }
+        options: PortMappingOptions = { findOpenPorts: true },
     ) {
         if (typeof guestPort === "string") {
             guestPort = parseInt(guestPort);
@@ -224,7 +224,7 @@ export class PortManager {
      */
     static async getOpenPortInRange(
         minPort: number | string,
-        maxPort: number | string = PORT_MAX
+        maxPort: number | string = PORT_MAX,
     ): Promise<number | undefined> {
         if (typeof maxPort === "string") {
             maxPort = parseInt(maxPort);

@@ -682,7 +682,7 @@ export class Winboat {
         // The stock arguments after any replacements have been made and new arguments have been added
         const combinedArgs = stockArgs
             .map(argStr =>
-                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr)
+                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs)
             .join(" ");

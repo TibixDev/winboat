@@ -81,32 +81,32 @@ type QMPArgument<T extends keyof QMPArgumentProps> =
 type QMPCommandExpectedArgument<T extends QMPCommand> = T extends "human-monitor-command"
     ? QMPArgument<"command-line">
     : T extends "device_add"
-    ? QMPArgument<"driver" | "id" | "productid" | "vendorid" | "hostbus" | "hostaddr" | "hostdevice">
-    : T extends "device_del"
-    ? QMPArgument<"id">
-    : T extends "device-list-properties"
-    ? QMPArgument<"typename">
-    : never;
+      ? QMPArgument<"driver" | "id" | "productid" | "vendorid" | "hostbus" | "hostaddr" | "hostdevice">
+      : T extends "device_del"
+        ? QMPArgument<"id">
+        : T extends "device-list-properties"
+          ? QMPArgument<"typename">
+          : never;
 
 // TODO: determine return type of device_add and device_del
 export type QMPResponse<T extends QMPCommand> = QMPReturn<
     T extends "qmp_capabilities"
         ? QMPGreeting
         : T extends "query-commands"
-        ? QMPCommandInfo[]
-        : T extends "query-status"
-        ? QMPStatusInfo
-        : T extends "human-monitor-command"
-        ? string
-        : T extends "device_add"
-        ? object
-        : T extends "device_del"
-        ? string // TODO: change this
-        : T extends "device-list-properties"
-        ? QMPObjectPropertyInfo[]
-        : T extends "query-block"
-        ? QMPBlockInfo[]
-        : never
+          ? QMPCommandInfo[]
+          : T extends "query-status"
+            ? QMPStatusInfo
+            : T extends "human-monitor-command"
+              ? string
+              : T extends "device_add"
+                ? object
+                : T extends "device_del"
+                  ? string // TODO: change this
+                  : T extends "device-list-properties"
+                    ? QMPObjectPropertyInfo[]
+                    : T extends "query-block"
+                      ? QMPBlockInfo[]
+                      : never
 >;
 
 export class QMPManager {
@@ -163,11 +163,11 @@ export class QMPManager {
     async executeCommand<C extends QMPCommandNoArgs>(command: C): Promise<QMPResponse<C>>;
     async executeCommand<C extends QMPCommandWithArgs>(
         command: C,
-        qmpArgument: QMPCommandExpectedArgument<C>
+        qmpArgument: QMPCommandExpectedArgument<C>,
     ): Promise<QMPResponse<C>>;
     async executeCommand<C extends QMPCommand>(
         command: C,
-        qmpArgument?: QMPCommandExpectedArgument<C>
+        qmpArgument?: QMPCommandExpectedArgument<C>,
     ): Promise<QMPResponse<C>> {
         const message = {
             execute: command,

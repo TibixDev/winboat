@@ -307,7 +307,7 @@ export class InstallManager {
                     const winboat = new Winboat();
                     const config = winboat.parseCompose();
                     const filteredVolumes = config.services.windows.volumes.filter(
-                        volume => !volume.endsWith("/boot.iso")
+                        volume => !volume.endsWith("/boot.iso"),
                     );
 
                     if (config.services.windows.volumes.length !== filteredVolumes.length) {
@@ -322,7 +322,7 @@ export class InstallManager {
                     logger.info(
                         `API not ready yet (status: ${res.status}), still waiting after ${
                             (attempts * 5) / 60
-                        } minutes...`
+                        } minutes...`,
                     );
                 }
             } catch (error) {

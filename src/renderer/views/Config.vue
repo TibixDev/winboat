@@ -22,7 +22,7 @@
                             min="4"
                             :max="maxRamGB"
                             :value="ramGB"
-                            @input="(e: any) => ramGB = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
+                            @input="(e: any) => (ramGB = Number(/^\d+$/.exec(e.target.value)![0] || 4))"
                             required
                         />
                         <p class="text-neutral-100">GB</p>
@@ -48,7 +48,7 @@
                             min="2"
                             :max="maxNumCores"
                             :value="numCores"
-                            @input="(e: any) => numCores = Number(/^\d+$/.exec(e.target.value)![0] || 4)"
+                            @input="(e: any) => (numCores = Number(/^\d+$/.exec(e.target.value)![0] || 4))"
                             required
                         ></x-input>
                         <p class="text-neutral-100">Cores</p>
@@ -72,7 +72,7 @@
                     <div class="flex flex-row justify-center items-center gap-2">
                         <x-switch
                             :toggled="shareHomeFolder"
-                            @toggle="(_: any) => shareHomeFolder = !shareHomeFolder"
+                            @toggle="(_: any) => (shareHomeFolder = !shareHomeFolder)"
                             size="large"
                         ></x-switch>
                     </div>
@@ -94,7 +94,7 @@
                     <div class="flex flex-row justify-center items-center gap-2">
                         <x-switch
                             :toggled="autoStartContainer"
-                            @toggle="(_: any) => autoStartContainer = !autoStartContainer"
+                            @toggle="(_: any) => (autoStartContainer = !autoStartContainer)"
                             size="large"
                         ></x-switch>
                     </div>
@@ -119,7 +119,12 @@
                             min="0"
                             :max="PORT_MAX"
                             :value="freerdpPort"
-                            @input="(e: any) => freerdpPort = Number(/^\d+$/.exec(e.target.value)![0] || winboat.getHostPort(GUEST_RDP_PORT))"
+                            @input="
+                                (e: any) =>
+                                    (freerdpPort = Number(
+                                        /^\d+$/.exec(e.target.value)![0] || winboat.getHostPort(GUEST_RDP_PORT),
+                                    ))
+                            "
                             required
                         ></x-input>
                     </div>
@@ -253,7 +258,7 @@
                                 <x-label>Add Device</x-label>
                                 <TransitionGroup ref="usbMenu" name="menu" tag="x-menu" class="max-h-52">
                                     <x-menuitem
-                                        v-for="device, k of availableDevices as Device[]"
+                                        v-for="(device, k) of availableDevices as Device[]"
                                         :key="device.portNumbers.join(',')"
                                         @click="addDevice(device)"
                                     >
@@ -304,7 +309,7 @@
                                         class="!max-w-full"
                                         v-if="arg.isReplacement"
                                         :value="arg.original"
-                                        @input="(e: any) => arg.original = e.target.value"
+                                        @input="(e: any) => (arg.original = e.target.value)"
                                     >
                                         <x-label>Original Argument</x-label>
                                     </x-input>
@@ -313,7 +318,7 @@
                                         class="!max-w-full !mt-0"
                                         :class="{ 'col-span-2': !arg.isReplacement }"
                                         :value="arg.newArg"
-                                        @input="(e: any) => arg.newArg = e.target.value"
+                                        @input="(e: any) => (arg.newArg = e.target.value)"
                                     >
                                         <x-label>New Argument</x-label>
                                     </x-input>
@@ -363,7 +368,10 @@
                         </p>
                     </div>
                     <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-select class="w-20" @change="(e: any) => wbConfig.config.scale = Number(e.detail.newValue)">
+                        <x-select
+                            class="w-20"
+                            @change="(e: any) => (wbConfig.config.scale = Number(e.detail.newValue))"
+                        >
                             <x-menu>
                                 <x-menuitem value="100" :toggled="wbConfig.config.scale === 100">
                                     <x-label>100%</x-label>
@@ -438,7 +446,7 @@
                     <div class="flex flex-row gap-2 justify-center items-center">
                         <x-select
                             class="w-20"
-                            @change="(e: any) => wbConfig.config.multiMonitor = Number(e.detail.newValue)"
+                            @change="(e: any) => (wbConfig.config.multiMonitor = Number(e.detail.newValue))"
                         >
                             <x-menu>
                                 <x-menuitem value="0" :toggled="wbConfig.config.multiMonitor === 0">
@@ -473,7 +481,7 @@
                     <div class="flex flex-row gap-2 justify-center items-center">
                         <x-switch
                             :toggled="wbConfig.config.smartcardEnabled"
-                            @toggle="(_: any) => wbConfig.config.smartcardEnabled = !wbConfig.config.smartcardEnabled"
+                            @toggle="(_: any) => (wbConfig.config.smartcardEnabled = !wbConfig.config.smartcardEnabled)"
                             size="large"
                         ></x-switch>
                     </div>
@@ -496,7 +504,10 @@
                     <div class="flex flex-row gap-2 justify-center items-center">
                         <x-switch
                             :toggled="wbConfig.config.rdpMonitoringEnabled"
-                            @toggle="(_: any) => wbConfig.config.rdpMonitoringEnabled = !wbConfig.config.rdpMonitoringEnabled"
+                            @toggle="
+                                (_: any) =>
+                                    (wbConfig.config.rdpMonitoringEnabled = !wbConfig.config.rdpMonitoringEnabled)
+                            "
                             size="large"
                         ></x-switch>
                     </div>
@@ -657,7 +668,7 @@ watch(
     newArgs => {
         wbConfig.config.rdpArgs = newArgs;
     },
-    { deep: 2 }
+    { deep: 2 },
 );
 
 function ensureNumericInput(e: any) {
@@ -725,7 +736,7 @@ async function saveDockerCompose() {
         compose.value!.services.windows.volumes.push(HOMEFOLDER_SHARE_STR);
     } else if (!shareHomeFolder.value && composeHasHomefolderShare) {
         compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(
-            v => v !== HOMEFOLDER_SHARE_STR
+            v => v !== HOMEFOLDER_SHARE_STR,
         );
     }
 

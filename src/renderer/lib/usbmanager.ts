@@ -77,7 +77,7 @@ export class USBManager {
                 this.isDeviceInPassthroughList(device) &&
                 !(await this.#QMPCheckIfDeviceExists(
                     device.deviceDescriptor.idVendor,
-                    device.deviceDescriptor.idProduct
+                    device.deviceDescriptor.idProduct,
                 ))
             ) {
                 logger.info(`Device is in passthrough list, adding to VM: ${this.stringifyDevice(device)}`);
@@ -99,7 +99,7 @@ export class USBManager {
                 this.isDeviceInPassthroughList(device) &&
                 (await this.#QMPCheckIfDeviceExists(
                     device.deviceDescriptor.idVendor,
-                    device.deviceDescriptor.idProduct
+                    device.deviceDescriptor.idProduct,
                 ))
             ) {
                 logger.info(`Device is in passthrough list, removing from VM: ${this.stringifyDevice(device)}`);
@@ -125,12 +125,12 @@ export class USBManager {
                     !(await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))
                 ) {
                     logger.info(
-                        `Pass-through device ${this.stringifyPTSerializableDevice(ptDevice)} is connected, adding to VM`
+                        `Pass-through device ${this.stringifyPTSerializableDevice(ptDevice)} is connected, adding to VM`,
                     );
                     const device = this.devices.value.find(
                         d =>
                             d.deviceDescriptor.idVendor === ptDevice.vendorId &&
-                            d.deviceDescriptor.idProduct === ptDevice.productId
+                            d.deviceDescriptor.idProduct === ptDevice.productId,
                     )!;
                     await this.#QMPAddDevice(device);
                 }
@@ -236,11 +236,11 @@ export class USBManager {
         // Avoid duplicates
         if (
             this.#wbConfig.config.passedThroughDevices.find(
-                d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId
+                d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId,
             )
         ) {
             throw new Error(
-                `Device "${ptDevice.manufacturer} | ${ptDevice.product}" is already in the passthrough list`
+                `Device "${ptDevice.manufacturer} | ${ptDevice.product}" is already in the passthrough list`,
             );
         }
 
@@ -264,7 +264,7 @@ export class USBManager {
      */
     async removeDeviceFromPassthroughList(ptDevice: PTSerializableDeviceInfo) {
         this.#wbConfig.config.passedThroughDevices = this.#wbConfig.config.passedThroughDevices.filter(
-            d => d.vendorId !== ptDevice.vendorId || d.productId !== ptDevice.productId
+            d => d.vendorId !== ptDevice.vendorId || d.productId !== ptDevice.productId,
         );
         this.ptDevices.value = this.#wbConfig.config.passedThroughDevices;
 
@@ -286,7 +286,7 @@ export class USBManager {
     isDeviceInPassthroughList(device: Device): boolean {
         const ptDevice = this.#convertDeviceToPTSerializable(device);
         return this.#wbConfig.config.passedThroughDevices.some(
-            d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId
+            d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId,
         );
     }
 
@@ -298,7 +298,8 @@ export class USBManager {
     isPTDeviceConnected(ptDevice: PTSerializableDeviceInfo): boolean {
         return this.devices.value.some(
             d =>
-                d.deviceDescriptor.idVendor === ptDevice.vendorId && d.deviceDescriptor.idProduct === ptDevice.productId
+                d.deviceDescriptor.idVendor === ptDevice.vendorId &&
+                d.deviceDescriptor.idProduct === ptDevice.productId,
         );
     }
 
@@ -385,7 +386,7 @@ export class USBManager {
         const vendorid = device.deviceDescriptor.idVendor;
         const productid = device.deviceDescriptor.idProduct;
         const deviceBusPath = `/dev/bus/usb/${String(device.busNumber).padStart(3, "0")}/${String(
-            device.deviceAddress
+            device.deviceAddress,
         ).padStart(3, "0")}`;
 
         if (this.isMTPDevice(device)) {

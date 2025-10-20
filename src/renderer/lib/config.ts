@@ -99,7 +99,7 @@ export class WinboatConfig {
                     console.log(
                         `Added missing config key: ${key} with default value: ${
                             defaultConfig[key as keyof WinboatConfigObj]
-                        }`
+                        }`,
                     );
                 }
 

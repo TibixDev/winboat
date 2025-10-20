@@ -248,7 +248,7 @@
                             <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
                             <x-select
                                 id="select-edition"
-                                @change="(e: any) => windowsVersion = e.detail.newValue"
+                                @change="(e: any) => (windowsVersion = e.detail.newValue)"
                                 class="w-64"
                                 :disabled="!!customIsoPath"
                             >
@@ -269,11 +269,11 @@
                             <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
                             <x-select
                                 id="select-language"
-                                @change="(e: any) => windowsLanguage = e.detail.newValue"
+                                @change="(e: any) => (windowsLanguage = e.detail.newValue)"
                                 class="w-64"
                                 :disabled="!!customIsoPath"
                             >
-                                <x-menu @change="(e: any) => windowsLanguage = e.detail.newValue">
+                                <x-menu @change="(e: any) => (windowsLanguage = e.detail.newValue)">
                                     <x-menuitem
                                         v-for="(language, languageWithBanner) in WINDOWS_LANGUAGES"
                                         :key="language"
@@ -353,7 +353,7 @@
                                         required
                                         size="large"
                                         :value="username"
-                                        @input="(e: any) => username = e.target.value"
+                                        @input="(e: any) => (username = e.target.value)"
                                     >
                                         <x-icon href="#person"></x-icon>
                                         <x-label>Name</x-label>
@@ -371,7 +371,7 @@
                                         required
                                         size="large"
                                         :value="password"
-                                        @input="(e: any) => password = e.target.value"
+                                        @input="(e: any) => (password = e.target.value)"
                                     >
                                         <x-icon href="#lock"></x-icon>
                                         <x-label>Password</x-label>
@@ -391,7 +391,7 @@
                                         required
                                         size="large"
                                         :value="confirmPassword"
-                                        @input="(e: any) => confirmPassword = e.target.value"
+                                        @input="(e: any) => (confirmPassword = e.target.value)"
                                     >
                                         <x-icon href="#lock"></x-icon>
                                         <x-label>Confirm Password</x-label>
@@ -446,7 +446,7 @@
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-cpu-cores"
-                                        @change="(e: any) => cpuCores = Number(e.target.value)"
+                                        @change="(e: any) => (cpuCores = Number(e.target.value))"
                                         class="w-[50%]"
                                         :value="cpuCores"
                                         :min="MIN_CPU_CORES"
@@ -480,7 +480,7 @@
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-ram"
-                                        @change="(e: any) => ramGB = Number(e.target.value)"
+                                        @change="(e: any) => (ramGB = Number(e.target.value))"
                                         class="w-[50%]"
                                         :value="ramGB"
                                         :min="MIN_RAM_GB"
@@ -514,7 +514,7 @@
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-disk"
-                                        @change="(e: any) => diskSpaceGB = Number(e.target.value)"
+                                        @change="(e: any) => (diskSpaceGB = Number(e.target.value))"
                                         class="w-[50%]"
                                         :value="diskSpaceGB"
                                         :min="MIN_DISK_GB"
@@ -944,7 +944,7 @@ const installFolderErrors = computedAsync(async () => {
     const freeGB = Math.floor(diskSpace.free / (1024 * 1024 * 1024));
     if (freeGB < MIN_DISK_GB) {
         errors.push(
-            `Not enough disk space available. At least ${MIN_DISK_GB} GB is required, but only ${freeGB} GB is available.`
+            `Not enough disk space available. At least ${MIN_DISK_GB} GB is required, but only ${freeGB} GB is available.`,
         );
     }
 
@@ -996,7 +996,8 @@ function install() {
     width: 90vw;
     height: 80vh;
     border-radius: 10px;
-    background: linear-gradient(197.37deg, #7450db -0.38%, rgba(138, 234, 240, 0) 101.89%),
+    background:
+        linear-gradient(197.37deg, #7450db -0.38%, rgba(138, 234, 240, 0) 101.89%),
         linear-gradient(115.93deg, #3e88f6 4.86%, rgba(62, 180, 246, 0.33) 38.05%, rgba(62, 235, 246, 0) 74.14%),
         radial-gradient(
             56.47% 76.87% at 6.92% 7.55%,

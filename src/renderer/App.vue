@@ -113,7 +113,7 @@
                     :key="route.path"
                 >
                     <x-navitem>
-                        <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)"></Icon>
+                        <Icon class="mr-4 w-5 h-5" :icon="route.meta!.icon as string"></Icon>
                         <x-label>{{ route.name }}</x-label>
                     </x-navitem>
                 </RouterLink>
@@ -126,7 +126,7 @@
                     <Icon class="w-6 h-6 opacity-60" icon="icon-park-solid:toolkit"></Icon>
                     <h1 class="my-0 text-2xl font-semibold opacity-60">WinBoat</h1>
                     <Icon class="w-6 h-6" icon="bitcoin-icons:caret-right-filled"></Icon>
-                    <Icon class="w-6 h-6" :icon="(useRoute().meta.icon as string)"></Icon>
+                    <Icon class="w-6 h-6" :icon="useRoute().meta.icon as string"></Icon>
                     <h1 class="my-0 text-2xl font-semibold">
                         {{ useRoute().name }}
                     </h1>
@@ -205,7 +205,7 @@ onMounted(async () => {
                 }
                 manualUpdateRequired.value = false;
             }
-        }
+        },
     );
 });
 
@@ -242,7 +242,8 @@ dialog::backdrop {
 
 .gradient-ball {
     border-radius: 99999px;
-    background: linear-gradient(197.37deg, #7450db -0.38%, rgba(138, 234, 240, 0) 101.89%),
+    background:
+        linear-gradient(197.37deg, #7450db -0.38%, rgba(138, 234, 240, 0) 101.89%),
         linear-gradient(115.93deg, #3e88f6 4.86%, rgba(62, 180, 246, 0.33) 38.05%, rgba(62, 235, 246, 0) 74.14%),
         radial-gradient(
             56.47% 76.87% at 6.92% 7.55%,
