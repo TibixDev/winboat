@@ -99,8 +99,9 @@
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
                                 >
+                                    How?
+                                </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerInstalled" class="text-green-500">✔</span>
@@ -111,8 +112,9 @@
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
                                 >
+                                    How?
+                                </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerComposeInstalled" class="text-green-500">✔</span>
@@ -123,8 +125,9 @@
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
                                 >
+                                    How?
+                                </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerIsInUserGroups" class="text-green-500">✔</span>
@@ -137,8 +140,9 @@
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
                                 >
+                                    How?
+                                </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerIsRunning" class="text-green-500">✔</span>
@@ -150,8 +154,9 @@
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
                                 >
+                                    How?
+                                </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
@@ -162,8 +167,9 @@
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
                                 >
+                                    How?
+                                </a>
                             </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
