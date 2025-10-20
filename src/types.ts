@@ -40,6 +40,11 @@ export type ComposeConfig = {
     volumes: {
         [key: string]: null | string;
     };
+    networks: {
+        [key: string]: {
+            external: boolean;
+        }
+    }
     services: {
         windows: {
             image: string;

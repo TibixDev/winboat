@@ -147,7 +147,6 @@ export class InstallManager {
         if (!fs.existsSync(appPath)) {
             const error = new Error(`Guest server directory not found at: ${appPath}`);
             logger.error(error.message);
-            this.changeState(InstallStates.INSTALL_ERROR);
             throw error;
         }
 
@@ -185,7 +184,6 @@ export class InstallManager {
             logger.info("OEM assets created successfully");
         } catch (error) {
             logger.error(`Failed to copy OEM assets: ${error}`);
-            this.changeState(InstallStates.INSTALL_ERROR);
             throw error;
         }
     }
@@ -224,7 +222,6 @@ export class InstallManager {
                     return; // Exit the method when fetch throws 404
                 }
                 logger.error(`Error monitoring container: ${error}`);
-                this.changeState(InstallStates.INSTALL_ERROR);
                 throw error;
             }
 
@@ -266,12 +263,19 @@ export class InstallManager {
 
     async install() {
         logger.info('Starting installation...');
-
-        await this.createComposeFile();
-        this.createOEMAssets();
-        await this.startContainer();
-        await this.monitorContainerPreinstall();
-        await this.monitorAPIHealth();
+        
+        try {
+            await this.createComposeFile();
+            this.createOEMAssets();
+            await this.startContainer();
+            await this.monitorContainerPreinstall();
+            await this.monitorAPIHealth();
+        }
+        catch(e) {
+            this.changeState(InstallStates.INSTALL_ERROR);
+            logger.error("Errors encountered, could not complete the installation steps.")
+            return;
+        }
         this.changeState(InstallStates.COMPLETED);
 
         logger.info('Installation completed successfully.');

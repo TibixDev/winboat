@@ -7,6 +7,11 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     "volumes": {
         "data": null
     },
+    "networks":{
+        "podman": {
+            "external": true
+        }
+    },
     "services": {
         "windows": {
             "image": "ghcr.io/dockur/windows:5.07",
