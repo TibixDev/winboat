@@ -511,9 +511,9 @@ if ($lnkFiles) {
 
 
 # 4. UWP Apps
-if (Get-Command Get-AppxPackage -ErrorAction SilentlyContinue) {
+if (Get-Command Get-AppxPackage -AllUser -ErrorAction SilentlyContinue) {
     try {
-        Get-AppxPackage -ErrorAction SilentlyContinue |
+        Get-AppxPackage -AllUser -ErrorAction SilentlyContinue |
             Where-Object {
                 $_.IsFramework -eq $false -and
                 $_.IsResourcePackage -eq $false -and
