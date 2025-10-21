@@ -27,6 +27,9 @@ var (
 	BuildTimestamp = "n/a"
 )
 
+const AUTHKEY_HASH_REG = "WinBoatAuthHash"
+const AUTHKEY_HASH_OEM_LOCATION = "C:\\OEM\\auth.hash"
+
 type Metrics struct {
 	CPU struct {
 		Usage     float64 `json:"usage"`     // Percentage, 0-100
@@ -134,6 +137,24 @@ func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func applyUpdate(w http.ResponseWriter, r *http.Request) {
+	// Verify password
+	expectedHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
+	if err != nil || expectedHash == nil {
+		http.Error(w, "Unauthorized: failed to read auth hash", http.StatusUnauthorized)
+	}
+
+	password := r.FormValue("password")
+	if password == "" {
+		http.Error(w, "Unauthorized: password is required", http.StatusUnauthorized)
+		return
+	}
+
+	isValid, err := verifyPasswordSecure(*expectedHash, password)
+	if err != nil || !isValid {
+		http.Error(w, "Unauthorized: invalid password", http.StatusUnauthorized)
+		return
+	}
+
 	r.ParseMultipartForm(100 << 20) // Limit upload size to 100MB
 	var buf bytes.Buffer
 
@@ -229,6 +250,30 @@ func getIcon(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// Try to initialize auth key hash if not present
+	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
+	if err != nil {
+		log.Println("Warning: failed to read auth hash from registry:", err)
+	}
+
+	// Hash not found in registry
+	if existingHash == nil {
+		// Check OEM location and try to read from there
+		oemHashBytes, err := os.ReadFile(AUTHKEY_HASH_OEM_LOCATION)
+		if err != nil {
+			log.Println("Auth hash not found in registry or OEM location.")
+		} else {
+			oemHash := string(bytes.TrimSpace(oemHashBytes))
+			err = setSecureRegKey(AUTHKEY_HASH_REG, oemHash)
+			if err != nil {
+				log.Println("Failed to initialize auth hash from OEM location:", err)
+			} else {
+				log.Println("Initialized auth hash from OEM location.")
+			}
+		}
+	}
+
+	// Setup routes
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
 	r.HandleFunc("/health", getHealth).Methods("GET")

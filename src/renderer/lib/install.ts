@@ -12,6 +12,7 @@ const path: typeof import("path") = require("path");
 const { promisify }: typeof import("util") = require("util");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
+const argon2: typeof import("argon2") = require("argon2");
 
 const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
@@ -170,7 +171,7 @@ export class InstallManager {
         logger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
     }
 
-    createOEMAssets() {
+    async createOEMAssets() {
         this.changeState(InstallStates.CREATING_OEM);
         logger.info("Creating OEM assets");
 
@@ -231,6 +232,16 @@ export class InstallManager {
             logger.info("OEM assets created successfully");
         } catch (error) {
             logger.error(`Failed to copy OEM assets: ${error}`);
+            this.changeState(InstallStates.INSTALL_ERROR);
+            throw error;
+        }
+
+        // Create password hash file in oemPath
+        try {
+            const hash = await argon2.hash(this.conf.password);
+            fs.writeFileSync(path.join(oemPath, "auth.hash"), hash, { encoding: "utf8" });
+        } catch (error) {
+            logger.error(`Failed to create password hash: ${error}`);
             this.changeState(InstallStates.INSTALL_ERROR);
             throw error;
         }
@@ -341,7 +352,7 @@ export class InstallManager {
         logger.info("Starting installation...");
 
         await this.createComposeFile();
-        this.createOEMAssets();
+        await this.createOEMAssets();
         await this.startContainer();
         await this.monitorContainerPreinstall();
         await this.monitorAPIHealth();

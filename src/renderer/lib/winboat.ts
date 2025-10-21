@@ -29,6 +29,7 @@ const { promisify }: typeof import("util") = require("util");
 const { exec }: typeof import("child_process") = require("child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const FormData: typeof import("form-data") = require("form-data");
+const argon2: typeof import("argon2") = require("argon2");
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");
@@ -749,9 +750,12 @@ export class Winboat {
 
         logger.info("ZIP Path", zipPath);
 
-        // 4. Send the payload to the guest server, as a multipart/form-data with updateFile
+        // 4. Send the payload to the guest server
+        // as a multipart/form-data with updateFile and password
         const formData = new FormData();
         formData.append("updateFile", fs.createReadStream(zipPath));
+        const { password } = this.getCredentials();
+        formData.append("password", password);
 
         try {
             const apiPort = this.getHostPort(GUEST_API_PORT);
