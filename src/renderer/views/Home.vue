@@ -51,23 +51,33 @@
 
             <!-- Buttons -->
             <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
-                <button
-                    title="Start"
+                <div
+                  v-if="
+                    winboat.containerStatus.value === ContainerStatus.Exited ||
+                    winboat.containerStatus.value === ContainerStatus.Dead
+                  "
+                  class="group"
+                  :title="winboat.snapshotBusy.value ? 'Snapshot/Restore in progress' : 'Start'"
+                >
+                  <button
                     class="generic-hover"
-                    v-if="
-                        winboat.containerStatus.value === ContainerStatus.Exited ||
-                        winboat.containerStatus.value === ContainerStatus.Dead
-                    "
+                    :class="winboat.snapshotBusy.value
+                      ? 'opacity-50 cursor-not-allowed pointer-events-none'
+                      : ''"
+                    :disabled="winboat.snapshotBusy.value"
+                    aria-label="Start"
+                    :aria-disabled="winboat.snapshotBusy.value ? 'true' : 'false'"
                     @click="winboat.startContainer()"
-                >
-                    <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
-                </button>
-                <button
-                    title="Stop"
-                    class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.Running"
-                    @click="winboat.stopContainer()"
-                >
+                  >
+                    <Icon
+                      class="w-20 h-20"
+                      :class="winboat.snapshotBusy.value ? 'text-gray-500' : 'text-green-300'"
+                      icon="mingcute:play-fill"
+                    />
+                  </button>
+                </div>
+                <button title="Stop" class="generic-hover" v-if="winboat.containerStatus.value === ContainerStatus.Running"
+                    @click="winboat.stopContainer()">
                     <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
                 </button>
 

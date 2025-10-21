@@ -222,6 +222,7 @@ export class Winboat {
     containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited);
     containerActionLoading: Ref<boolean> = ref(false);
     rdpConnected: Ref<boolean> = ref(false);
+    snapshotBusy: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
             usage: 0,
@@ -263,11 +264,20 @@ export class Winboat {
                     await this.destroyAPIIntervals();
                 }
             }
+            // Update snapshot/Restore busy status every second
+            try {
+              this.snapshotBusy.value =
+                !!this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress());
+            } catch {
+              this.snapshotBusy.value = false;
+            }
         }, 1000);
 
         this.#wbConfig = new WinboatConfig();
 
         this.snapshotMgr = new SnapshotManager();
+        this.snapshotBusy.value =
+          !!this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress());
 
         this.appMgr = new AppManager();
 
@@ -540,6 +550,12 @@ export class Winboat {
     }
 
     async startContainer() {
+        if (this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress())) {
+          const why = this.snapshotMgr.busyReason() ?? 'operation';
+          logger.warn(`Blocked start: ${why} in progress`);
+          this.containerActionLoading.value = false;
+          throw new Error(`Cannot start while a ${why} is in progress. Please wait or cancel it.`);
+        }
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
@@ -596,6 +612,12 @@ export class Winboat {
     }
 
     async unpauseContainer() {
+        if (this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress())) {
+          const why = this.snapshotMgr.busyReason() ?? 'operation';
+          logger.warn(`Blocked unpause: ${why} in progress`);
+          this.containerActionLoading.value = false;
+          throw new Error(`Cannot unpause while a ${why} is in progress. Please wait or cancel it.`);
+        }
         logger.info("Unpausing WinBoat container...");
         this.containerActionLoading.value = true;
         try {

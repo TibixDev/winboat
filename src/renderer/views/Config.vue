@@ -622,7 +622,7 @@
                             </h1>
                         </div>
                         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Maximum number of snapshots to keep (oldest will be automatically deleted)
+                            Maximum number of snapshots to keep (oldest will be automatically deleted, pay attention putting a value lower than your current snapshot count)
                         </p>
                     </div>
                     <div class="flex flex-row gap-2 justify-center items-center">
@@ -751,6 +751,7 @@ import {
     RESTART_NO,
     GUEST_RDP_PORT,
     DEFAULT_HOST_QMP_PORT,
+    WINBOAT_DIR,
 } from "../lib/constants";
 import { PortManager } from "../utils/port";
 import { SnapshotManager } from "../lib/snapshot";
