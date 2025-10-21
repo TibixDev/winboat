@@ -152,7 +152,17 @@
                                 All
                             </x-label>
                         </x-menuitem>
-                        <x-menuitem value="custom">
+
+                        <x-menuitem
+                            v-for="(label, value) in AllSources"
+                            :value="value"
+                        >
+                            <x-label>
+                                <span class="qualifier"> Filter: </span>
+                                {{ label }}
+                            </x-label>
+                        </x-menuitem>
+                        <!-- <x-menuitem value="custom">
                             <x-label>
                                 <span class="qualifier"> Filter: </span>
                                 Custom
@@ -163,7 +173,7 @@
                                 <span class="qualifier"> Filter: </span>
                                 Default
                             </x-label>
-                        </x-menuitem>
+                        </x-menuitem> -->
                     </x-menu>
                 </x-select>
 
@@ -264,7 +274,7 @@ const winboat = new Winboat();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
 const sortBy = ref("");
-const filterBy = ref("");
+const filterBy = ref("all");
 const addCustomAppDialog = useTemplateRef("addCustomAppDialog");
 const customAppName = ref("");
 const customAppPath = ref("");
@@ -285,16 +295,28 @@ const apiURL = computed(() => {
     return `http://127.0.0.1:${port}`;
 });
 
+const AllSources = computed(() => {
+    var sourceList = {};
+    const sourceMap = {
+        "system": "System",
+        "winreg": "Windows Registry",
+        "startmenu": "Start Menu",
+        "uwp": "Microsoft Store",
+        "internal": "Internal"
+    }
+    apps.value.forEach(app => {
+        sourceList[app.Source] = sourceMap[app.Source] || app.Source; 
+    });
+    return sourceList;
+})
+
 const computedApps = computed(() => {
     var appsCache = [...apps.value]; // make copy 
 
-    if (filterBy.value === "custom") {
-        appsCache = appsCache.filter(app => app.Source === "custom");
-    } else if (filterBy.value === "default") {
-        appsCache = appsCache.filter(app => app.Source !== "custom");
+    if (filterBy.value !== "all") {
+        appsCache = appsCache.filter(app => app.Source === filterBy.value);
     }
     
-    // fixes making ghost app
     if (searchInput.value) {
         appsCache = appsCache.filter(app =>
             app.Name.toLowerCase().includes(searchInput.value.toLowerCase())
