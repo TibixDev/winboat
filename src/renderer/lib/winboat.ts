@@ -44,6 +44,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
+        Args: "",
         Usage: 0,
     },
     {
@@ -51,6 +52,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
         Source: "internal",
         Path: "%windir%\\explorer.exe",
+        Args: "",
         Usage: 0,
     },
     {
@@ -58,6 +60,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
         Path: CustomAppCommands.NOVNC_COMMAND,
+        Args: "",
         Usage: 0,
     },
 ];
@@ -704,13 +707,9 @@ export class Winboat {
         // Additional (new) arguments added by user
         const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => !a.isReplacement).map(v => v.newArg) ?? [];
         // The stock arguments after any replacements have been made and new arguments have been added
-        const combinedArgs = stockArgs
-            .map(argStr =>
-                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
-            )
-            .concat(newArgs)
-            .join(" ");
-
+        const combinedArgs = stockArgs.map(argStr => useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr))
+            .concat(newArgs).join(" ");
+	
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
