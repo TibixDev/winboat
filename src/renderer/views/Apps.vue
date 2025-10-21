@@ -1,13 +1,13 @@
 <template>
     <div>
         <dialog ref="addCustomAppDialog">
-            <h3 class="mb-2">Add Custom App</h3>
-            <p>Add a custom app to your apps list.</p>
+            <h3 class="mb-2">{{ currentAppForm.Source === "custom" ? "Edit App" : "Add App" }}</h3>
+            <!-- <p>Add a custom app to your apps list.</p> -->
 
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
-                        <img v-if="customAppIcon" :src="customAppIcon" class="size-24" />
+                        <img v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
@@ -20,13 +20,19 @@
                 </div>
                 <div class="flex flex-col gap-0.5 justify-center w-full">
                     <x-label>Name</x-label>
-                    <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppName = e.target.value)">
+                    <x-input v-model="currentAppForm.Name" @input="(e: any) => (customAppName = e.target.value)" type="text" />
+                    <!-- <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppName = e.target.value)">
                         <x-label>My Awesome App</x-label>
-                    </x-input>
+                    </x-input> -->
                     <x-label class="mt-4">Path</x-label>
-                    <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppPath = e.target.value)">
+                    <x-input v-model="currentAppForm.Path" type="text" @input="(e: any) => (customAppPath = e.target.value)" />
+
+                    <!-- <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppPath = e.target.value)">
                         <x-label>C:\Program Files\MyAwesomeApp\myapp.exe</x-label>
-                    </x-input>
+                    </x-input> -->
+
+                    <x-label class="mt-2">Arguments</x-label>
+                    <x-input v-model="currentAppForm.Args" type="text" placeholder="Optional" />
                 </div>
             </div>
 
@@ -73,7 +79,7 @@
                     <x-label>Launch</x-label>
                 </WBMenuItem>
 
-                <WBMenuItem @click="editApp">
+                <WBMenuItem @click="openEditAppDialog(contextMenuTarget)">
                     <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
                     <x-label>Edit</x-label>
                 </WBMenuItem>
@@ -89,8 +95,8 @@
                 <x-button @click="cancelAddCustomApp" id="cancel-button">
                     <x-label>Cancel</x-label>
                 </x-button>
-                <x-button toggled id="add-button" :disabled="customAppAddErrors.length > 0" @click="addCustomApp">
-                    <x-label>Add</x-label>
+                <x-button toggled id="add-button" :disabled="customAppAddErrors.length > 0 || (orginalAppForm.Source === 'custom' && isSame)" @click="saveApp">
+                    <x-label>{{ currentAppForm.Source === "custom" ? "Save" : "Create New" }}</x-label>
                 </x-button>
             </footer>
         </dialog>
@@ -111,7 +117,7 @@
                 </x-button>
 
                 <!-- Custom App Add Button -->
-                <x-button class="flex flex-row gap-1 items-center" @click="addCustomAppDialog!.showModal()">
+                <x-button class="flex flex-row gap-1 items-center" @click="openAddAppDialog()">
                     <x-icon href="#add" class="qualifier"></x-icon>
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
@@ -185,7 +191,7 @@
             >
                 <x-card
                     v-for="app of computedApps"
-                    :key="app.Path"
+                    :key="app.id"
                     class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
                     :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
                     @click="winboat.launchApp(app)"
@@ -242,7 +248,7 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { computed, onMounted, ref, useTemplateRef, watch } from "vue";
+import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from "vue";
 import { ContainerStatus, Winboat } from "../lib/winboat";
 import { type WinApp } from "../../types";
 import WBContextMenu from "../components/WBContextMenu.vue";
@@ -263,6 +269,15 @@ const addCustomAppDialog = useTemplateRef("addCustomAppDialog");
 const customAppName = ref("");
 const customAppPath = ref("");
 const customAppIcon = ref(`data:image/png;base64,${AppIcons[DEFAULT_ICON]}`);
+const customAppArgs = ref("");
+const orginalAppForm = ref<WinApp | null>(null);
+const currentAppForm = ref<WinApp>({
+    Name: '',
+    Path: '',
+    Args: '',
+    Icon: '',
+    Source: ''
+});
 
 const apiURL = computed(() => {
     const port = winboat.portMgr.value?.getHostPort(GUEST_API_PORT) ?? GUEST_API_PORT;
@@ -271,25 +286,28 @@ const apiURL = computed(() => {
 });
 
 const computedApps = computed(() => {
-    var appsCache = apps.value;
+    var appsCache = [...apps.value]; // make copy 
 
-    if (filterBy.value == "custom") {
+    if (filterBy.value === "custom") {
         appsCache = appsCache.filter(app => app.Source === "custom");
-    } else if (filterBy.value == "default") {
+    } else if (filterBy.value === "default") {
         appsCache = appsCache.filter(app => app.Source !== "custom");
     }
+    
+    // fixes making ghost app
+    if (searchInput.value) {
+        appsCache = appsCache.filter(app =>
+            app.Name.toLowerCase().includes(searchInput.value.toLowerCase())
+        );
+    }
 
-    if (!searchInput.value)
-        return appsCache.sort((a, b) => {
-            if (sortBy.value == "usage" && a.Usage !== b.Usage) {
-                return b.Usage! - a.Usage!;
-            }
-            return a.Name.localeCompare(b.Name);
-        });
+    if (sortBy.value === "usage") {
+        appsCache.sort((a, b) => (b.Usage ?? 0) - (a.Usage ?? 0));
+    } else {
+        appsCache.sort((a, b) => a.Name.localeCompare(b.Name));
+    }
 
-    return appsCache
-        .filter(app => app.Name.toLowerCase().includes(searchInput.value.toLowerCase()))
-        .sort((a, b) => a.Name.localeCompare(b.Name));
+    return appsCache;
 });
 
 onMounted(async () => {
@@ -305,17 +323,25 @@ onMounted(async () => {
     // Fetch icon for custom app path
     watch(customAppPath, async (newVal, oldVal) => {
         await debouncedFetchIcon(newVal, oldVal);
-    });    
+    });
+
+    const onScroll = () => contextMenuRef.value?.hide();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
 });
 
 async function refreshApps() {
     if (winboat.isOnline.value) {
-        apps.value = await winboat.appMgr!.getApps(apiURL.value);
+        const loadedApps = await winboat.appMgr!.getApps(apiURL.value);
+        apps.value = loadedApps.map(app => ({
+            ...app,
+            id: crypto.randomUUID()
+        }));
         // Run in background, won't impact UX
         await winboat.appMgr!.updateAppCache(apiURL.value);
-        if (winboat.appMgr!.appCache.length !== apps.value.length) {
-            apps.value = winboat!.appMgr!.appCache;
-        }
+        //if (winboat.appMgr!.appCache.length !== apps.value.length) {
+        //    apps.value = winboat!.appMgr!.appCache;
+        //}
     }
 }
 
@@ -333,6 +359,17 @@ const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {
     }
 }, 500);
 
+const isSame = computed(() => {
+    if(!orginalAppForm.value) return true; // new app
+    const orig = orginalAppForm.value;
+    const curr = currentAppForm.value;
+    return (
+        orig.Name === curr.Name &&
+        orig.Path === curr.Path &&
+        (orig.Args || "") === (curr.Args || "")
+    );
+})
+
 const customAppAddErrors = computed(() => {
     const errors: string[] = [];
 
@@ -341,13 +378,15 @@ const customAppAddErrors = computed(() => {
     }
 
     if (apps.value.find(app => app.Name === customAppName.value)) {
-        errors.push("An app with this name already exists");
+        if (orginalAppForm.value.Name !== customAppName.value || orginalAppForm.value.Source !== "custom") {
+            errors.push("An app with this name already exists");
+        }
     }
 
-    const appWithConflictingPath = apps.value.find(app => app.Path === customAppPath.value);
-    if (appWithConflictingPath) {
-        errors.push(`An app (${appWithConflictingPath.Name}) with this path already exists`);
-    }
+    //const appWithConflictingPath = apps.value.find(app => app.Path === customAppPath.value);
+    //if (appWithConflictingPath) {
+    //     errors.push(`An app (${appWithConflictingPath.Name}) with this path already exists`);
+    //}
 
     if (!customAppPath.value) {
         errors.push("A valid path is required for your app");
@@ -362,14 +401,72 @@ const customAppAddErrors = computed(() => {
 
 const contextMenuRef = ref();
 const contextMenuTarget = ref(null);
+const dialogMode = ref<"edit" | "add">("add");
 
-function openContextMenu(event, app) {
-  contextMenuTarget.value = app;
-  contextMenuRef.value?.show(event); // Let WBContextMenu handle positioning
+async function openContextMenu(event, app) {
+    contextMenuTarget.value = app;
+    await nextTick(); // wait for DOM to update
+    contextMenuRef.value?.show(event); // Let WBContextMenu handle positioning
+}
+
+function openAddAppDialog() {
+    orginalAppForm.value = null;
+    const app = {
+        Name: "",
+        Path: "",
+        Args: "",
+        Icon: customAppIcon.value,
+        Source: "custom"
+    };
+    currentAppForm.value = app;
+    contextMenuTarget.value = null;
+    addCustomAppDialog.value?.showModal();
+}
+
+function openEditAppDialog(app: WinApp) {
+    orginalAppForm.value = { ...app }; // clone
+    customAppName.value = app.Name;
+    customAppPath.value = app.Path;
+    customAppIcon.value = app.Icon;
+    customAppArgs.value = app.Args;
+    contextMenuTarget.value = app;
+    currentAppForm.value = {
+        Name: app.Name,
+        Path: app.Path,
+        Args: app.Args || "",
+        Icon: `data:image/png;base64,${app.Icon}`,
+        Source: app.Source
+    };
+    addCustomAppDialog.value?.showModal();
+}
+
+async function saveApp() {
+    const iconRaw = currentAppForm.value.Icon.split("data:image/png;base64,")[1];
+
+    if (currentAppForm.value.Source === "custom") {
+        await winboat.appMgr!.updateCustomApp(orginalAppForm.value.Name, {
+            Name: currentAppForm.value.Name,
+            Path: currentAppForm.value.Path,
+            Args: currentAppForm.value.Args,
+            Icon: iconRaw
+        })
+        console.log("Save");
+    } else {
+        await winboat.appMgr!.addCustomApp(
+            currentAppForm.value.Name,
+            currentAppForm.value.Path,
+            currentAppForm.value.Args,
+            iconRaw
+        );
+        console.log("New save");
+    }
+
+    apps.value = await winboat.appMgr!.getApps(apiURL.value);
+    addCustomAppDialog.value?.close();
 }
 
 function onContextMenuHide() {
-  contextMenuTarget.value = null;
+    contextMenuTarget.value = null;
 }
 
 function launchApp() {
@@ -379,7 +476,7 @@ function launchApp() {
 }
 
 function editApp() {
-  if (contextMenuTarget.value?.Source != "system") {
+  if (true) {
     console.log(contextMenuTarget.value);
     customAppName.value = contextMenuTarget.value.Name;
     customAppPath.value = contextMenuTarget.value.Path;
