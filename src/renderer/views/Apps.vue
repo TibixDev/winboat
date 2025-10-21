@@ -452,8 +452,9 @@ async function saveApp() {
         );
         console.log("New save");
     }
-
-    apps.value = await winboat.appMgr!.getApps(apiURL.value);
+    
+    refreshApps();
+    //apps.value = await winboat.appMgr!.getApps(apiURL.value);
     cancelAddCustomApp();
 }
 
