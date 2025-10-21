@@ -84,7 +84,7 @@
                     <x-label>Edit</x-label>
                 </WBMenuItem>
 
-                <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeApp">
+                <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeCustomApp">
                     <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
                     <x-label>Remove</x-label>
                 </WBMenuItem>
@@ -95,7 +95,7 @@
                 <x-button @click="cancelAddCustomApp" id="cancel-button">
                     <x-label>Cancel</x-label>
                 </x-button>
-                <x-button toggled id="add-button" :disabled="customAppAddErrors.length > 0 || (orginalAppForm.Source === 'custom' && isSame)" @click="saveApp">
+                <x-button toggled id="add-button" :disabled="customAppAddErrors.length > 0 || (orginalAppForm?.Source === 'custom' && isSame)" @click="saveApp">
                     <x-label>{{ currentAppForm.Source === "custom" ? "Save" : "Create New" }}</x-label>
                 </x-button>
             </footer>
@@ -339,9 +339,6 @@ async function refreshApps() {
         }));
         // Run in background, won't impact UX
         await winboat.appMgr!.updateAppCache(apiURL.value);
-        //if (winboat.appMgr!.appCache.length !== apps.value.length) {
-        //    apps.value = winboat!.appMgr!.appCache;
-        //}
     }
 }
 
@@ -383,11 +380,6 @@ const customAppAddErrors = computed(() => {
         }
     }
 
-    //const appWithConflictingPath = apps.value.find(app => app.Path === customAppPath.value);
-    //if (appWithConflictingPath) {
-    //     errors.push(`An app (${appWithConflictingPath.Name}) with this path already exists`);
-    //}
-
     if (!customAppPath.value) {
         errors.push("A valid path is required for your app");
     }
@@ -416,7 +408,7 @@ function openAddAppDialog() {
         Path: "",
         Args: "",
         Icon: customAppIcon.value,
-        Source: "custom"
+        Source: ""
     };
     currentAppForm.value = app;
     contextMenuTarget.value = null;
@@ -462,7 +454,7 @@ async function saveApp() {
     }
 
     apps.value = await winboat.appMgr!.getApps(apiURL.value);
-    addCustomAppDialog.value?.close();
+    cancelAddCustomApp();
 }
 
 function onContextMenuHide() {
@@ -472,22 +464,6 @@ function onContextMenuHide() {
 function launchApp() {
   if (contextMenuTarget.value) {
     winboat.launchApp(contextMenuTarget.value);
-  }
-}
-
-function editApp() {
-  if (true) {
-    console.log(contextMenuTarget.value);
-    customAppName.value = contextMenuTarget.value.Name;
-    customAppPath.value = contextMenuTarget.value.Path;
-    customAppIcon.value = `data:image/png;base64,${contextMenuTarget.value.Icon}`;
-    addCustomAppDialog.value?.showModal();
-  }
-}
-
-function removeApp() {
-  if (contextMenuTarget.value) {
-    removeCustomApp(contextMenuTarget.value);
   }
 }
 
@@ -529,33 +505,21 @@ function cancelAddCustomApp() {
 }
 
 /**
- * Adds a custom app to WinBoat's application list
- */
-async function addCustomApp() {
-    const iconRaw = customAppIcon.value.split("data:image/png;base64,")[1];
-    await winboat.appMgr!.addCustomApp(customAppName.value, customAppPath.value, iconRaw);
-    apps.value = await winboat.appMgr!.getApps(apiURL.value);
-    addCustomAppDialog.value!.close();
-    resetCustomAppForm();
-}
-
-/**
  * Removes a custom app from WinBoat's application list
  */
-async function removeCustomApp(app: WinApp) {
-    await winboat.appMgr!.removeCustomApp(app);
-    apps.value = await winboat.appMgr!.getApps(apiURL.value);
+async function removeCustomApp() {
+    if (!contextMenuTarget.value) return;
+    await winboat.appMgr!.removeCustomApp(contextMenuTarget.value);
+    await refreshApps(); 
 }
 
-/**
- * Resets the custom app form to its default values
- */
 async function resetCustomAppForm() {
     // So there is no visual flicker while the dialog is closing
     setTimeout(() => {
         customAppName.value = "";
         customAppPath.value = "";
         customAppIcon.value = `data:image/png;base64,${AppIcons[DEFAULT_ICON]}`;
+        customAppArgs.value = "";        
 
         // Because of course Vue reactivity fails here :(
         addCustomAppDialog.value?.querySelectorAll("x-input")?.forEach((input: any) => {
