@@ -20,19 +20,19 @@
                 </div>
                 <div class="flex flex-col gap-0.5 justify-center w-full">
                     <x-label>Name</x-label>
-                    <x-input v-model="currentAppForm.Name" @input="(e: any) => (customAppName = e.target.value)" type="text" />
+                    <x-input v-model="currentAppForm.Name" class="!max-w-full" @input="(e: any) => (customAppName = e.target.value)" type="text" />
                     <!-- <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppName = e.target.value)">
                         <x-label>My Awesome App</x-label>
                     </x-input> -->
                     <x-label class="mt-4">Path</x-label>
-                    <x-input v-model="currentAppForm.Path" type="text" @input="(e: any) => (customAppPath = e.target.value)" />
+                    <x-input v-model="currentAppForm.Path" type="text" class="!max-w-full" @input="(e: any) => (customAppPath = e.target.value)" />
 
                     <!-- <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppPath = e.target.value)">
                         <x-label>C:\Program Files\MyAwesomeApp\myapp.exe</x-label>
                     </x-input> -->
 
                     <x-label class="mt-2">Arguments</x-label>
-                    <x-input v-model="currentAppForm.Args" type="text" placeholder="Optional" />
+                    <x-input v-model="currentAppForm.Args" type="text" class="!max-w-full" placeholder="Optional" />
                 </div>
             </div>
 
