@@ -181,13 +181,14 @@ class AppManager {
      * Adds a custom app to WinBoat's application list
      * @param name Name of the app
      * @param path Path of the app
+     * @param args Args of the app
      * @param icon Icon of the app
      */
-    async addCustomApp(name: string, path: string, icon: string) {
+    async addCustomApp(name: string, path: string, args: string, icon: string) {
         const customWinApp: WinApp = {
             Name: name,
             Path: path,
-            Args: "", // #Todo Ability to give custom arg to custom app.
+            Args: args,
             Icon: icon,
             Source: "custom",
             Usage: 0,
@@ -196,6 +197,28 @@ class AppManager {
         this.appUsageCache[name] = 0;
         await this.writeToDisk();
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.concat(customWinApp);
+    }
+    
+    async updateCustomApp(
+    	oldName: string,
+    	updatedApp: {name: string, path: string, args: string, icon: string, Source: "custom", Usage: 0}) {
+    	
+    	this.appCache = this.appCache.map(app =>
+    	    app.Name === oldName ? { ...app, ...updatedApp } : app
+    	);
+        
+        // update appUsage if name changed
+        if (oldName !== updatedApp.Name) {
+            this.appUsageCache[updatedApp.Name] = this.appUsageCache[oldName] ?? 0;
+            delete this.appUsageCache[oldName];
+        }
+        
+        // update persisted app config
+        this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.map(app => 
+            app.Name == oldName ? { ...app, ...updatedApp } : app
+        );
+        
+        await this.writeToDisk();
     }
 
     /**
