@@ -53,7 +53,7 @@ export class DockerContainer extends ContainerManager {
     }
 
     async container(action: ContainerAction): Promise<void> {
-        const command = `${this.executableAlias} container ${action} ${this.defaultCompose.services.windows.container_name}`;
+        const command = `${this.executableAlias} container ${action} ${this.containerName}`;
         
         try {
             const { stdout } = await execAsync(command);
@@ -66,6 +66,17 @@ export class DockerContainer extends ContainerManager {
         }
     }
 
+    async remove(): Promise<void> {
+        const command = `${this.executableAlias} rm ${this.containerName}`;
+
+        try {
+            const { stdout } = await execAsync(command);
+        } catch(e) {
+            containerLogger.error(`Failed to remove container '${this.containerName}'`);
+            containerLogger.error(e);
+        }
+    }
+
     async getStatus(): Promise<ContainerStatus> {
         const statusMap = {
             "created": ContainerStatus.CREATED,
@@ -75,7 +86,7 @@ export class DockerContainer extends ContainerManager {
             "exited": ContainerStatus.EXITED,
             "dead": ContainerStatus.UKNOWN
         } as const;
-        const command = `${this.executableAlias} inspect --format="{{.State.Status}}" ${this.defaultCompose.services.windows.container_name}`;
+        const command = `${this.executableAlias} inspect --format="{{.State.Status}}" ${this.containerName}`;
 
         try {
             const { stdout } = await execAsync(command);
@@ -88,7 +99,7 @@ export class DockerContainer extends ContainerManager {
     }
 
     async exists(): Promise<boolean> {
-        const command = `${this.executableAlias} ps -a --filter "name=${this.defaultCompose.services.windows.container_name}" --format "{{.Names}}"`
+        const command = `${this.executableAlias} ps -a --filter "name=${this.containerName}" --format "{{.Names}}"`
 
         try {
             const { stdout: exists } = await execAsync(command);
@@ -98,6 +109,10 @@ export class DockerContainer extends ContainerManager {
             containerLogger.error(e);
             return false;
         }
+    }
+
+    get containerName(): string {
+        return this.defaultCompose.services.windows.container_name; // TODO: investigate whether we should use the compose on disk
     }
 
     static override async _getSpecs(): Promise<DockerSpecs>  {

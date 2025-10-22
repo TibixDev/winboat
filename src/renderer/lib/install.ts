@@ -206,7 +206,7 @@ export class InstallManager {
         while (true) {
             try {
                 const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
-                const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`);
+                const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`, { signal: AbortSignal.timeout(500) });
                 if (response.status === 404) {
                     logger.info('Received 404, preinstall completed');
                     return; // Exit the method when we get 404
@@ -225,7 +225,7 @@ export class InstallManager {
             }
 
             // Wait 500ms before next check
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await this.sleep(500);
         }
     }
 
@@ -236,27 +236,29 @@ export class InstallManager {
         let attempts = 0;
 
         while (true) {
+            const start = performance.now();
             try {
                 const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
+
                 const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, { signal: AbortSignal.timeout(5000) });
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
                     return;
                 }
-                // Log every 60 seconds (every 12th attempt with 5-second intervals)
-                if (attempts % 12 === 0) {
-                    logger.info(`API not ready yet (status: ${res.status}), still waiting after ${attempts * 5 / 60} minutes...`);
-                }
+
+                logger.log(`API request status: ${res.status}`);
             } catch (error) {
-                // Log every 60 seconds for errors too
-                if (attempts % 12 === 0) {
-                    logger.info(`API not responding yet, still waiting after ${attempts * 5 / 60} minutes...`);
+                // We can ignore the AbortError resulting from the timeout
+                if(!(error instanceof nodeFetch.AbortError)) {
+                    logger.error(error);
                 }
             }
 
-            attempts++;
-            await this.sleep(5000); // Wait 5 seconds between tries
+            if (++attempts % 12 === 0) {
+                logger.info(`API not responding yet, still waiting after ${attempts * 5 / 60} minutes...`);
+            }
+            this.sleep(5000 - (performance.now() - start));
         }
     }
 

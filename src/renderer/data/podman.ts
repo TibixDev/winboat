@@ -44,7 +44,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             "volumes": [
                 "data:/storage",
                 "${HOME}:/shared",
-                "/dev/bus/usb:/dev/bus/usb:rw", // QEMU Synamic USB Passthrough
+                "/dev/bus/usb:/dev/bus/usb:rslave", // QEMU Synamic USB Passthrough
                 "./oem:/oem",
             ],
             "devices": [

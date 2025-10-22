@@ -16,8 +16,11 @@ export abstract class ContainerManager {
     abstract writeCompose(compose: ComposeConfig): void;
     abstract compose(direction: ComposeDirection): Promise<void>;
     abstract container(action: ContainerAction): Promise<void>;
+    abstract remove(): Promise<void>;
     abstract getStatus(): Promise<ContainerStatus>;
     abstract exists(): Promise<boolean>;
+
+    abstract get containerName(): string;
 
     // static "abstract" function
     static async _getSpecs(): Promise<any> {

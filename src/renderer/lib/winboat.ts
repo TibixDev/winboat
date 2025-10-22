@@ -13,7 +13,7 @@ import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ComposePortEntry, PortManager } from "../utils/port";
 import { ContainerManager, ContainerStatus } from "./containers/container";
-import { createContainer } from "./containers/common";
+import { ContainerRuntimes, createContainer } from "./containers/common";
 
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
 const fs: typeof import('fs') = require('fs');
@@ -553,13 +553,16 @@ export class Winboat {
         console.info("Stopped container");
         
         // 2. Remove the container
-        await execAsync("docker rm WinBoat")
+        await this.containerMgr!.remove();
         console.info("Removed container")
 
         // 3. Remove the container volume or folder
         const compose = this.parseCompose();
         const storage = compose.services.windows.volumes.find(vol => vol.includes('/storage'));
         if (storage?.startsWith("data:")) {
+            if(this.#wbConfig?.config.containerRuntime !== ContainerRuntimes.DOCKER) {
+                logger.error("Volume not supported on podman runtime");
+            }
             // In this case we have a volume (legacy)
             await execAsync("docker volume rm winboat_data");
             console.info("Removed volume");
