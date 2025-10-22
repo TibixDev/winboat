@@ -5,7 +5,7 @@
 -->
 <template>
     <!-- Invisible trigger area that covers the parent element -->
-    <!-- div v-if="hasTrigger" ref="triggerRef" class="wb-contextmenu-trigger" @contextmenu.prevent="showMenu"></div> -->
+    <div v-if="hasTrigger" ref="triggerRef" class="wb-contextmenu-trigger" @contextmenu.prevent="showMenu"></div>
 
     <!-- Context menu popup -->
     <teleport to="body">
@@ -65,15 +65,13 @@ const showMenu = (event: MouseEvent) => {
     emit("show");
 
     // Close on next tick to allow menu to render
-    adjustPosition();
-    document.addEventListener("click", hideMenu);
-    document.addEventListener("contextmenu", hideMenu);
-    window.addEventListener("scroll", hideMenu);
-    window.addEventListener("resize", hideMenu);
-    
     nextTick(() => {
         adjustPosition();
-    })
+        document.addEventListener("click", hideMenu);
+        document.addEventListener("contextmenu", hideMenu);
+        window.addEventListener("scroll", hideMenu);
+        window.addEventListener("resize", hideMenu);
+    });
 };
 
 const handleMenuClick = (event: MouseEvent) => {
