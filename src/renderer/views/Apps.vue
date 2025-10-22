@@ -2,7 +2,6 @@
     <div>
         <dialog ref="addCustomAppDialog">
             <h3 class="mb-2">{{ currentAppForm.Source === "custom" ? "Edit App" : "Add App" }}</h3>
-            <!-- <p>Add a custom app to your apps list.</p> -->
 
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
@@ -19,18 +18,15 @@
                     </div>
                 </div>
                 <div class="flex flex-col gap-0.5 justify-center w-full">
+                    <!-- Name field -->
                     <x-label>Name</x-label>
                     <x-input v-model="currentAppForm.Name" class="!max-w-full" @input="(e: any) => (customAppName = e.target.value)" type="text" />
-                    <!-- <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppName = e.target.value)">
-                        <x-label>My Awesome App</x-label>
-                    </x-input> -->
+                    
+                    <!-- Path field -->
                     <x-label class="mt-4">Path</x-label>
                     <x-input v-model="currentAppForm.Path" type="text" class="!max-w-full" @input="(e: any) => (customAppPath = e.target.value)" />
-
-                    <!-- <x-input type="text" class="!max-w-full" @input="(e: any) => (customAppPath = e.target.value)">
-                        <x-label>C:\Program Files\MyAwesomeApp\myapp.exe</x-label>
-                    </x-input> -->
-
+                    
+                    <!-- Arguments field -->
                     <x-label class="mt-2">Arguments</x-label>
                     <x-input v-model="currentAppForm.Args" type="text" class="!max-w-full" placeholder="Optional" />
                 </div>
@@ -68,12 +64,12 @@
                     class="app-tile"
                     @contextmenu.prevent="openContextMenu($event, app)"
                     >
-                    {{ app.name }}
+                    {{ app.Name }}
                     </div>
                 </div>
             </template>
-            
-            <WBContextMenu ref="contextMenuRef" @hide="onContextMenuHide">
+
+            <!--<WBContextMenu ref="contextMenuRef" @hide="onContextMenuHide">
                 <WBMenuItem @click="launchApp">
                     <Icon class="size-4" icon="mdi:play-circle-outline"></Icon>
                     <x-label>Launch</x-label>
@@ -89,8 +85,7 @@
                     <x-label>Remove</x-label>
                 </WBMenuItem>
             </WBContextMenu>
-
-
+-->
             <footer>
                 <x-button @click="cancelAddCustomApp" id="cancel-button">
                     <x-label>Cancel</x-label>
@@ -153,27 +148,12 @@
                             </x-label>
                         </x-menuitem>
 
-                        <x-menuitem
-                            v-for="(label, value) in AllSources"
-                            :value="value"
-                        >
+                        <x-menuitem v-for="(label, value) in AllSources" :value="value">
                             <x-label>
                                 <span class="qualifier"> Filter: </span>
                                 {{ label }}
                             </x-label>
                         </x-menuitem>
-                        <!-- <x-menuitem value="custom">
-                            <x-label>
-                                <span class="qualifier"> Filter: </span>
-                                Custom
-                            </x-label>
-                        </x-menuitem>
-                        <x-menuitem value="default">
-                            <x-label>
-                                <span class="qualifier"> Filter: </span>
-                                Default
-                            </x-label>
-                        </x-menuitem> -->
                     </x-menu>
                 </x-select>
 
@@ -217,18 +197,18 @@
             <div v-else class="flex justify-center items-center mt-40">
                 <x-throbber class="w-16 h-16"></x-throbber>
             </div>
-            <WBContextMenu>
+            <WBContextMenu key="contextMenu" ref="contextMenuRef" @hide="onContextMenuHide">
                 <WBMenuItem @click="launchApp">
                     <Icon class="size-4" icon="mdi:play-circle-outline"></Icon>
                     <x-label>Launch</x-label>
                 </WBMenuItem>
 
-                <WBMenuItem @click="editApp">
+                <WBMenuItem @click="openEditAppDialog(contextMenuTarget)">
                     <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
                     <x-label>Edit</x-label>
                 </WBMenuItem>
 
-                <WBMenuItem @click="removeApp">
+                <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeCustomApp">
                     <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
                     <x-label>Remove</x-label>
                 </WBMenuItem>
@@ -296,7 +276,7 @@ const apiURL = computed(() => {
 });
 
 const AllSources = computed(() => {
-    var sourceList = {};
+    let sourceList : Record<string, string> = {};
     const sourceMap = {
         "system": "System",
         "winreg": "Windows Registry",

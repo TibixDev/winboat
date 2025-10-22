@@ -201,7 +201,7 @@ class AppManager {
     
     async updateCustomApp(
     	oldName: string,
-    	updatedApp: {name: string, path: string, args: string, icon: string, Source: "custom", Usage: 0}) {
+    	updatedApp: {Name: string, Path: string, Args: string, Icon: string, Source: "custom", Usage: 0}) {
     	
     	this.appCache = this.appCache.map(app =>
     	    app.Name === oldName ? { ...app, ...updatedApp } : app
