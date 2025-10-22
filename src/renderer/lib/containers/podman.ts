@@ -3,7 +3,6 @@ import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
 import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus, ContainerAction } from "./container";
 import YAML from 'yaml';
-import { stringify } from "json-to-pretty-yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
@@ -39,6 +38,8 @@ type PodmanInfo = {
     version: object;
 };
 
+const COMPOSE_ENV_VARS = "PODMAN_COMPOSE_PROVIDER=podman-compose PODMAN_COMPOSE_WARNING_LOGS=false";
+
 /**
  * @todo NOT IMPLEMENTED
  */
@@ -52,7 +53,7 @@ export class PodmanContainer extends ContainerManager {
     }
 
     writeCompose(compose: ComposeConfig): void {
-        const composeContent = stringify(this.defaultCompose);
+        const composeContent = YAML.stringify(compose, { nullStr: "" });
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
@@ -61,7 +62,7 @@ export class PodmanContainer extends ContainerManager {
 
     async compose(direction: ComposeDirection): Promise<void> {
         const extraArguments = direction == "up" ? "-d" : ""; // Run compose in detached mode if we are running compose up TODO: maybe we need to run both in detached mode
-        const command = `PODMAN_COMPOSE_PROVIDER=podman-compose ${this.executableAlias} compose -f ${this.composeFilePath} ${direction} ${extraArguments}`;
+        const command = `${COMPOSE_ENV_VARS} ${this.executableAlias} compose -f ${this.composeFilePath} ${direction} ${extraArguments}`;
 
         try {
             const { stdout, stderr } = await execAsync(command);
@@ -137,7 +138,7 @@ export class PodmanContainer extends ContainerManager {
         }
 
         try {
-            const { stdout: podmanComposeOutput } = await execAsync(`PODMAN_COMPOSE_PROVIDER=podman-compose podman compose --version`);
+            const { stdout: podmanComposeOutput } = await execAsync(`${COMPOSE_ENV_VARS} podman compose --version`);
             specs.podmanComposeInstalled = !!podmanComposeOutput;
         } catch(e) {
             containerLogger.error("Error checking podman compose version");

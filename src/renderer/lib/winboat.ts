@@ -4,7 +4,6 @@ import type { ComposeConfig, GuestServerUpdateResponse, GuestServerVersion, Metr
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from 'yaml';
-import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { openLink } from '../utils/openLink';
@@ -69,6 +68,7 @@ const customAppCallbacks: CustomAppCallbacks = {
 }
 
 const QMP_WAIT_MS = 2000;
+const FETCH_TIMEOUT = 1000
 
 class AppManager {
     appCache: WinApp[] = []
@@ -377,7 +377,7 @@ export class Winboat {
             const apiPort = this.getHostPort(GUEST_API_PORT);
             const apiUrl = `http://127.0.0.1:${apiPort}`;
 
-            const res = await nodeFetch(`${apiUrl}/health`);
+            const res = await nodeFetch(`${apiUrl}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
             return res.status === 200;
         } catch(e) {
             return false;
@@ -387,7 +387,7 @@ export class Winboat {
     async getMetrics() {
         const apiPort = this.getHostPort(GUEST_API_PORT);
         const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const res = await nodeFetch(`${apiUrl}/metrics`);
+        const res = await nodeFetch(`${apiUrl}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const metrics = await res.json() as Metrics;
         return metrics;
     }
@@ -396,7 +396,7 @@ export class Winboat {
 
         const apiPort = this.getHostPort(GUEST_API_PORT);
         const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const res = await nodeFetch(`${apiUrl}/rdp/status`);
+        const res = await nodeFetch(`${apiUrl}/rdp/status`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const status = await res.json() as { rdpConnected: boolean };
         return status.rdpConnected;
     }
@@ -433,7 +433,6 @@ export class Winboat {
             assert("return" in capabilities);
 
             const commands = await this.qmpMgr.executeCommand("query-commands");
-
             // @ts-ignore property "result" already exists due to assert
             assert(commands.return.every(x => "name" in x));
         } catch(e) {
@@ -535,8 +534,7 @@ export class Winboat {
         logger.info(`Backed up current compose at: ${path.join(backupDir, backupFile)}`);
 
         // 4. Write new compose file
-        const newComposeYAML = PrettyYAML.stringify(composeConfig).replaceAll("null", "");
-        fs.writeFileSync(composeFilePath, newComposeYAML, { encoding: 'utf8' });
+        this.containerMgr!.writeCompose(composeConfig);
         logger.info(`Wrote new compose file to: ${composeFilePath}`);
 
         // 5. Deploy the container with the new compose file

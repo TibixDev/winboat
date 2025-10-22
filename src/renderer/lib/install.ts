@@ -1,6 +1,5 @@
 import { type ComposeConfig, type InstallConfiguration } from "../../types";
 import { GUEST_API_PORT, GUEST_NOVNC_PORT, RESTART_ON_FAILURE, WINBOAT_DIR } from "./constants";
-import YAML from "json-to-pretty-yaml";
 import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
@@ -239,7 +238,7 @@ export class InstallManager {
         while (true) {
             try {
                 const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
-                const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`);
+                const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, { signal: AbortSignal.timeout(5000) });
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);

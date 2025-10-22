@@ -3,7 +3,7 @@ import { DOCKER_DEFAULT_COMPOSE } from "../../data/docker";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
-import YAML from "json-to-pretty-yaml";
+import YAML from 'yaml';
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const path: typeof import('path') = require('path');
@@ -29,7 +29,7 @@ export class DockerContainer extends ContainerManager {
     }
 
     writeCompose(compose: ComposeConfig): void {
-        const composeContent = YAML.stringify(this.defaultCompose);
+        const composeContent = YAML.stringify(compose, { nullStr: "" });
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
