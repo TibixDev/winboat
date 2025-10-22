@@ -68,24 +68,6 @@
                     </div>
                 </div>
             </template>
-
-            <!--<WBContextMenu ref="contextMenuRef" @hide="onContextMenuHide">
-                <WBMenuItem @click="launchApp">
-                    <Icon class="size-4" icon="mdi:play-circle-outline"></Icon>
-                    <x-label>Launch</x-label>
-                </WBMenuItem>
-
-                <WBMenuItem @click="openEditAppDialog(contextMenuTarget)">
-                    <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
-                    <x-label>Edit</x-label>
-                </WBMenuItem>
-
-                <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeCustomApp">
-                    <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
-                    <x-label>Remove</x-label>
-                </WBMenuItem>
-            </WBContextMenu>
--->
             <footer>
                 <x-button @click="cancelAddCustomApp" id="cancel-button">
                     <x-label>Cancel</x-label>
