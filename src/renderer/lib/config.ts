@@ -15,6 +15,8 @@ export type WinboatConfigObj = {
     scaleDesktop: number;
     smartcardEnabled: boolean;
     rdpMonitoringEnabled: boolean;
+    shutdownTimer: boolean;
+    timerLength: number;
     passedThroughDevices: PTSerializableDeviceInfo[];
     customApps: WinApp[];
     experimentalFeatures: boolean;
@@ -28,6 +30,8 @@ const defaultConfig: WinboatConfigObj = {
     scaleDesktop: 100,
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,
+    shutdownTimer: false,
+    timerLength: 6000,
     passedThroughDevices: [],
     customApps: [],
     experimentalFeatures: false,
