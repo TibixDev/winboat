@@ -25,7 +25,7 @@ export const DefaultCompose: ComposeConfig = {
     },
     services: {
         windows: {
-            image: "ghcr.io/dockur/windows:5.07",
+            image: "ghcr.io/dockur/windows:5.12",
             container_name: "WinBoat",
             environment: {
                 VERSION: "11",
