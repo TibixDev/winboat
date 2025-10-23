@@ -10,7 +10,7 @@
       version = packageJson.version;
 
       usb_ids = builtins.toFile "usb.ids" (builtins.readFile ./data/usb.ids);
-      iconFile = ./icons/icon.png;
+      iconFile = ./icons/winboat_logo.svg;
       winboatPkg = pkgs.stdenv.mkDerivation {
         pname = "winboat";
         version = version;
@@ -41,8 +41,8 @@ EOF
           mkdir -p $out/share/icons/hicolor/256x256/apps
           mkdir -p $out/share/winboat
            
-          cp ${iconFile} $out/share/icons/hicolor/256x256/apps/winboat.png
-          cp ${iconFile} $out/share/winboat/icon.png
+          cp ${iconFile} $out/share/icons/hicolor/256x256/apps/winboat_logo.svg
+          cp ${iconFile} $out/share/winboat/winboat_logo.svg
            
           # desktop entry
           mkdir -p $out/share/applications
