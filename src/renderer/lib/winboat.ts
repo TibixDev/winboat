@@ -714,6 +714,8 @@ export class Winboat {
 
         // Multiple spaces become one
         cmd = cmd.replace(/\s+/g, " ");
+        // Remove plain password from logs
+        cmd = cmd.replace(password, "*".repeat(password.length))
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
