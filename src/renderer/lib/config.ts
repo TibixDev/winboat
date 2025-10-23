@@ -24,12 +24,15 @@ export type WinboatConfigObj = {
     snapshotMaxCount: number;
     snapshotCompression: boolean;
     snapshotPath: string;
-    snapshotsInProgress: Record<string, {
+    snapshotsInProgress: Record<
+        string,
+        {
             name: string;
             timestamp: number;
             currentSize: number;
             containerId?: string;
-        }>;
+        }
+    >;
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -126,7 +129,7 @@ export class WinboatConfig {
 
             return { ...configObj };
         } catch (e) {
-          console.error("Config’s borked, outputting the default:", e);
+            console.error("Config’s borked, outputting the default:", e);
             return { ...defaultConfig };
         }
     }
