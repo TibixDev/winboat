@@ -45,7 +45,7 @@ type Metrics struct {
 	} `json:"disk"`
 }
 
-type StatusResponse struct {
+type RDPStatusResponse struct {
 	RdpConnection bool `json:"rdp_connection"`
 }
 
@@ -136,7 +136,7 @@ func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
 	hasRdpSession := strings.Contains(strings.ToLower(string(output)), "active") &&
 		strings.Contains(strings.ToLower(string(output)), "rdp")
 
-	response := StatusResponse{
+	response := RDPStatusResponse{
 		RdpConnection: hasRdpSession,
 	}
 
