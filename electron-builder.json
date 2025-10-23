@@ -1,29 +1,7 @@
 {
-  "appId": "com.teabox.winboat",
-  "directories": {
-    "output": "dist"
-  },
-  "publish": null,
-  "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "shortcutName": "WinBoat"
-  },
-  "win": {
-    "target": "nsis"
-  },
-  "linux": {
-    "icon": "icons/winboat_logo.svg",
-    "target": ["appimage", "deb", "rpm", "tar.gz"],
-    "category": "Utility",
-    "artifactName": "${name}-${version}-${arch}.${ext}"
-  },
-  "files": [
-    {
-      "from": "build/main",
-      "to": "main",
-      "filter": ["**/*"]
+    "appId": "com.teabox.winboat",
+    "directories": {
+        "output": "dist"
     },
     "publish": null,
     "nsis": {
