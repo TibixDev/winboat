@@ -228,6 +228,20 @@ func getIcon(w http.ResponseWriter, r *http.Request) {
 	w.Write(output)
 }
 
+func getWindows(w http.ResponseWriter, r *http.Request) {
+	// Execute PowerShell script to enumerate RAIL windows
+	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\get-windows.ps1")
+	output, err := cmd.Output()
+	if err != nil {
+		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
+}
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
@@ -237,6 +251,7 @@ func main() {
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
+	r.HandleFunc("/windows", getWindows).Methods("GET")
 	handler := cors.Default().Handler(r)
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
