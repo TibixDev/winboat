@@ -27,6 +27,13 @@ public class Win32 {
 }
 "@
 
+$hwnd_progman = [Win32]::FindWindow("Progman", "Program Manager")
+$hwnd_shell = [Win32]::FindWindowEx($hwnd_progman, [IntPtr]::Zero, "SHELLDLL_DefView", $null)
+
+if ($hwnd_shell -ne [IntPtr]::Zero) {
+    exit
+}
+
 $className = "Windows.UI.Core.CoreWindow"
 $caption = "New notification"
 
@@ -34,11 +41,8 @@ $prev = 0;
 
 while ($true) {
     $hwnd = [Win32]::FindWindow($className, $caption)
-    $hwnd_progman = [Win32]::FindWindow("Progman", "Program Manager")
-    $hwnd_shell = [Win32]::FindWindowEx($hwnd_progman, [IntPtr]::Zero, "SHELLDLL_DefView", $null)
 
-
-    if ($hwnd -eq [IntPtr]::Zero -or $hwnd_shell -ne [IntPtr]::Zero) {
+    if ($hwnd -eq [IntPtr]::Zero) {
         Start-Sleep -Milliseconds 100
         continue
     }
