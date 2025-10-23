@@ -2,7 +2,7 @@
   <table>
     <tr>
       <td>
-        <img src="gh-assets/winboat_logo.svg" alt="WinBoat Logo" width="150">
+        <img src="icons/winboat_logo.svg" alt="WinBoat Logo" width="150">
       </td>
       <td>
         <h1 style="color: #7C86FF; margin: 0; font-size: 32px;">WinBoat</h1>
