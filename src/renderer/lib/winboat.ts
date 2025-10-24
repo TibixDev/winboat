@@ -29,7 +29,7 @@ const { promisify }: typeof import("util") = require("util");
 const { exec }: typeof import("child_process") = require("child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const FormData: typeof import("form-data") = require("form-data");
-const crypto: typeof import('crypto') = require('crypto');
+const crypto: typeof import("crypto") = require("crypto");
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");

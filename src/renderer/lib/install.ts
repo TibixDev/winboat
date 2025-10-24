@@ -187,9 +187,9 @@ export class InstallManager {
             ? path.join(process.resourcesPath, "guest_server") // For packaged app
             : path.join(remote.app.getAppPath(), "..", "..", "guest_server"); // For dev mode
 
-        const rdpExecPath = remote.app.isPackaged 
-            ? path.join(process.resourcesPath, 'rdp_exec') // For packaged app
-            : path.join(remote.app.getAppPath(), '..', '..', 'rdp_exec'); // For dev mode
+        const rdpExecPath = remote.app.isPackaged
+            ? path.join(process.resourcesPath, "rdp_exec") // For packaged app
+            : path.join(remote.app.getAppPath(), "..", "..", "rdp_exec"); // For dev mode
 
         logger.info(`Guest server source path: ${appPath}`);
 
@@ -234,7 +234,7 @@ export class InstallManager {
             });
             fs.readdirSync(rdpExecPath).forEach(entry => {
                 const srcPath = path.join(rdpExecPath, entry);
-                const rdpExecOemPath = path.join(oemPath, "rdp_exec")
+                const rdpExecOemPath = path.join(oemPath, "rdp_exec");
                 if (!fs.existsSync(rdpExecOemPath)) {
                     fs.mkdirSync(rdpExecOemPath);
                 }
