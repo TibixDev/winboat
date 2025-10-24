@@ -169,9 +169,8 @@ export class InstallManager {
         logger.info(`Creating compose file at: ${composeFilePath}`);
 
         // mask plain password
-        const password = composeContent.services.windows.environment.PASSWORD ?? '';
-        const maskedCompose = JSON.stringify(composeContent, null, 2)
-            .replaceAll(password, '*'.repeat(password.length));
+        const password = composeContent.services.windows.environment.PASSWORD ?? "";
+        const maskedCompose = JSON.stringify(composeContent, null, 2).replaceAll(password, "*".repeat(password.length));
 
         logger.info(`Compose file content: ${maskedCompose}`);
     }
