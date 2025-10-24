@@ -653,7 +653,7 @@ export class Winboat {
         console.info("So long and thanks for all the fish!");
     }
 
-    async launchApp(app: WinApp) {
+    async launchApp(app: WinApp, shiftPressed=false) {
         if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
 
         if (customAppCallbacks[app.Path]) {
@@ -699,7 +699,7 @@ export class Winboat {
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         ${combinedArgs}\
         /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"C:\\OEM\\rdp_exec\\rdp_exec.exe",cmd:"-cmd \\\"${app.Path}\\\" -dummy ${crypto.randomUUID().toString()}",name:"${cleanAppName}" &`;
+        /app:program:"C:\\OEM\\rdp_exec\\rdp_exec.exe",cmd:"-cmd \\\"${app.Path}\\\" -dummy ${shiftPressed ? crypto.randomUUID().toString(): 1}",name:"${cleanAppName}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\

@@ -157,7 +157,7 @@
                     :key="app.Path"
                     class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
                     :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
-                    @click="winboat.launchApp(app)"
+                    @click="(e: any) => winboat.launchApp(app, e.shiftKey)"
                 >
                     <div class="flex flex-row items-center gap-2 w-[85%]">
                         <img class="rounded-md size-10" :src="`data:image/png;charset=utf-8;base64,${app.Icon}`" />
