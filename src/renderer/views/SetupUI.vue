@@ -44,164 +44,160 @@
                 <div :key="currentStepIdx" id="stepContent" class="overflow-scroll">
                     <!-- Welcome -->
                     <div v-if="currentStep.id === StepID.WELCOME" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("welcome.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is a full-fledged app that helps you natively run Windows applications on your Linux
-                            machine with ease.
+                            {{ t("welcome.description1") }}
                         </p>
                         <p class="text-lg text-gray-400">
-                            We will go through a few required steps to get you started in no time.
+                            {{ t("welcome.description2") }}
                         </p>
                         <div class="flex flex-row gap-4">
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">{{ t("welcome.nextButton") }}</x-button>
                         </div>
                     </div>
 
                     <!-- License -->
                     <div v-if="currentStep.id === StepID.LICENSE" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("license.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is open-source software licensed under the MIT License. Please review the license
-                            agreement below.
+                            {{ t("license.description") }}
                         </p>
                         <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">{{
                             license
                         }}</pre>
                         <div class="flex flex-row gap-4">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">I Agree</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">{{ t("license.agreeButton") }}</x-button>
                         </div>
                     </div>
 
                     <!-- Pre-Requisites -->
                     <div v-if="currentStep.id === StepID.PREREQUISITES" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("prerequisites.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            In order to run WinBoat, your computer must meet the following requirements.
+                            {{ t("prerequisites.description") }}
                         </p>
                         <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 rounded-lg">
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.ramGB >= 4" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                At least 4 GB of RAM (Detected: {{ specs.ramGB }} GB)
+                                {{ t("prerequisites.ram", { ramGB: specs.ramGB }) }}
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.cpuCores >= 2" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                At least 2 CPU cores (Detected: {{ specs.cpuCores }} cores)
+                                {{ t("prerequisites.cpu", { cpuCores: specs.cpuCores }) }}
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                Virtualization (KVM) enabled
+                                {{ t("prerequisites.kvm") }}
                                 <a
                                     href="https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
                                 >
-                                    How?
+                                    {{ t("prerequisites.how") }}
                                 </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                Docker installed
+                                {{ t("prerequisites.docker") }}
                                 <a
                                     href="https://docs.docker.com/engine/install/"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
                                 >
-                                    How?
+                                    {{ t("prerequisites.how") }}
                                 </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerComposeInstalled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                Docker Compose v2 installed
+                                {{ t("prerequisites.dockerCompose") }}
                                 <a
                                     href="https://docs.docker.com/compose/install/#plugin-linux-only"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
                                 >
-                                    How?
+                                    {{ t("prerequisites.how") }}
                                 </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerIsInUserGroups" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                User added to the
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
-                                <span class="text-gray-600"> (Relog required) </span>
+                                {{ t("prerequisites.dockerGroup") }}
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span>
+                                <span class="text-gray-600"> {{ t("prerequisites.relogRequired") }} </span>
                                 <a
                                     href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
                                 >
-                                    How?
+                                    {{ t("prerequisites.how") }}
                                 </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.dockerIsRunning" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                Docker daemon is running
-                                <span class="text-gray-600"> (Also enable on boot) </span>
+                                {{ t("prerequisites.dockerRunning") }}
+                                <span class="text-gray-600"> {{ t("prerequisites.enableOnBoot") }} </span>
                                 <a
                                     href="https://docs.docker.com/config/daemon/start/"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
                                 >
-                                    How?
+                                    {{ t("prerequisites.how") }}
                                 </a>
                             </li>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                FreeRDP 3.x.x installed
+                                {{ t("prerequisites.freerdp") }}
                                 <a
                                     href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
                                 >
-                                    How?
+                                    {{ t("prerequisites.how") }}
                                 </a>
                             </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
                                 :disabled="!satisfiesPrequisites(specs)"
                             >
-                                Next
+                                {{ t("prerequisites.nextButton") }}
                             </x-button>
                         </div>
                     </div>
 
                     <!-- Install Location -->
                     <div v-if="currentStep.id === StepID.INSTALL_LOCATION" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("installLocation.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            Choose where you want to install WinBoat. Files related to the Windows virtual machine will
-                            be stored in this location.
+                            {{ t("installLocation.description1") }}
                         </p>
                         <p class="text-lg text-gray-400">
-                            Make sure you have at least {{ MIN_DISK_GB }}GB of disk space available in the selected
-                            location.
+                            {{ t("installLocation.description2", { minDiskGB: MIN_DISK_GB }) }}
                         </p>
 
                         <div class="flex flex-row items-center mt-4">
                             <x-input
                                 id="install-location"
                                 type="text"
-                                placeholder="Select Install Location"
+                                :placeholder="t('installLocation.inputPlaceholder')"
                                 readonly
                                 :value="installFolder"
                                 class="!max-w-full w-[300px] rounded-r-none"
@@ -210,7 +206,7 @@
                                 <x-label>/your/install/folder</x-label>
                             </x-input>
                             <x-button class="!rounded-l-none" toggled @click="selectInstallFolder">
-                                {{ installFolder ? "Change" : "Select" }}
+                                {{ installFolder ? t("installLocation.changeButton") : t("installLocation.selectButton") }}
                             </x-button>
                         </div>
 
@@ -224,34 +220,33 @@
                                 class="text-green-400 font-semibold"
                             >
                                 <Icon icon="line-md:check-all" class="inline size-4 -translate-y-0.5"></Icon>
-                                Valid install folder
+                                {{ t("installLocation.validFolder") }}
                             </div>
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
                                 :disabled="!installFolder || installFolderErrors?.length"
                                 @click="currentStepIdx++"
-                                >Next</x-button
+                                >{{ t("prerequisites.nextButton") }}</x-button
                             >
                         </div>
                     </div>
 
                     <!-- Windows Configuration -->
                     <div v-if="currentStep.id === StepID.WINDOWS_CONFIG" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("windowsConfig.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            Pick the version of Windows you want to install, and the language you'd like to use.
+                            {{ t("windowsConfig.description1") }}
                         </p>
                         <p class="text-lg text-gray-400">
-                            You can only change these settings now. Once the installation is complete, you will not be
-                            able to change them unless you reinstall.
+                            {{ t("windowsConfig.description2") }}
                         </p>
                         <div>
-                            <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
+                            <label for="select-edition" class="text-sm mb-4 text-neutral-400">{{ t("windowsConfig.edition") }}</label>
                             <x-select
                                 id="select-edition"
                                 @change="(e: any) => (windowsVersion = e.detail.newValue)"
@@ -272,7 +267,7 @@
                             </x-select>
                         </div>
                         <div>
-                            <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
+                            <label for="select-language" class="text-sm mb-4 text-neutral-400">{{ t("windowsConfig.language") }}</label>
                             <x-select
                                 id="select-language"
                                 @change="(e: any) => (windowsLanguage = e.detail.newValue)"
@@ -293,7 +288,7 @@
                                                 v-if="['German', 'Hungarian'].includes(language)"
                                                 class="text-red-400"
                                             >
-                                                (Broken, use Language Pack)
+                                                {{ t("windowsConfig.brokenLang") }}
                                             </span>
                                         </x-label>
                                     </x-menuitem>
@@ -302,19 +297,17 @@
                         </div>
                         <div class="mt-4">
                             <div class="flex flex-col gap-2">
-                                <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
+                                <label for="select-iso" class="text-xs text-neutral-400">{{ t("windowsConfig.customIso") }}</label>
                                 <div class="flex items-center gap-2">
                                     <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile"
-                                        >Select ISO File</x-button
+                                        >{{ t("windowsConfig.selectIsoButton") }}</x-button
                                     >
                                     <span class="relative group">
                                         <Icon icon="line-md:alert" class="text-neutral-400 cursor-pointer" />
                                         <span
                                             class="absolute bottom-5 left-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            We offer you the possibility of using a custom Windows ISO for your
-                                            convenience, however we can't provide any support if your custom ISO breaks
-                                            or certain features within WinBoat stop working.
+                                            {{ t("windowsConfig.isoWarning") }}
                                         </span>
                                     </span>
                                 </div>
@@ -322,34 +315,32 @@
                                     v-if="customIsoPath"
                                     class="text-xs text-gray-400 font-semibold flex items-center gap-2"
                                 >
-                                    Selected: {{ customIsoFileName }}
+                                    {{ t("windowsConfig.selectedIso", { fileName: customIsoFileName }) }}
                                     <x-button size="small" class="ml-2 px-2 py-0" @click="deselectIsoFile"
-                                        >Remove</x-button
+                                        >{{ t("windowsConfig.removeButton") }}</x-button
                                     >
                                 </span>
                             </div>
                         </div>
                         <div class="flex flex-row gap-4 mt-6" :class="{ '!mt-2': customIsoPath }">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">{{ t("prerequisites.nextButton") }}</x-button>
                         </div>
                     </div>
 
                     <!-- User Configuration -->
                     <div v-if="currentStep.id === StepID.USER_CONFIG" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
-                        <p class="text-lg text-gray-400">Configure the username and password for Windows.</p>
+                        <h1 class="text-3xl font-semibold">{{ t("userConfig.title") }}</h1>
+                        <p class="text-lg text-gray-400">{{ t("userConfig.description1") }}</p>
 
                         <p class="text-lg text-gray-400">
-                            These credentials will be used to log in to the Windows virtual machine and to access it
-                            through Remote Desktop Protocol (RDP). You will not be able to change these settings later
-                            on unless you reinstall.
+                            {{ t("userConfig.description2") }}
                         </p>
 
                         <div class="flex flex-row gap-4">
                             <div class="flex flex-col gap-4">
                                 <div>
-                                    <label for="select-username" class="text-sm mb-4 text-neutral-400">Username</label>
+                                    <label for="select-username" class="text-sm mb-4 text-neutral-400">{{ t("userConfig.username") }}</label>
                                     <x-input
                                         id="select-username"
                                         class="w-64 max-w-64"
@@ -362,12 +353,12 @@
                                         @input="(e: any) => (username = e.target.value)"
                                     >
                                         <x-icon href="#person"></x-icon>
-                                        <x-label>Name</x-label>
+                                        <x-label>{{ t("userConfig.username") }}</x-label>
                                     </x-input>
                                 </div>
 
                                 <div>
-                                    <label for="select-password" class="text-sm mb-4 text-neutral-400">Password</label>
+                                    <label for="select-password" class="text-sm mb-4 text-neutral-400">{{ t("userConfig.password") }}</label>
                                     <x-input
                                         id="select-password"
                                         class="w-64 max-w-64"
@@ -380,13 +371,13 @@
                                         @input="(e: any) => (password = e.target.value)"
                                     >
                                         <x-icon href="#lock"></x-icon>
-                                        <x-label>Password</x-label>
+                                        <x-label>{{ t("userConfig.password") }}</x-label>
                                     </x-input>
                                 </div>
 
                                 <div>
                                     <label for="confirm-password" class="text-sm mb-4 text-neutral-400"
-                                        >Confirm Password</label
+                                        >{{ t("userConfig.confirmPassword") }}</label
                                     >
                                     <x-input
                                         id="confirm-password"
@@ -400,7 +391,7 @@
                                         @input="(e: any) => (confirmPassword = e.target.value)"
                                     >
                                         <x-icon href="#lock"></x-icon>
-                                        <x-label>Confirm Password</x-label>
+                                        <x-label>{{ t("userConfig.confirmPassword") }}</x-label>
                                     </x-input>
                                 </div>
                             </div>
@@ -409,46 +400,44 @@
                                 <div id="username-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
                                     <div v-for="error in usernameErrors" :key="error">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
-                                        {{ error }}
+                                        {{ t(error) }}
                                     </div>
                                 </div>
                                 <div id="password-errors" class="text-red-400 text-sm font-semibold space-y-1">
                                     <div v-for="error in passwordErrors" :key="error">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
-                                        {{ error }}
+                                        {{ t(error) }}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
                             <x-button
                                 :disabled="usernameErrors.length || passwordErrors.length"
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
-                                >Next</x-button
+                                >{{ t("prerequisites.nextButton") }}</x-button
                             >
                         </div>
                     </div>
 
                     <!-- Hardware Configuration -->
                     <div v-if="currentStep.id === StepID.HARDWARE_CONFIG" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("hardwareConfig.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat utilizes a containerized KVM virtual machine to run Windows applications. Please
-                            configure the hardware settings for the virtual machine.
+                            {{ t("hardwareConfig.description1") }}
                         </p>
 
                         <p class="text-lg text-gray-400">
-                            It is not recommended to allocate more than half of your system resources to Windows. You
-                            will be able to change these settings later on if needed.
+                            {{ t("hardwareConfig.description2") }}
                         </p>
 
                         <div class="flex flex-col gap-6">
                             <div>
-                                <label for="select-cpu-cores" class="text-sm text-neutral-400">Select CPU Cores</label>
+                                <label for="select-cpu-cores" class="text-sm text-neutral-400">{{ t("hardwareConfig.cpuCores") }}</label>
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-cpu-cores"
@@ -460,26 +449,23 @@
                                         step="1"
                                         ticks
                                     ></x-slider>
-                                    <x-label>{{ cpuCores }} Core{{ cpuCores > 1 ? "s" : "" }}</x-label>
+                                    <x-label>{{ t("hardwareConfig.cores", { count: cpuCores }) }}</x-label>
                                 </div>
                             </div>
 
                             <div>
                                 <label for="select-ram" class="text-sm text-neutral-400">
-                                    Select RAM
+                                    {{ t("hardwareConfig.ram") }}
                                     <span
                                         v-if="memoryInfo.availableGB < ramGB"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
-                                        Warning
+                                        {{ t("hardwareConfig.warning") }}
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            You don't have enough unused memory available to allocate the requested
-                                            amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of unused
-                                            memory available. If you continue with this amount of RAM, the container
-                                            will likely crash.
+                                            {{ t("hardwareConfig.ramWarning", { availableGB: memoryInfo.availableGB }) }}
                                         </span>
                                     </span>
                                 </label>
@@ -499,21 +485,17 @@
 
                             <div>
                                 <label for="select-disk" class="text-sm text-neutral-400">
-                                    Select Disk Size
+                                    {{ t("hardwareConfig.diskSize") }}
                                     <span
                                         v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
-                                        Warning
+                                        {{ t("hardwareConfig.warning") }}
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            You're about to allocate most of your remaining disk space with less than
-                                            5GB in excess. You currently have ~{{ installFolderDiskSpaceGB }} GB of disk
-                                            space available for the drive corresponding to {{ installFolder }}. If you
-                                            continue with this disk size, you may run out of space and encounter
-                                            unexpected issues.
+                                            {{ t("hardwareConfig.diskWarning", { availableGB: installFolderDiskSpaceGB, installFolder: installFolder }) }}
                                         </span>
                                     </span>
                                 </label>
@@ -533,87 +515,80 @@
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">{{ t("prerequisites.nextButton") }}</x-button>
                         </div>
                     </div>
 
                     <!-- Home Folder Sharing -->
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("homeFolderSharing.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat allows you to share your Linux home folder with the Windows virtual machine, here
-                            you can choose whether to enable this feature or not.
+                            {{ t("homeFolderSharing.description1") }}
                         </p>
-                        <p class="text-lg text-gray-400">
-                            <b>⚠️ WARNING:</b>
-                            Sharing your home folder exposes your Linux files to Windows-specific malware and viruses.
-                            Only enable this feature if you understand the risks involved. Always be careful with the
-                            files you download and open in Windows.
-                        </p>
+                        <p class="text-lg text-gray-400" v-html="t('homeFolderSharing.description2')"></p>
 
                         <x-checkbox
                             class="my-4"
                             @toggle="homeFolderSharing = !homeFolderSharing"
                             :toggled="homeFolderSharing"
                         >
-                            <x-label><strong>Enable home folder sharing</strong></x-label>
+                            <x-label><strong>{{ t("homeFolderSharing.enableSharing") }}</strong></x-label>
                             <x-label class="text-gray-400">
-                                By checking this box, you acknowledge the risks mentioned above
+                                {{ t("homeFolderSharing.acknowledge") }}
                             </x-label>
                         </x-checkbox>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
+                            <x-button toggled class="px-6" @click="currentStepIdx++">{{ t("prerequisites.nextButton") }}</x-button>
                         </div>
                     </div>
 
                     <!-- Review -->
                     <div v-if="currentStep.id === StepID.REVIEW" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">{{ t("review.title") }}</h1>
                         <p class="text-lg text-gray-400">
-                            Please review the settings you've chosen for your WinBoat installation. If everything looks
-                            correct, click "Install" to begin.
+                            {{ t("review.description") }}
                         </p>
 
                         <div class="bg-neutral-800 p-6 rounded-lg flex flex-col gap-4">
-                            <h2 class="text-xl font-medium text-white mt-0 mb-2">Your Configuration</h2>
+                            <h2 class="text-xl font-medium text-white mt-0 mb-2">{{ t("review.yourConfig") }}</h2>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Windows Version</span>
+                                    <span class="text-sm text-gray-400">{{ t("review.winVersion") }}</span>
                                     <span class="text-base text-white">{{ WINDOWS_VERSIONS[windowsVersion] }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Language</span>
+                                    <span class="text-sm text-gray-400">{{ t("review.language") }}</span>
                                     <span class="text-base text-white">{{ windowsLanguage }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">CPU Cores</span>
-                                    <span class="text-base text-white">{{ cpuCores }} Cores</span>
+                                    <span class="text-sm text-gray-400">{{ t("review.cpuCores") }}</span>
+                                    <span class="text-base text-white">{{ t("hardwareConfig.cores", { count: cpuCores }) }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">RAM</span>
+                                    <span class="text-sm text-gray-400">{{ t("review.ram") }}</span>
                                     <span class="text-base text-white">{{ ramGB }} GB</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Disk Size</span>
+                                    <span class="text-sm text-gray-400">{{ t("review.diskSize") }}</span>
                                     <span class="text-base text-white">{{ diskSpaceGB }} GB</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Username</span>
+                                    <span class="text-sm text-gray-400">{{ t("review.username") }}</span>
                                     <span class="text-base text-white">{{ username }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Install Location</span>
+                                    <span class="text-sm text-gray-400">{{ t("review.installLocation") }}</span>
                                     <span class="text-base text-white">{{ installFolder }}</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="currentStepIdx--">{{ t("license.backButton") }}</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
@@ -621,18 +596,15 @@
                                     currentStepIdx++;
                                     install();
                                 "
-                                >Install</x-button
+                                >{{ t("review.installButton") }}</x-button
                             >
                         </div>
                     </div>
 
                     <!-- Installation -->
                     <div v-if="currentStep.id === StepID.INSTALL" class="step-block">
-                        <h1 class="text-3xl font-semibold">Installation</h1>
-                        <p class="text-lg text-gray-400 text-justify">
-                            WinBoat is now installing Windows. Please be patient as this may take up to an hour. In the
-                            meantime, you can grab a coffee and check the installation status
-                            <a :href="novncURL" @click="openAnchorLink">in your browser</a>.
+                        <h1 class="text-3xl font-semibold">{{ t("install.title") }}</h1>
+                        <p class="text-lg text-gray-400 text-justify" v-html="t('install.description', { novncURL: novncURL })">
                         </p>
 
                         <!-- Installing -->
@@ -647,10 +619,10 @@
                                 v-if="installState !== InstallStates.MONITORING_PREINSTALL"
                                 class="text-lg text-gray-400 text-center"
                             >
-                                {{ installState }}...
+                                {{ t("install.installing", { state: installState }) }}
                             </x-label>
                             <x-label v-else class="text-lg text-gray-400 text-center">
-                                {{ preinstallMsg }}
+                                {{ t("install.preinstall", { message: preinstallMsg }) }}
                             </x-label>
                         </div>
 
@@ -660,17 +632,9 @@
                             class="flex flex-col h-full items-center justify-center gap-4"
                         >
                             <Icon icon="line-md:alert" class="size-16 text-red-500"></Icon>
-                            <x-label class="text-lg text-gray-400 text-center">
-                                An error occurred while installing Windows. Please check the logs in
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
-                                and verify
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker logs WinBoat</span>
-                                in your terminal for more information.
+                            <x-label class="text-lg text-gray-400 text-center" v-html="t('install.error')">
                             </x-label>
-                            <x-label class="text-lg text-gray-400 text-center">
-                                To reset and try again, follow
-                                <a href="https://rentry.org/winboat_retry_install" @click="openAnchorLink">these</a>
-                                instructions.
+                            <x-label class="text-lg text-gray-400 text-center" v-html="t('install.retry')">
                             </x-label>
                         </div>
 
@@ -681,9 +645,9 @@
                         >
                             <Icon icon="line-md:confirm-circle" class="size-16 text-green-500"></Icon>
                             <x-label class="text-lg text-gray-400 text-center">
-                                Windows has been installed successfully!
+                                {{ t("install.completed") }}
                             </x-label>
-                            <x-button @click="$router.push('/home')">Finish</x-button>
+                            <x-button @click="$router.push('/home')">{{ t("install.finishButton") }}</x-button>
                         </div>
                     </div>
                 </div>
@@ -696,6 +660,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
@@ -711,6 +676,8 @@ const electron: typeof import("electron") = require("electron").remote || requir
 const fs: typeof import("fs") = require("fs");
 const os: typeof import("os") = require("os");
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
+
+const { t } = useI18n();
 
 type Step = {
     id: string;
@@ -735,57 +702,57 @@ enum StepID {
 const steps: Step[] = [
     {
         id: StepID.WELCOME,
-        title: "Welcome to WinBoat",
+        title: t("welcome.title"),
         icon: "tdesign:wave-bye-filled",
     },
     {
         id: StepID.LICENSE,
-        title: "License Agreement",
+        title: t("license.title"),
         icon: "line-md:text-box-multiple",
     },
     {
         id: StepID.PREREQUISITES,
-        title: "Pre-Requisites",
+        title: t("prerequisites.title"),
         icon: "line-md:check-all",
     },
     {
         id: StepID.INSTALL_LOCATION,
-        title: "Install Location",
+        title: t("installLocation.title"),
         icon: "line-md:folder-arrow-down-filled",
     },
     {
         id: StepID.WINDOWS_CONFIG,
-        title: "Configure Windows",
+        title: t("windowsConfig.title"),
         icon: "mage:microsoft-windows",
     },
     {
         id: StepID.USER_CONFIG,
-        title: "User Configuration",
+        title: t("userConfig.title"),
         icon: "line-md:account",
     },
     {
         id: StepID.HARDWARE_CONFIG,
-        title: "Hardware Configuration",
+        title: t("hardwareConfig.title"),
         icon: "famicons:hardware-chip-outline",
     },
     {
         id: StepID.SHOULD_SHARE_HOME_FOLDER,
-        title: "Home Folder Sharing",
+        title: t("homeFolderSharing.title"),
         icon: "line-md:link",
     },
     {
         id: StepID.REVIEW,
-        title: "Review",
+        title: t("review.title"),
         icon: "solar:pin-list-bold",
     },
     {
         id: StepID.INSTALL,
-        title: "Installation",
+        title: t("install.title"),
         icon: "line-md:downloading-loop",
     },
     {
         id: StepID.FINISH,
-        title: "Finish",
+        title: t("install.finishButton"),
         icon: "bx:bxs-check-circle",
     },
 ];
@@ -841,12 +808,12 @@ const usernameErrors = computed(() => {
 
     // At least 2 characters
     if (username.value.length < 2) {
-        errors.push("Must be at least 2 characters long");
+        errors.push("userConfig.errors.user.tooShort");
     }
 
     // Only alphanumeric characters are allowed
     if (!/^[a-zA-Z0-9]+$/.test(username.value)) {
-        errors.push("Must only contain alphanumeric characters");
+        errors.push("userConfig.errors.user.alphanumeric");
     }
 
     return errors;
@@ -857,17 +824,17 @@ const passwordErrors = computed(() => {
 
     // Must match confirm password
     if (password.value !== confirmPassword.value) {
-        errors.push("Passwords do not match");
+        errors.push("userConfig.errors.pass.noMatch");
     }
 
     // Only alphanumeric characters are allowed
     if (!/^[a-zA-Z0-9]+$/.test(password.value)) {
-        errors.push("Must only contain alphanumeric characters");
+        errors.push("userConfig.errors.pass.alphanumeric");
     }
 
     // At least 4 characters
     if (password.value.length < 4) {
-        errors.push("Must be at least 4 characters long");
+        errors.push("userConfig.errors.pass.tooShort");
     }
 
     return errors;

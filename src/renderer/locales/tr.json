@@ -1,0 +1,121 @@
+{
+"_meta": {
+    "Generated": "This translation was done manually to ensure accuracy and natural phrasing."
+  },
+  "welcome": {
+    "title": "WinBoat'a Hoş Geldiniz",
+    "description1": "WinBoat, Windows uygulamalarını Linux makinenizde yerel olarak kolaylıkla çalıştırmanıza yardımcı olan tam teşekküllü bir uygulamadır.",
+    "description2": "Birkaç gerekli adımın ardından kısa sürede başlamış olacaksınız.",
+    "nextButton": "Sonraki"
+  },
+  "license": {
+    "title": "Lisans Sözleşmesi",
+    "description": "WinBoat MIT lisanslı bir yazılımdır. Lütfen aşşağıdaki lisans sözleşmesini okuyun.",
+    "backButton": "Geri",
+    "agreeButton": "Onaylıyorum"
+  },
+  "prerequisites": {
+    "title": "Ön Koşullar",
+    "description": "WinBoat'u çalıştırmak için bilgisayarınızın aşşağıdaki gereksinimleri karşılaması gerekir.",
+    "ram": "Minumum 4 GB RAM (Tavsiye edilen: {ramGB} GB)",
+    "cpu": "Minumum 2 CPU çekirdeği (Tavsiye edilen: {cpuCores} çekirdek)",
+    "kvm": "Sanallaştırma (KVM) etkin",
+    "docker": "Docker indirilmiş",
+    "dockerCompose": "Docker Compose v2 indirilmiş",
+    "dockerGroup": "Docker groubuna kullanıcı eklenmiş",
+    "dockerRunning": "Docker daemon çalışır durumda",
+    "freerdp": "FreeRDP 3.x.x indirilmiş",
+    "how": "Nasıl?",
+    "relogRequired": "(Yeniden giriş gerekli)",
+    "enableOnBoot": "(Ayrıca açılışta etkinleştir)",
+    "nextButton": "Sonraki"
+  },
+  "installLocation": {
+    "title": "Yükleme Konumu",
+    "description1": "WinBoat'u nereye yüklemek istediğinizi seçin. Windows sanal makinesine ait dosyalar bu konumda depolanacaktır.",
+    "description2": "Seçilen konumda en az {minDiskGB}GB disk alanınızın olduğundan emin olun.",
+    "inputPlaceholder": "Yükleme Konumunu Seçin",
+    "changeButton": "Değiştir",
+    "selectButton": "Seç",
+    "validFolder": "Geçerli yükleme klasörü",
+    "errors": {
+      "noLocation": "Lütfen bir yükleme konumu seçin",
+      "notWritable": "Seçilen yükleme konumu kullanılabilir değil",
+      "noDiskSpace": "Yeterli disk alanı yok. En az {minDiskGB} GB gereklidir, ancak yalnızca {freeGB} GB mevcut."
+    }
+  },
+  "windowsConfig": {
+    "title": "Windows'u Yapılandır",
+    "description1": "Yüklemek istediğiniz Windows sürümünü ve kullanmak istediğiniz dili seçin.",
+    "description2": "Bu ayarları yalnızca şimdi değiştirebilirsiniz. Kurulum tamamlandıktan sonra, yeniden yüklemediğiniz sürece bunları değiştiremezsiniz.",
+    "edition": "Sürüm Seçin",
+    "language": "Dil Seçin",
+    "customIso": "ISO Ekleyin (İsteğe Bağlı)",
+    "selectIsoButton": "ISO Dosyası Seçin",
+    "isoWarning": "Kullanıcı dostu olması için özel bir Windows ISO'su kullanma olanağı sunuyoruz, ancak özel ISO'nuz bozulursa veya WinBoat içindeki belirli özellikler çalışmayı durdurursa herhangi bir destek sağlayamayız.",
+    "selectedIso": "Seçilen: {fileName}",
+    "removeButton": "Kaldır",
+    "brokenLang": "(Bozuk, Dil Paketi kullanın)"
+  },
+  "userConfig": {
+    "title": "Kullanıcı Yapılandırması",
+    "description1": "Windows için kullanıcı adı ve şifreyi yapılandırın.",
+    "description2": "Bu kimlik bilgileri, Windows sanal makinesine giriş yapmak ve Uzak Masaüstü Protokolü (RDP) aracılığıyla erişmek için kullanılacaktır. Yeniden yüklemediğiniz sürece bu ayarları daha sonra değiştiremeyeceksiniz.",
+    "username": "Kullanıcı Adı",
+    "password": "Şifre",
+    "confirmPassword": "Şifreyi Doğrula",
+    "errors": {
+      "user": {
+        "tooShort": "En az 2 karakter uzunluğunda olmalı",
+        "alphanumeric": "Yalnızca alfasayısal karakterler içermeli"
+      },
+      "pass": {
+        "noMatch": "Şifreler eşleşmiyor",
+        "alphanumeric": "Yalnızca alfasayısal karakterler içermeli",
+        "tooShort": "En az 4 karakter uzunluğunda olmalı"
+      }
+    }
+  },
+  "hardwareConfig": {
+    "title": "Donanım Yapılandırması",
+    "description1": "Windows'a ayırmak istediğiniz donanım kaynaklarını seçin.",
+    "description2": "Bu ayarları yalnızca şimdi değiştirebilirsiniz. Kurulum tamamlandıktan sonra, yeniden yüklemediğiniz sürece bunları değiştiremezsiniz.",
+    "cpuCores": "CPU Çekirdek sayısını Seçin",
+    "ram": "RAM miktarını Seçin",
+    "diskSize": "Disk Boyutunu Seçin",
+    "cores": "{count} Çekirdek | {count} Çekirdekler",
+    "warning": "Uyarı",
+    "ramWarning": "Sisteminizde kalan RAM'in yarısından fazlasını ayırmak üzeresiniz. Şu anda sisteminizde ~{availableGB} GB RAM mevcut. Bu RAM miktarını ayırmaya devam ederseniz, sisteminizde beklenmedik sorunlar yaşayabilirsiniz.",
+    "diskWarning": "Kalan disk alanınızın çoğunu ayırmak üzeresiniz. Şu anda {installFolder} için ~{availableGB} GB disk alanı mevcut. Bu disk boyutunu ayırmaya devam ederseniz, disk alanınız tükenebilir ve beklenmedik sorunlarla karşılaşabilirsiniz."
+  },
+  "homeFolderSharing": {
+    "title": "Ana Klasör Paylaşımı",
+    "description1": "Ana klasörünüzü Windows ile paylaşmak istiyorsanız, bu özelliği etkinleştirebilirsiniz.",
+    "description2": "⚠️ Dikkat: Ana klasörünüzü paylaşmak, Windows içindeki kötü amaçlı yazılımların Linux ana makinenize erişmesine ve zarar vermesine neden olabilir. Bu riski anladığınızdan ve kabul ettiğinizden emin olun.",
+    "enableSharing": "Ana klasörü paylaşmayı etkinleştir.",
+    "acknowledge": "⚠️ Bu riski anladım ve kabul ediyorum."
+  },
+  "review": {
+    "title": "Yapılandırmayı Gözden Geçir",
+    "description": "Seçtiğiniz WinBoat kurulum ayarlarını gözden geçirin. Her şey doğru görünüyorsa, kuruluma başlamak için \"Yükle\" düğmesine tıklayın.",
+    "yourConfig": "Your Configuration",
+    "winVersion": "Windows Versiyonu",
+    "language": "Dil Seçin",
+    "cpuCores": "CPU Çekirdekleri",
+    "ram": "RAM",
+    "diskSize": "Disk Boyutu",
+    "username": "Kullanıcı Adı",
+    "installLocation": "Yükleme Konumu",
+    "installButton": "Yükle"
+  },
+  "install": {
+    "title": "Kurulum",
+    "description": "WinBoat şu anda Windows'u yüklüyor. Lütfen sabırlı olun, bu işlem bir saat kadar sürebilir. Bu arada, bir kahve alıp <a href=\"{novncURL}\" @click=\"openAnchorLink\">tarayıcınızdan </a> kurulum durumunu kontrol edebilirsiniz .",
+    "installing": "{state}...",
+    "preinstall": "{message}",
+    "error": "Windows yüklenirken bir hata oluştu. Lütfen <span class=\"font-mono bg-neutral-700 rounded-md px-0.5\">~/.winboat</span> konumundaki günlükleri kontrol edin ve daha fazla bilgi için terminalinizde <span class=\"font-mono bg-neutral-700 rounded-md px-0.5\">docker logs WinBoat</span> komutunu doğrulayın.",
+    "retry": "Sıfırlamak ve yeniden denemek için <a href=\"https://rentry.org/winboat_retry_install\" @click=\"openAnchorLink\">bu</a> talimatları izleyin.",
+    "completed": "Windows başarıyla yüklendi!",
+    "finishButton": "Tamamlandı"
+  }
+}
