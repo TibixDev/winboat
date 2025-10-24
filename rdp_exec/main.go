@@ -13,6 +13,34 @@ var (
 	dummy = flag.String("dummy", "", "Dummy info")
 )
 
+var (
+	kernel32            = syscall.NewLazyDLL("kernel32.dll")
+	procExpandEnvString = kernel32.NewProc("ExpandEnvironmentStringsW")
+)
+
+func expandWindowsEnv(s string) string {
+	utf16Str, _ := syscall.UTF16FromString(s)
+
+	n, _, _ := procExpandEnvString.Call(
+		uintptr(unsafe.Pointer(&utf16Str[0])),
+		0,
+		0,
+	)
+
+	if n == 0 {
+		return s
+	}
+
+	buf := make([]uint16, n)
+	procExpandEnvString.Call(
+		uintptr(unsafe.Pointer(&utf16Str[0])),
+		uintptr(unsafe.Pointer(&buf[0])),
+		uintptr(n),
+	)
+
+	return syscall.UTF16ToString(buf)
+}
+
 func main() {
 	flag.Parse()
 
@@ -26,7 +54,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	commandLine := syscall.StringToUTF16Ptr(*cmd)
+	expandedCmd := expandWindowsEnv(*cmd)
+	commandLine := syscall.StringToUTF16Ptr(expandedCmd)
 	workingDir := syscall.StringToUTF16Ptr(`C:\Windows\System32`)
 
 	var startupInfo syscall.StartupInfo
