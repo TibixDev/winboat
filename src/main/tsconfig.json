@@ -1,14 +1,14 @@
 {
-  "compilerOptions": {
-    "target": "esnext",
-    "module": "nodenext",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "../../build/main",
-    "allowJs": true,
-    "noImplicitAny": false,
-  },
-  "exclude": ["static"]
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "nodenext",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "../../build/main",
+        "allowJs": true,
+        "noImplicitAny": false
+    },
+    "exclude": ["static"]
 }

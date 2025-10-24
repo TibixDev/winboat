@@ -1,8 +1,8 @@
 const { usb, getDeviceList }: typeof import("usb") = require("usb");
 const fs: typeof import("fs") = require("fs");
-const  { execSync }: typeof import('child_process') = require('child_process');
-const remote: typeof import('@electron/remote') = require('@electron/remote');
-const path: typeof import('path') = require('path')
+const { execSync }: typeof import("child_process") = require("child_process");
+const remote: typeof import("@electron/remote") = require("@electron/remote");
+const path: typeof import("path") = require("path");
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
 import { Winboat, logger } from "./winboat";
@@ -16,11 +16,11 @@ type DeviceStrings = {
     manufacturer: string | null;
     // Product string
     product: string | null;
-}
+};
 
 export type PTSerializableDeviceInfo = {
     // USB Vendor ID
-    vendorId: number
+    vendorId: number;
     // USB Product ID;
     productId: number;
 } & DeviceStrings;
@@ -29,8 +29,8 @@ type VidPidHex = {
     // USB Vendor ID in hex
     vendorIdHex: string;
     // USB Product ID in hex
-    productIdHex: string;   
-}
+    productIdHex: string;
+};
 
 export class USBManager {
     private static instance: USBManager;
@@ -43,8 +43,8 @@ export class USBManager {
     #linuxDeviceDatabase: LinuxDeviceDatabase = {};
     #deviceStringCache: Map<string, DeviceStrings> = new Map<string, DeviceStrings>();
     #mtpDeviceCache: Map<string, boolean> = new Map<string, boolean>();
-    #winboat: Winboat = new Winboat()
-    #wbConfig: WinboatConfig = new WinboatConfig()
+    #winboat: Winboat = new Winboat();
+    #wbConfig: WinboatConfig = new WinboatConfig();
 
     constructor() {
         if (USBManager.instance) {
@@ -75,9 +75,12 @@ export class USBManager {
             if (
                 this.#winboat.isOnline.value &&
                 this.isDeviceInPassthroughList(device) &&
-                !await this.#QMPCheckIfDeviceExists(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)
+                !(await this.#QMPCheckIfDeviceExists(
+                    device.deviceDescriptor.idVendor,
+                    device.deviceDescriptor.idProduct,
+                ))
             ) {
-                logger.info(`Device is in passthrough list, adding to VM: ${this.stringifyDevice(device)}`);   
+                logger.info(`Device is in passthrough list, adding to VM: ${this.stringifyDevice(device)}`);
                 await this.#QMPAddDevice(device);
             }
         });
@@ -94,7 +97,10 @@ export class USBManager {
             if (
                 this.#winboat.isOnline.value &&
                 this.isDeviceInPassthroughList(device) &&
-                await this.#QMPCheckIfDeviceExists(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)
+                (await this.#QMPCheckIfDeviceExists(
+                    device.deviceDescriptor.idVendor,
+                    device.deviceDescriptor.idProduct,
+                ))
             ) {
                 logger.info(`Device is in passthrough list, removing from VM: ${this.stringifyDevice(device)}`);
                 await this.#QMPRemoveDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct);
@@ -114,9 +120,18 @@ export class USBManager {
             logger.info("Guest is online, passing through devices");
             // Pass through any devices that are in the passthrough list & connected
             for (const ptDevice of this.#wbConfig.config.passedThroughDevices) {
-                if (this.isPTDeviceConnected(ptDevice) && !(await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))) {
-                    logger.info(`Pass-through device ${this.stringifyPTSerializableDevice(ptDevice)} is connected, adding to VM`);
-                    const device = this.devices.value.find((d) => d.deviceDescriptor.idVendor === ptDevice.vendorId && d.deviceDescriptor.idProduct === ptDevice.productId)!;
+                if (
+                    this.isPTDeviceConnected(ptDevice) &&
+                    !(await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))
+                ) {
+                    logger.info(
+                        `Pass-through device ${this.stringifyPTSerializableDevice(ptDevice)} is connected, adding to VM`,
+                    );
+                    const device = this.devices.value.find(
+                        d =>
+                            d.deviceDescriptor.idVendor === ptDevice.vendorId &&
+                            d.deviceDescriptor.idProduct === ptDevice.productId,
+                    )!;
                     await this.#QMPAddDevice(device);
                 }
             }
@@ -135,12 +150,14 @@ export class USBManager {
         const cacheKey = `${vendorIdHex}:${productIdHex}`;
         if (this.#deviceStringCache.has(cacheKey)) {
             const cached = this.#deviceStringCache.get(cacheKey)!;
-            return `[${vendorIdHex}:${productIdHex}] ${cached.manufacturer || "Unknown Vendor"} | ${cached.product || "Unknown Product"}`;
+            return `[${vendorIdHex}:${productIdHex}] ${cached.manufacturer || "Unknown Vendor"} | ${
+                cached.product || "Unknown Product"
+            }`;
         }
 
         let vendor = this.#linuxDeviceDatabase[vendorIdHex];
         let product = vendor?.devices[productIdHex];
-        
+
         // Many devices are not included in the database, but the device itself may have string descriptors
         // Unfortunately, we don't seem to have permission to open the devices directly to read the string descriptors
         // directly through the USB library, so we have to use lsusb as a fallback
@@ -149,23 +166,28 @@ export class USBManager {
                 const deviceStrings = getDeviceStringsFromLsusb(vendorIdHex, productIdHex);
                 product = deviceStrings.product!;
             }
-    
+
             if (!vendor?.name) {
                 const deviceStrings = getDeviceStringsFromLsusb(vendorIdHex, productIdHex);
-    
+
                 if (deviceStrings.manufacturer) {
                     vendor = { name: deviceStrings.manufacturer!, devices: {} };
                 }
             }
-        } catch(e) {
+        } catch (e) {
             logger.error(`Error fetching string descriptors for USB device ${vendorIdHex}:${productIdHex}`);
             logger.error(e);
         }
 
-        this.#deviceStringCache.set(`${vendorIdHex}:${productIdHex}`, { manufacturer: vendor?.name || null, product: product || null });
+        this.#deviceStringCache.set(`${vendorIdHex}:${productIdHex}`, {
+            manufacturer: vendor?.name || null,
+            product: product || null,
+        });
 
         // Format: [VID:PID] Vendor Name | Product Name
-        return `[${vendorIdHex}:${productIdHex}] ${vendor ? vendor.name : "Unknown Vendor"} | ${product ? product : "Unknown Product"}`;
+        return `[${vendorIdHex}:${productIdHex}] ${vendor ? vendor.name : "Unknown Vendor"} | ${
+            product ? product : "Unknown Product"
+        }`;
     }
 
     /**
@@ -177,7 +199,9 @@ export class USBManager {
         const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device);
 
         // Format: [VID:PID] Vendor Name | Product Name
-        return `[${vendorIdHex}:${productIdHex}] ${device.manufacturer || "Unknown Vendor"} | ${device.product || "Unknown Product"}`;
+        return `[${vendorIdHex}:${productIdHex}] ${device.manufacturer || "Unknown Vendor"} | ${
+            device.product || "Unknown Product"
+        }`;
     }
 
     /**
@@ -186,7 +210,7 @@ export class USBManager {
      * @returns A PTSerializableDeviceInfo object representing the USB device
      */
     #convertDeviceToPTSerializable(device: Device): PTSerializableDeviceInfo {
-        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device)
+        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device);
 
         const deviceStrings = this.#deviceStringCache.get(`${vendorIdHex}:${productIdHex}`);
 
@@ -199,7 +223,7 @@ export class USBManager {
             vendorId: device.deviceDescriptor.idVendor,
             productId: device.deviceDescriptor.idProduct,
             ...this.#deviceStringCache.get(`${vendorIdHex}:${productIdHex}`)!,
-        }
+        };
     }
 
     /**
@@ -210,17 +234,24 @@ export class USBManager {
         const ptDevice = this.#convertDeviceToPTSerializable(device);
 
         // Avoid duplicates
-        if (this.#wbConfig.config.passedThroughDevices.find(
-            d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId)
+        if (
+            this.#wbConfig.config.passedThroughDevices.find(
+                d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId,
+            )
         ) {
-            throw new Error(`Device "${ptDevice.manufacturer} | ${ptDevice.product}" is already in the passthrough list`);
+            throw new Error(
+                `Device "${ptDevice.manufacturer} | ${ptDevice.product}" is already in the passthrough list`,
+            );
         }
 
         // Push doesn't properly track reactivity, so we use concat instead
         this.#wbConfig.config.passedThroughDevices = this.#wbConfig.config.passedThroughDevices.concat(ptDevice);
         this.ptDevices.value = this.#wbConfig.config.passedThroughDevices;
 
-        if (this.#winboat.isOnline.value && !await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId)) {
+        if (
+            this.#winboat.isOnline.value &&
+            !(await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))
+        ) {
             await this.#QMPAddDevice(device);
         }
 
@@ -233,11 +264,14 @@ export class USBManager {
      */
     async removeDeviceFromPassthroughList(ptDevice: PTSerializableDeviceInfo) {
         this.#wbConfig.config.passedThroughDevices = this.#wbConfig.config.passedThroughDevices.filter(
-            d => d.vendorId !== ptDevice.vendorId || d.productId !== ptDevice.productId
+            d => d.vendorId !== ptDevice.vendorId || d.productId !== ptDevice.productId,
         );
         this.ptDevices.value = this.#wbConfig.config.passedThroughDevices;
 
-        if (this.#winboat.isOnline.value && await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId)) {
+        if (
+            this.#winboat.isOnline.value &&
+            (await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))
+        ) {
             await this.#QMPRemoveDevice(ptDevice.vendorId, ptDevice.productId);
         }
 
@@ -251,7 +285,9 @@ export class USBManager {
      */
     isDeviceInPassthroughList(device: Device): boolean {
         const ptDevice = this.#convertDeviceToPTSerializable(device);
-        return this.#wbConfig.config.passedThroughDevices.some(d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId);
+        return this.#wbConfig.config.passedThroughDevices.some(
+            d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId,
+        );
     }
 
     /**
@@ -260,9 +296,10 @@ export class USBManager {
      * @returns A boolean indicating whether the device is connected
      */
     isPTDeviceConnected(ptDevice: PTSerializableDeviceInfo): boolean {
-        return this.devices.value.some(d =>
-            d.deviceDescriptor.idVendor === ptDevice.vendorId &&
-            d.deviceDescriptor.idProduct === ptDevice.productId
+        return this.devices.value.some(
+            d =>
+                d.deviceDescriptor.idVendor === ptDevice.vendorId &&
+                d.deviceDescriptor.idProduct === ptDevice.productId,
         );
     }
 
@@ -282,10 +319,10 @@ export class USBManager {
      * Checks whether a {@link PTSerializableDeviceInfo} object or {@link Device} USB device is an MTP device or not
      * @param device {@link PTSerializableDeviceInfo} object or {@link Device} USB device
      */
-    isMTPDevice(device: PTSerializableDeviceInfo): boolean
-    isMTPDevice(device: Device): boolean
+    isMTPDevice(device: PTSerializableDeviceInfo): boolean;
+    isMTPDevice(device: Device): boolean;
     isMTPDevice(device: PTSerializableDeviceInfo | Device) {
-        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device)
+        const { vendorIdHex, productIdHex } = this.getDeviceVidPidHex(device);
 
         // Check cache first
         const cacheKey = `${vendorIdHex}:${productIdHex}`;
@@ -300,10 +337,7 @@ export class USBManager {
         }
 
         // Lookup MTP
-        const lsusbOutput = execSync(
-            `lsusb -vd ${vendorIdHex}:${productIdHex} 2>/dev/null`,
-            { encoding: 'utf8' }
-        );
+        const lsusbOutput = execSync(`lsusb -vd ${vendorIdHex}:${productIdHex} 2>/dev/null`, { encoding: "utf8" });
         const isMTP = lsusbOutput.includes("MTP");
 
         // Set cache and return
@@ -316,12 +350,11 @@ export class USBManager {
      * @param device The {@link PTSerializableDeviceInfo} object or {@link Device} USB device to check
      */
     getDeviceVidPidHex(device: PTSerializableDeviceInfo | Device): VidPidHex {
-        const ret = { vendorIdHex: "",  productIdHex: "" };
-        if("vendorId" in device) {
+        const ret = { vendorIdHex: "", productIdHex: "" };
+        if ("vendorId" in device) {
             ret.vendorIdHex = device.vendorId.toString(16).padStart(4, "0");
             ret.productIdHex = device.productId.toString(16).padStart(4, "0");
-        }
-        else {
+        } else {
             ret.vendorIdHex = device.deviceDescriptor.idVendor.toString(16).padStart(4, "0");
             ret.productIdHex = device.deviceDescriptor.idProduct.toString(16).padStart(4, "0");
         }
@@ -332,25 +365,29 @@ export class USBManager {
     async #QMPCheckIfDeviceExists(vendorId: number, productId: number): Promise<boolean> {
         let response = null;
         try {
-            response = await this.#winboat.qmpMgr!.executeCommand("human-monitor-command", {"command-line": "info qtree"})
+            response = await this.#winboat.qmpMgr!.executeCommand("human-monitor-command", {
+                "command-line": "info qtree",
+            });
             assert("result" in response);
-    
+
             // @ts-ignore property "result" already exists due to assert
             return response.return.includes(`usb-host, id "${vendorId}:${productId}"`);
-        } catch(e) {
+        } catch (e) {
             logger.error(`There was an error checking whether USB device '${vendorId}:${productId}' exists`);
             logger.error(e);
             logger.error(`QMP response: ${response}`);
         }
         return false;
     }
-    
+
     // TODO: handle hostaddr/hostbus in case of duplicate VID/PID
     async #QMPAddDevice(device: Device) {
         let response = null;
         const vendorid = device.deviceDescriptor.idVendor;
         const productid = device.deviceDescriptor.idProduct;
-        const deviceBusPath = `/dev/bus/usb/${String(device.busNumber).padStart(3, '0')}/${String(device.deviceAddress).padStart(3, '0')}` ;
+        const deviceBusPath = `/dev/bus/usb/${String(device.busNumber).padStart(3, "0")}/${String(
+            device.deviceAddress,
+        ).padStart(3, "0")}`;
 
         if (this.isMTPDevice(device)) {
             freeMTPDevice(deviceBusPath);
@@ -362,24 +399,24 @@ export class USBManager {
                 id: `${vendorid}:${productid}`, // TODO: get rid of this when we support multiple devices of the same kind
                 vendorid,
                 productid,
-                hostdevice: deviceBusPath
+                hostdevice: deviceBusPath,
             });
-    
+
             assert("result" in response);
-        } catch(e) {
+        } catch (e) {
             logger.error(`There was an error adding USB device '${vendorid}:${productid}'`);
             logger.error(e);
             logger.error(`QMP response: ${response}`);
         }
         logger.info("QMPAddDevice", vendorid, productid);
     }
-    
+
     async #QMPRemoveDevice(vendorId: number, productId: number) {
         let response = null;
         try {
-            response = await this.#winboat.qmpMgr!.executeCommand("device_del", { id: `${vendorId}:${productId}`});
+            response = await this.#winboat.qmpMgr!.executeCommand("device_del", { id: `${vendorId}:${productId}` });
             assert("result" in response);
-        } catch(e) {
+        } catch (e) {
             logger.error(`There was an error removing USB device '${vendorId}:${productId}'`);
             logger.error(e);
             logger.error(`QMP response: ${response}`);
@@ -399,8 +436,8 @@ function readLinuxDeviceDatabase(): LinuxDeviceDatabase {
     // Fallback to static file if the distro doesn't ship with usb.ids
     if (!fs.existsSync(dbFilePath)) {
         dbFilePath = remote.app.isPackaged
-        ? path.join(process.resourcesPath, 'data', 'usb.ids') // For packaged app
-        : path.join(remote.app.getAppPath(), '..', '..', 'data', 'usb.ids'); // For dev mode
+            ? path.join(process.resourcesPath, "data", "usb.ids") // For packaged app
+            : path.join(remote.app.getAppPath(), "..", "..", "data", "usb.ids"); // For dev mode
     }
 
     logger.info(`Final USB database file path: ${dbFilePath}`);
@@ -445,19 +482,16 @@ function readLinuxDeviceDatabase(): LinuxDeviceDatabase {
 function getDeviceStringsFromLsusb(vidHex: string, pidHex: string): DeviceStrings {
     try {
         // Run lsusb -v for the specific device, suppress stderr
-        const lsusbOutput = execSync(
-            `lsusb -d ${vidHex}:${pidHex} -v 2>/dev/null`,
-            { encoding: 'utf8' }
-        );
-        
+        const lsusbOutput = execSync(`lsusb -d ${vidHex}:${pidHex} -v 2>/dev/null`, { encoding: "utf8" });
+
         // Parse manufacturer string
         const manufacturerMatch = lsusbOutput.match(/^\s*iManufacturer\s+\d+\s+(.+)$/m);
         const manufacturer = manufacturerMatch ? manufacturerMatch[1].trim() : null;
-        
+
         // Parse product string
         const productMatch = lsusbOutput.match(/^\s*iProduct\s+\d+\s+(.+)$/m);
         const product = productMatch ? productMatch[1].trim() : null;
-        
+
         return { manufacturer, product };
     } catch (error) {
         // lsusb failed (device not found, no permissions, etc.)
@@ -472,12 +506,11 @@ function getDeviceStringsFromLsusb(vidHex: string, pidHex: string): DeviceString
  */
 function freeMTPDevice(deviceBus: string) {
     try {
-        const fuserOutput = execSync(`fuser -k ${deviceBus}`, { encoding: 'utf8' });
+        const fuserOutput = execSync(`fuser -k ${deviceBus}`, { encoding: "utf8" });
         if (fuserOutput.includes(deviceBus)) {
             logger.info(`[freeMTPDevice] Freed device at bus ${deviceBus}`);
         }
-    }
-    catch (e) {
+    } catch (e) {
         logger.info(`[freeMTPDevice] Device at ${deviceBus} either doesn't need freeing or couldn't be freed`);
     }
 }
