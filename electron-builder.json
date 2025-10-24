@@ -14,7 +14,7 @@
         "target": "nsis"
     },
     "linux": {
-        "icon": "icons/winboat.png",
+        "icon": "icons/winboat_logo.svg",
         "target": ["appimage", "deb", "rpm", "tar.gz"],
         "category": "Utility",
         "artifactName": "${name}-${version}-${arch}.${ext}"
