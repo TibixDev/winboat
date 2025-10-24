@@ -766,6 +766,9 @@ async function assignValues() {
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuCores;
 
+
+    timerLength.value = wbConfig.config.timerLength;
+
     refreshAvailableDevices();
 }
 
