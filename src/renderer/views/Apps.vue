@@ -273,7 +273,8 @@ const AllSources = computed(() => {
 })
 
 const computedApps = computed(() => {
-    var appsCache = [...apps.value]; // make copy 
+    // Make copy, otherwise UI might glitch, creating "ghost" app
+    var appsCache = [...apps.value]; 
 
     if (filterBy.value !== "all") {
         appsCache = appsCache.filter(app => app.Source === filterBy.value);
@@ -341,9 +342,9 @@ const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {
 }, 500);
 
 const isSame = computed(() => {
-    if(!orginalAppForm.value) return true; // new app
     const orig = orginalAppForm.value;
     const curr = currentAppForm.value;
+
     return (
         orig.Name === curr.Name &&
         orig.Path === curr.Path &&
@@ -358,7 +359,7 @@ const customAppAddErrors = computed(() => {
         errors.push("A valid name is required for your app");
     }
 
-    if (apps.value.find(app => app.Name === customAppName.value)) {
+    if (apps.value.find(app => app.Name === customAppName.value) && orginalAppForm.value) {
         if (orginalAppForm.value.Name !== customAppName.value || orginalAppForm.value.Source !== "custom") {
             errors.push("An app with this name already exists");
         }
@@ -376,12 +377,11 @@ const customAppAddErrors = computed(() => {
 });
 
 const contextMenuRef = ref();
-const contextMenuTarget = ref(null);
-const dialogMode = ref<"edit" | "add">("add");
+const contextMenuTarget = ref<WinApp | null>(null);
 
-async function openContextMenu(event, app) {
+async function openContextMenu(event: MouseEvent, app: WinApp) {
     contextMenuTarget.value = app;
-    await nextTick(); // wait for DOM to update
+    await nextTick(); // Wait for DOM to update
     contextMenuRef.value?.show(event); // Let WBContextMenu handle positioning
 }
 
@@ -392,7 +392,8 @@ function openAddAppDialog() {
         Path: "",
         Args: "",
         Icon: customAppIcon.value,
-        Source: ""
+        Source: "",
+        Usage: 0,
     };
     currentAppForm.value = app;
     contextMenuTarget.value = null;
@@ -400,7 +401,7 @@ function openAddAppDialog() {
 }
 
 function openEditAppDialog(app: WinApp) {
-    orginalAppForm.value = { ...app }; // clone
+    orginalAppForm.value = { ...app };
     customAppName.value = app.Name;
     customAppPath.value = app.Path;
     customAppIcon.value = app.Icon;
@@ -411,7 +412,8 @@ function openEditAppDialog(app: WinApp) {
         Path: app.Path,
         Args: app.Args || "",
         Icon: `data:image/png;base64,${app.Icon}`,
-        Source: app.Source
+        Source: app.Source,
+        Usage: app.Usage,
     };
     addCustomAppDialog.value?.showModal();
 }
@@ -419,12 +421,14 @@ function openEditAppDialog(app: WinApp) {
 async function saveApp() {
     const iconRaw = currentAppForm.value.Icon.split("data:image/png;base64,")[1];
 
-    if (currentAppForm.value.Source === "custom") {
+    if (currentAppForm.value.Source === "custom" && orginalAppForm.value) {
         await winboat.appMgr!.updateCustomApp(orginalAppForm.value.Name, {
             Name: currentAppForm.value.Name,
             Path: currentAppForm.value.Path,
-            Args: currentAppForm.value.Args,
-            Icon: iconRaw
+            Args: currentAppForm.value.Args, 
+            Icon: iconRaw,
+            Source: "custom",
+            Usage: currentAppForm.value.Usage
         })
         console.log("Save");
     } else {
@@ -438,7 +442,6 @@ async function saveApp() {
     }
     
     refreshApps();
-    //apps.value = await winboat.appMgr!.getApps(apiURL.value);
     cancelAddCustomApp();
 }
 

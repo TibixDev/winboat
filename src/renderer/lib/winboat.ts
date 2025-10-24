@@ -198,26 +198,24 @@ class AppManager {
         await this.writeToDisk();
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.concat(customWinApp);
     }
-    
+
     async updateCustomApp(
-    	oldName: string,
-    	updatedApp: {Name: string, Path: string, Args: string, Icon: string, Source: "custom", Usage: 0}) {
-    	
-    	this.appCache = this.appCache.map(app =>
-    	    app.Name === oldName ? { ...app, ...updatedApp } : app
-    	);
-        
+        oldName: string,
+        updatedApp: { Name: string; Path: string; Args: string; Icon: string; Source: "custom"; Usage: 0 },
+    ) {
+        this.appCache = this.appCache.map(app => (app.Name === oldName ? { ...app, ...updatedApp } : app));
+
         // update appUsage if name changed
         if (oldName !== updatedApp.Name) {
             this.appUsageCache[updatedApp.Name] = this.appUsageCache[oldName] ?? 0;
             delete this.appUsageCache[oldName];
         }
-        
+
         // update persisted app config
-        this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.map(app => 
-            app.Name == oldName ? { ...app, ...updatedApp } : app
+        this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.map(app =>
+            app.Name == oldName ? { ...app, ...updatedApp } : app,
         );
-        
+
         await this.writeToDisk();
     }
 
@@ -707,9 +705,13 @@ export class Winboat {
         // Additional (new) arguments added by user
         const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => !a.isReplacement).map(v => v.newArg) ?? [];
         // The stock arguments after any replacements have been made and new arguments have been added
-        const combinedArgs = stockArgs.map(argStr => useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr))
-            .concat(newArgs).join(" ");
-	
+        const combinedArgs = stockArgs
+            .map(argStr =>
+                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
+            )
+            .concat(newArgs)
+            .join(" ");
+
         let cmd = `${freeRDPBin} /u:"${username}"\
         /p:"${password}"\
         /v:127.0.0.1\
