@@ -100,6 +100,11 @@ function createWindow() {
 
     enable(mainWindow.webContents);
 
+    // add listener for when the renderer has finished loading
+    mainWindow.webContents.once('did-finish-load', () => {
+        console.log('Renderer loaded successfully');
+    });
+
     if (process.env.NODE_ENV === "development") {
         const rendererPort = process.argv[2];
         mainWindow.loadURL(`http://localhost:${rendererPort}`);

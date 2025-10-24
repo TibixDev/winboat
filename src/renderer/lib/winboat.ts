@@ -20,6 +20,7 @@ import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ComposePortEntry, PortManager } from "../utils/port";
+import { WindowStateManager } from "./WindowStateManager";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("fs");
@@ -241,6 +242,7 @@ export class Winboat {
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
     portMgr: Ref<PortManager | null> = ref(null);
+    windowStateMgr: WindowStateManager | null = null;
 
     constructor() {
         if (Winboat.instance) {
@@ -267,6 +269,9 @@ export class Winboat {
 
         this.appMgr = new AppManager();
 
+        // Initialize Window State Manager for seamless reconnection
+        this.windowStateMgr = WindowStateManager.getInstance();
+
         Winboat.instance = this;
 
         return Winboat.instance;
@@ -284,12 +289,43 @@ export class Winboat {
         // *** Port Manager ***
         // If the container was already running before opening WinBoat, the ports will already be used by the container
         // So we don't need to remap any ports
-        // TODO: Investigate whether we need to remap user ports
         if (!this.portMgr.value) {
             const compose = this.parseCompose();
-            this.portMgr.value = await PortManager.parseCompose(compose, {
+            const portMgr = await PortManager.parseCompose(compose, {
                 findOpenPorts: false,
             });
+            try {
+                type DockerPortBindings = Record<string, Array<{ HostIp: string; HostPort: string }> | null>;
+                const { stdout: bindingsJson } = await execAsync(
+                    "docker inspect --format='{{json .NetworkSettings.Ports}}' WinBoat",
+                );
+                const portBindings = JSON.parse((bindingsJson ?? "").trim() || "{}") as DockerPortBindings;
+                let remapped = false;
+
+                for (const [guestDescriptor, hostBindings] of Object.entries(portBindings)) {
+                    if (!hostBindings || hostBindings.length === 0) continue;
+
+                    const [guestPortString] = guestDescriptor.split("/");
+                    const guestPort = Number.parseInt(guestPortString, 10);
+                    if (!Number.isFinite(guestPort)) continue;
+
+                    const mappedHostPort = Number.parseInt(hostBindings[0].HostPort, 10);
+                    if (!Number.isFinite(mappedHostPort)) continue;
+                    if (portMgr.getHostPort(guestPort) === mappedHostPort) continue;
+
+                    await portMgr.setPortMapping(guestPort, mappedHostPort, { findOpenPorts: false });
+                    remapped = true;
+                }
+
+                if (remapped) {
+                    logger.info("Updated port mappings to reflect running container bindings.");
+                }
+            } catch (error) {
+                logger.warn("Failed to inspect running container port mappings; using compose-defined ports.");
+                logger.warn(error);
+            }
+
+            this.portMgr.value = portMgr;
         }
 
         // *** Health Interval ***
@@ -347,6 +383,9 @@ export class Winboat {
                 this.rdpConnected.value = _rdpConnected;
                 logger.info(`RDP connection status changed to ${_rdpConnected ? "connected" : "disconnected"}`);
             }
+
+            // Sync window states with guest (for seamless reconnection)
+            await this.syncWindowStates();
         }, RDP_STATUS_WAIT_MS);
 
         // *** QMP Interval ***
@@ -442,6 +481,70 @@ export class Winboat {
         const res = await nodeFetch(`${apiUrl}/rdp/status`);
         const status = (await res.json()) as { rdpConnected: boolean };
         return status.rdpConnected;
+    }
+
+    /**
+     * Synchronize window states between guest and host for seamless reconnection
+     * Fetches current windows from Guest Agent and updates WindowStateManager
+     */
+    async syncWindowStates() {
+        if (!this.windowStateMgr || !this.isOnline.value) return;
+
+        try {
+            const apiPort = this.getHostPort(GUEST_API_PORT);
+            const guestWindows = await this.windowStateMgr.fetchGuestWindows(apiPort);
+
+            // Update each tracked window state with guest info
+            for (const guestWindow of guestWindows) {
+                this.windowStateMgr.updateGuestInfo(guestWindow.className, guestWindow);
+            }
+
+            // Check for disconnected windows that need reconnection
+            const disconnectedWindows = this.windowStateMgr.getDisconnectedWindows();
+            if (disconnectedWindows.length > 0) {
+                logger.info(`[Reconnection] Found ${disconnectedWindows.length} disconnected windows`);
+
+                for (const windowState of disconnectedWindows) {
+                    await this.attemptWindowReconnection(windowState);
+                }
+            }
+        } catch (error) {
+            // Silently fail - don't spam logs, this runs every second
+            // logger.error('[Reconnection] Failed to sync window states:', error);
+        }
+    }
+
+    /**
+     * Attempt to reconnect a disconnected RemoteApp window
+     */
+    async attemptWindowReconnection(windowState: any) {
+        try {
+            logger.info(`[Reconnection] Attempting to reconnect: ${windowState.appName}`);
+
+            // Find the app in our cache
+            const app = this.appMgr?.appCache.find(a => a.Name === windowState.appName);
+            if (!app) {
+                logger.warn(`[Reconnection] App not found in cache: ${windowState.appName}`);
+                this.windowStateMgr?.removeWindow(windowState.wmClass);
+                return;
+            }
+
+            // Relaunch the app
+            await this.launchApp(app);
+
+            logger.info(`[Reconnection] Successfully reconnected: ${windowState.appName}`);
+        } catch (error) {
+            logger.error(`[Reconnection] Failed to reconnect ${windowState.appName}:`, error);
+
+            // Mark as failed attempt
+            if (this.windowStateMgr) {
+                const state = this.windowStateMgr.getState(windowState.wmClass);
+                if (state && state.reconnectAttempts >= state.maxReconnectAttempts) {
+                    logger.warn(`[Reconnection] Max reconnect attempts reached for ${windowState.appName}, removing from tracking`);
+                    this.windowStateMgr.removeWindow(windowState.wmClass);
+                }
+            }
+        }
     }
 
     parseCompose() {
@@ -719,7 +822,16 @@ export class Winboat {
 
         logger.info(`Launch command:\n${cmd}`);
 
+        // Execute FreeRDP and track the process
         await execAsync(cmd);
+
+        // Extract PID from the spawned process (FreeRDP runs in background with &)
+        // Since we use & in the command, we need to track it differently
+        // For now, register with null PID - we'll enhance this with proper process tracking
+        const wmClass = `winboat-${cleanAppName}`;
+        this.windowStateMgr?.registerApp(cleanAppName, app.Path, null as any);
+
+        logger.info(`[Reconnection] Registered app ${cleanAppName} with wmClass: ${wmClass}`);
     }
 
     async checkVersionAndUpdateGuestServer() {

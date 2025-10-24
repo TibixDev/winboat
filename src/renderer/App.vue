@@ -142,6 +142,9 @@
         <div v-else class="w-full h-[calc(100vh-2rem)]">
             <RouterView />
         </div>
+
+        <!-- Reconnection Overlay -->
+        <ReconnectionOverlay />
     </main>
 </template>
 
@@ -156,6 +159,7 @@ import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { GUEST_NOVNC_PORT } from "./lib/constants";
+import ReconnectionOverlay from "./components/ReconnectionOverlay.vue";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("os");
 const path: typeof import("path") = require("path");
