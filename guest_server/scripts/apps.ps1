@@ -520,7 +520,7 @@ if (Get-Command Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue) {
                 $_.IsFramework -eq $false -and
                 $_.IsResourcePackage -eq $false -and
                 $_.SignatureKind -ne 'System' -and       # Exclude core system packages
-                $_.SignatureKind -e 'Developer' -and     # Exclude "developer" packages
+                $_.SignatureKind -ne 'Developer' -and     # Exclude "developer" packages
                 $_.InstallLocation                       # Must have an install location
             } |
             ForEach-Object {
