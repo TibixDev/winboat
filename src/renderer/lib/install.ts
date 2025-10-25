@@ -167,7 +167,12 @@ export class InstallManager {
         const composeYAML = YAML.stringify(composeContent).replaceAll("null", "");
         fs.writeFileSync(composeFilePath, composeYAML, { encoding: "utf8" });
         logger.info(`Creating compose file at: ${composeFilePath}`);
-        logger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
+
+        // mask plain password
+        const password = composeContent.services.windows.environment.PASSWORD ?? "";
+        const maskedCompose = JSON.stringify(composeContent, null, 2).replaceAll(password, "*".repeat(password.length));
+
+        logger.info(`Compose file content: ${maskedCompose}`);
     }
 
     createOEMAssets() {
