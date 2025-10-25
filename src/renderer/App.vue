@@ -172,7 +172,8 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
-const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
+// TODO: Hack for non-reactive data
+const rerenderCounter = ref(0);
 const novncURL = ref("");
 let animationCheckInterval: NodeJS.Timeout | null = null;
 

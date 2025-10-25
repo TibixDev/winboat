@@ -5,7 +5,7 @@
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
-                        <img v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
+                        <img alt="Icon for current app" v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
