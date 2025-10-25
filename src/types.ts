@@ -26,8 +26,10 @@ export type InstallConfiguration = {
 };
 
 export type WinApp = {
+    id?: string;
     Name: string;
     Path: string;
+    Args: string;
     Icon: string;
     Source: string;
     Usage?: number;

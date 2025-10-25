@@ -44,6 +44,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
+        Args: "",
         Usage: 0,
     },
     {
@@ -51,6 +52,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
         Source: "internal",
         Path: "%windir%\\explorer.exe",
+        Args: "",
         Usage: 0,
     },
     {
@@ -58,6 +60,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
         Path: CustomAppCommands.NOVNC_COMMAND,
+        Args: "",
         Usage: 0,
     },
 ];
@@ -178,12 +181,14 @@ class AppManager {
      * Adds a custom app to WinBoat's application list
      * @param name Name of the app
      * @param path Path of the app
+     * @param args Args of the app
      * @param icon Icon of the app
      */
-    async addCustomApp(name: string, path: string, icon: string) {
+    async addCustomApp(name: string, path: string, args: string, icon: string) {
         const customWinApp: WinApp = {
             Name: name,
             Path: path,
+            Args: args,
             Icon: icon,
             Source: "custom",
             Usage: 0,
@@ -192,6 +197,23 @@ class AppManager {
         this.appUsageCache[name] = 0;
         await this.writeToDisk();
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.concat(customWinApp);
+    }
+
+    async updateCustomApp(oldName: string, updatedApp: { Name: string; Path: string; Args: string; Icon: string }) {
+        this.appCache = this.appCache.map(app => (app.Name === oldName ? { ...app, ...updatedApp } : app));
+
+        // update appUsage if name changed
+        if (oldName !== updatedApp.Name) {
+            this.appUsageCache[updatedApp.Name] = this.appUsageCache[oldName] ?? 0;
+            delete this.appUsageCache[oldName];
+        }
+
+        // update persisted app config
+        this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.map(app =>
+            app.Name == oldName ? { ...app, ...updatedApp } : app,
+        );
+
+        await this.writeToDisk();
     }
 
     /**
@@ -698,7 +720,7 @@ export class Winboat {
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         ${combinedArgs}\
         /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
+        /app:program:"${app.Path}",name:"${cleanAppName}",cmd:"${app.Args}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
