@@ -20,12 +20,22 @@
                 <div class="flex flex-col gap-0.5 justify-center w-full">
                     <!-- Name field -->
                     <x-label>Name</x-label>
-                    <x-input v-model="currentAppForm.Name" class="!max-w-full" @input="(e: any) => (customAppName = e.target.value)" type="text" />
-                    
+                    <x-input
+                        v-model="currentAppForm.Name"
+                        class="!max-w-full"
+                        @input="(e: any) => (customAppName = e.target.value)"
+                        type="text"
+                    />
+
                     <!-- Path field -->
                     <x-label class="mt-4">Path</x-label>
-                    <x-input v-model="currentAppForm.Path" type="text" class="!max-w-full" @input="(e: any) => (customAppPath = e.target.value)" />
-                    
+                    <x-input
+                        v-model="currentAppForm.Path"
+                        type="text"
+                        class="!max-w-full"
+                        @input="(e: any) => (customAppPath = e.target.value)"
+                    />
+
                     <!-- Arguments field -->
                     <x-label class="mt-2">Arguments</x-label>
                     <x-input v-model="currentAppForm.Args" type="text" class="!max-w-full" placeholder="Optional" />
@@ -59,12 +69,12 @@
             <template>
                 <div class="apps-grid">
                     <div
-                    v-for="app in apps"
-                    :key="app.id"
-                    class="app-tile"
-                    @contextmenu.prevent="openContextMenu($event, app)"
+                        v-for="app in apps"
+                        :key="app.id"
+                        class="app-tile"
+                        @contextmenu.prevent="openContextMenu($event, app)"
                     >
-                    {{ app.Name }}
+                        {{ app.Name }}
                     </div>
                 </div>
             </template>
@@ -72,7 +82,12 @@
                 <x-button @click="cancelAddCustomApp" id="cancel-button">
                     <x-label>Cancel</x-label>
                 </x-button>
-                <x-button toggled id="add-button" :disabled="customAppAddErrors.length > 0 || (orginalAppForm?.Source === 'custom' && isSame)" @click="saveApp">
+                <x-button
+                    toggled
+                    id="add-button"
+                    :disabled="customAppAddErrors.length > 0 || (orginalAppForm?.Source === 'custom' && isSame)"
+                    @click="saveApp"
+                >
                     <x-label>{{ currentAppForm.Source === "custom" ? "Save" : "Create New" }}</x-label>
                 </x-button>
             </footer>
@@ -244,11 +259,11 @@ const customAppIcon = ref(`data:image/png;base64,${AppIcons[DEFAULT_ICON]}`);
 const customAppArgs = ref("");
 const orginalAppForm = ref<WinApp | null>(null);
 const currentAppForm = ref<WinApp>({
-    Name: '',
-    Path: '',
-    Args: '',
-    Icon: '',
-    Source: ''
+    Name: "",
+    Path: "",
+    Args: "",
+    Icon: "",
+    Source: "",
 });
 
 const apiURL = computed(() => {
@@ -258,32 +273,30 @@ const apiURL = computed(() => {
 });
 
 const AllSources = computed(() => {
-    let sourceList : Record<string, string> = {};
+    let sourceList: Record<string, string> = {};
     const sourceMap = {
-        "system": "System",
-        "winreg": "Windows Registry",
-        "startmenu": "Start Menu",
-        "uwp": "Microsoft Store",
-        "internal": "Internal"
-    }
+        system: "System",
+        winreg: "Windows Registry",
+        startmenu: "Start Menu",
+        uwp: "Microsoft Store",
+        internal: "Internal",
+    };
     apps.value.forEach(app => {
-        sourceList[app.Source] = sourceMap[app.Source] || app.Source; 
+        sourceList[app.Source] = sourceMap[app.Source] || app.Source;
     });
     return sourceList;
-})
+});
 
 const computedApps = computed(() => {
     // Make copy, otherwise UI might glitch, creating "ghost" app
-    var appsCache = [...apps.value]; 
+    var appsCache = [...apps.value];
 
     if (filterBy.value !== "all") {
         appsCache = appsCache.filter(app => app.Source === filterBy.value);
     }
-    
+
     if (searchInput.value) {
-        appsCache = appsCache.filter(app =>
-            app.Name.toLowerCase().includes(searchInput.value.toLowerCase())
-        );
+        appsCache = appsCache.filter(app => app.Name.toLowerCase().includes(searchInput.value.toLowerCase()));
     }
 
     if (sortBy.value === "usage") {
@@ -320,7 +333,7 @@ async function refreshApps() {
         const loadedApps = await winboat.appMgr!.getApps(apiURL.value);
         apps.value = loadedApps.map(app => ({
             ...app,
-            id: crypto.randomUUID()
+            id: crypto.randomUUID(),
         }));
         // Run in background, won't impact UX
         await winboat.appMgr!.updateAppCache(apiURL.value);
@@ -345,12 +358,8 @@ const isSame = computed(() => {
     const orig = orginalAppForm.value;
     const curr = currentAppForm.value;
 
-    return (
-        orig.Name === curr.Name &&
-        orig.Path === curr.Path &&
-        (orig.Args || "") === (curr.Args || "")
-    );
-})
+    return orig.Name === curr.Name && orig.Path === curr.Path && (orig.Args || "") === (curr.Args || "");
+});
 
 const customAppAddErrors = computed(() => {
     const errors: string[] = [];
@@ -425,22 +434,22 @@ async function saveApp() {
         await winboat.appMgr!.updateCustomApp(orginalAppForm.value.Name, {
             Name: currentAppForm.value.Name,
             Path: currentAppForm.value.Path,
-            Args: currentAppForm.value.Args, 
+            Args: currentAppForm.value.Args,
             Icon: iconRaw,
             Source: "custom",
-            Usage: currentAppForm.value.Usage
-        })
+            Usage: currentAppForm.value.Usage,
+        });
         console.log("Save");
     } else {
         await winboat.appMgr!.addCustomApp(
             currentAppForm.value.Name,
             currentAppForm.value.Path,
             currentAppForm.value.Args,
-            iconRaw
+            iconRaw,
         );
         console.log("New save");
     }
-    
+
     refreshApps();
     cancelAddCustomApp();
 }
@@ -450,9 +459,9 @@ function onContextMenuHide() {
 }
 
 function launchApp() {
-  if (contextMenuTarget.value) {
-    winboat.launchApp(contextMenuTarget.value);
-  }
+    if (contextMenuTarget.value) {
+        winboat.launchApp(contextMenuTarget.value);
+    }
 }
 
 /**
@@ -498,7 +507,7 @@ function cancelAddCustomApp() {
 async function removeCustomApp() {
     if (!contextMenuTarget.value) return;
     await winboat.appMgr!.removeCustomApp(contextMenuTarget.value);
-    await refreshApps(); 
+    await refreshApps();
 }
 
 async function resetCustomAppForm() {
@@ -507,7 +516,7 @@ async function resetCustomAppForm() {
         customAppName.value = "";
         customAppPath.value = "";
         customAppIcon.value = `data:image/png;base64,${AppIcons[DEFAULT_ICON]}`;
-        customAppArgs.value = "";        
+        customAppArgs.value = "";
 
         // Because of course Vue reactivity fails here :(
         addCustomAppDialog.value?.querySelectorAll("x-input")?.forEach((input: any) => {

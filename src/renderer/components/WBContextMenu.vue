@@ -61,17 +61,17 @@ const showMenu = (event: MouseEvent) => {
     isVisible.value = true;
     emit("show");
 
-    // prevent layout jump 
+    // prevent layout jump
     adjustPosition();
     document.addEventListener("click", hideMenu);
     document.addEventListener("contextmenu", hideMenu);
     window.addEventListener("scroll", hideMenu);
     window.addEventListener("resize", hideMenu);
-   
+
     // Close on next tick to allow menu to render
     nextTick(() => {
         adjustPosition();
-    })
+    });
 };
 
 const handleMenuClick = (event: MouseEvent) => {
