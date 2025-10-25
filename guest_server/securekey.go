@@ -11,6 +11,7 @@ import (
 var (
 	advapi32                  = windows.NewLazySystemDLL("advapi32.dll")
 	procSetNamedSecurityInfoW = advapi32.NewProc("SetNamedSecurityInfoW")
+	procSetEntriesInAclW      = advapi32.NewProc("SetEntriesInAclW")
 )
 
 const (
@@ -89,7 +90,13 @@ func setSecureRegKey(k string, v string) error {
 	}
 
 	var acl *windows.ACL
-	if err := windows.SetEntriesInAcl(explicitAccess, nil, &acl); err != nil {
+	ret, _, err := procSetEntriesInAclW.Call(
+		uintptr(len(explicitAccess)),
+		uintptr(unsafe.Pointer(&explicitAccess[0])),
+		0, // oldAcl is nil
+		uintptr(unsafe.Pointer(&acl)),
+	)
+	if ret != 0 {
 		return fmt.Errorf("failed to create ACL: %w", err)
 	}
 	defer windows.LocalFree(windows.Handle(unsafe.Pointer(acl)))
@@ -101,7 +108,7 @@ func setSecureRegKey(k string, v string) error {
 		return fmt.Errorf("failed to convert path: %w", err)
 	}
 
-	ret, _, err := procSetNamedSecurityInfoW.Call(
+	ret, _, err = procSetNamedSecurityInfoW.Call(
 		uintptr(unsafe.Pointer(regPathW)),
 		uintptr(windows.SE_REGISTRY_KEY),
 		uintptr(windows.DACL_SECURITY_INFORMATION|windows.OWNER_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION),

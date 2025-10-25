@@ -141,6 +141,7 @@ func applyUpdate(w http.ResponseWriter, r *http.Request) {
 	expectedHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
 	if err != nil || expectedHash == nil {
 		http.Error(w, "Unauthorized: failed to read auth hash", http.StatusUnauthorized)
+		return
 	}
 
 	password := r.FormValue("password")
@@ -249,6 +250,39 @@ func getIcon(w http.ResponseWriter, r *http.Request) {
 	w.Write(output)
 }
 
+func setAuthHash(w http.ResponseWriter, r *http.Request) {
+	// If there's an existing hash, reject
+	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
+	if err != nil {
+		http.Error(w, "Failed to read existing auth hash: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if existingHash != nil {
+		http.Error(w, "Auth hash already set", http.StatusBadRequest)
+		return
+	}
+
+	// Get auth hash from POST body
+	authHash := r.PostFormValue("authHash")
+	if authHash == "" {
+		http.Error(w, "authHash is required", http.StatusBadRequest)
+		return
+	}
+
+	// Store it securely
+	err = setSecureRegKey(AUTHKEY_HASH_REG, authHash)
+	if err != nil {
+		http.Error(w, "Failed to store auth hash: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Success
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]string{"status": "ok"}
+	json.NewEncoder(w).Encode(response)
+}
+
 func main() {
 	// Try to initialize auth key hash if not present
 	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
@@ -282,6 +316,7 @@ func main() {
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
+	r.HandleFunc("/auth/set-hash", setAuthHash).Methods("POST")
 	handler := cors.Default().Handler(r)
 
 	log.Println("Starting WinBoat Guest Server on :7148...")

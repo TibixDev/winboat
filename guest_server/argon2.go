@@ -78,16 +78,3 @@ func verifyPasswordSecure(storedHash, providedPassword string) (bool, error) {
 	match := subtle.ConstantTimeCompare(config.HashRaw, computedHash) == 1
 	return match, nil
 }
-
-func authenticateUser(storedHash, password string) error {
-	isValid, err := verifyPasswordSecure(storedHash, password)
-	if err != nil {
-		return fmt.Errorf("authentication process failed: %w", err)
-	}
-
-	if !isValid {
-		return errors.New("authentication credentials invalid")
-	}
-
-	return nil
-}
