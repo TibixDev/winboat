@@ -15,3 +15,4 @@ package-lock.json
 temp
 guest_server/winboat_guest_server.exe
 guest_server/winboat_guest_server.zip
+rdp_exec/rdp_exec.exe

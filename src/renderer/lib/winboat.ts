@@ -29,6 +29,7 @@ const { promisify }: typeof import("util") = require("node:util");
 const { exec }: typeof import("child_process") = require("node:child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const FormData: typeof import("form-data") = require("form-data");
+const crypto: typeof import("crypto") = require("crypto");
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");
@@ -95,6 +96,8 @@ const customAppCallbacks: CustomAppCallbacks = {
     },
 };
 
+const toBase64 = (s: string) => s ? btoa(s) : '';
+ 
 export const ContainerStatus = {
     Created: "created",
     Restarting: "restarting",
@@ -669,7 +672,7 @@ export class Winboat {
         console.info("So long and thanks for all the fish!");
     }
 
-    async launchApp(app: WinApp) {
+    async launchApp(app: WinApp, shiftPressed=false) {
         if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
 
         if (customAppCallbacks[app.Path]) {
@@ -715,7 +718,8 @@ export class Winboat {
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         ${combinedArgs}\
         /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}",cmd:"${app.Args}" &`;
+        /app:program:"C:\\Program Files\\WinBoat\\rdp_exec\\rdp_exec.exe",cmd:"-cmd ${toBase64(app.Path)} ${app.Args ? '-cmd_args ' + toBase64(app.Args) : ''} -dummy ${shiftPressed ? crypto.randomUUID().toString(): 1}",name:"${cleanAppName}" &`;
+       
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             cmd = `${freeRDPBin} /u:"${username}"\
