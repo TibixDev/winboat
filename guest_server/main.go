@@ -46,7 +46,7 @@ type Metrics struct {
 }
 
 type RDPStatusResponse struct {
-	RdpConnection bool `json:"rdp_connection"`
+	RdpConnection bool `json:"rdpConnected"`
 }
 
 func getApps(w http.ResponseWriter, r *http.Request) {
