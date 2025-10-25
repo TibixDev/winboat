@@ -364,6 +364,10 @@ export class Winboat {
             if (_rdpConnected !== this.rdpConnected.value) {
                 this.rdpConnected.value = _rdpConnected;
                 logger.info(`RDP connection status changed to ${_rdpConnected ? "connected" : "disconnected"}`);
+
+                if (!this.#wbConfig.config.shutdownTimer) return;
+
+                // if Timer is enabled
                 if (!this.rdpConnected.value) {
                     if (!this.#shutdownTimer)
                     {
@@ -374,6 +378,12 @@ export class Winboat {
                         }, this.#wbConfig.config.timerLength)
                     }
                 }
+                else if (this.#shutdownTimer && this.rdpConnected.value) {
+                    clearTimeout(this.#shutdownTimer);
+                    this.#shutdownTimer = null;
+                    logger.info("RDP Reconnected. Shutdown has been cancelled.")
+                }
+
             }
 
 
