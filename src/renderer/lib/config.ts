@@ -21,6 +21,7 @@ export type WinboatConfigObj = {
     advancedFeatures: boolean;
     multiMonitor: number;
     rdpArgs: RdpArg[];
+    disableAnimations: boolean;
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -34,6 +35,7 @@ const defaultConfig: WinboatConfigObj = {
     advancedFeatures: false,
     multiMonitor: 0,
     rdpArgs: [],
+    disableAnimations: false,
 };
 
 export class WinboatConfig {
