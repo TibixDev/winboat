@@ -6,7 +6,7 @@ import type {
     GuestServerVersion,
     Metrics,
     WinApp,
-    CustomAppCallbacks,
+    CustomAppCallbacks
 } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -20,6 +20,7 @@ import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { PortManager } from "../utils/port";
+import { execFileAsync } from "./async-exec";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -603,7 +604,7 @@ export class Winboat {
 
         if (restart) {
             // 1. Compose down the current container
-            await execAsync(`docker compose -f ${composeFilePath} down`);
+            await execFileAsync("docker", ["compose", "-f", composeFilePath, "down"]);
         }
 
         // 2. Create a backup directory if it doesn't exist
@@ -626,7 +627,7 @@ export class Winboat {
 
         if (restart) {
             // 5. Deploy the container with the new compose file
-            await execAsync(`docker compose -f ${composeFilePath} up -d`);
+            await execFileAsync("docker", ["compose", "-f", composeFilePath, "up", "-d"]);
             remote.getCurrentWindow().reload();
         }
 
@@ -686,9 +687,7 @@ export class Winboat {
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
-        const freeRDPBin = await getFreeRDP();
-
-        logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
+        const freeRDPWrapper = await getFreeRDP();
 
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
 
@@ -699,44 +698,50 @@ export class Winboat {
         // The stock arguments after any replacements have been made and new arguments have been added
         const combinedArgs = stockArgs
             .map(argStr =>
-                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
+                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr)
             )
-            .concat(newArgs)
-            .join(" ");
+            .concat(newArgs);
+        let args = [
+            `/u:${username}`,
+            `/p:${password}`,
+            `/v:127.0.0.1`,
+            `/port:${rdpHostPort}`,
+            ...combinedArgs
+        ];
 
-        let cmd = `${freeRDPBin} /u:"${username}"\
-        /p:"${password}"\
-        /v:127.0.0.1\
-        /port:${rdpHostPort}\
-        ${this.#wbConfig?.config.multiMonitor == 2 ? "+span" : ""}\
-        -wallpaper\
-        ${this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : ""}\
-        ${this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : ""}\
-        /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
-        ${combinedArgs}\
-        /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}",cmd:"${app.Args}" &`;
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
-            cmd = `${freeRDPBin} /u:"${username}"\
-                /p:"${password}"\
-                /v:127.0.0.1\
-                /port:${rdpHostPort}\
-                ${combinedArgs}\
-                +f\
-                ${this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : ""}\
-                /scale:${this.#wbConfig?.config.scale ?? 100}\
-                &`;
+            args.push(...[
+                "+f",
+                this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
+                `/scale:${this.#wbConfig?.config.scale ?? 100}`
+            ]);
+        } else {
+            args.push(...[
+                this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
+                "-wallpaper",
+                this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
+                `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
+                `/wm-class:winboat-${cleanAppName}`,
+                `/app:program:${app.Path},name:${cleanAppName}`
+            ]);
         }
-
-        // Multiple spaces become one
-        cmd = cmd.replaceAll(/\s+/g, " ");
+        args = args.filter(function(v, _i, _a) {
+            return v.trim() !== "";
+        });
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
-        logger.info(`Launch command:\n${cmd}`);
+        logger.info(`Launch FreeRDP with arguments:\n[${args}]`);
 
-        await execAsync(cmd);
+        if (freeRDPWrapper) {
+            freeRDPWrapper(args).then(
+                _value => {
+                }
+            );
+        } else {
+            logger.error("No freeRDP installation found");
+        }
     }
 
     async checkVersionAndUpdateGuestServer() {

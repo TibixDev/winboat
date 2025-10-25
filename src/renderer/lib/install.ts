@@ -6,14 +6,12 @@ import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { PortManager } from "../utils/port";
 import { Winboat } from "./winboat";
-const fs: typeof import("fs") = require("node:fs");
-const { exec }: typeof import("child_process") = require("node:child_process");
-const path: typeof import("path") = require("node:path");
-const { promisify }: typeof import("util") = require("node:util");
+import { execFileAsync } from "./async-exec";
+
+const fs: typeof import("fs") = require("fs");
+const path: typeof import("path") = require("path");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
-
-const execAsync = promisify(exec);
 const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
 const composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml");
@@ -72,6 +70,7 @@ export const InstallStates = {
 } as const;
 
 export type InstallState = (typeof InstallStates)[keyof typeof InstallStates];
+
 interface InstallEvents {
     stateChanged: (state: InstallState) => void;
     preinstallMsg: (msg: string) => void;
@@ -242,7 +241,7 @@ export class InstallManager {
 
         // Start the container
         try {
-            const { stderr } = await execAsync(`docker compose -f ${composeFilePath} up -d`);
+            const { stderr } = await execFileAsync("docker", ["compose", "-f", composeFilePath, "up", "-d"]);
             if (stderr) {
                 logger.error(stderr);
             }
@@ -353,7 +352,7 @@ export class InstallManager {
 export async function isInstalled() {
     // Check if a docker container named WinBoat exists
     try {
-        const { stdout: res } = await execAsync('docker ps -a --filter "name=WinBoat" --format "{{.Names}}"');
+        const { stdout: res } = await execFileAsync("docker", ["ps", "-a", "--filter", "name=WinBoat", "--format", "{{.Names}}"]);
         return res.includes("WinBoat");
     } catch (e) {
         logger.error("Failed to get WinBoat status, is Docker installed?");

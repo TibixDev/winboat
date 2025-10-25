@@ -1,8 +1,7 @@
 import { getFreeRDP } from "../utils/getFreeRDP";
-const fs: typeof import("fs") = require("node:fs");
-const os: typeof import("os") = require("node:os");
-const { exec }: typeof import("child_process") = require("node:child_process");
-const { promisify }: typeof import("util") = require("node:util");
+const fs: typeof import("fs") = require("fs");
+const { exec }: typeof import("child_process") = require("child_process");
+const { promisify }: typeof import("util") = require("util");
 const execAsync = promisify(exec);
 
 export function satisfiesPrequisites(specs: Specs) {
