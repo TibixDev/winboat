@@ -4,7 +4,7 @@
             <div>
                 <div id="stepStatus" class="flex flex-row justify-center gap-4 pt-2">
                     <div
-                        v-for="(step, idx) of steps"
+                        v-for="(_, idx) of steps"
                         :key="idx"
                         class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000"
                         :class="{
@@ -16,26 +16,22 @@
                 </div>
                 <Transition name="bounce" mode="out-in">
                     <div :key="currentStepIdx" id="stepIcon" class="flex items-center justify-center relative h-full">
-                        <Icon
-                            key="icon1"
-                            class="size-[60%] text-violet-400 z-30 relative"
-                            :icon="currentStep.icon"
-                        ></Icon>
+                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.icon" />
                         <Icon
                             key="icon-gradient"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"
                             :icon="currentStep.icon"
-                        ></Icon>
+                        />
                         <Icon
                             key="icon2"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]"
                             :icon="currentStep.icon"
-                        ></Icon>
+                        />
                         <Icon
                             key="icon3"
                             class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]"
                             :icon="currentStep.icon"
-                        ></Icon>
+                        />
                     </div>
                 </Transition>
             </div>
@@ -64,9 +60,9 @@
                             WinBoat is open-source software licensed under the MIT License. Please review the license
                             agreement below.
                         </p>
-                        <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">{{
-                            license
-                        }}</pre>
+                        <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">
+                            {{ license }}
+                        </pre>
                         <div class="flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">I Agree</x-button>
@@ -235,8 +231,9 @@
                                 class="px-6"
                                 :disabled="!installFolder || installFolderErrors?.length"
                                 @click="currentStepIdx++"
-                                >Next</x-button
                             >
+                                Next
+                            </x-button>
                         </div>
                     </div>
 
@@ -304,9 +301,9 @@
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
                                 <div class="flex items-center gap-2">
-                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile"
-                                        >Select ISO File</x-button
-                                    >
+                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile">
+                                        Select ISO File
+                                    </x-button>
                                     <span class="relative group">
                                         <Icon icon="line-md:alert" class="text-neutral-400 cursor-pointer" />
                                         <span
@@ -385,9 +382,9 @@
                                 </div>
 
                                 <div>
-                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400"
-                                        >Confirm Password</label
-                                    >
+                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400">
+                                        Confirm Password
+                                    </label>
                                     <x-input
                                         id="confirm-password"
                                         class="w-64 max-w-64"
@@ -399,7 +396,7 @@
                                         :value="confirmPassword"
                                         @input="(e: any) => (confirmPassword = e.target.value)"
                                     >
-                                        <x-icon href="#lock"></x-icon>
+                                        <x-icon href="#lock" />
                                         <x-label>Confirm Password</x-label>
                                     </x-input>
                                 </div>
@@ -428,8 +425,9 @@
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
-                                >Next</x-button
                             >
+                                Next
+                            </x-button>
                         </div>
                     </div>
 
@@ -459,7 +457,7 @@
                                         :max="specs.cpuCores"
                                         step="1"
                                         ticks
-                                    ></x-slider>
+                                    />
                                     <x-label>{{ cpuCores }} Core{{ cpuCores > 1 ? "s" : "" }}</x-label>
                                 </div>
                             </div>
@@ -471,7 +469,7 @@
                                         v-if="memoryInfo.availableGB < ramGB"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
-                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5" />
                                         Warning
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
@@ -492,7 +490,7 @@
                                         :min="MIN_RAM_GB"
                                         :max="specs.ramGB"
                                         step="1"
-                                    ></x-slider>
+                                    />
                                     <x-label>{{ ramGB }} GB</x-label>
                                 </div>
                             </div>
@@ -526,7 +524,7 @@
                                         :min="MIN_DISK_GB"
                                         :max="installFolderDiskSpaceGB || 0"
                                         step="8"
-                                    ></x-slider>
+                                    />
                                     <x-label>{{ diskSpaceGB }} GB</x-label>
                                 </div>
                             </div>
@@ -621,8 +619,9 @@
                                     currentStepIdx++;
                                     install();
                                 "
-                                >Install</x-button
                             >
+                                Install
+                            </x-button>
                         </div>
                     </div>
 
@@ -704,12 +703,11 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVN
 import { InstallManager, type InstallState, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
-import { PortManager } from "../utils/port";
 
-const path: typeof import("path") = require("path");
+const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
-const fs: typeof import("fs") = require("fs");
-const os: typeof import("os") = require("os");
+const fs: typeof import("fs") = require("node:fs");
+const os: typeof import("os") = require("node:os");
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
 
 type Step = {

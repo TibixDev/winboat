@@ -1,7 +1,7 @@
 type Resolver<T> = (value: T) => void;
 
 export class MessageBus {
-    private resolvers: Map<string, Resolver<any>>;
+    private readonly resolvers: Map<string, Resolver<any>>;
 
     constructor() {
         this.resolvers = new Map();

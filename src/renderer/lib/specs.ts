@@ -1,8 +1,8 @@
 import { getFreeRDP } from "../utils/getFreeRDP";
-const fs: typeof import("fs") = require("fs");
-const os: typeof import("os") = require("os");
-const { exec }: typeof import("child_process") = require("child_process");
-const { promisify }: typeof import("util") = require("util");
+const fs: typeof import("fs") = require("node:fs");
+const os: typeof import("os") = require("node:os");
+const { exec }: typeof import("child_process") = require("node:child_process");
+const { promisify }: typeof import("util") = require("node:util");
 const execAsync = promisify(exec);
 
 export function satisfiesPrequisites(specs: Specs) {
@@ -35,7 +35,7 @@ export async function getSpecs() {
     // Physical CPU cores check
     try {
         const res = (await execAsync('lscpu -p | egrep -v "^#" | sort -u -t, -k 2,4 | wc -l')).stdout;
-        specs.cpuCores = parseInt(res.trim(), 10);
+        specs.cpuCores = Number.parseInt(res.trim(), 10);
     } catch (e) {
         console.error("Error getting CPU cores:", e);
     }
@@ -73,9 +73,9 @@ export async function getSpecs() {
         if (dockerComposeOutput) {
             // Example output: "Docker Compose version v2.35.1"
             // Example output 2: "Docker Compose version 2.36.2"
-            const versionMatch = dockerComposeOutput.match(/(\d+\.\d+\.\d+)/);
+            const versionMatch = new RegExp(/(\d+\.\d+\.\d+)/).exec(dockerComposeOutput);
             if (versionMatch) {
-                const majorVersion = parseInt(versionMatch[1].split(".")[0], 10);
+                const majorVersion = Number.parseInt(versionMatch[1].split(".")[0], 10);
                 specs.dockerComposeInstalled = majorVersion >= 2;
             } else {
                 specs.dockerComposeInstalled = false; // No valid version found
@@ -130,11 +130,12 @@ export async function getMemoryInfo() {
         const totalMemLine = memInfo.split("\n").find(line => line.startsWith("MemTotal"));
         const availableMemLine = memInfo.split("\n").find(line => line.startsWith("MemAvailable"));
         if (totalMemLine) {
-            memoryInfo.totalGB = Math.round((parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
+            memoryInfo.totalGB = Math.round((Number.parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
         }
 
         if (availableMemLine) {
-            memoryInfo.availableGB = Math.round((parseInt(availableMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
+            memoryInfo.availableGB =
+                Math.round((Number.parseInt(availableMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
         }
 
         return memoryInfo;

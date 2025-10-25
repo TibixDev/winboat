@@ -2,7 +2,7 @@ import { type ComposeConfig } from "../../types";
 import { GUEST_RDP_PORT, PORT_MAX, PORT_SEARCH_RANGE, PORT_SPACING, WINBOAT_DIR } from "../lib/constants";
 import { createLogger } from "./log";
 import path from "path";
-const { createServer, connect }: typeof import("net") = require("net");
+const { createServer }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(WINBOAT_DIR, "ports.log"));
 
@@ -30,8 +30,8 @@ export class ComposePortEntry extends String {
         // To parse the guest port as well, we need to remove the optional protocol from the entry. To do this, we map over our substrings, and split by "/".
         const portEntry = entry.split(":").map(x => x.split("/")[0]);
 
-        this.hostPort = parseInt(portEntry[0]);
-        this.guestPort = parseInt(portEntry[1]);
+        this.hostPort = Number.parseInt(portEntry[0]);
+        this.guestPort = Number.parseInt(portEntry[1]);
         this.protocol = ComposePortEntry.parseProtocol(entry);
     }
 
@@ -56,7 +56,7 @@ export class ComposePortEntry extends String {
 }
 
 export class PortManager {
-    private ports: Map<number, ComposePortEntry>;
+    private readonly ports: Map<number, ComposePortEntry>;
 
     /**
      * Please use {@link parseCompose} instead to initialize a `PortManager` from a `ComposeConfig` object
@@ -89,7 +89,7 @@ export class PortManager {
             if (
                 portManager.ports
                     .values()
-                    .find(entry => PortManager.getPortDistance(entry.hostPort, portEntry.hostPort) <= PORT_SEARCH_RANGE)
+                    .some(entry => PortManager.getPortDistance(entry.hostPort, portEntry.hostPort) <= PORT_SEARCH_RANGE)
             ) {
                 portEntry.hostPort += PORT_SPACING;
             }
@@ -115,7 +115,7 @@ export class PortManager {
      */
     getHostPort(guestPort: number | string): number {
         if (typeof guestPort === "string") {
-            guestPort = parseInt(guestPort);
+            guestPort = Number.parseInt(guestPort);
         }
 
         const portEntry = this.ports.get(guestPort);
@@ -132,10 +132,10 @@ export class PortManager {
         options: PortMappingOptions = { findOpenPorts: true },
     ) {
         if (typeof guestPort === "string") {
-            guestPort = parseInt(guestPort);
+            guestPort = Number.parseInt(guestPort);
         }
         if (typeof hostPort === "string") {
-            hostPort = parseInt(hostPort);
+            hostPort = Number.parseInt(hostPort);
         }
 
         if (!(await PortManager.isPortOpen(hostPort)) && options?.findOpenPorts) {
@@ -158,7 +158,7 @@ export class PortManager {
      */
     hasPortMapping(guestPort: string | number): boolean {
         if (typeof guestPort === "string") {
-            guestPort = parseInt(guestPort);
+            guestPort = Number.parseInt(guestPort);
         }
 
         return this.ports.has(guestPort);
@@ -194,7 +194,7 @@ export class PortManager {
      */
     static async isPortOpen(port: number | string): Promise<boolean> {
         if (typeof port === "string") {
-            port = parseInt(port);
+            port = Number.parseInt(port);
         }
 
         return new Promise((resolve, reject) => {
@@ -227,11 +227,11 @@ export class PortManager {
         maxPort: number | string = PORT_MAX,
     ): Promise<number | undefined> {
         if (typeof maxPort === "string") {
-            maxPort = parseInt(maxPort);
+            maxPort = Number.parseInt(maxPort);
         }
 
         if (typeof minPort === "string") {
-            minPort = parseInt(minPort);
+            minPort = Number.parseInt(minPort);
         }
 
         for (let i = 0; i <= maxPort; i++) {
@@ -249,7 +249,7 @@ export class PortManager {
      */
     static getHostPortFromCompose(guestPort: number | string, compose: ComposeConfig): number | null {
         const res = compose.services.windows.ports.find(x => x.split(":")[1].includes(guestPort.toString()));
-        return res ? parseInt(res.split(":")[0]) : null;
+        return res ? Number.parseInt(res.split(":")[0]) : null;
     }
 
     /**

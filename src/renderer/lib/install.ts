@@ -6,10 +6,10 @@ import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { PortManager } from "../utils/port";
 import { Winboat } from "./winboat";
-const fs: typeof import("fs") = require("fs");
-const { exec }: typeof import("child_process") = require("child_process");
-const path: typeof import("path") = require("path");
-const { promisify }: typeof import("util") = require("util");
+const fs: typeof import("fs") = require("node:fs");
+const { exec }: typeof import("child_process") = require("node:child_process");
+const path: typeof import("path") = require("node:path");
+const { promisify }: typeof import("util") = require("node:util");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 
@@ -145,21 +145,21 @@ export class InstallManager {
 
         // Storage folder mapping
         const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
-        if (storageFolderIdx !== -1) {
-            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
-        } else {
+        if (storageFolderIdx === -1) {
             logger.warn("No /storage volume found in compose template, adding one...");
             composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
+        } else {
+            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
         }
 
         // Home folder mapping
         if (!this.conf.shareHomeFolder) {
             const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
-            if (sharedFolderIdx !== -1) {
+            if (sharedFolderIdx === -1) {
+                logger.info("No home folder sharing volume found, nothing to remove");
+            } else {
                 composeContent.services.windows.volumes.splice(sharedFolderIdx, 1);
                 logger.info("Removed home folder sharing as per user configuration");
-            } else {
-                logger.info("No home folder sharing volume found, nothing to remove");
             }
         }
 
@@ -242,8 +242,7 @@ export class InstallManager {
 
         // Start the container
         try {
-            // execSync(`docker compose -f ${composeFilePath} up -d`, { stdio: 'inherit' });
-            const { stdout, stderr } = await execAsync(`docker compose -f ${composeFilePath} up -d`);
+            const { stderr } = await execAsync(`docker compose -f ${composeFilePath} up -d`);
             if (stderr) {
                 logger.error(stderr);
             }
@@ -263,6 +262,7 @@ export class InstallManager {
         this.changeState(InstallStates.MONITORING_PREINSTALL);
         logger.info("Starting preinstall monitoring...");
 
+        const re = new RegExp(/>([^<]+)</);
         while (true) {
             try {
                 const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
@@ -272,8 +272,7 @@ export class InstallManager {
                     return; // Exit the method when we get 404
                 }
                 const message = await response.text();
-                const re = />([^<]+)</;
-                const messageFormatted = message.match(re)?.[1] || message;
+                const messageFormatted = re.exec(message)?.[1] || message;
                 this.setPreinstallMsg(messageFormatted);
             } catch (error) {
                 if (error instanceof Error && error.message.includes("404")) {
@@ -304,7 +303,7 @@ export class InstallManager {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
 
-                    const winboat = new Winboat();
+                    const winboat = Winboat.getInstance();
                     const config = winboat.parseCompose();
                     const filteredVolumes = config.services.windows.volumes.filter(
                         volume => !volume.endsWith("/boot.iso"),
@@ -325,7 +324,7 @@ export class InstallManager {
                         } minutes...`,
                     );
                 }
-            } catch (error) {
+            } catch {
                 // Log every 60 seconds for errors too
                 if (attempts % 12 === 0) {
                     logger.info(`API not responding yet, still waiting after ${(attempts * 5) / 60} minutes...`);
