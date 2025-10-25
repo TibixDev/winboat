@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"flag"
 	"os"
 	"strings"
@@ -9,8 +10,9 @@ import (
 )
 
 var (
-	cmd   = flag.String("cmd", "", "Command to run")
-	dummy = flag.String("dummy", "", "Dummy info")
+	cmd      = flag.String("cmd", "", "Command to run")
+	cmd_args = flag.String("cmd_args", "", "Command args")
+	dummy    = flag.String("dummy", "", "Dummy info")
 )
 
 var (
@@ -41,6 +43,11 @@ func expandWindowsEnv(s string) string {
 	return syscall.UTF16ToString(buf)
 }
 
+func decodeb64(b64 string) string {
+	res, _ := base64.StdEncoding.DecodeString(b64)
+	return string(res)
+}
+
 func main() {
 	flag.Parse()
 
@@ -48,13 +55,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	args := strings.Fields(*cmd)
+	cmd_decoded := decodeb64(*cmd)
+	args := strings.Fields(cmd_decoded)
 
 	if len(args) == 0 {
 		os.Exit(1)
 	}
 
-	expandedCmd := expandWindowsEnv(*cmd)
+	cmd_full := cmd_decoded
+
+	if *cmd_args != "" {
+		cmd_full += " " + decodeb64(*cmd_args)
+	}
+
+	expandedCmd := expandWindowsEnv(cmd_full)
 	commandLine := syscall.StringToUTF16Ptr(expandedCmd)
 	workingDir := syscall.StringToUTF16Ptr(`C:\Windows\System32`)
 

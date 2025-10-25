@@ -96,6 +96,8 @@ const customAppCallbacks: CustomAppCallbacks = {
     },
 };
 
+const toBase64 = (s: string) => s ? btoa(s) : '';
+ 
 export const ContainerStatus = {
     Created: "created",
     Restarting: "restarting",
@@ -716,7 +718,7 @@ export class Winboat {
         /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
         ${combinedArgs}\
         /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"C:\\OEM\\rdp_exec\\rdp_exec.exe",cmd:"-cmd \\\"${app.Path}\\\" -dummy ${shiftPressed ? crypto.randomUUID().toString(): 1}",name:"${cleanAppName}" &`;
+        /app:program:"C:\\Program Files\\WinBoat\\rdp_exec\\rdp_exec.exe",cmd:"-cmd ${toBase64(app.Path)} ${app.Args ? '-cmd_args ' + toBase64(app.Args) : ''} -dummy ${shiftPressed ? crypto.randomUUID().toString(): 1}",name:"${cleanAppName}" &`;
        
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
