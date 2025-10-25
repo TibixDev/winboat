@@ -2,7 +2,6 @@
     <div>
         <dialog ref="addCustomAppDialog">
             <h3 class="mb-2">{{ currentAppForm.Source === "custom" ? "Edit App" : "Add App" }}</h3>
-
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
@@ -200,7 +199,7 @@
                     <x-label>Launch</x-label>
                 </WBMenuItem>
 
-                <WBMenuItem @click="openEditAppDialog(contextMenuTarget)">
+                <WBMenuItem @click="contextMenuTarget && openEditAppDialog(contextMenuTarget)">
                     <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
                     <x-label>Edit</x-label>
                 </WBMenuItem>
@@ -274,7 +273,7 @@ const apiURL = computed(() => {
 
 const AllSources = computed(() => {
     let sourceList: Record<string, string> = {};
-    const sourceMap = {
+    const sourceMap: Record<string, string> = {
         system: "System",
         winreg: "Windows Registry",
         startmenu: "Start Menu",
@@ -358,7 +357,7 @@ const isSame = computed(() => {
     const orig = orginalAppForm.value;
     const curr = currentAppForm.value;
 
-    return orig.Name === curr.Name && orig.Path === curr.Path && (orig.Args || "") === (curr.Args || "");
+    return orig ? orig.Name === curr.Name && orig.Path === curr.Path && (orig.Args || "") === (curr.Args || "") : false;
 });
 
 const customAppAddErrors = computed(() => {
@@ -436,8 +435,6 @@ async function saveApp() {
             Path: currentAppForm.value.Path,
             Args: currentAppForm.value.Args,
             Icon: iconRaw,
-            Source: "custom",
-            Usage: currentAppForm.value.Usage,
         });
         console.log("Save");
     } else {

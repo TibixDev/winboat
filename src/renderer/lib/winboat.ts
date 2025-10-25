@@ -199,10 +199,7 @@ class AppManager {
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.concat(customWinApp);
     }
 
-    async updateCustomApp(
-        oldName: string,
-        updatedApp: { Name: string; Path: string; Args: string; Icon: string; Source: "custom"; Usage: 0 },
-    ) {
+    async updateCustomApp(oldName: string, updatedApp: { Name: string; Path: string; Args: string; Icon: string }) {
         this.appCache = this.appCache.map(app => (app.Name === oldName ? { ...app, ...updatedApp } : app));
 
         // update appUsage if name changed
