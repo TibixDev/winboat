@@ -910,6 +910,7 @@ async function toggleAdvancedFeatures() {
     wbConfig.config.advancedFeatures = !wbConfig.config.advancedFeatures;
     rerenderAdvanced.value++;
 }
+
 </script>
 
 <style scoped>

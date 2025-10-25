@@ -106,3 +106,12 @@ export type USBDevice = {
     productID: string;
     alias: string;
 };
+
+export type SnapshotInfo = {
+    id: string;
+    name: string;
+    timestamp: number;
+    size: number;
+    compressed: boolean;
+    path: string;
+};

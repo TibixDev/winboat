@@ -21,6 +21,18 @@ export type WinboatConfigObj = {
     advancedFeatures: boolean;
     multiMonitor: number;
     rdpArgs: RdpArg[];
+    snapshotMaxCount: number;
+    snapshotCompression: boolean;
+    snapshotPath: string;
+    snapshotsInProgress: Record<
+        string,
+        {
+            name: string;
+            timestamp: number;
+            currentSize: number;
+            containerId?: string;
+        }
+    >;
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -34,6 +46,10 @@ const defaultConfig: WinboatConfigObj = {
     advancedFeatures: false,
     multiMonitor: 0,
     rdpArgs: [],
+    snapshotMaxCount: 3,
+    snapshotCompression: true,
+    snapshotPath: path.join(WINBOAT_DIR, "snapshots"),
+    snapshotsInProgress: {},
 };
 
 export class WinboatConfig {

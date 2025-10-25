@@ -20,6 +20,7 @@ import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ComposePortEntry, PortManager } from "../utils/port";
+import { SnapshotManager } from "./snapshot";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("fs");
@@ -243,6 +244,7 @@ export class Winboat {
     containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited);
     containerActionLoading: Ref<boolean> = ref(false);
     rdpConnected: Ref<boolean> = ref(false);
+    snapshotBusy: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
             usage: 0,
@@ -263,6 +265,7 @@ export class Winboat {
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
     portMgr: Ref<PortManager | null> = ref(null);
+    snapshotMgr: SnapshotManager | null = null;
 
     constructor() {
         if (Winboat.instance) {
@@ -283,15 +286,53 @@ export class Winboat {
                     await this.destroyAPIIntervals();
                 }
             }
+            // Update snapshot/Restore busy status every second
+            try {
+                this.snapshotBusy.value =
+                    !!this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress());
+            } catch {
+                this.snapshotBusy.value = false;
+            }
         }, 1000);
 
         this.#wbConfig = new WinboatConfig();
+
+        this.snapshotMgr = new SnapshotManager();
+        this.snapshotBusy.value = !!this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress());
 
         this.appMgr = new AppManager();
 
         Winboat.instance = this;
 
         return Winboat.instance;
+    }
+
+    // Helper method to get storage folder
+    getStorageInfo(): { type: "volume" | "bind"; path: string } {
+        const compose = this.parseCompose();
+        const storageVol = compose.services.windows.volumes.find(v => v.includes("/storage"));
+
+        if (!storageVol) {
+            throw new Error("Storage volume not found in compose file");
+        }
+
+        // Check if it's a named volume (eg. "data:/storage")
+        if (storageVol.startsWith("data:")) {
+            return { type: "volume", path: "winboat_data" };
+        }
+
+        // Bind mount otherwise (es. "/path/to/folder:/storage")
+        return { type: "bind", path: storageVol.split(":")[0] };
+    }
+
+    /**
+     * Recreates the SnapshotManager instance with updated configuration.
+     * Call this when the snapshot path changes.
+     */
+    recreateSnapshotManager(): void {
+        logger.info("Recreating SnapshotManager with updated configuration...");
+        this.snapshotMgr = new SnapshotManager();
+        logger.info("SnapshotManager recreated successfully");
     }
 
     /**
@@ -530,6 +571,12 @@ export class Winboat {
     }
 
     async startContainer() {
+        if (this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress())) {
+            const why = this.snapshotMgr.busyReason() ?? "operation";
+            logger.warn(`Blocked start: ${why} in progress`);
+            this.containerActionLoading.value = false;
+            throw new Error(`Cannot start while a ${why} is in progress. Please wait or cancel it.`);
+        }
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
@@ -586,6 +633,12 @@ export class Winboat {
     }
 
     async unpauseContainer() {
+        if (this.snapshotMgr && (this.snapshotMgr.isBusy() || this.snapshotMgr.anyInProgress())) {
+            const why = this.snapshotMgr.busyReason() ?? "operation";
+            logger.warn(`Blocked unpause: ${why} in progress`);
+            this.containerActionLoading.value = false;
+            throw new Error(`Cannot unpause while a ${why} is in progress. Please wait or cancel it.`);
+        }
         logger.info("Unpausing WinBoat container...");
         this.containerActionLoading.value = true;
         try {
