@@ -1,5 +1,5 @@
-const os: typeof import("os") = require("os");
-const path: typeof import("path") = require("path");
+const os: typeof import("os") = require("node:os");
+const path: typeof import("path") = require("node:path");
 
 // Should be {home}/.winboat
 export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");

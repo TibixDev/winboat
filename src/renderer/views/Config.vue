@@ -74,7 +74,7 @@
                             :toggled="shareHomeFolder"
                             @toggle="(_: any) => (shareHomeFolder = !shareHomeFolder)"
                             size="large"
-                        ></x-switch>
+                        />
                     </div>
                 </x-card>
 
@@ -96,7 +96,7 @@
                             :toggled="autoStartContainer"
                             @toggle="(_: any) => (autoStartContainer = !autoStartContainer)"
                             size="large"
-                        ></x-switch>
+                        />
                     </div>
                 </x-card>
 
@@ -126,7 +126,7 @@
                                     ))
                             "
                             required
-                        ></x-input>
+                        />
                     </div>
                 </x-card>
                 <div class="flex flex-col">
@@ -416,7 +416,7 @@
                             class="!max-w-16"
                             v-on:keydown="(e: any) => ensureNumericInput(e)"
                             v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
-                        ></x-input>
+                        />
                         <x-button
                             type="button"
                             class="size-8 !p-0"
@@ -549,8 +549,10 @@
             >
                 <div>
                     <div class="flex flex-row items-center gap-2 mb-2">
-                        <Icon class="text-violet-400 inline-flex size-8" icon="streamline-ultimate:lab-tube-experiment">
-                        </Icon>
+                        <Icon
+                            class="text-violet-400 inline-flex size-8"
+                            icon="streamline-ultimate:lab-tube-experiment"
+                        />
                         <h1 class="text-lg my-0 font-semibold">Experimental Features</h1>
                     </div>
                     <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
@@ -562,7 +564,7 @@
                         :toggled="wbConfig.config.experimentalFeatures"
                         @toggle="toggleExperimentalFeatures"
                         size="large"
-                    ></x-switch>
+                    />
                 </div>
             </x-card>
             <x-card
@@ -583,7 +585,7 @@
                         :toggled="wbConfig.config.advancedFeatures"
                         @toggle="toggleAdvancedFeatures"
                         size="large"
-                    ></x-switch>
+                    />
                 </div>
             </x-card>
         </div>
@@ -638,8 +640,8 @@ const { app }: typeof import("@electron/remote") = require("@electron/remote");
 // Emits
 const $emit = defineEmits(["rerender"]);
 
-const winboat = new Winboat();
-const usbManager = new USBManager();
+const winboat = Winboat.getInstance();
+const usbManager = USBManager.getInstance();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
@@ -682,7 +684,7 @@ let qmpPortManager = ref<PortManager | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
-const wbConfig = new WinboatConfig();
+const wbConfig = WinboatConfig.getInstance();
 
 onMounted(async () => {
     await assignValues();
@@ -707,8 +709,8 @@ function ensureNumericInput(e: any) {
 }
 
 function updateApplicationScale(value: string | number) {
-    let val = typeof value === "string" ? parseInt(value) : value;
-    const clamped = typeof val !== "number" || isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
+    let val = typeof value === "string" ? Number.parseInt(value) : value;
+    const clamped = typeof val !== "number" || Number.isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
     wbConfig.config.scaleDesktop = clamped;
     origApplicationScale.value = clamped;
 }

@@ -5,7 +5,7 @@
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
-                        <img v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
+                        <img alt="Icon for current app" v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
@@ -184,7 +184,11 @@
                     @contextmenu="openContextMenu($event, app)"
                 >
                     <div class="flex flex-row items-center gap-2 w-[85%]">
-                        <img class="rounded-md size-10" :src="`data:image/png;charset=utf-8;base64,${app.Icon}`" />
+                        <img
+                            class="rounded-md size-10"
+                            :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
+                            alt="App Icon"
+                        />
                         <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                     </div>
                     <Icon icon="cuida:caret-right-outline"></Icon>
@@ -246,7 +250,7 @@ import { Jimp, JimpMime } from "jimp";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const FormData: typeof import("form-data") = require("form-data");
 
-const winboat = new Winboat();
+const winboat = Winboat.getInstance();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
 const sortBy = ref("");
@@ -288,7 +292,7 @@ const AllSources = computed(() => {
 
 const computedApps = computed(() => {
     // Make copy, otherwise UI might glitch, creating "ghost" app
-    var appsCache = [...apps.value];
+    let appsCache = [...apps.value];
 
     if (filterBy.value !== "all") {
         appsCache = appsCache.filter(app => app.Source === filterBy.value);
@@ -367,7 +371,7 @@ const customAppAddErrors = computed(() => {
         errors.push("A valid name is required for your app");
     }
 
-    if (apps.value.find(app => app.Name === customAppName.value) && orginalAppForm.value) {
+    if (apps.value.some(app => app.Name === customAppName.value) && orginalAppForm.value) {
         if (orginalAppForm.value.Name !== customAppName.value || orginalAppForm.value.Source !== "custom") {
             errors.push("An app with this name already exists");
         }
@@ -468,24 +472,23 @@ function pickCustomAppIcon() {
     const filePicker = document.createElement("input");
     filePicker.type = "file";
     filePicker.accept = "image/*";
-    filePicker.onchange = (e: any) => {
-        const file = e.target?.files?.[0];
+    filePicker.onchange = async (e: Event) => {
+        const file = (e.target as HTMLInputElement)?.files?.[0];
         if (!file) {
             console.log("No file selected");
+            return;
         }
-        const reader = new FileReader();
-        reader.onload = async (e: any) => {
-            const buf = e.target.result as ArrayBuffer;
-            try {
-                const image = await Jimp.read(Buffer.from(buf));
-                image.resize({ w: 128, h: 128 });
-                const pngBuffer = await image.getBuffer(JimpMime.png);
-                customAppIcon.value = `data:image/png;base64,${pngBuffer.toString("base64")}`;
-            } catch (error) {
-                console.error("Image processing failed:", error);
-            }
-        };
-        reader.readAsArrayBuffer(file);
+
+        try {
+            const buf = await file.arrayBuffer();
+
+            const image = await Jimp.read(Buffer.from(buf));
+            image.resize({ w: 128, h: 128 });
+            const pngBuffer = await image.getBuffer(JimpMime.png);
+            customAppIcon.value = `data:image/png;base64,${pngBuffer.toString("base64")}`;
+        } catch (error) {
+            console.error("Image processing failed:", error);
+        }
     };
     filePicker.click();
 }
@@ -516,7 +519,7 @@ async function resetCustomAppForm() {
         customAppArgs.value = "";
 
         // Because of course Vue reactivity fails here :(
-        addCustomAppDialog.value?.querySelectorAll("x-input")?.forEach((input: any) => {
+        addCustomAppDialog.value?.querySelectorAll<HTMLInputElement>("x-input")?.forEach(input => {
             input.value = "";
         });
     }, 100);

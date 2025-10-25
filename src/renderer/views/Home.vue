@@ -177,7 +177,7 @@ import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
 import { openAnchorLink } from "../utils/openLink";
 
-const winboat = new Winboat();
+const winboat = Winboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
 const wallpaper = ref("");
 

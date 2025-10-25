@@ -1,5 +1,5 @@
-const { exec }: typeof import("child_process") = require("child_process");
-const { promisify }: typeof import("util") = require("util");
+const { exec }: typeof import("child_process") = require("node:child_process");
+const { promisify }: typeof import("util") = require("node:util");
 
 const execAsync = promisify(exec);
 const freeRDPAliases = ["xfreerdp3", "xfreerdp", "flatpak run --command=xfreerdp com.freerdp.FreeRDP"];

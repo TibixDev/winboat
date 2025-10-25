@@ -146,6 +146,6 @@ app.on("second-instance", _ => {
     }
 });
 
-ipcMain.on("message", (event, message) => {
+ipcMain.on("message", (_event, message) => {
     console.log(message);
 });

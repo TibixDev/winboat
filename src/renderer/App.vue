@@ -37,9 +37,9 @@
                     <ol class="mt-2 list-decimal list-inside">
                         <li>
                             Use VNC over at
-                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">{{
-                                novncURL
-                            }}</a>
+                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">
+                                {{ novncURL }}
+                            </a>
                             to access Windows
                         </li>
                         <li>Press Win + R or search for <code>Run</code>, type in <code>services.msc</code></li>
@@ -51,8 +51,10 @@
                                 href="https://github.com/TibixDev/winboat/releases"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                >https://github.com/TibixDev/winboat/releases</a
-                            >, you should pick version <strong>{{ appVer }}</strong>
+                            >
+                                https://github.com/TibixDev/winboat/releases
+                            </a>
+                            , you should pick version <strong>{{ appVer }}</strong>
                         </li>
                         <li>Navigate to <code>C:\Program Files\WinBoat</code> and delete the contents</li>
                         <li>Extract the freshly downloaded zip into the same folder</li>
@@ -158,9 +160,7 @@ import { USBManager } from "./lib/usbmanager";
 import { GUEST_NOVNC_PORT } from "./lib/constants";
 import { setIntervalImmediately } from "./utils/interval";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
-const os: typeof import("os") = require("os");
-const path: typeof import("path") = require("path");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
+const os: typeof import("os") = require("node:os");
 
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
@@ -172,20 +172,21 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
-const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
+// TODO: Hack for non-reactive data
+const rerenderCounter = ref(0);
 const novncURL = ref("");
 let animationCheckInterval: NodeJS.Timeout | null = null;
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
-    if (!winboatInstalled) {
+    if (winboatInstalled) {
+        winboat = Winboat.getInstance(); // Instantiate singleton class
+        wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
+        USBManager.getInstance(); // Instantiate singleton class
+        $router.push("/home");
+    } else {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
-    } else {
-        winboat = new Winboat(); // Instantiate singleton class
-        wbConfig = new WinboatConfig(); // Instantiate singleton class
-        new USBManager(); // Instantiate singleton class
-        $router.push("/home");
     }
 
     // Apply or remove disable-animations class based on config

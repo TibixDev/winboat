@@ -19,14 +19,14 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { ComposePortEntry, PortManager } from "../utils/port";
+import { PortManager } from "../utils/port";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
-const fs: typeof import("fs") = require("fs");
-const path: typeof import("path") = require("path");
-const process: typeof import("process") = require("process");
-const { promisify }: typeof import("util") = require("util");
-const { exec }: typeof import("child_process") = require("child_process");
+const fs: typeof import("fs") = require("node:fs");
+const path: typeof import("path") = require("node:path");
+const process: typeof import("process") = require("node:process");
+const { promisify }: typeof import("util") = require("node:util");
+const { exec }: typeof import("child_process") = require("node:child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const FormData: typeof import("form-data") = require("form-data");
 
@@ -81,7 +81,7 @@ const stockArgs = [
  * Returns second/original param if first is undefined or null, else first/test param
  */
 const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string) => {
-    return test === undefined || test === null ? original : test;
+    return test ?? original;
 };
 
 /**
@@ -111,21 +111,20 @@ type ContainerStatusValue = (typeof ContainerStatus)[keyof typeof ContainerStatu
 class AppManager {
     appCache: WinApp[] = [];
     appUsageCache: { [key: string]: number } = {};
-    #wbConfig: WinboatConfig | null = null;
+    readonly #wbConfig: WinboatConfig | null = null;
 
     constructor() {
         if (!fs.existsSync(USAGE_PATH)) {
             fs.writeFileSync(USAGE_PATH, "{}");
         }
 
-        this.#wbConfig = new WinboatConfig();
+        this.#wbConfig = WinboatConfig.getInstance();
     }
 
-    async updateAppCache(apiURL: string, options: { forceRead: boolean } = { forceRead: false }) {
+    async updateAppCache(apiURL: string, options: { forceRead?: boolean } = {}) {
         const res = await nodeFetch(`${apiURL}/apps`);
         const newApps = (await res.json()) as WinApp[];
-        newApps.push(...presetApps);
-        newApps.push(...this.#wbConfig!.config.customApps);
+        newApps.push(...presetApps, ...this.#wbConfig!.config.customApps);
 
         if (this.appCache.values.length == newApps.length && !options.forceRead) return;
 
@@ -147,11 +146,11 @@ class AppManager {
         this.appCache = [];
 
         // Populate appCache with dummy WinApp object containing data from the disk
-        for (let i = 0; i < fsUsage.length; i++) {
+        for (const element of fsUsage) {
             this.appCache.push({
                 ...presetApps[0],
-                Name: fsUsage[i][0],
-                Usage: fsUsage[i][1],
+                Name: element[0],
+                Usage: element[1],
             });
         }
 
@@ -229,10 +228,9 @@ class AppManager {
 }
 
 export class Winboat {
-    private static instance: Winboat;
+    private static instance: Winboat | null = null;
     // Update Intervals
     #healthInterval: NodeJS.Timeout | null = null;
-    #containerInterval: NodeJS.Timeout | null = null;
     #metricsInverval: NodeJS.Timeout | null = null;
     #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
     #qmpInterval: NodeJS.Timeout | null = null;
@@ -259,18 +257,19 @@ export class Winboat {
             percentage: 0,
         },
     });
-    #wbConfig: WinboatConfig | null = null;
+    readonly #wbConfig: WinboatConfig | null = null;
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
     portMgr: Ref<PortManager | null> = ref(null);
 
-    constructor() {
-        if (Winboat.instance) {
-            return Winboat.instance;
-        }
+    static getInstance() {
+        Winboat.instance ??= new Winboat();
+        return Winboat.instance;
+    }
 
+    private constructor() {
         // This is a special interval which will never be destroyed
-        this.#containerInterval = setInterval(async () => {
+        setInterval(async () => {
             const _containerStatus = await this.getContainerStatus();
 
             if (_containerStatus !== this.containerStatus.value) {
@@ -285,13 +284,9 @@ export class Winboat {
             }
         }, 1000);
 
-        this.#wbConfig = new WinboatConfig();
+        this.#wbConfig = WinboatConfig.getInstance();
 
         this.appMgr = new AppManager();
-
-        Winboat.instance = this;
-
-        return Winboat.instance;
     }
 
     /**
@@ -328,7 +323,7 @@ export class Winboat {
                 logger.info(`Winboat Guest API went ${this.isOnline ? "online" : "offline"}`);
 
                 if (this.isOnline.value) {
-                    // await this.checkVersionAndUpdateGuestServer();
+                    await this.checkVersionAndUpdateGuestServer();
                 }
             }
         }, HEALTH_WAIT_MS);
@@ -435,7 +430,7 @@ export class Winboat {
 
             const res = await nodeFetch(`${apiUrl}/health`);
             return res.status === 200;
-        } catch (e) {
+        } catch {
             return false;
         }
     }
@@ -444,7 +439,7 @@ export class Winboat {
         try {
             const { stdout: _containerStatus } = await execAsync(`docker inspect --format="{{.State.Status}}" WinBoat`);
             return _containerStatus.trim() as ContainerStatusValue;
-        } catch (e) {
+        } catch {
             console.error("Failed to get container status, most likely we are in the process of resetting");
             return ContainerStatus.Dead;
         }
@@ -479,7 +474,7 @@ export class Winboat {
      * @returns The host port that maps to the given guest port, or null if not found
      */
     getHostPort(guestPort: number | string): number {
-        return this.portMgr.value?.getHostPort(guestPort) ?? parseInt(guestPort.toString());
+        return this.portMgr.value?.getHostPort(guestPort) ?? Number.parseInt(guestPort.toString());
     }
 
     getCredentials() {
@@ -536,8 +531,8 @@ export class Winboat {
             const compose = this.parseCompose();
             this.portMgr.value = await PortManager.parseCompose(compose);
 
-            if (!this.portMgr.value!.composeFormat.every(elem => compose.services.windows.ports.includes(elem))) {
-                compose.services.windows.ports = this.portMgr.value!.composeFormat;
+            if (!this.portMgr.value.composeFormat.every(elem => compose.services.windows.ports.includes(elem))) {
+                compose.services.windows.ports = this.portMgr.value.composeFormat;
                 await this.replaceCompose(compose);
             }
 
@@ -686,7 +681,7 @@ export class Winboat {
         }
 
         const { username, password } = this.getCredentials();
-        const compose = this.parseCompose();
+
         const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
@@ -695,7 +690,7 @@ export class Winboat {
 
         logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
 
-        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
+        const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -735,7 +730,7 @@ export class Winboat {
         }
 
         // Multiple spaces become one
-        cmd = cmd.replace(/\s+/g, " ");
+        cmd = cmd.replaceAll(/\s+/g, " ");
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
