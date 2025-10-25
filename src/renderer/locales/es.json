@@ -1,0 +1,121 @@
+{
+  "_meta": {
+    "Generated": "This file has been translated by ai paperclips."
+  },
+  "welcome": {
+    "title": "Bienvenido a WinBoat",
+    "description1": "WinBoat es una aplicación completa que te ayuda a ejecutar aplicaciones de Windows de forma nativa en tu máquina Linux con facilidad.",
+    "description2": "Repasaremos algunos pasos necesarios para que puedas empezar en poco tiempo.",
+    "nextButton": "Siguiente"
+  },
+  "license": {
+    "title": "Acuerdo de Licencia",
+    "description": "WinBoat es un software de código abierto licenciado bajo la Licencia MIT. Por favor, revisa el acuerdo de licencia a continuación.",
+    "backButton": "Atrás",
+    "agreeButton": "Acepto"
+  },
+  "prerequisites": {
+    "title": "Pre-Requisitos",
+    "description": "Para ejecutar WinBoat, tu computadora debe cumplir con los siguientes requisitos.",
+    "ram": "Al menos 4 GB de RAM (Detectado: {ramGB} GB)",
+    "cpu": "Al menos 2 núcleos de CPU (Detectado: {cpuCores} núcleos)",
+    "kvm": "Virtualización (KVM) habilitada",
+    "docker": "Docker instalado",
+    "dockerCompose": "Docker Compose v2 instalado",
+    "dockerGroup": "Usuario añadido al grupo docker",
+    "dockerRunning": "El demonio de Docker está en ejecución",
+    "freerdp": "FreeRDP 3.x.x instalado",
+    "how": "¿Cómo?",
+    "relogRequired": "(Reinicio de sesión requerido)",
+    "enableOnBoot": "(Habilitar también al arrancar)",
+    "nextButton": "Siguiente"
+  },
+  "installLocation": {
+    "title": "Ubicación de Instalación",
+    "description1": "Elige dónde quieres instalar WinBoat. Los archivos relacionados con la máquina virtual de Windows se almacenarán en esta ubicación.",
+    "description2": "Asegúrate de tener al menos {minDiskGB}GB de espacio en disco disponible en la ubicación seleccionada.",
+    "inputPlaceholder": "Seleccionar Ubicación de Instalación",
+    "changeButton": "Cambiar",
+    "selectButton": "Seleccionar",
+    "validFolder": "Carpeta de instalación válida",
+    "errors": {
+      "noLocation": "Por favor, selecciona una ubicación de instalación",
+      "notWritable": "La ubicación de instalación seleccionada no tiene permisos de escritura",
+      "noDiskSpace": "No hay suficiente espacio en disco disponible. Se requieren al menos {minDiskGB} GB, pero solo hay {freeGB} GB disponibles."
+    }
+  },
+  "windowsConfig": {
+    "title": "Configurar Windows",
+    "description1": "Elige la versión de Windows que quieres instalar y el idioma que te gustaría usar.",
+    "description2": "Solo puedes cambiar estos ajustes ahora. Una vez completada la instalación, no podrás cambiarlos a menos que reinstales.",
+    "edition": "Seleccionar Edición",
+    "language": "Seleccionar Idioma",
+    "customIso": "ISO Personalizado (Opcional)",
+    "selectIsoButton": "Seleccionar Archivo ISO",
+    "isoWarning": "Te ofrecemos la posibilidad de usar un ISO de Windows personalizado para tu conveniencia, sin embargo, no podemos proporcionar soporte si tu ISO personalizado falla o ciertas características dentro de WinBoat dejan de funcionar.",
+    "selectedIso": "Seleccionado: {fileName}",
+    "removeButton": "Eliminar",
+    "brokenLang": "(Roto, usar Paquete de Idioma)"
+  },
+  "userConfig": {
+    "title": "Configuración de Usuario",
+    "description1": "Configura el nombre de usuario y la contraseña para Windows.",
+    "description2": "Estas credenciales se utilizarán para iniciar sesión en la máquina virtual de Windows y para acceder a ella a través del Protocolo de Escritorio Remoto (RDP). No podrás cambiar estos ajustes más tarde a menos que reinstales.",
+    "username": "Nombre de usuario",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "errors": {
+      "user": {
+        "tooShort": "Debe tener al menos 2 caracteres",
+        "alphanumeric": "Debe contener solo caracteres alfanuméricos"
+      },
+      "pass": {
+        "noMatch": "Las contraseñas no coinciden",
+        "alphanumeric": "Debe contener solo caracteres alfanuméricos",
+        "tooShort": "Debe tener al menos 4 caracteres"
+      }
+    }
+  },
+  "hardwareConfig": {
+    "title": "Configuración de Hardware",
+    "description1": "WinBoat utiliza una máquina virtual KVM en contenedores para ejecutar aplicaciones de Windows. Por favor, configura los ajustes de hardware para la máquina virtual.",
+    "description2": "No se recomienda asignar más de la mitad de los recursos de tu sistema a Windows. Podrás cambiar estos ajustes más tarde si es necesario.",
+    "cpuCores": "Seleccionar Núcleos de CPU",
+    "ram": "Seleccionar RAM",
+    "diskSize": "Seleccionar Tamaño de Disco",
+    "cores": "{count} Núcleo | {count} Núcleos",
+    "warning": "Advertencia",
+    "ramWarning": "No tienes suficiente memoria sin usar disponible para asignar la cantidad de RAM solicitada. Actualmente tienes ~{availableGB} GB de memoria sin usar disponible. Si continúas con esta cantidad de RAM, es probable que el contenedor falle.",
+    "diskWarning": "Estás a punto de asignar la mayor parte de tu espacio en disco restante con menos de 5GB de exceso. Actualmente tienes ~{availableGB} GB de espacio en disco disponible para la unidad correspondiente a {installFolder}. Si continúas con este tamaño de disco, puedes quedarte sin espacio y encontrar problemas inesperados."
+  },
+  "homeFolderSharing": {
+    "title": "Compartir Carpeta de Inicio",
+    "description1": "WinBoat te permite compartir tu carpeta de inicio de Linux con la máquina virtual de Windows, aquí puedes elegir si habilitar esta función o no.",
+    "description2": "⚠️ ADVERTENCIA: Compartir tu carpeta de inicio expone tus archivos de Linux a malware y virus específicos de Windows. Solo habilita esta función si comprendes los riesgos involucrados. Siempre ten cuidado con los archivos que descargas y abres en Windows.",
+    "enableSharing": "Habilitar compartir carpeta de inicio",
+    "acknowledge": "Al marcar esta casilla, reconoces los riesgos mencionados anteriormente"
+  },
+  "review": {
+    "title": "Revisar",
+    "description": "Por favor, revisa los ajustes que has elegido para tu instalación de WinBoat. Si todo parece correcto, haz clic en \"Instalar\" para comenzar.",
+    "yourConfig": "Tu Configuración",
+    "winVersion": "Versión de Windows",
+    "language": "Idioma",
+    "cpuCores": "Núcleos de CPU",
+    "ram": "RAM",
+    "diskSize": "Tamaño de Disco",
+    "username": "Nombre de usuario",
+    "installLocation": "Ubicación de Instalación",
+    "installButton": "Instalar"
+  },
+  "install": {
+    "title": "Instalación",
+    "description": "WinBoat está instalando Windows. Por favor, sé paciente ya que esto puede tardar hasta una hora. Mientras tanto, puedes tomar un café y verificar el estado de la instalación <a href=\"{novncURL}\" @click=\"openAnchorLink\">en tu navegador</a>.",
+    "installing": "{state}...",
+    "preinstall": "{message}",
+    "error": "Ocurrió un error mientras se instalaba Windows. Por favor, comprueba los registros en <span class=\"font-mono bg-neutral-700 rounded-md px-0.5\">~/.winboat</span> y verifica <span class=\"font-mono bg-neutral-700 rounded-md px-0.5\">docker logs WinBoat</span> en tu terminal para más información.",
+    "retry": "Para reiniciar e intentarlo de nuevo, sigue <a href=\"https://rentry.org/winboat_retry_install\" @click=\"openAnchorLink\">estas</a> instrucciones.",
+    "completed": "¡Windows se ha instalado correctamente!",
+    "finishButton": "Finalizar"
+  }
+}
