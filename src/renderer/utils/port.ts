@@ -6,8 +6,14 @@ const { createServer }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(WINBOAT_DIR, "ports.log"));
 
-// Here, undefined denotes the absence of a protocol from the port entry.
-type PortEntryProtocol = "tcp" | "udp" | undefined;
+type PortEntryProtocol = "tcp" | "udp";
+
+enum PortType {
+    HOST = "Host",
+    CONTAINER = "Container"
+};
+
+type Port = number;
 
 type PortManagerConfig = {
     findOpenPorts: boolean;
@@ -17,21 +23,68 @@ type PortMappingOptions = PortManagerConfig & {
     protocol?: PortEntryProtocol;
 };
 
-export class ComposePortEntry extends String {
-    hostPort: number;
-    guestPort: number;
-    protocol: PortEntryProtocol = undefined;
+export class Range {
+    start: number;
+    end: number;
 
+    /**
+     * Instantiates a {@link Range} from the compose string representation.
+     * 
+     * @param token Format: `<start>-<end>`
+     */
+    constructor(token: string);
+
+    /**
+     * Instantiates a {@link Range} from numerical `start` and `end` values
+     *
+     * @param start Start of the Range
+     * @param end End of the Range 
+     */
+    constructor(start: number, end: number);
+    constructor(_tokenOrStart: number | string, _end?: number) {
+        if (typeof _tokenOrStart === "number") {
+            if (!_end) throw new Error("Invalid constructor call");
+            
+            this.start = _tokenOrStart;
+            this.end = _end;
+        }
+        else {
+            const splitToken = _tokenOrStart.split("-");
+
+            this.start = parseInt(splitToken[0]);
+            this.end = parseInt(splitToken[1]);
+        }
+    }
+
+    toString(): string {
+        return `${this.start}-${this.end}`;
+    }
+
+    /**
+     * Checks whether the supplied value is a {@link Range}.
+     */
+    static isRange(value: Port | Range): boolean {
+        if (typeof value === "number") return false;
+
+        return "start" in value && "end" in value;
+    }
+}
+
+export class ComposePortEntry {
+    hostIP: string;
+    host: Port | Range;
+    container: Port | Range;
+    protocol: PortEntryProtocol;
+
+    /**
+     * Parses a short form Compose Port mapping according to the [Compose Specification](https://github.com/compose-spec/compose-spec/blob/main/spec.md#ports).
+     * 
+     * @param entry Format: `[HOST:]CONTAINER[/PROTOCOL]`
+     */
     constructor(entry: string) {
-        super(entry);
-
-        // Compose port entries map a host port to a guest port in the following format: <hostport>:<guestport>/<protocol(can be omitted)>
-        // To parse out the host and guest ports, we first split the entry up using ":" as a separator. Now we can parse the host port just fine.
-        // To parse the guest port as well, we need to remove the optional protocol from the entry. To do this, we map over our substrings, and split by "/".
-        const portEntry = entry.split(":").map(x => x.split("/")[0]);
-
-        this.hostPort = Number.parseInt(portEntry[0]);
-        this.guestPort = Number.parseInt(portEntry[1]);
+        this.hostIP = ComposePortEntry.parseIP(entry);
+        this.host = ComposePortEntry.parsePort(PortType.HOST, entry);
+        this.container = ComposePortEntry.parsePort(PortType.CONTAINER, entry);
         this.protocol = ComposePortEntry.parseProtocol(entry);
     }
 
@@ -41,17 +94,80 @@ export class ComposePortEntry extends String {
         return new ComposePortEntry(`${hostPort}:${guestPort}${protocolString}`);
     }
 
-    get entry() {
-        const delimeter = this.protocol ? "/" : "";
-
-        return `${this.hostPort}:${this.guestPort}${delimeter}${this.protocol ?? ""}`;
+    /**
+     * Converts the {@link ComposePortEntry} into a valid compose string representation
+     * 
+     * @note If it was initialized from a compose port entry with implicit default values, then those will be included explicitly (e.g. `/tcp` or `0.0.0.0` binding)
+     */
+    get entry(): string {
+        return `${this.hostIP}:${this.host}:${this.container}/${this.protocol}`;
     }
 
     static parseProtocol(entry: string): PortEntryProtocol {
-        const protocol = entry.split("/").at(1) as Exclude<undefined, PortEntryProtocol>;
-        const isProtocolSpecified = ["tcp", "udp"].includes(protocol);
+        const protocol = entry.split("/").at(1);
 
-        return isProtocolSpecified ? protocol : undefined;
+        if (!protocol) return "tcp"; // TCP is the default protocol if one isn't specified per the compose spec
+        if (protocol === "tcp" || protocol === "udp") {
+            return protocol;
+        }
+
+        throw new Error(`Protocol '${protocol}' is not supported by the compose spec.`);
+    }
+
+    /**
+     * Parses a `(port | range)` token specified by the compose spec.
+     */
+    private static parsePortOrRange(token: string): Port | Range {
+        if (token.includes("-")) return new Range(token);
+
+        return parseInt(token);
+    }
+
+    /**
+     * Parses the part of the compose mapping specified by `type`, as defined by the compose spec.
+     * 
+     * @note Implicit default values are respected
+     * 
+     * @example ComposePortEntry.parsePort(PortType.HOST, "8080"); // returns 8080
+     */
+    static parsePort(type: PortType, entry: string): Port | Range {
+        const portEntry = entry.split(":");
+        const guest = portEntry.at(-1)!.split("/")[0];
+
+        if (portEntry.length == 1) return ComposePortEntry.parsePortOrRange(guest);
+
+        if (type == PortType.HOST) {
+            const host = portEntry.at(-2)!;
+
+            return ComposePortEntry.parsePortOrRange(host);
+        }
+
+        return ComposePortEntry.parsePortOrRange(guest);
+    }
+
+    /**
+     * Parses the optional IP part of the port mapping, as defined by the compose spec.
+     * 
+     * @note Implicit default values are respected
+     * 
+     * @example ComposePortEntry.parseIP("69:4200"); // returns "0.0.0.0" 
+     */
+    static parseIP(entry: string): string {
+        const parts = entry.split(":");
+        
+        // As per the compose spec, there must be at least 2 colons in the entry for an IP to be specified
+        if (parts.length < 3) return "0.0.0.0";
+
+        // Here we find the index where the host ip ends (removing one makes sure we remove the colon as well)
+        const hostPortLocation = entry.lastIndexOf(parts.at(-2)!) - 1;
+        const rawIP = entry.substring(0, hostPortLocation);
+
+        // In case the IP isn't enclosed with square brackets, we don't need any further processing
+        if(rawIP[0] !== "[") return rawIP;
+
+        const IP = rawIP.substring(1, rawIP.length - 1);
+
+        return IP;
     }
 }
 
@@ -79,7 +195,7 @@ export class PortManager {
     ): Promise<PortManager> {
         const portManager = new PortManager();
         const rawConfigPortEntries = compose.services.windows.ports;
-        const parsedConfigPortEntries = compose.services.windows.ports.map(rawEntry => new ComposePortEntry(rawEntry));
+        const parsedConfigPortEntries = rawConfigPortEntries.map(rawEntry => new ComposePortEntry(rawEntry));
         let rdpHostPort = GUEST_RDP_PORT; // by default we map the rdp host port to the same value as in the guest, so it's a great default value.
 
         // Parse port entries and populate the ports map, skipping over the RDP entries.
