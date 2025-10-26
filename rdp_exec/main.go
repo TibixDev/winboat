@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -16,9 +18,45 @@ var (
 )
 
 var (
-	kernel32            = syscall.NewLazyDLL("kernel32.dll")
-	procExpandEnvString = kernel32.NewProc("ExpandEnvironmentStringsW")
+	kernel32              = syscall.NewLazyDLL("kernel32.dll")
+	shlwapi               = syscall.NewLazyDLL("Shlwapi.dll")
+	procAssocQueryStringW = shlwapi.NewProc("AssocQueryStringW")
+	procExpandEnvString   = kernel32.NewProc("ExpandEnvironmentStringsW")
 )
+
+const (
+	ASSOCF_NONE         = 0
+	ASSOCSTR_EXECUTABLE = 2
+)
+
+func getDefaultApp(extension string) (string, error) {
+	if !strings.HasPrefix(extension, ".") {
+		extension = "." + extension
+	}
+
+	extUTF16, err := syscall.UTF16PtrFromString(extension)
+	if err != nil {
+		return "", err
+	}
+
+	var size uint32 = 260
+	buf := make([]uint16, size)
+
+	ret, _, _ := procAssocQueryStringW.Call(
+		uintptr(ASSOCF_NONE),
+		uintptr(ASSOCSTR_EXECUTABLE),
+		uintptr(unsafe.Pointer(extUTF16)),
+		0,
+		uintptr(unsafe.Pointer(&buf[0])),
+		uintptr(unsafe.Pointer(&size)),
+	)
+
+	if ret != 0 {
+		return "", fmt.Errorf("failed to get default app")
+	}
+
+	return syscall.UTF16ToString(buf), nil
+}
 
 func expandWindowsEnv(s string) string {
 	utf16Str, _ := syscall.UTF16FromString(s)
@@ -63,6 +101,17 @@ func main() {
 	}
 
 	cmd_full := cmd_decoded
+
+	ext := strings.ToLower(filepath.Ext(cmd_decoded))
+
+	if ext != "" && ext != ".exe" && ext != ".bat" && ext != ".cmd" {
+		defaultApp, err := getDefaultApp(ext)
+		if err == nil {
+			cmd_decoded = `"` + defaultApp + `" "` + cmd_decoded + `"`
+		}
+	}
+
+	cmd_full = cmd_decoded
 
 	if *cmd_args != "" {
 		cmd_full += " " + decodeb64(*cmd_args)
