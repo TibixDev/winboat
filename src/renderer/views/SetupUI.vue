@@ -365,52 +365,44 @@
 
                                 <div>
                                     <label for="select-password" class="text-sm mb-4 text-neutral-400">Password</label>
-                                    <x-input
-                                        id="select-password"
-                                        class="w-64 max-w-64"
-                                        type="password"
-                                        minlength="2"
-                                        maxlength="64"
-                                        required
-                                        size="large"
-                                        :value="password"
-                                        @input="(e: any) => (password = e.target.value)"
-                                    >
-                                        <x-icon href="#lock"></x-icon>
-                                        <x-label>Password</x-label>
-                                    </x-input>
-                                </div>
+                                    <br />
+                                    <div class="flex flex-row gap-2 items-center">
+                                        <x-input
+                                            id="select-password"
+                                            class="w-64 max-w-64"
+                                            type="text"
+                                            minlength="2"
+                                            maxlength="32"
+                                            required
+                                            size="large"
+                                            :value="password"
+                                            @input="(e: any) => (password = e.target.value)"
+                                            :disabled="!allowPasswordEdit"
+                                        >
+                                            <x-icon href="#lock"></x-icon>
+                                            <x-label>Password</x-label>
+                                        </x-input>
 
-                                <div>
-                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400">
-                                        Confirm Password
-                                    </label>
-                                    <x-input
-                                        id="confirm-password"
-                                        class="w-64 max-w-64"
-                                        type="password"
-                                        minlength="2"
-                                        maxlength="64"
-                                        required
-                                        size="large"
-                                        :value="confirmPassword"
-                                        @input="(e: any) => (confirmPassword = e.target.value)"
-                                    >
-                                        <x-icon href="#lock" />
-                                        <x-label>Confirm Password</x-label>
-                                    </x-input>
+                                        <x-button
+                                            @click="(e: any) => (password = generateRandomPassword(wordList, 5, '-'))"
+                                        >
+                                            <x-icon href="#refresh"></x-icon>
+                                        </x-button>
+                                    </div>
                                 </div>
+                                <x-switch @click="(e: any) => (allowPasswordEdit = !allowPasswordEdit)">
+                                    <x-label><strong>Enable password edit</strong></x-label>
+                                    <div class="text-red-400 text-sm font-semibold">
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        WARNING: password is stored as <b>plaintext</b> in logs and configs, do not
+                                        reuse password!
+                                    </div>
+                                </x-switch>
                             </div>
 
                             <div class="flex flex-col gap-4 mt-6">
                                 <div id="username-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
                                     <div v-for="error in usernameErrors" :key="error">
-                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
-                                        {{ error }}
-                                    </div>
-                                </div>
-                                <div id="password-errors" class="text-red-400 text-sm font-semibold space-y-1">
-                                    <div v-for="error in passwordErrors" :key="error">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                         {{ error }}
                                     </div>
@@ -421,7 +413,7 @@
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
-                                :disabled="usernameErrors.length || passwordErrors.length"
+                                :disabled="usernameErrors.length || password.trim() == ''"
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
@@ -703,6 +695,7 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVN
 import { InstallManager, type InstallState, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
+import { generateRandomPassword, readWordList } from "../lib/password";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -806,12 +799,12 @@ const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
 const username = ref("winboat");
-const password = ref("");
-const confirmPassword = ref("");
 const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
-
+const wordList = readWordList();
+const password = ref(generateRandomPassword(wordList, 5, "-"));
+const allowPasswordEdit = ref(false);
 let installManager: InstallManager | null = null;
 
 onMounted(async () => {
@@ -845,27 +838,6 @@ const usernameErrors = computed(() => {
     // Only alphanumeric characters are allowed
     if (!/^[a-zA-Z0-9]+$/.test(username.value)) {
         errors.push("Must only contain alphanumeric characters");
-    }
-
-    return errors;
-});
-
-const passwordErrors = computed(() => {
-    let errors: string[] = [];
-
-    // Must match confirm password
-    if (password.value !== confirmPassword.value) {
-        errors.push("Passwords do not match");
-    }
-
-    // Only alphanumeric characters are allowed
-    if (!/^[a-zA-Z0-9]+$/.test(password.value)) {
-        errors.push("Must only contain alphanumeric characters");
-    }
-
-    // At least 4 characters
-    if (password.value.length < 4) {
-        errors.push("Must be at least 4 characters long");
     }
 
     return errors;
