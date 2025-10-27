@@ -629,25 +629,22 @@ export class Winboat {
         let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
-            args.push(
-                ...[
-                    "+f",
-                    this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
-                    `/scale:${this.#wbConfig?.config.scale ?? 100}`,
-                ],
-            );
+            args.concat([
+                "+f",
+                this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
+                `/scale:${this.#wbConfig?.config.scale ?? 100}`,
+            ]);
         } else {
-            args.push(
-                ...[
-                    this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
-                    "-wallpaper",
-                    this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
-                    `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
-                    `/wm-class:winboat-${cleanAppName}`,
-                    `/app:program:${app.Path},name:${cleanAppName}`,
-                ],
-            );
+            args.concat([
+                this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
+                "-wallpaper",
+                this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
+                `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
+                `/wm-class:winboat-${cleanAppName}`,
+                `/app:program:${app.Path},name:${cleanAppName}`,
+            ]);
         }
+
         args = args.filter(function (v, _i, _a) {
             return v.trim() !== "";
         });
