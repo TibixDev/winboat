@@ -6,7 +6,7 @@ import type {
     GuestServerUpdateResponse,
     GuestServerVersion,
     Metrics,
-    WinApp
+    WinApp,
 } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -20,6 +20,7 @@ import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { execFileAsync } from "./async-exec";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
