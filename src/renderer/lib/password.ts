@@ -1,4 +1,4 @@
-import wordsListPath from "word-list";
+const wordList: typeof import("word-list") = require("word-list");
 
 const fs: typeof import("fs") = require("node:fs");
 const crypto: typeof import("crypto") = require("node:crypto");
@@ -21,6 +21,6 @@ function getRandomWordFrom(words: string[]) {
 }
 
 export function readWordList(): string[] {
-    const wordArray = fs.readFileSync(wordsListPath, "utf8").split("\n");
+    const wordArray = fs.readFileSync(wordList.default, "utf8").split("\n");
     return wordArray.filter(word => word.length >= 5);
 }
