@@ -4,7 +4,7 @@ import YAML from "json-to-pretty-yaml";
 import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
-import { PortManager } from "../utils/port";
+import { ComposePortManager } from "../utils/port";
 import { Winboat } from "./winboat";
 const fs: typeof import("fs") = require("node:fs");
 const { exec }: typeof import("child_process") = require("node:child_process");
@@ -83,7 +83,7 @@ export class InstallManager {
     emitter: Emitter<InstallEvents>;
     state: InstallState;
     preinstallMsg: string;
-    portMgr: Ref<PortManager | null>;
+    portMgr: Ref<ComposePortManager | null>;
 
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
@@ -127,7 +127,7 @@ export class InstallManager {
 
         // Configure the compose file
         const composeContent = { ...DefaultCompose };
-        this.portMgr.value = await PortManager.parseCompose(composeContent);
+        this.portMgr.value = await ComposePortManager.parseCompose(composeContent);
 
         composeContent.services.windows.ports = this.portMgr.value.composeFormat;
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;

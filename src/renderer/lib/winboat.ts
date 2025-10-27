@@ -19,7 +19,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { PortManager } from "../utils/port";
+import { ComposePortManager } from "../utils/port";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -260,7 +260,7 @@ export class Winboat {
     readonly #wbConfig: WinboatConfig | null = null;
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
-    portMgr: Ref<PortManager | null> = ref(null);
+    portMgr: Ref<ComposePortManager | null> = ref(null);
 
     static getInstance() {
         Winboat.instance ??= new Winboat();
@@ -304,7 +304,7 @@ export class Winboat {
         // TODO: Investigate whether we need to remap user ports
         if (!this.portMgr.value) {
             const compose = this.parseCompose();
-            this.portMgr.value = await PortManager.parseCompose(compose, {
+            this.portMgr.value = await ComposePortManager.parseCompose(compose, {
                 findOpenPorts: false,
             });
         }
@@ -529,7 +529,7 @@ export class Winboat {
         this.containerActionLoading.value = true;
         try {
             const compose = this.parseCompose();
-            this.portMgr.value = await PortManager.parseCompose(compose);
+            this.portMgr.value = await ComposePortManager.parseCompose(compose);
 
             if (!this.portMgr.value.composeFormat.every(elem => compose.services.windows.ports.includes(elem))) {
                 compose.services.windows.ports = this.portMgr.value.composeFormat;

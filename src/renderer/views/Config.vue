@@ -634,7 +634,7 @@ import {
     GUEST_RDP_PORT,
     DEFAULT_HOST_QMP_PORT,
 } from "../lib/constants";
-import { PortManager } from "../utils/port";
+import { ComposePortManager } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
 // Emits
@@ -680,7 +680,7 @@ const rerenderAdvanced = ref(0);
 
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
 // A great example is when the container is offline. In that case, winboat's portManager isn't instantiated.
-let qmpPortManager = ref<PortManager | null>(null);
+let qmpPortManager = ref<ComposePortManager | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
@@ -721,7 +721,7 @@ function updateApplicationScale(value: string | number) {
  */
 async function assignValues() {
     compose.value = winboat.parseCompose();
-    qmpPortManager.value = winboat.portMgr.value ?? (await PortManager.parseCompose(compose.value));
+    qmpPortManager.value = winboat.portMgr.value ?? (await ComposePortManager.parseCompose(compose.value));
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -842,7 +842,7 @@ const errors = computedAsync(async () => {
         errCollection.push("You cannot allocate more RAM to Windows than you have available");
     }
 
-    if (freerdpPort.value !== origFreerdpPort.value && !(await PortManager.isPortOpen(freerdpPort.value))) {
+    if (freerdpPort.value !== origFreerdpPort.value && !(await ComposePortManager.isPortOpen(freerdpPort.value))) {
         errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
