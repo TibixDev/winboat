@@ -17,12 +17,10 @@ function escapeString(str: string): string {
     let safe = RegExp("^[a-zA-Z0-9,._+:@%/-]$");
     while (index < str.length) {
         let char = str[index];
-        if (char.match(safe) != null) {
-            fixed_string += char;
-        } else {
+        if (char.match(safe) == null) {
             fixed_string += "\\";
-            fixed_string += char;
         }
+        fixed_string += char;
         index++;
     }
     return fixed_string;
