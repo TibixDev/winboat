@@ -18,9 +18,10 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
+import { PortManager } from "../utils/port";
+import { execFileAsync } from "./exec-helper";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
-import { execFileAsync } from "./async-exec";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -610,8 +611,12 @@ export class Winboat {
 
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
-        const freeRDPWrapper = await getFreeRDP();
+
         const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
+
+        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
+
+        const freeRDPInstallation = await getFreeRDP();
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
         logger.info(`Using FreeRDP Command: '${freeRDPWrapper}'`);
@@ -651,10 +656,9 @@ export class Winboat {
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
-        logger.info(`Launch FreeRDP with arguments:\n[${args}]`);
-
-        if (freeRDPWrapper) {
-            freeRDPWrapper(args).then(_value => {});
+        if (freeRDPInstallation) {
+            logger.info(`Launch FreeRDP with command:\n${freeRDPInstallation.stringifyExec(args)}`);
+            freeRDPInstallation.exec(args).then(_value => {});
         } else {
             logger.error("No freeRDP installation found");
         }

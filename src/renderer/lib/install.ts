@@ -7,6 +7,7 @@ import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
 
+import { execFileAsync } from "./exec-helper";
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
