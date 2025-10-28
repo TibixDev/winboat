@@ -119,19 +119,19 @@
                 </x-button>
                 <x-select @change="(e: any) => (sortBy = e.detail.newValue)" :disabled="!winboat.isOnline.value">
                     <x-menu class="">
-                        <x-menuitem value="name" toggled>
-                            <x-icon href="#sort" class="qualifier"></x-icon>
-                            <x-label>
-                                <span class="qualifier"> Sort By: </span>
-                                Name</x-label
-                            >
-                        </x-menuitem>
-                        <x-menuitem value="usage">
+                        <x-menuitem value="usage" toggled>
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
                                 <span class="qualifier"> Sort By: </span>
                                 Usage
                             </x-label>
+                        </x-menuitem>
+                        <x-menuitem value="name">
+                            <x-icon href="#sort" class="qualifier"></x-icon>
+                            <x-label>
+                                <span class="qualifier"> Sort By: </span>
+                                Name</x-label
+                            >
                         </x-menuitem>
                     </x-menu>
                 </x-select>
