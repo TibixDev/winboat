@@ -179,7 +179,10 @@
                     v-for="app of computedApps"
                     :key="app.id"
                     class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
-                    :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
+                    :class="{
+                        'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom',
+                        'ring-1 ring-emerald-400/60': isAppPinned(app),
+                    }"
                     @click="winboat.launchApp(app)"
                     @contextmenu="openContextMenu($event, app)"
                 >
@@ -189,6 +192,7 @@
                             :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
                             alt="App Icon"
                         />
+                        <Icon v-if="isAppPinned(app)" class="text-emerald-300 size-4" icon="mdi:pin"></Icon>
                         <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                     </div>
                     <Icon icon="cuida:caret-right-outline"></Icon>
@@ -206,6 +210,14 @@
                 <WBMenuItem @click="contextMenuTarget && openEditAppDialog(contextMenuTarget)">
                     <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
                     <x-label>Edit</x-label>
+                </WBMenuItem>
+
+                <WBMenuItem @click="toggleLinuxShortcutPin" :disabled="!winboat.shortcutMgr">
+                    <Icon
+                        class="size-4"
+                        :icon="contextShortcutPinned ? 'mdi:pin-off-outline' : 'mdi:pin-outline'"
+                    ></Icon>
+                    <x-label>{{ contextShortcutPinned ? "Remove Linux Shortcut" : "Add Linux Shortcut" }}</x-label>
                 </WBMenuItem>
 
                 <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeCustomApp">
@@ -238,13 +250,14 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from "vue";
+import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch, nextTick } from "vue";
 import { ContainerStatus, Winboat } from "../lib/winboat";
 import { type WinApp } from "../../types";
 import WBContextMenu from "../components/WBContextMenu.vue";
 import WBMenuItem from "../components/WBMenuItem.vue";
 import { AppIcons, DEFAULT_ICON } from "../data/appicons";
 import { GUEST_API_PORT } from "../lib/constants";
+import { SHORTCUT_CHANGE_EVENT } from "../lib/linuxShortcuts";
 import { debounce } from "../utils/debounce";
 import { Jimp, JimpMime } from "jimp";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
@@ -268,6 +281,7 @@ const currentAppForm = ref<WinApp>({
     Icon: "",
     Source: "",
 });
+const shortcutSelectionToken = ref(0);
 
 const apiURL = computed(() => {
     const port = winboat.portMgr.value?.getHostPort(GUEST_API_PORT) ?? GUEST_API_PORT;
@@ -326,9 +340,15 @@ onMounted(async () => {
         await debouncedFetchIcon(newVal, oldVal);
     });
 
-    const onScroll = () => contextMenuRef.value?.hide();
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", onScroll);
+    window.addEventListener(SHORTCUT_CHANGE_EVENT, handleShortcutChange);
+    window.addEventListener("scroll", hideContextMenu, true);
+    window.addEventListener("resize", hideContextMenu);
+});
+
+onUnmounted(() => {
+    window.removeEventListener(SHORTCUT_CHANGE_EVENT, handleShortcutChange);
+    window.removeEventListener("scroll", hideContextMenu, true);
+    window.removeEventListener("resize", hideContextMenu);
 });
 
 async function refreshApps() {
@@ -390,6 +410,31 @@ const customAppAddErrors = computed(() => {
 
 const contextMenuRef = ref();
 const contextMenuTarget = ref<WinApp | null>(null);
+const handleShortcutChange = () => {
+    shortcutSelectionToken.value++;
+};
+const hideContextMenu = () => contextMenuRef.value?.hide();
+const contextShortcutPinned = computed(() => {
+    shortcutSelectionToken.value;
+    const target = contextMenuTarget.value;
+    return target ? winboat.isAppPinnedToShortcuts(target) : false;
+});
+
+function isAppPinned(app: WinApp) {
+    shortcutSelectionToken.value;
+    return winboat.isAppPinnedToShortcuts(app);
+}
+
+async function toggleLinuxShortcutPin() {
+    if (!contextMenuTarget.value) return;
+    const target = contextMenuTarget.value;
+    const shouldPin = !winboat.isAppPinnedToShortcuts(target);
+    try {
+        await winboat.setShortcutPinned(target, shouldPin);
+    } catch (error) {
+        console.error("Failed to toggle Linux shortcut", error);
+    }
+}
 
 async function openContextMenu(event: MouseEvent, app: WinApp) {
     contextMenuTarget.value = app;

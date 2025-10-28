@@ -10,6 +10,12 @@ export type RdpArg = {
     isReplacement: boolean;
 };
 
+export type LinuxShortcutPreferences = {
+    enabled: boolean;
+    includeDesktop: boolean;
+    selectedApps: string[];
+};
+
 export type WinboatConfigObj = {
     scale: number;
     scaleDesktop: number;
@@ -22,6 +28,7 @@ export type WinboatConfigObj = {
     multiMonitor: number;
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
+    linuxShortcuts: LinuxShortcutPreferences;
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -36,6 +43,11 @@ const defaultConfig: WinboatConfigObj = {
     multiMonitor: 0,
     rdpArgs: [],
     disableAnimations: false,
+    linuxShortcuts: {
+        enabled: false,
+        includeDesktop: false,
+        selectedApps: [],
+    },
 };
 
 export class WinboatConfig {
@@ -106,6 +118,25 @@ export class WinboatConfig {
                             defaultConfig[key as keyof WinboatConfigObj]
                         }`,
                     );
+                }
+
+                if (key === "linuxShortcuts") {
+                    const defaults = defaultConfig.linuxShortcuts;
+                    const current = configObj.linuxShortcuts ?? {};
+                    // Merge nested keys to avoid losing new options after updates
+                    const merged = {
+                        enabled: current.enabled ?? defaults.enabled,
+                        includeDesktop: current.includeDesktop ?? defaults.includeDesktop,
+                        selectedApps: Array.isArray(current.selectedApps) ? current.selectedApps : defaults.selectedApps,
+                    };
+                    const nestedHadMissing = Object.entries(defaults).some(([nestedKey, defaultValue]) => {
+                        if (nestedKey === "selectedApps") {
+                            return !Array.isArray(current.selectedApps);
+                        }
+                        return (current as any)[nestedKey] === undefined && defaultValue !== undefined;
+                    });
+                    configObj.linuxShortcuts = merged;
+                    hasMissing = hasMissing || nestedHadMissing;
                 }
 
                 // If we have any missing keys, we should just write the config back to disk so those new keys are saved

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, session } from "electron";
 import { join } from "path";
 import { initialize, enable } from "@electron/remote/main/index.js";
 import Store from "electron-store";
@@ -55,17 +55,32 @@ const windowStore = new Store<SchemaType>({
 });
 
 let mainWindow: BrowserWindow | null = null;
+const LAUNCH_CHANNEL = "shortcut-launch-app";
+
+const extractLaunchTarget = (argv: string[]): string | null => {
+    const flagIndex = argv.findIndex(arg => arg === "--launch" || arg.startsWith("--launch="));
+
+    if (flagIndex === -1) {
+        return null;
+    }
+
+    const flag = argv[flagIndex];
+
+    if (flag.startsWith("--launch=")) {
+        const value = flag.slice("--launch=".length).trim();
+        return value.length ? value : null;
+    }
+
+    const value = argv[flagIndex + 1];
+    return value ? value.trim() : null;
+};
+
+let pendingLaunchApp: string | null = extractLaunchTarget(process.argv);
 
 function createWindow() {
     if (!app.requestSingleInstanceLock()) {
-        // @ts-ignore property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
-        dialog.showMessageBoxSync(null, {
-            type: "error",
-            buttons: ["Close"],
-            title: "WinBoat",
-            message: "An instance of WinBoat is already running.\n\tMultiple Instances are not allowed.",
-        });
-        app.exit();
+        app.quit();
+        return;
     }
 
     mainWindow = new BrowserWindow({
@@ -99,6 +114,15 @@ function createWindow() {
     });
 
     enable(mainWindow.webContents);
+
+    const flushPendingLaunch = () => {
+        if (pendingLaunchApp) {
+            mainWindow?.webContents.send(LAUNCH_CHANNEL, pendingLaunchApp);
+            pendingLaunchApp = null;
+        }
+    };
+
+    mainWindow.webContents.on("did-finish-load", flushPendingLaunch);
 
     if (process.env.NODE_ENV === "development") {
         const rendererPort = process.argv[2];
@@ -140,8 +164,21 @@ app.on("window-all-closed", function () {
     if (process.platform !== "darwin") app.quit();
 });
 
-app.on("second-instance", _ => {
+app.on("second-instance", (_event, argv) => {
+    const launchTarget = extractLaunchTarget(argv);
+
+    if (launchTarget) {
+        if (mainWindow && !mainWindow.webContents.isLoading()) {
+            mainWindow.webContents.send(LAUNCH_CHANNEL, launchTarget);
+        } else {
+            pendingLaunchApp = launchTarget;
+        }
+    }
+
     if (mainWindow) {
+        if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+        }
         mainWindow.focus();
     }
 });
