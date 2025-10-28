@@ -629,13 +629,13 @@ export class Winboat {
         let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
-            args.concat([
+            args = args.concat([
                 "+f",
                 this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
                 `/scale:${this.#wbConfig?.config.scale ?? 100}`,
             ]);
         } else {
-            args.concat([
+            args = args.concat([
                 this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
                 "-wallpaper",
                 this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
