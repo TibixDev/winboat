@@ -19,7 +19,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { ComposePortManager } from "../utils/port";
+import { ComposePortMapper } from "../utils/port";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -260,7 +260,6 @@ export class Winboat {
     readonly #wbConfig: WinboatConfig | null = null;
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
-    portMgr: Ref<ComposePortManager | null> = ref(null);
 
     static getInstance() {
         Winboat.instance ??= new Winboat();
@@ -297,17 +296,6 @@ export class Winboat {
         const HEALTH_WAIT_MS = 1000;
         const METRICS_WAIT_MS = 1000;
         const RDP_STATUS_WAIT_MS = 1000;
-
-        // *** Port Manager ***
-        // If the container was already running before opening WinBoat, the ports will already be used by the container
-        // So we don't need to remap any ports
-        // TODO: Investigate whether we need to remap user ports
-        if (!this.portMgr.value) {
-            const compose = this.parseCompose();
-            this.portMgr.value = await ComposePortManager.parseCompose(compose, {
-                findOpenPorts: false,
-            });
-        }
 
         // *** Health Interval ***
         // Make sure we don't have any existing intervals
@@ -474,7 +462,12 @@ export class Winboat {
      * @returns The host port that maps to the given guest port, or null if not found
      */
     getHostPort(guestPort: number | string): number {
-        return this.portMgr.value?.getHostPort(guestPort) ?? Number.parseInt(guestPort.toString());
+        //return this.portMgr.value?.getHostPort(guestPort) ?? Number.parseInt(guestPort.toString());
+        if(typeof guestPort === "string") {
+            guestPort = parseInt(guestPort);
+        }
+        
+        return guestPort; // TODO!!!: Replace this with the actual port value from the containerManager
     }
 
     getCredentials() {
@@ -529,12 +522,6 @@ export class Winboat {
         this.containerActionLoading.value = true;
         try {
             const compose = this.parseCompose();
-            this.portMgr.value = await ComposePortManager.parseCompose(compose);
-
-            if (!this.portMgr.value.composeFormat.every(elem => compose.services.windows.ports.includes(elem))) {
-                compose.services.windows.ports = this.portMgr.value.composeFormat;
-                await this.replaceCompose(compose);
-            }
 
             const { stdout } = await execAsync("docker container start WinBoat");
             logger.info(`Container response: ${stdout}`);

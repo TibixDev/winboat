@@ -4,7 +4,7 @@ import YAML from "json-to-pretty-yaml";
 import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
-import { ComposePortManager } from "../utils/port";
+import { ComposePortMapper } from "../utils/port";
 import { Winboat } from "./winboat";
 const fs: typeof import("fs") = require("node:fs");
 const { exec }: typeof import("child_process") = require("node:child_process");
@@ -60,6 +60,7 @@ export const DefaultCompose: ComposeConfig = {
         },
     },
 };
+
 export const InstallStates = {
     IDLE: "Preparing",
     CREATING_COMPOSE_FILE: "Creating Compose File",
@@ -72,6 +73,7 @@ export const InstallStates = {
 } as const;
 
 export type InstallState = (typeof InstallStates)[keyof typeof InstallStates];
+
 interface InstallEvents {
     stateChanged: (state: InstallState) => void;
     preinstallMsg: (msg: string) => void;
@@ -83,14 +85,12 @@ export class InstallManager {
     emitter: Emitter<InstallEvents>;
     state: InstallState;
     preinstallMsg: string;
-    portMgr: Ref<ComposePortManager | null>;
 
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
         this.state = InstallStates.IDLE;
         this.preinstallMsg = "";
         this.emitter = createNanoEvents<InstallEvents>();
-        this.portMgr = ref(null);
     }
 
     changeState(newState: InstallState) {
@@ -127,9 +127,7 @@ export class InstallManager {
 
         // Configure the compose file
         const composeContent = { ...DefaultCompose };
-        this.portMgr.value = await ComposePortManager.parseCompose(composeContent);
 
-        composeContent.services.windows.ports = this.portMgr.value.composeFormat;
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
@@ -265,7 +263,8 @@ export class InstallManager {
         const re = new RegExp(/>([^<]+)</);
         while (true) {
             try {
-                const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
+                //const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
+                const vncHostPort = GUEST_NOVNC_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
                 const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`);
                 if (response.status === 404) {
                     logger.info("Received 404, preinstall completed");
@@ -297,7 +296,8 @@ export class InstallManager {
 
         while (true) {
             try {
-                const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
+                // const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
+                const apiHostPort = GUEST_API_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
                 const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`);
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");

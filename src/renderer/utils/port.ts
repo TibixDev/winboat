@@ -1,8 +1,8 @@
-import { type PortEntryProtocol, type ComposeConfig } from "../../types";
+import { type PortEntryProtocol, type ComposeConfig, LongPortMapping } from "../../types";
 import { GUEST_RDP_PORT, PORT_MAX, PORT_SEARCH_RANGE, PORT_SPACING, WINBOAT_DIR } from "../lib/constants";
 import { createLogger } from "./log";
 import path from "path";
-const { createServer }: typeof import("net") = require("node:net");
+const { createServer, isIPv4, isIPv6 }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(WINBOAT_DIR, "ports.log"));
 
@@ -153,6 +153,11 @@ export class ComposePortEntry {
         return ComposePortEntry.parsePortOrRange(guest);
     }
 
+    private static checkValidIP(ip: string, entry: string): string {
+        if(!isIPv4(ip) && !isIPv6(ip)) throw new Error(`Invalid compose entry: ${entry}, IP: ${ip}`);
+        return ip;
+    }
+
     /**
      * Parses the optional IP part of the port mapping, as defined by the compose spec.
      * 
@@ -167,73 +172,85 @@ export class ComposePortEntry {
         if (parts.length < 3) return "0.0.0.0";
 
         // Here we find the index where the host ip ends (removing one makes sure we remove the colon as well)
-        const hostPortLocation = entry.lastIndexOf(parts.at(-2)!) - 1;
+        const hostPortLocation = entry.indexOf(parts.at(-2)!) - 1;
         const rawIP = entry.substring(0, hostPortLocation);
 
         // In case the IP isn't enclosed with square brackets, we don't need any further processing
-        if(rawIP[0] !== "[") return rawIP;
+        if(rawIP[0] !== "[") return ComposePortEntry.checkValidIP(rawIP, entry);
 
         const IP = rawIP.substring(1, rawIP.length - 1);
 
-        return IP;
+        return ComposePortEntry.checkValidIP(IP, entry);
     }
 }
 
-export class ComposePortManager {
-    private readonly ports: ComposePortEntry[];
+export class ComposePortMapper {
+    private readonly shortPorts: ComposePortEntry[];
+    private readonly longPorts: LongPortMapping[];
 
     /**
-     * Please use {@link parseCompose} instead to initialize a `PortManager` from a `ComposeConfig` object
-     */
-    constructor() {
-        this.ports = [];
-    }
-
-    /**
-     * Parses port entries in a {@link ComposeConfig} object, checking if the host ports specified are open.
-     *
-     * In case they aren't, it checks the followig 100 port entries and uses the first open port found.
+     * Parses port entries in a {@link ComposeConfig} object.
      *
      * @param compose The config to be parsed
-     * @returns A {@link ComposePortManager} object
+     * @returns A {@link ComposePortMapper} object
      */
-    static async parseCompose(
-        compose: ComposeConfig,
-    ): Promise<ComposePortManager> {
-        const portManager = new ComposePortManager();
-        let configPortEntries = []; 
+    constructor(compose: ComposeConfig) {
+        this.shortPorts = [];
+        this.longPorts = [];
         
         for(const composeMapping of compose.services.windows.ports) {
-            if(typeof composeMapping !== "string") continue; // Ignore entries with long syntax
-
-            portManager.pushPortEntry(new ComposePortEntry(composeMapping));
+            this.pushPortEntry(composeMapping);
         }
-
-        return portManager;
     }
 
     /**
      * **WARNING**: Could introduce dupliate entries, use carefully!
      * 
-     * Pushed a port entry to the internal port array.
+     * Pushes a port entry to the internal port array.
      */
-    pushPortEntry(entry: ComposePortEntry) {
-        this.ports.push(entry);
+    private pushPortEntry(entry: string | LongPortMapping) {
+        if (typeof entry === "string") {
+            this.shortPorts.push(new ComposePortEntry(entry));
+            return;
+        }
+        
+        this.longPorts.push(entry);
     }
 
-    private findGuestPortIndex(guestPort: number | string): number | undefined {
+    /**
+     * Finds the index of the short syntax port entry with the same guest port and protocol in the internal shortPorts list
+     */
+    private findGuestPortIndex(guestPort: number | string, protocol: PortEntryProtocol = "tcp"): number | undefined {
         if (typeof guestPort === "string") {
             guestPort = Number.parseInt(guestPort);
         }
 
-        return this.ports.findIndex((entry) => typeof entry.container === "number" && entry.container === guestPort);
+        // TODO: investigate whether we need to handle long syntax port entries here
+        const idx = this.shortPorts.findIndex((entry) => 
+            typeof entry.container === "number" && 
+            entry.container === guestPort &&
+            entry.protocol === protocol
+        );
+
+        return idx === -1 ? undefined : idx;
     }
 
+    /**
+     * Returns the short syntax port mapping with the same guest port and protocol, or undefined in case given mapping doesn't exist.
+     */
+    getShortPortMapping(guestPort: number | string, protocol: PortEntryProtocol = "tcp"): ComposePortEntry | undefined {
+        const mappingIdx = this.findGuestPortIndex(guestPort, protocol);
+        
+        if(!mappingIdx) return undefined;
+
+        return this.shortPorts[mappingIdx];
+    }
+    
     /**
      * Creates a new port mapping or overwrites an existing one.
      * In case the host port is not open, it tries to find one.
      */
-    setPortMapping(
+    setShortPortMapping(
         guestPort: number | string,
         hostPort: number | string,
         options?: PortEntryOptions,
@@ -244,21 +261,21 @@ export class ComposePortManager {
         if (typeof guestPort === "string") {
             guestPort = Number.parseInt(guestPort);
         }
+        
+        const insertAt = this.findGuestPortIndex(guestPort, options?.protocol) ?? this.shortPorts.length;
 
-        const insertAt = this.findGuestPortIndex(guestPort) ?? this.ports.length;
-
-        this.ports[insertAt] = new ComposePortEntry(guestPort, hostPort, options);
+        this.shortPorts[insertAt] = new ComposePortEntry(hostPort, guestPort, options);
     }
 
     /**
-     * Returns whether there's a port mapping tied to given guestPort
+     * Returns whether there's a short syntax port mapping tied to given guestPort
      */
-    hasPortMapping(guestPort: string | number): boolean {
+    hasShortPortMapping(guestPort: string | number, protocol: PortEntryProtocol = "tcp"): boolean {
         if (typeof guestPort === "string") {
             guestPort = Number.parseInt(guestPort);
         }
 
-        return !!this.findGuestPortIndex(guestPort);
+        return !!this.findGuestPortIndex(guestPort, protocol);
     }
 
     /**
@@ -267,16 +284,8 @@ export class ComposePortManager {
     get composeFormat(): string[] {
         const ret = [];
 
-        for (const portEntry of this.ports) {
-            if (portEntry.container !== GUEST_RDP_PORT) {
-                ret.push(portEntry.entry);
-                continue;
-            }
-
-            portEntry.protocol = "tcp";
-            ret.push(portEntry.entry);
-
-            portEntry.protocol = "udp";
+        // TODO!!!: handle long syntax port mappings
+        for (const portEntry of this.shortPorts) {
             ret.push(portEntry.entry);
         }
 
@@ -310,17 +319,5 @@ export class ComposePortManager {
 
             server.listen(port);
         });
-    }
-
-    /**
-     * Returns the host port that maps to the given guest port in the given compose object
-     *
-     * @param guestPort The port that gets looked up
-     * @param compose The compose object we search in
-     * @returns The host port that maps to the given guest port, or null if not found
-     */
-    static getHostPortFromCompose(guestPort: number | string, compose: ComposeConfig): number | null {
-        const res = compose.services.windows.ports.find(x => typeof x === "string" && x.split(":")[1].includes(guestPort.toString())) as unknown as string;
-        return res ? Number.parseInt(res.split(":")[0]) : null;
     }
 }

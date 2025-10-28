@@ -634,7 +634,7 @@ import {
     GUEST_RDP_PORT,
     DEFAULT_HOST_QMP_PORT,
 } from "../lib/constants";
-import { ComposePortManager } from "../utils/port";
+import { ComposePortEntry, ComposePortMapper } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
 // Emits
@@ -680,7 +680,7 @@ const rerenderAdvanced = ref(0);
 
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
 // A great example is when the container is offline. In that case, winboat's portManager isn't instantiated.
-let qmpPortManager = ref<ComposePortManager | null>(null);
+let portMapper = ref<ComposePortMapper | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
@@ -721,7 +721,7 @@ function updateApplicationScale(value: string | number) {
  */
 async function assignValues() {
     compose.value = winboat.parseCompose();
-    qmpPortManager.value = winboat.portMgr.value ?? (await ComposePortManager.parseCompose(compose.value));
+    portMapper.value = new ComposePortMapper(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -735,7 +735,7 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = qmpPortManager.value.getHostPort(GUEST_RDP_PORT);
+    freerdpPort.value = portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number ?? GUEST_RDP_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
     origFreerdpPort.value = freerdpPort.value;
 
     origApplicationScale.value = wbConfig.config.scaleDesktop;
@@ -769,9 +769,13 @@ async function saveDockerCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    await qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value, { findOpenPorts: false }); // no need to find open ports, since we already check that in the 'errors' computed
-    compose.value!.services.windows.ports = qmpPortManager.value!.composeFormat;
-
+    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, { 
+        protocol: "tcp",
+        hostIP: "127.0.0.1"
+    });        new ComposePortEntry(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT, {
+            protocol: "tcp",
+            hostIP: "127.0.0.1"
+        })
     isApplyingChanges.value = true;
     try {
         await winboat.replaceCompose(compose.value!);
@@ -800,7 +804,10 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
     if (!hasQmpPort()) {
-        await qmpPortManager.value!.setPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT);
+        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT, {
+            protocol: "tcp",
+            hostIP: "127.0.0.1"
+        });
     }
 
     if (!compose.value!.services.windows.environment.ARGUMENTS) {
@@ -842,7 +849,7 @@ const errors = computedAsync(async () => {
         errCollection.push("You cannot allocate more RAM to Windows than you have available");
     }
 
-    if (freerdpPort.value !== origFreerdpPort.value && !(await ComposePortManager.isPortOpen(freerdpPort.value))) {
+    if (freerdpPort.value !== origFreerdpPort.value && !(await ComposePortMapper.isPortOpen(freerdpPort.value))) {
         errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
@@ -852,7 +859,7 @@ const errors = computedAsync(async () => {
 const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
 const hasQmpArgument = (_compose: typeof compose) =>
     _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
-const hasQmpPort = () => qmpPortManager.value?.hasPortMapping(GUEST_QMP_PORT) ?? false;
+const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) =>
     _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
 

@@ -270,7 +270,7 @@ const currentAppForm = ref<WinApp>({
 });
 
 const apiURL = computed(() => {
-    const port = winboat.portMgr.value?.getHostPort(GUEST_API_PORT) ?? GUEST_API_PORT;
+    const port = GUEST_API_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
 
     return `http://127.0.0.1:${port}`;
 });
