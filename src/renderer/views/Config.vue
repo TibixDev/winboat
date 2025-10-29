@@ -562,7 +562,7 @@
                         >
                             Install log (winboat.log)
                         </x-button>
-                        <dialog ref="logDialog">
+                        <dialog ref="logDialog" @keydown.esc="logDialog!.close()">
                             <div class="flex flex-row gap-0 align-middle" style="margin-bottom: 16px">
                                 <h3 class="mb-0 mt-0 content-center">{{ logTitle }}</h3>
                                 <x-button
