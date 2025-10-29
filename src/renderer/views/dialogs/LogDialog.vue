@@ -43,11 +43,11 @@ defineExpose({ showModal });
                     "
                 >
                     <x-box v-if="!copied" class="justify-center">
-                        <Icon icon="ci:copy" class="size-4 mr-1"></Icon>
+                        <Icon icon="ci:copy" class="size-[1.125rem] mr-1"></Icon>
                         <x-label>Copy</x-label>
                     </x-box>
                     <x-box v-if="copied">
-                        <Icon icon="hugeicons:tick-double-02" class="size-4 mr-1 text-green-400"></Icon>
+                        <Icon icon="hugeicons:tick-double-02" class="size-[1.125rem] mr-1 text-green-400"></Icon>
                         <x-label>Copied!</x-label>
                     </x-box>
                 </x-button>
