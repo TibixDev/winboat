@@ -22,18 +22,34 @@ export class ComposePortEntry extends String {
     guestPort: number;
     protocol: PortEntryProtocol = undefined;
 
-    constructor(entry: string) {
-        super(entry);
+constructor(entry: string) {
+    super(entry);
 
-        // Compose port entries map a host port to a guest port in the following format: <hostport>:<guestport>/<protocol(can be omitted)>
-        // To parse out the host and guest ports, we first split the entry up using ":" as a separator. Now we can parse the host port just fine.
-        // To parse the guest port as well, we need to remove the optional protocol from the entry. To do this, we map over our substrings, and split by "/".
-        const portEntry = entry.split(":").map(x => x.split("/")[0]);
+    // Supports both <hostPort>:<guestPort> and 127.0.0.1:<hostPort>:<guestPort>
+    const parts = entry.split(":");
+    let hostIp: string | null = null;
+    let hostPort: string;
+    let guestPort: string;
 
-        this.hostPort = Number.parseInt(portEntry[0]);
-        this.guestPort = Number.parseInt(portEntry[1]);
-        this.protocol = ComposePortEntry.parseProtocol(entry);
+    if (parts.length === 2) {
+        [hostPort, guestPort] = parts;
+    } else if (parts.length === 3) {
+        [hostIp, hostPort, guestPort] = parts;
+    } else {
+        throw new Error(`Invalid port entry format: ${entry}`);
     }
+
+    hostPort = hostPort.split("/")[0];
+    guestPort = guestPort.split("/")[0];
+
+    this.hostPort = Number.parseInt(hostPort);
+    this.guestPort = Number.parseInt(guestPort);
+    this.protocol = ComposePortEntry.parseProtocol(entry);
+
+    // Store hostIp if you want it later
+    (this as any).hostIp = hostIp;
+}
+
 
     // TODO: change how ComposePortEntry is initialized
     static fromPorts(hostPort: number, guestPort: number, protocol?: PortEntryProtocol) {
