@@ -553,7 +553,7 @@
                         <x-button
                             @click="
                                 logTitle = 'Winboat log (winboat.log)';
-                                logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'winboat.log'));
+                                logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'winboat.log'), 'utf8');
                                 logDialog!.showModal();
                             "
                         >
@@ -562,7 +562,7 @@
                         <x-button
                             @click="
                                 logTitle = 'Install log (install.log)';
-                                logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'install.log'));
+                                logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'install.log'), 'utf8');
                                 logDialog!.showModal();
                             "
                         >
