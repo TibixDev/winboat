@@ -56,18 +56,15 @@ const windowStore = new Store<SchemaType>({
 
 let mainWindow: BrowserWindow | null = null;
 
-function createWindow() {
-    if (!app.requestSingleInstanceLock()) {
-        // @ts-ignore property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
-        dialog.showMessageBoxSync(null, {
-            type: "error",
-            buttons: ["Close"],
-            title: "WinBoat",
-            message: "An instance of WinBoat is already running.\n\tMultiple Instances are not allowed.",
-        });
-        app.exit();
-    }
+// Request single instance lock before doing anything else
+// This must happen BEFORE app.whenReady() so second instances can pass args and exit silently
+if (!app.requestSingleInstanceLock()) {
+    // Another instance is already running, exit silently
+    // The second-instance handler in the first instance will receive our command line args
+    app.quit();
+}
 
+function createWindow() {
     mainWindow = new BrowserWindow({
         minWidth: WINDOW_MIN_WIDTH,
         minHeight: WINDOW_MIN_HEIGHT,
@@ -140,12 +137,36 @@ app.on("window-all-closed", function () {
     if (process.platform !== "darwin") app.quit();
 });
 
-app.on("second-instance", _ => {
+app.on("second-instance", (_, commandLine) => {
     if (mainWindow) {
         mainWindow.focus();
+
+        // Check if we're launching an app from a desktop shortcut
+        // Look for --launch-app=AppName format to avoid conflicts with Electron's internal flags
+        const launchAppArg = commandLine.find(arg => arg.startsWith("--launch-app="));
+        if (launchAppArg) {
+            const appName = launchAppArg.substring("--launch-app=".length);
+            console.log(`Second instance received launch request for: ${appName}`);
+            // Send message to renderer to launch the app
+            mainWindow.webContents.send("launch-app-from-shortcut", appName);
+        }
     }
 });
 
 ipcMain.on("message", (_event, message) => {
     console.log(message);
+});
+
+// Handle app launch from command line on first instance
+app.whenReady().then(() => {
+    // Look for --launch-app=AppName format
+    const launchAppArg = process.argv.find(arg => arg.startsWith("--launch-app="));
+    if (launchAppArg) {
+        const appName = launchAppArg.substring("--launch-app=".length);
+        console.log(`First instance received launch request for: ${appName}`);
+        // Wait a bit for the window to be ready, then send the launch command
+        setTimeout(() => {
+            mainWindow?.webContents.send("launch-app-from-shortcut", appName);
+        }, 2000);
+    }
 });

@@ -267,6 +267,10 @@ export class Winboat {
         return Winboat.instance;
     }
 
+    get config() {
+        return this.#wbConfig?.config ?? null;
+    }
+
     private constructor() {
         // This is a special interval which will never be destroyed
         setInterval(async () => {

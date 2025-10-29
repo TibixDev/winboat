@@ -5,7 +5,12 @@
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
-                        <img alt="Icon for current app" v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
+                        <img
+                            alt="Icon for current app"
+                            v-if="currentAppForm.Icon"
+                            :src="currentAppForm.Icon"
+                            class="size-24"
+                        />
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
@@ -184,11 +189,21 @@
                     @contextmenu="openContextMenu($event, app)"
                 >
                     <div class="flex flex-row items-center gap-2 w-[85%]">
-                        <img
-                            class="rounded-md size-10"
-                            :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
-                            alt="App Icon"
-                        />
+                        <div class="relative">
+                            <img
+                                class="rounded-md size-10"
+                                :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
+                                alt="App Icon"
+                            />
+                            <!-- Desktop shortcut indicator badge -->
+                            <div
+                                v-if="hasDesktopShortcut(app)"
+                                class="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-0.5"
+                                title="Has desktop shortcut"
+                            >
+                                <Icon icon="mdi:link-variant" class="size-3 text-white"></Icon>
+                            </div>
+                        </div>
                         <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                     </div>
                     <Icon icon="cuida:caret-right-outline"></Icon>
@@ -206,6 +221,14 @@
                 <WBMenuItem @click="contextMenuTarget && openEditAppDialog(contextMenuTarget)">
                     <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
                     <x-label>Edit</x-label>
+                </WBMenuItem>
+
+                <WBMenuItem @click="toggleDesktopShortcut">
+                    <Icon
+                        class="size-4"
+                        :icon="hasDesktopShortcut(contextMenuTarget) ? 'mdi:link-off' : 'mdi:link-variant'"
+                    ></Icon>
+                    <x-label>{{ hasDesktopShortcut(contextMenuTarget) ? "Remove Shortcut" : "Add Shortcut" }}</x-label>
                 </WBMenuItem>
 
                 <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeCustomApp">
@@ -247,14 +270,18 @@ import { AppIcons, DEFAULT_ICON } from "../data/appicons";
 import { GUEST_API_PORT } from "../lib/constants";
 import { debounce } from "../utils/debounce";
 import { Jimp, JimpMime } from "jimp";
+import { DesktopShortcutsManager } from "../lib/desktopshortcuts";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const FormData: typeof import("form-data") = require("form-data");
 
 const winboat = Winboat.getInstance();
+const desktopShortcuts = DesktopShortcutsManager.getInstance();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
 const sortBy = ref("");
 const filterBy = ref("all");
+// Track desktop shortcuts reactively so Vue can detect changes
+const desktopShortcutNames = ref<string[]>([]);
 const addCustomAppDialog = useTemplateRef("addCustomAppDialog");
 const customAppName = ref("");
 const customAppPath = ref("");
@@ -313,6 +340,9 @@ const computedApps = computed(() => {
 
 onMounted(async () => {
     await refreshApps();
+
+    // Initialize desktop shortcuts from config
+    desktopShortcutNames.value = winboat.config?.desktopShortcuts ?? [];
 
     watch(winboat.isOnline, async (newVal, _) => {
         if (newVal) {
@@ -434,12 +464,37 @@ async function saveApp() {
     const iconRaw = currentAppForm.value.Icon.split("data:image/png;base64,")[1];
 
     if (currentAppForm.value.Source === "custom" && orginalAppForm.value) {
-        await winboat.appMgr!.updateCustomApp(orginalAppForm.value.Name, {
-            Name: currentAppForm.value.Name,
+        // Handle desktop shortcut update if app name changed
+        const oldName = orginalAppForm.value.Name;
+        const newName = currentAppForm.value.Name;
+        const hadShortcut = hasDesktopShortcut(orginalAppForm.value);
+
+        if (hadShortcut && oldName !== newName && winboat.config) {
+            // Remove old shortcut
+            await desktopShortcuts.removeShortcut(orginalAppForm.value);
+            // Update config to replace old name with new name
+            winboat.config.desktopShortcuts = winboat.config.desktopShortcuts
+                .filter(name => name !== oldName)
+                .concat(newName);
+            desktopShortcutNames.value = winboat.config.desktopShortcuts;
+        }
+
+        await winboat.appMgr!.updateCustomApp(oldName, {
+            Name: newName,
             Path: currentAppForm.value.Path,
             Args: currentAppForm.value.Args,
             Icon: iconRaw,
         });
+
+        // Recreate shortcut with new name if it had one
+        if (hadShortcut) {
+            const updatedApp = {
+                ...currentAppForm.value,
+                Icon: iconRaw,
+            };
+            await desktopShortcuts.createShortcut(updatedApp);
+        }
+
         console.log("Save");
     } else {
         await winboat.appMgr!.addCustomApp(
@@ -506,7 +561,19 @@ function cancelAddCustomApp() {
  */
 async function removeCustomApp() {
     if (!contextMenuTarget.value) return;
-    await winboat.appMgr!.removeCustomApp(contextMenuTarget.value);
+
+    const app = contextMenuTarget.value;
+
+    // Remove desktop shortcut if it exists
+    if (hasDesktopShortcut(app)) {
+        await desktopShortcuts.removeShortcut(app);
+        if (winboat.config) {
+            winboat.config.desktopShortcuts = winboat.config.desktopShortcuts.filter(name => name !== app.Name);
+            desktopShortcutNames.value = winboat.config.desktopShortcuts;
+        }
+    }
+
+    await winboat.appMgr!.removeCustomApp(app);
     await refreshApps();
 }
 
@@ -523,6 +590,47 @@ async function resetCustomAppForm() {
             input.value = "";
         });
     }, 100);
+}
+
+/**
+ * Checks if an app has a desktop shortcut
+ */
+function hasDesktopShortcut(app: WinApp | null): boolean {
+    if (!app) return false;
+    return desktopShortcutNames.value.includes(app.Name);
+}
+
+/**
+ * Toggles a desktop shortcut for an app
+ */
+async function toggleDesktopShortcut() {
+    if (!contextMenuTarget.value) return;
+
+    const app = contextMenuTarget.value;
+    const wbConfig = winboat.config;
+
+    if (!wbConfig) {
+        console.error("Winboat config not available");
+        return;
+    }
+
+    try {
+        if (hasDesktopShortcut(app)) {
+            // Remove shortcut
+            await desktopShortcuts.removeShortcut(app);
+            wbConfig.desktopShortcuts = wbConfig.desktopShortcuts.filter(name => name !== app.Name);
+            desktopShortcutNames.value = wbConfig.desktopShortcuts;
+            console.log(`Removed desktop shortcut for ${app.Name}`);
+        } else {
+            // Add shortcut (auto-detects correct executable path)
+            await desktopShortcuts.createShortcut(app);
+            wbConfig.desktopShortcuts = [...wbConfig.desktopShortcuts, app.Name];
+            desktopShortcutNames.value = wbConfig.desktopShortcuts;
+            console.log(`Created desktop shortcut for ${app.Name}`);
+        }
+    } catch (error) {
+        console.error(`Failed to toggle desktop shortcut for ${app.Name}:`, error);
+    }
 }
 </script>
 
