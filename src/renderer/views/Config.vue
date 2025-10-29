@@ -539,7 +539,7 @@
                 </x-card>
 
                 <!-- LogCard -->
-                <LogCard></LogCard>
+                <LogsCard></LogsCard>
             </div>
         </div>
 
@@ -638,7 +638,7 @@ import {
     DEFAULT_HOST_QMP_PORT,
 } from "../lib/constants";
 import { PortManager } from "../utils/port";
-import LogCard from "./config/LogCard.vue";
+import LogsCard from "./config/LogsCard.vue";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
 // Emits

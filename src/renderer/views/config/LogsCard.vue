@@ -21,7 +21,7 @@ import { Icon } from "@iconify/vue";
             </div>
             <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">Select the log you want to open</p>
         </div>
-        <div class="flex flex-col gap-2 justify-center items-center" style="font-size: 0.8125rem">
+        <div class="flex flex-row gap-2 justify-center items-center" style="font-size: 0.8125rem">
             <x-button
                 @click="
                     logTitle = 'Winboat log (winboat.log)';
