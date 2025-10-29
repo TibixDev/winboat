@@ -38,7 +38,7 @@ import { Icon } from "@iconify/vue";
                     logDialog!.showModal();
                 "
             >
-                Install log (winboat.log)
+                Install log (install.log)
             </x-button>
         </div>
         <LogDialog :title="logTitle" :content="logContent" ref="logDialog"></LogDialog>
