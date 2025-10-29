@@ -37,6 +37,7 @@ export const DefaultCompose: ComposeConfig = {
                 HOME: "${HOME}",
                 LANGUAGE: "English",
                 HOST_PORTS: "7149",
+                USER_PORTS: "7148",
                 ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
             },
             cap_add: ["NET_ADMIN"],
