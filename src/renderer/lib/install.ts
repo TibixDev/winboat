@@ -7,7 +7,7 @@ import { Winboat } from "./winboat";
 import { ComposePortMapper } from "../utils/port";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
-import { createContainer } from "./containers/common";
+import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
 const fs: typeof import('fs') = require('fs');
 const path: typeof import('path') = require('path');
 const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
@@ -32,6 +32,7 @@ interface InstallEvents {
     stateChanged: (state: InstallState) => void;
     preinstallMsg: (msg: string) => void;
     error: (error: Error) => void;
+    vncPortChanged: (port: number) => void;
 }
 
 export class InstallManager {
@@ -191,6 +192,13 @@ export class InstallManager {
 
         // Start the container
         await this.container.compose("up");
+
+        // Cahce ports
+        await this.container.port();
+        
+        // emit vnc port event
+        this.emitter.emit("vncPortChanged", getActiveHostPort(this.container, CommonPorts.NOVNC)!);
+        
         logger.info('Container started successfully.');
     }
 
@@ -204,13 +212,14 @@ export class InstallManager {
         const re = new RegExp(/>([^<]+)</);
         while (true) {
             try {
-                //const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
-                const vncHostPort = GUEST_NOVNC_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
+                const vncHostPort = getActiveHostPort(this.container, CommonPorts.NOVNC)!;
                 const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`, { signal: AbortSignal.timeout(500) });
+
                 if (response.status === 404) {
                     logger.info("Received 404, preinstall completed");
                     return; // Exit the method when we get 404
                 }
+
                 const message = await response.text();
                 const messageFormatted = re.exec(message)?.[1] || message;
                 this.setPreinstallMsg(messageFormatted);
@@ -219,6 +228,7 @@ export class InstallManager {
                     logger.info("Received 404, preinstall completed");
                     return; // Exit the method when fetch throws 404
                 }
+
                 logger.error(`Error monitoring container: ${error}`);
                 throw error;
             }
@@ -237,9 +247,9 @@ export class InstallManager {
         while (true) {
             const start = performance.now();
             try {
-                // const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
-                const apiHostPort = GUEST_API_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
+                const apiHostPort = getActiveHostPort(this.container, CommonPorts.API)!;
                 const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, { signal: AbortSignal.timeout(5000) });
+
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
@@ -269,6 +279,7 @@ export class InstallManager {
             if (++attempts % 12 === 0) {
                 logger.info(`API not responding yet, still waiting after ${attempts * 5 / 60} minutes...`);
             }
+
             this.sleep(5000 - (performance.now() - start));
         }
     }

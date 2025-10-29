@@ -122,7 +122,7 @@
                             @input="
                                 (e: any) =>
                                     (freerdpPort = Number(
-                                        /^\d+$/.exec(e.target.value)![0] || winboat.getHostPort(GUEST_RDP_PORT),
+                                        /^\d+$/.exec(e.target.value)![0] || portMapper?.getShortPortMapping(GUEST_RDP_PORT)!.host,
                                     ))
                             "
                             required
@@ -736,7 +736,7 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number ?? GUEST_RDP_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
+    freerdpPort.value = portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number ?? GUEST_RDP_PORT;
     origFreerdpPort.value = freerdpPort.value;
 
     origApplicationScale.value = wbConfig.config.scaleDesktop;
@@ -779,6 +779,8 @@ async function saveCompose() {
         protocol: "udp",
         hostIP: "127.0.0.1"
     });
+
+    compose.value!.services.windows.ports = portMapper.value!.composeFormat;
 
     isApplyingChanges.value = true;
     try {

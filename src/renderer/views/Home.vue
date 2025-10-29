@@ -57,7 +57,8 @@
                     class="generic-hover"
                     v-if="
                         winboat.containerStatus.value === ContainerStatus.EXITED ||
-                        winboat.containerStatus.value === ContainerStatus.UKNOWN
+                        winboat.containerStatus.value === ContainerStatus.CREATED ||
+                        winboat.containerStatus.value === ContainerStatus.UKNOWN 
                     "
                     @click="winboat.startContainer()"
                 >

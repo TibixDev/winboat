@@ -20,7 +20,7 @@ import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ComposePortEntry, ComposePortMapper } from "../utils/port";
 import { ContainerManager, ContainerStatus } from "./containers/container";
-import { ContainerRuntimes, createContainer } from "./containers/common";
+import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -91,7 +91,7 @@ const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string
  */
 const customAppCallbacks: CustomAppCallbacks = {
     [CustomAppCommands.NOVNC_COMMAND]: (ctx: Winboat) => {
-        const novncHostPort = ctx.getHostPort(GUEST_NOVNC_PORT);
+        const novncHostPort = getActiveHostPort(ctx.containerMgr!, CommonPorts.NOVNC);
         openLink(`http://127.0.0.1:${novncHostPort}`);
     },
 };
@@ -271,6 +271,7 @@ export class Winboat {
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
                 if (_containerStatus === ContainerStatus.RUNNING) {
+                    await this.containerMgr!.port(); // Cache active port mappings
                     await this.createAPIIntervals();
                 } else {
                     await this.destroyAPIIntervals();
@@ -406,10 +407,7 @@ export class Winboat {
     async getHealth() {
         // If /health returns 200, then the guest is ready
         try {
-            const apiPort = this.getHostPort(GUEST_API_PORT);
-            const apiUrl = `http://127.0.0.1:${apiPort}`;
-
-            const res = await nodeFetch(`${apiUrl}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+            const res = await nodeFetch(`${this.apiUrl}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
             return res.status === 200;
         } catch {
             return false;
@@ -417,17 +415,13 @@ export class Winboat {
     }
 
     async getMetrics() {
-        const apiPort = this.getHostPort(GUEST_API_PORT);
-        const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const res = await nodeFetch(`${apiUrl}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+        const res = await nodeFetch(`${this.apiUrl}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const metrics = await res.json() as Metrics;
         return metrics;
     }
 
     async getRDPConnectedStatus() {
-        const apiPort = this.getHostPort(GUEST_API_PORT);
-        const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const res = await nodeFetch(`${apiUrl}/rdp/status`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+        const res = await nodeFetch(`${this.apiUrl}/rdp/status`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const status = (await res.json()) as { rdpConnected: boolean };
         return status.rdpConnected;
     }
@@ -436,21 +430,6 @@ export class Winboat {
         const composeFile = fs.readFileSync(this.containerMgr!.composeFilePath, 'utf-8');
         const composeContents = YAML.parse(composeFile) as ComposeConfig;
         return composeContents;
-    }
-
-    /**
-     * Returns the host port that maps to the given guest port
-     *
-     * @param guestPort The port that gets looked up
-     * @returns The host port that maps to the given guest port, or null if not found
-     */
-    getHostPort(guestPort: number | string): number {
-        //return this.portMgr.value?.getHostPort(guestPort) ?? Number.parseInt(guestPort.toString());
-        if(typeof guestPort === "string") {
-            guestPort = parseInt(guestPort);
-        }
-        
-        return guestPort; // TODO!!!: Replace this with the actual port value from the containerManager
     }
 
     getCredentials() {
@@ -463,8 +442,7 @@ export class Winboat {
 
     async #connectQMPManager() {
         try {
-            const qmpHostPort = this.getHostPort(GUEST_QMP_PORT);
-            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", qmpHostPort).catch(e => {
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", getActiveHostPort(this.containerMgr!, CommonPorts.QMP)!).catch(e => {
                 logger.error(e);
                 throw e;
             });
@@ -627,17 +605,13 @@ export class Winboat {
             return;
         }
 
+        const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
-
-        const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
+        const freeRDPBin = await getFreeRDP();
+        const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
-
-        const freeRDPBin = await getFreeRDP();
-
         logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
-
-        const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -688,9 +662,7 @@ export class Winboat {
 
     async checkVersionAndUpdateGuestServer() {
         // 1. Get the version of the guest server and compare it to the current version
-        const apiPort = this.getHostPort(GUEST_API_PORT);
-        const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const versionRes = await nodeFetch(`${apiUrl}/version`);
+        const versionRes = await nodeFetch(`${this.apiUrl}/version`);
         const version = (await versionRes.json()) as GuestServerVersion;
 
         const appVersion = import.meta.env.VITE_APP_VERSION;
@@ -718,9 +690,7 @@ export class Winboat {
         formData.append("updateFile", fs.createReadStream(zipPath));
 
         try {
-            const apiPort = this.getHostPort(GUEST_API_PORT);
-            const apiUrl = `http://127.0.0.1:${apiPort}`;
-            const res = await nodeFetch(`${apiUrl}/update`, {
+            const res = await nodeFetch(`${this.apiUrl}/update`, {
                 method: "POST",
                 body: formData as any,
             });
@@ -756,5 +726,13 @@ export class Winboat {
      */
     get hasQMPInterval() {
         return this.#qmpInterval !== null;
+    }
+
+    get apiUrl(): string | undefined {
+        const apiPort = getActiveHostPort(this.containerMgr!, CommonPorts.API);
+
+        if(!apiPort) return undefined;
+
+        return `http://127.0.0.1:${apiPort}`;
     }
 }

@@ -270,12 +270,6 @@ const currentAppForm = ref<WinApp>({
     Source: "",
 });
 
-const apiURL = computed(() => {
-    const port = GUEST_API_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
-
-    return `http://127.0.0.1:${port}`;
-});
-
 const AllSources = computed(() => {
     let sourceList: Record<string, string> = {};
     const sourceMap: Record<string, string> = {
@@ -334,13 +328,13 @@ onMounted(async () => {
 
 async function refreshApps() {
     if (winboat.isOnline.value) {
-        const loadedApps = await winboat.appMgr!.getApps(apiURL.value);
+        const loadedApps = await winboat.appMgr!.getApps(winboat.apiUrl!);
         apps.value = loadedApps.map(app => ({
             ...app,
             id: crypto.randomUUID(),
         }));
         // Run in background, won't impact UX
-        await winboat.appMgr!.updateAppCache(apiURL.value);
+        await winboat.appMgr!.updateAppCache(winboat.apiUrl!);
     }
 }
 
@@ -348,7 +342,7 @@ const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {
     if (newVal !== oldVal && newVal !== "") {
         const formData = new FormData();
         formData.append("path", newVal);
-        const iconRes = await nodeFetch(`${apiURL.value}/get-icon`, {
+        const iconRes = await nodeFetch(`${winboat.apiUrl!}/get-icon`, {
             method: "POST",
             body: formData as any,
         });

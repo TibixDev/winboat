@@ -4,6 +4,7 @@ import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus, ContainerAction } from "./container";
 import YAML from 'yaml';
 import { capitalizeFirstLetter } from "../../utils/capitalize";
+import { ComposePortEntry } from "../../utils/port";
 const { exec }: typeof import('child_process') = require('child_process');
 const { promisify }: typeof import('util') = require('util');
 const path: typeof import('path') = require('path');
@@ -40,13 +41,12 @@ type PodmanInfo = {
 
 const COMPOSE_ENV_VARS = "PODMAN_COMPOSE_PROVIDER=podman-compose PODMAN_COMPOSE_WARNING_LOGS=false";
 
-/**
- * @todo NOT IMPLEMENTED
- */
 export class PodmanContainer extends ContainerManager {
     defaultCompose = PODMAN_DEFAULT_COMPOSE;
     composeFilePath = path.join(WINBOAT_DIR, "podman-compose.yml");
     executableAlias = "podman";
+
+    cachedPortMappings: ComposePortEntry[] | null = null;
 
     constructor() {
         super();
@@ -88,6 +88,32 @@ export class PodmanContainer extends ContainerManager {
             containerLogger.error(e);
             throw e;
         }
+    }
+
+    async port(): Promise<ComposePortEntry[]> {
+        const command = `${this.executableAlias} port ${this.containerName}`;
+        const ret = [];
+
+        try {
+            const { stdout } = await execAsync(command);
+
+            for(const line of stdout.trim().split("\n")) {
+                const parts = line.split("->").map((part) => part.trim());
+                const hostPart = parts[1];
+                const containerPart = parts[0];
+                
+                ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
+            }
+        }
+        catch(e) {
+            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(e);
+            throw e;
+        }
+
+        containerLogger.info("Podman container active port mappings: ", JSON.stringify(ret));
+        this.cachedPortMappings = ret;
+        return ret;
     }
 
     async remove(): Promise<void> {

@@ -1,6 +1,7 @@
 import { ComposeConfig } from "../../../types";
 import { DOCKER_DEFAULT_COMPOSE } from "../../data/docker";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
+import { ComposePortEntry } from "../../utils/port";
 import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from 'yaml';
@@ -23,6 +24,8 @@ export class DockerContainer extends ContainerManager {
     defaultCompose = DOCKER_DEFAULT_COMPOSE;
     composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
     executableAlias = "docker";
+
+    cachedPortMappings: ComposePortEntry[] | null = null;
 
     constructor() {
         super();
@@ -64,6 +67,32 @@ export class DockerContainer extends ContainerManager {
             containerLogger.error(e);
             throw e;
         }
+    }
+
+    async port(): Promise<ComposePortEntry[]> {
+        const command = `${this.executableAlias} port ${this.containerName}`;
+        const ret = [];
+
+        try {
+            const { stdout } = await execAsync(command);
+
+            for(const line of stdout.trim().split("\n")) {
+                const parts = line.split("->").map((part) => part.trim());
+                const hostPart = parts[1];
+                const containerPart = parts[0];
+                
+                ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
+            }
+        }
+        catch(e) {
+            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(e);
+            throw e;
+        }
+
+        containerLogger.info("Podman container active port mappings: ", JSON.stringify(ret));
+        this.cachedPortMappings = ret;
+        return ret;
     }
 
     async remove(): Promise<void> {

@@ -33,7 +33,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             ],
             "privileged": true,
             "ports": [
-                "8006:8006", // VNC Web Interface
+                "127.0.0.1:47270-47280:8006", // VNC Web Interface
                 "7148:7148", // Winboat Guest Server API
                 "8149:7149", // QEMU QMP Port
                 "3389:3389/tcp", // RDP

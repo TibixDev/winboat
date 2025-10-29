@@ -647,7 +647,7 @@
                         <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
-                            <a :href="novncURL" @click="openAnchorLink">in your browser</a>.
+                            <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
                         </p>
 
                         <!-- Installing -->
@@ -831,7 +831,7 @@ const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
-
+const vncPort = ref(8006);
 
 let installManager: InstallManager | null;
 
@@ -906,12 +906,6 @@ const passwordErrors = computed(() => {
     }
 
     return errors;
-});
-
-const novncURL = computed(() => {
-    const port = GUEST_NOVNC_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
-
-    return `http://127.0.0.1:${port}`;
 });
 
 function selectIsoFile() {
@@ -1030,6 +1024,10 @@ function install() {
     installManager.emitter.on("preinstallMsg", msg => {
         preinstallMsg.value = msg;
         console.log("Preinstall msg", msg);
+    });
+
+    installManager.emitter.on("vncPortChanged", port => {
+        vncPort.value = port;
     });
 
     installManager.install();
