@@ -3,7 +3,8 @@ import { GUEST_API_PORT, GUEST_NOVNC_PORT, RESTART_ON_FAILURE, WINBOAT_DIR } fro
 import { ref, type Ref } from "vue";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
-import { PortManager } from "../utils/port";
+import { Winboat } from "./winboat";
+import { ComposePortMapper } from "../utils/port";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { createContainer } from "./containers/common";
@@ -15,17 +16,18 @@ const remote: typeof import('@electron/remote') = require('@electron/remote');
 const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
 
 export const InstallStates = {
-    IDLE: 'Preparing',
-    CREATING_COMPOSE_FILE: 'Creating Compose File',
+    IDLE: "Preparing",
+    CREATING_COMPOSE_FILE: "Creating Compose File",
     CREATING_OEM: "Creating OEM Assets",
-    STARTING_CONTAINER: 'Starting Container',
-    MONITORING_PREINSTALL: 'Monitoring Preinstall',
-    INSTALLING_WINDOWS: 'Installing Windows',
-    COMPLETED: 'Completed',
-    INSTALL_ERROR: 'Install Error'
+    STARTING_CONTAINER: "Starting Container",
+    MONITORING_PREINSTALL: "Monitoring Preinstall",
+    INSTALLING_WINDOWS: "Installing Windows",
+    COMPLETED: "Completed",
+    INSTALL_ERROR: "Install Error",
 } as const;
 
-export type InstallState = typeof InstallStates[keyof typeof InstallStates];
+export type InstallState = (typeof InstallStates)[keyof typeof InstallStates];
+
 interface InstallEvents {
     stateChanged: (state: InstallState) => void;
     preinstallMsg: (msg: string) => void;
@@ -38,27 +40,25 @@ export class InstallManager {
     state: InstallState;
     preinstallMsg: string;
     container: ContainerManager;
-    portMgr: Ref<PortManager | null>;
 
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
         this.state = InstallStates.IDLE;
-        this.preinstallMsg = ""
+        this.preinstallMsg = "";
         this.emitter = createNanoEvents<InstallEvents>();
-        this.portMgr = ref(null);
         this.container = conf.container;
     }
 
     changeState(newState: InstallState) {
         this.state = newState;
-        this.emitter.emit('stateChanged', newState);
+        this.emitter.emit("stateChanged", newState);
         logger.info(`New state: "${newState}"`);
     }
 
     setPreinstallMsg(msg: string) {
         if (msg === this.preinstallMsg) return;
         this.preinstallMsg = msg;
-        this.emitter.emit('preinstallMsg', msg);
+        this.emitter.emit("preinstallMsg", msg);
         logger.info(`Preinstall: "${msg}"`);
     }
 
@@ -83,9 +83,7 @@ export class InstallManager {
 
         // Configure the compose file
         const composeContent = this.container.defaultCompose;
-        this.portMgr.value = await PortManager.parseCompose(composeContent);
 
-        composeContent.services.windows.ports = this.portMgr.value.composeFormat;
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
@@ -93,29 +91,29 @@ export class InstallManager {
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
-        
+
         // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
         }
 
         // Storage folder mapping
-        const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/storage'));
-        if (storageFolderIdx !== -1) {
-            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
-        } else {
+        const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
+        if (storageFolderIdx === -1) {
             logger.warn("No /storage volume found in compose template, adding one...");
             composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
+        } else {
+            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
         }
 
         // Home folder mapping
         if (!this.conf.shareHomeFolder) {
-            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes('/shared'));
-            if (sharedFolderIdx !== -1) {
+            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
+            if (sharedFolderIdx === -1) {
+                logger.info("No home folder sharing volume found, nothing to remove");
+            } else {
                 composeContent.services.windows.volumes.splice(sharedFolderIdx, 1);
                 logger.info("Removed home folder sharing as per user configuration");
-            } else {
-                logger.info("No home folder sharing volume found, nothing to remove");
             }
         }
 
@@ -127,7 +125,7 @@ export class InstallManager {
         this.changeState(InstallStates.CREATING_OEM);
         logger.info("Creating OEM assets");
 
-        const oemPath = path.join(WINBOAT_DIR, 'oem'); // Fixed the path separator
+        const oemPath = path.join(WINBOAT_DIR, "oem"); // Fixed the path separator
 
         // Create OEM directory if it doesn’t exist
         if (!fs.existsSync(oemPath)) {
@@ -136,9 +134,9 @@ export class InstallManager {
         }
 
         // Determine the source path based on whether the app is bundled
-        const appPath = remote.app.isPackaged 
-            ? path.join(process.resourcesPath, 'guest_server') // For packaged app
-            : path.join(remote.app.getAppPath(), '..', '..', 'guest_server'); // For dev mode
+        const appPath = remote.app.isPackaged
+            ? path.join(process.resourcesPath, "guest_server") // For packaged app
+            : path.join(remote.app.getAppPath(), "..", "..", "guest_server"); // For dev mode
 
         logger.info(`Guest server source path: ${appPath}`);
 
@@ -151,20 +149,20 @@ export class InstallManager {
 
         const copyRecursive = (src: string, dest: string) => {
             const stats = fs.statSync(src);
-            
+
             if (stats.isDirectory()) {
                 // Create directory if it doesn't exist
                 if (!fs.existsSync(dest)) {
                     fs.mkdirSync(dest, { recursive: true });
                 }
-                
+
                 // Copy all contents
                 fs.readdirSync(src).forEach(entry => {
                     const srcPath = path.join(src, entry);
                     const destPath = path.join(dest, entry);
                     copyRecursive(srcPath, destPath);
                 });
-                
+
                 logger.info(`Copied directory ${src} to ${dest}`);
             } else {
                 // Copy file
@@ -189,7 +187,7 @@ export class InstallManager {
 
     async startContainer() {
         this.changeState(InstallStates.STARTING_CONTAINER);
-        logger.info('Starting container...');
+        logger.info("Starting container...");
 
         // Start the container
         await this.container.compose("up");
@@ -201,23 +199,24 @@ export class InstallManager {
         await this.sleep(3000);
 
         this.changeState(InstallStates.MONITORING_PREINSTALL);
-        logger.info('Starting preinstall monitoring...');
+        logger.info("Starting preinstall monitoring...");
 
+        const re = new RegExp(/>([^<]+)</);
         while (true) {
             try {
-                const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
+                //const vncHostPort = this.portMgr.value!.getHostPort(GUEST_NOVNC_PORT);
+                const vncHostPort = GUEST_NOVNC_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
                 const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`, { signal: AbortSignal.timeout(500) });
                 if (response.status === 404) {
-                    logger.info('Received 404, preinstall completed');
+                    logger.info("Received 404, preinstall completed");
                     return; // Exit the method when we get 404
                 }
                 const message = await response.text();
-                const re = />([^<]+)</;
-                const messageFormatted = message.match(re)?.[1] || message;
+                const messageFormatted = re.exec(message)?.[1] || message;
                 this.setPreinstallMsg(messageFormatted);
             } catch (error) {
-                if (error instanceof Error && error.message.includes('404')) {
-                    logger.info('Received 404, preinstall completed');
+                if (error instanceof Error && error.message.includes("404")) {
+                    logger.info("Received 404, preinstall completed");
                     return; // Exit the method when fetch throws 404
                 }
                 logger.error(`Error monitoring container: ${error}`);
@@ -238,12 +237,24 @@ export class InstallManager {
         while (true) {
             const start = performance.now();
             try {
-                const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
-
+                // const apiHostPort = this.portMgr.value!.getHostPort(GUEST_API_PORT);
+                const apiHostPort = GUEST_API_PORT; // TODO!!!: Replace this with the actual port value from the containerManager
                 const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, { signal: AbortSignal.timeout(5000) });
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
+
+                    const winboat = Winboat.getInstance();
+                    const config = winboat.parseCompose();
+                    const filteredVolumes = config.services.windows.volumes.filter(
+                        volume => !volume.endsWith("/boot.iso"),
+                    );
+
+                    if (config.services.windows.volumes.length !== filteredVolumes.length) {
+                        config.services.windows.volumes = filteredVolumes;
+                        await winboat.replaceCompose(config, false);
+                    }
+
                     return;
                 }
 
@@ -279,13 +290,14 @@ export class InstallManager {
         }
         this.changeState(InstallStates.COMPLETED);
 
-        logger.info('Installation completed successfully.');
+        logger.info("Installation completed successfully.");
     }
 }
 
+
 export async function isInstalled(): Promise<boolean> {
     // Check if a winboat container exists
-    const configInstance = new WinboatConfig({ instantiateAsSingleton: false });
+    const configInstance = new WinboatConfig();
     const config = configInstance.readConfig()
 
     if(!config) return false

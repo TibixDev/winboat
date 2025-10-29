@@ -1,9 +1,15 @@
-const fs: typeof import("fs") = require("fs");
-const path: typeof import("path") = require("path");
+const fs: typeof import("fs") = require("node:fs");
+const path: typeof import("path") = require("node:path");
 import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
 import { ContainerRuntimes } from "./containers/common";
+
+export type RdpArg = {
+    original?: string;
+    newArg: string;
+    isReplacement: boolean;
+};
 
 export type WinboatConfigObj = {
     scale: number;
@@ -13,7 +19,10 @@ export type WinboatConfigObj = {
     passedThroughDevices: PTSerializableDeviceInfo[];
     customApps: WinApp[];
     experimentalFeatures: boolean;
+    advancedFeatures: boolean;
     multiMonitor: number;
+    rdpArgs: RdpArg[];
+    disableAnimations: boolean;
     containerRuntime: ContainerRuntimes
 };
 
@@ -25,29 +34,26 @@ const defaultConfig: WinboatConfigObj = {
     passedThroughDevices: [],
     customApps: [],
     experimentalFeatures: false,
+    advancedFeatures: false,
     multiMonitor: 0,
+    rdpArgs: [],
+    disableAnimations: false,
     containerRuntime: ContainerRuntimes.DOCKER // TODO: Ideally should be podman once we flesh out everything
 };
 
-type WinboatConfigOptions = {
-    instantiateAsSingleton?: boolean
-};
-
-export class WinboatConfig { 
-    private static instance: WinboatConfig;
-    private defaultOptions:WinboatConfigOptions = {
-        instantiateAsSingleton: true
-    };
-
-    #configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
+export class WinboatConfig {
+    private static instance: WinboatConfig | null = null;
+    readonly #configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     #configData: WinboatConfigObj = { ...defaultConfig };
 
-    constructor(options: WinboatConfigOptions = this.defaultOptions) {
-        if(!options.instantiateAsSingleton) return;
-        if (WinboatConfig.instance) return WinboatConfig.instance;
-        this.#configData = this.readConfig()!;
+    static getInstance() {
+        WinboatConfig.instance ??= new WinboatConfig();
+        return WinboatConfig.instance;
+    }
+
+    constructor() {
+        this.#configData = this.readConfig()!;        
         console.log("Reading current config", this.#configData);
-        WinboatConfig.instance = this;
     }
 
     get config(): WinboatConfigObj {
@@ -99,7 +105,11 @@ export class WinboatConfig {
                     // @ts-expect-error This is valid
                     configObj[key] = defaultConfig[key];
                     hasMissing = true;
-                    console.log(`Added missing config key: ${key} with default value: ${defaultConfig[key as keyof WinboatConfigObj]}`);
+                    console.log(
+                        `Added missing config key: ${key} with default value: ${
+                            defaultConfig[key as keyof WinboatConfigObj]
+                        }`,
+                    );
                 }
 
                 // If we have any missing keys, we should just write the config back to disk so those new keys are saved

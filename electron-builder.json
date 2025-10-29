@@ -1,54 +1,54 @@
 {
-  "appId": "com.teabox.winboat",
-  "directories": {
-    "output": "dist"
-  },
-  "publish": null,
-  "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "shortcutName": "WinBoat"
-  },
-  "win": {
-    "target": "nsis"
-  },
-  "linux": {
-    "icon": "icons/winboat.png",
-    "target": ["appimage", "deb", "rpm", "tar.gz"],
-    "category": "Utility",
-    "artifactName": "${name}-${version}-${arch}.${ext}"
-  },
-  "files": [
-    {
-      "from": "build/main",
-      "to": "main",
-      "filter": ["**/*"]
+    "appId": "com.teabox.winboat",
+    "directories": {
+        "output": "dist"
     },
-    {
-      "from": "build/renderer",
-      "to": "renderer",
-      "filter": ["**/*"]
+    "publish": null,
+    "nsis": {
+        "oneClick": false,
+        "perMachine": false,
+        "allowToChangeInstallationDirectory": true,
+        "shortcutName": "WinBoat"
     },
-    {
-      "from": "src/main/static",
-      "to": "static",
-      "filter": ["**/*"]
+    "win": {
+        "target": "nsis"
     },
-    "!build",
-    "!dist",
-    "!scripts"
-  ],
-  "extraResources": [
-    {
-      "from": "./guest_server",
-      "to": "guest_server",
-      "filter": ["**/*"]
+    "linux": {
+        "icon": "icons/winboat_logo.svg",
+        "target": ["appimage", "deb", "rpm", "tar.gz"],
+        "category": "Utility",
+        "artifactName": "${name}-${version}-${arch}.${ext}"
     },
-    {
-      "from": "./data",
-      "to": "data",
-      "filter": ["**/*"]
-    }
-  ]
+    "files": [
+        {
+            "from": "build/main",
+            "to": "main",
+            "filter": ["**/*"]
+        },
+        {
+            "from": "build/renderer",
+            "to": "renderer",
+            "filter": ["**/*"]
+        },
+        {
+            "from": "src/main/static",
+            "to": "static",
+            "filter": ["**/*"]
+        },
+        "!build",
+        "!dist",
+        "!scripts"
+    ],
+    "extraResources": [
+        {
+            "from": "./guest_server",
+            "to": "guest_server",
+            "filter": ["**/*"]
+        },
+        {
+            "from": "./data",
+            "to": "data",
+            "filter": ["**/*"]
+        }
+    ]
 }
