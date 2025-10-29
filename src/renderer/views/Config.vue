@@ -533,7 +533,7 @@
                 </x-card>
 
                 <!-- LogCard -->
-                <LogCard></LogCard>
+                <LogsCard></LogsCard>
             </div>
         </div>
 
