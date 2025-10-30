@@ -3,15 +3,22 @@ import { ref } from "vue";
 import { Icon } from "@iconify/vue";
 const electron: typeof import("electron") = require("electron");
 
-defineProps({ title: String, content: String });
+defineProps({ title: String });
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const copied = ref(false);
+const title = ref("");
+const content = ref("");
 function showModal() {
     copied.value = false;
     dialogRef.value!.showModal();
 }
-
-defineExpose({ showModal });
+function setTitle(newTitle: string) {
+    title.value = newTitle;
+}
+function setContent(newContent: string) {
+    content.value = newContent;
+}
+defineExpose({ showModal, setTitle, setContent });
 </script>
 
 <template>
