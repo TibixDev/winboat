@@ -1,5 +1,16 @@
 import { execFileAsync, stringifyExecFile } from "../lib/exec-helper";
 
+export type FreeRDPError = {
+    cmd: string;
+    code: number;
+    killed: boolean;
+    signal?: string | number;
+    stderr: string;
+    stdout: string;
+    message: string;
+    stack: string;
+};
+
 export class FreeRDPInstallation {
     file: string;
     defaultArgs: string[];
