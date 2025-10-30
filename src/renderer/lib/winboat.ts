@@ -6,20 +6,20 @@ import type {
     GuestServerUpdateResponse,
     GuestServerVersion,
     Metrics,
-    WinApp,
+    WinApp
 } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from "yaml";
 import { InternalApps } from "../data/internalapps";
-import { FreeRDPError, getFreeRDP } from "../utils/getFreeRDP";
+import { getFreeRDP } from "../utils/getFreeRDP";
 import { openLink } from "../utils/openLink";
 import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { PortManager } from "../utils/port";
-import { execFileAsync } from "./exec-helper";
+import { execFileAsync, ExecFileAsyncError } from "./exec-helper";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 
@@ -662,7 +662,7 @@ export class Winboat {
                 .exec(args)
                 .then(_value => {})
                 .catch(reason => {
-                    const error = reason as FreeRDPError;
+                    const error = reason as ExecFileAsyncError;
                     // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
                     // #define ERRINFO_LOGOFF_BY_USER 0x0000000C
                     if (error.code !== 12) {

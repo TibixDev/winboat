@@ -1,6 +1,17 @@
 const { execFile }: typeof import("child_process") = require("node:child_process");
 const { promisify }: typeof import("util") = require("node:util");
 
+export type ExecFileAsyncError = {
+    cmd: string;
+    code: number;
+    killed: boolean;
+    signal?: string | number;
+    stderr: string;
+    stdout: string;
+    message: string;
+    stack: string;
+};
+
 export const execFileAsync = promisify(execFile);
 
 export function stringifyExecFile(file: string, args: string[]): string {
