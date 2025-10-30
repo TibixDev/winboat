@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
-const fs: typeof import("fs") = require("node:fs");
-const path: typeof import("path") = require("node:path");
-const logContent = ref("");
-const logTitle = ref("");
-const logDialog = ref<typeof LogDialog | null>(null);
-import { WINBOAT_DIR } from "../../lib/constants";
 import LogDialog from "../dialogs/LogDialog.vue";
 import { Icon } from "@iconify/vue";
+import LogButton from "../buttons/LogButton.vue";
+
+const logDialog = ref<typeof LogDialog | null>(null);
 </script>
 
 <template>
@@ -22,25 +19,9 @@ import { Icon } from "@iconify/vue";
             <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">Select the log you want to open</p>
         </div>
         <div class="flex flex-row gap-2 justify-center items-center" style="font-size: 0.8125rem">
-            <x-button
-                @click="
-                    logTitle = 'Winboat log (winboat.log)';
-                    logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'winboat.log'), 'utf8');
-                    logDialog!.showModal();
-                "
-            >
-                Winboat log (winboat.log)
-            </x-button>
-            <x-button
-                @click="
-                    logTitle = 'Install log (install.log)';
-                    logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'install.log'), 'utf8');
-                    logDialog!.showModal();
-                "
-            >
-                Install log (install.log)
-            </x-button>
+            <LogButton title="Winboat log (winboat.log)" logFile="winboat.log" :dialog="logDialog!!" />
+            <LogButton title="Install log (install.log)" logFile="install.log" :dialog="logDialog!!" />
         </div>
-        <LogDialog :title="logTitle" :content="logContent" ref="logDialog"></LogDialog>
+        <LogDialog ref="logDialog"></LogDialog>
     </x-card>
 </template>

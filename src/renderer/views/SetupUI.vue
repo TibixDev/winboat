@@ -760,6 +760,13 @@
                                 <a href="https://rentry.org/winboat_retry_install" @click="openAnchorLink">these</a>
                                 instructions.
                             </x-label>
+                            <LogButton
+                                childrenClass="text-lg text-gray-400 text-center"
+                                title="Install log (winboat.log)"
+                                logFile="install.log"
+                                :dialog="logDialog!!"
+                            />
+                            <LogDialog ref="logDialog"></LogDialog>
                         </div>
 
                         <!-- Completed -->
@@ -796,9 +803,10 @@ import {
     ContainerRuntimes,
     DockerSpecs,
     PodmanSpecs,
-    getContainerSpecs,
 } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
+import LogButton from "./buttons/LogButton.vue";
+import LogDialog from "./dialogs/LogDialog.vue";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -911,6 +919,7 @@ const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
+const logDialog = ref<typeof LogDialog | null>(null);
 
 let installManager: InstallManager | null;
 
