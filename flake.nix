@@ -22,7 +22,7 @@
         
         nativeBuildInputs = [
           pkgs.makeWrapper
-          pkgs.freerdp3
+          pkgs.freerdp
           pkgs.usbutils
           pkgs.libusb1
         ];
