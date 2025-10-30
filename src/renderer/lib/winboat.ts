@@ -12,7 +12,7 @@ import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from "yaml";
 import { InternalApps } from "../data/internalapps";
-import { getFreeRDP } from "../utils/getFreeRDP";
+import { FreeRDPError, getFreeRDP } from "../utils/getFreeRDP";
 import { openLink } from "../utils/openLink";
 import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
@@ -658,7 +658,19 @@ export class Winboat {
 
         if (freeRDPInstallation) {
             logger.info(`Launch FreeRDP with command:\n${freeRDPInstallation.stringifyExec(args)}`);
-            freeRDPInstallation.exec(args).then(_value => {});
+            freeRDPInstallation
+                .exec(args)
+                .then(_value => {})
+                .catch(reason => {
+                    const error = reason as FreeRDPError;
+                    // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
+                    // #define ERRINFO_LOGOFF_BY_USER 0x0000000C
+                    if (error.code !== 12) {
+                        throw error;
+                    } else {
+                        logger.info("FreeRDP disconnected due to user logging off.");
+                    }
+                });
         } else {
             logger.error("No freeRDP installation found");
         }
