@@ -10,15 +10,19 @@
 
                 <!-- Status Text -->
                 <div>
-
                     <div class="flex flex-row gap-2 items-center justify-center mb-6 *:m-0">
-                        <h1 class="text-3xl">{{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ??
-                        '11'] ?? 'Unknown' }} </h1>
-                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold">{{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}</p >
+                        <h1 class="text-3xl">
+                            {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
+                        </h1>
+                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold">
+                            {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
+                        </p>
                     </div>
-                    
-                    <div class="flex flex-row items-center gap-1.5 mb-1"
-                        :class="{ 'text-green-500': winboat.isOnline.value, 'text-red-500': !winboat.isOnline.value }">
+
+                    <div
+                        class="flex flex-row items-center gap-1.5 mb-1"
+                        :class="{ 'text-green-500': winboat.isOnline.value, 'text-red-500': !winboat.isOnline.value }"
+                    >
                         <Icon class="size-7" icon="material-symbols:api"></Icon>
                         <p class="!my-0 font-semibold text-lg">
                             WinBoat Guest API -
@@ -35,13 +39,15 @@
                         </p>
                     </div>
 
-                    <div class="flex flex-row items-center gap-1.5" :class="{
-                        'text-green-500': winboat.containerStatus.value === ContainerStatus.RUNNING,
-                        'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
-                        'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
-                        'text-orange-500': winboat.containerStatus.value === ContainerStatus.UKNOWN,
-
-                    }">
+                    <div
+                        class="flex flex-row items-center gap-1.5"
+                        :class="{
+                            'text-green-500': winboat.containerStatus.value === ContainerStatus.RUNNING,
+                            'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
+                            'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
+                            'text-orange-500': winboat.containerStatus.value === ContainerStatus.UNKNOWN,
+                        }"
+                    >
                         <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>
                         <p class="!my-0 font-semibold text-lg">
                             Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
@@ -58,7 +64,7 @@
                     v-if="
                         winboat.containerStatus.value === ContainerStatus.EXITED ||
                         winboat.containerStatus.value === ContainerStatus.CREATED ||
-                        winboat.containerStatus.value === ContainerStatus.UKNOWN 
+                        winboat.containerStatus.value === ContainerStatus.UNKNOWN
                     "
                     @click="winboat.startContainer()"
                 >
@@ -171,14 +177,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { Winboat } from '../lib/winboat';
-import { ContainerStatus } from '../lib/containers/common';
-import { type ComposeConfig } from '../../types';
-import { WINDOWS_VERSIONS } from '../lib/constants';
-import { Icon } from '@iconify/vue';
-import { capitalizeFirstLetter } from '../utils/capitalize';
-import { openAnchorLink } from '../utils/openLink';
+import { onMounted, ref } from "vue";
+import { Winboat } from "../lib/winboat";
+import { ContainerStatus } from "../lib/containers/common";
+import { type ComposeConfig } from "../../types";
+import { WINDOWS_VERSIONS } from "../lib/constants";
+import { Icon } from "@iconify/vue";
+import { capitalizeFirstLetter } from "../utils/capitalize";
+import { openAnchorLink } from "../utils/openLink";
 
 const winboat = Winboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);

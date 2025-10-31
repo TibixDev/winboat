@@ -105,15 +105,15 @@
                             <li class="flex items-center gap-2">
                                 <span v-if="containerInstalled(containerSpecs)" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                            
+
                                 <div>
                                     <x-select
-                                        @change="(e: any) => containerRuntime = e.detail.newValue"
+                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
                                         class="w-fit"
                                     >
                                         <x-menu>
                                             <x-menuitem
-                                                v-for="(runtime, key) in Object.values(ContainerRuntimes)" 
+                                                v-for="(runtime, key) in Object.values(ContainerRuntimes)"
                                                 :key="key"
                                                 :value="runtime"
                                                 :toggled="runtime === containerRuntime"
@@ -124,46 +124,105 @@
                                     </x-select>
                                 </div>
                                 installed
-                                <a href="https://docs.docker.com/engine/install/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                <a
+                                    href="https://docs.docker.com/engine/install/"
+                                    @click="openAnchorLink"
+                                    target="_blank"
+                                    class="text-violet-400 hover:underline ml-1"
+                                    >How?</a
+                                >
                             </li>
 
                             <!-- Docker Specific Requirements -->
                             <template v-if="containerRuntime == ContainerRuntimes.DOCKER">
                                 <li class="flex items-center gap-2">
-                                    <span v-if="containerSpecs && 'dockerComposeInstalled' in containerSpecs && containerSpecs.dockerComposeInstalled" class="text-green-500">✔</span>
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'dockerComposeInstalled' in containerSpecs &&
+                                            containerSpecs.dockerComposeInstalled
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
                                     <span v-else class="text-red-500">✘</span>
                                     Docker Compose v2 installed
-                                    <a href="https://docs.docker.com/compose/install/#plugin-linux-only" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                    <a
+                                        href="https://docs.docker.com/compose/install/#plugin-linux-only"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
                                 </li>
 
                                 <li class="flex items-center gap-2">
-                                    <span v-if="containerSpecs && 'dockerIsInUserGroups' in containerSpecs && containerSpecs.dockerIsInUserGroups" class="text-green-500">✔</span>
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'dockerIsInUserGroups' in containerSpecs &&
+                                            containerSpecs.dockerIsInUserGroups
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
                                     <span v-else class="text-red-500">✘</span>
-                                    User added to the <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
-                                    <span class="text-gray-600">
-                                        (Relog required)
-                                    </span>
-                                    <a href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                    User added to the
+                                    <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
+                                    <span class="text-gray-600"> (Relog required) </span>
+                                    <a
+                                        href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
                                 </li>
 
                                 <li class="flex items-center gap-2">
-                                    <span v-if="containerSpecs && 'dockerIsRunning' in containerSpecs && containerSpecs.dockerIsRunning" class="text-green-500">✔</span>
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'dockerIsRunning' in containerSpecs &&
+                                            containerSpecs.dockerIsRunning
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
                                     <span v-else class="text-red-500">✘</span>
                                     Docker daemon is running
-                                    <span class="text-gray-600">
-                                        (Also enable on boot)
-                                    </span>
-                                    <a href="https://docs.docker.com/config/daemon/start/" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                    <span class="text-gray-600"> (Also enable on boot) </span>
+                                    <a
+                                        href="https://docs.docker.com/config/daemon/start/"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
                                 </li>
                             </template>
 
                             <!-- Podman Specific Requirements -->
                             <template v-else>
                                 <li class="flex items-center gap-2">
-                                    <span v-if="containerSpecs && 'podmanComposeInstalled' in containerSpecs && containerSpecs.podmanComposeInstalled" class="text-green-500">✔</span>
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'podmanComposeInstalled' in containerSpecs &&
+                                            containerSpecs.podmanComposeInstalled
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
                                     <span v-else class="text-red-500">✘</span>
                                     Podman Compose installed
-                                    <a href="https://github.com/containers/podman-compose?tab=readme-ov-file#installation" @click="openAnchorLink" target="_blank" class="text-violet-400 hover:underline ml-1">How?</a>
+                                    <a
+                                        href="https://github.com/containers/podman-compose?tab=readme-ov-file#installation"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
                                 </li>
                             </template>
                             <li class="flex items-center gap-2">
@@ -679,7 +738,9 @@
                                 An error occurred while installing Windows. Please check the logs in
                                 <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
                                 and verify
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">{{ installManager!.container.executableAlias }} logs WinBoat</span>
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5"
+                                    >{{ installManager!.container.executableAlias }} logs WinBoat</span
+                                >
                                 in your terminal for more information.
                             </x-label>
                             <x-label class="text-lg text-gray-400 text-center">
@@ -709,19 +770,19 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { computedAsync } from '@vueuse/core'
-import { InstallConfiguration, Specs } from '../../types';
-import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from '../lib/specs';
+import { Icon } from "@iconify/vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { computedAsync } from "@vueuse/core";
+import { InstallConfiguration, Specs } from "../../types";
+import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVNC_PORT } from "../lib/constants";
-import { InstallManager, type InstallState, InstallStates } from '../lib/install';
-import { openAnchorLink } from '../utils/openLink';
-import license from '../assets/LICENSE.txt?raw'
-import { ContainerImplementations, ContainerRuntimes, DockerSpecs, PodmanSpecs } from '../lib/containers/common';
-import { WinboatConfig } from '../lib/config';
-import { createContainer, getContainerSpecs } from '../lib/containers/common';
+import { InstallManager, type InstallState, InstallStates } from "../lib/install";
+import { openAnchorLink } from "../utils/openLink";
+import license from "../assets/LICENSE.txt?raw";
+import { ContainerImplementations, ContainerRuntimes, DockerSpecs, PodmanSpecs } from "../lib/containers/common";
+import { WinboatConfig } from "../lib/config";
+import { createContainer, getContainerSpecs } from "../lib/containers/common";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -857,12 +918,12 @@ onUnmounted(() => {
 
 const containerSpecs = computedAsync(async () => {
     return await getContainerSpecs(containerRuntime.value);
-})
+});
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
-    if(!containerSpecs) return false;
-    if('dockerInstalled' in containerSpecs) return containerSpecs.dockerInstalled;
-    if('podmanInstalled' in containerSpecs) return containerSpecs.podmanInstalled;
+    if (!containerSpecs) return false;
+    if ("dockerInstalled" in containerSpecs) return containerSpecs.dockerInstalled;
+    if ("podmanInstalled" in containerSpecs) return containerSpecs.podmanInstalled;
     return false;
 }
 
@@ -1002,11 +1063,11 @@ function install() {
         password: password.value,
         shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
-        container: createContainer(containerRuntime.value) // Hardcdde for now
+        container: createContainer(containerRuntime.value), // Hardcdde for now
     };
 
     const wbConfig = new WinboatConfig(); // Create winboat config.
-    wbConfig.config.containerRuntime = containerRuntime.value // Save which runtime to use.
+    wbConfig.config.containerRuntime = containerRuntime.value; // Save which runtime to use.
 
     installManager = new InstallManager(installConfig);
 

@@ -8,12 +8,12 @@ import { ComposePortMapper } from "../utils/port";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
-const fs: typeof import('fs') = require('fs');
-const path: typeof import('path') = require('path');
-const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
-const remote: typeof import('@electron/remote') = require('@electron/remote');
+const fs: typeof import("fs") = require("fs");
+const path: typeof import("path") = require("path");
+const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
+const remote: typeof import("@electron/remote") = require("@electron/remote");
 
-const logger = createLogger(path.join(WINBOAT_DIR, 'install.log'));
+const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
 export const InstallStates = {
     IDLE: "Preparing",
@@ -195,11 +195,11 @@ export class InstallManager {
 
         // Cahce ports
         await this.container.port();
-        
+
         // emit vnc port event
         this.emitter.emit("vncPortChanged", getActiveHostPort(this.container, CommonPorts.NOVNC)!);
-        
-        logger.info('Container started successfully.');
+
+        logger.info("Container started successfully.");
     }
 
     async monitorContainerPreinstall() {
@@ -213,7 +213,9 @@ export class InstallManager {
         while (true) {
             try {
                 const vncHostPort = getActiveHostPort(this.container, CommonPorts.NOVNC)!;
-                const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`, { signal: AbortSignal.timeout(500) });
+                const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`, {
+                    signal: AbortSignal.timeout(500),
+                });
 
                 if (response.status === 404) {
                     logger.info("Received 404, preinstall completed");
@@ -246,10 +248,12 @@ export class InstallManager {
 
         while (true) {
             const start = performance.now();
-            
+
             try {
                 const apiHostPort = getActiveHostPort(this.container, CommonPorts.API)!;
-                const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, { signal: AbortSignal.timeout(5000) });
+                const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, {
+                    signal: AbortSignal.timeout(5000),
+                });
 
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
@@ -272,13 +276,13 @@ export class InstallManager {
                 logger.log(`API request status: ${res.status}`);
             } catch (error) {
                 // We can ignore the AbortError resulting from the timeout
-                if(!(error instanceof nodeFetch.AbortError)) {
+                if (!(error instanceof nodeFetch.AbortError)) {
                     logger.error(error);
                 }
             }
 
             if (++attempts % 12 === 0) {
-                logger.info(`API not responding yet, still waiting after ${attempts * 5 / 60} minutes...`);
+                logger.info(`API not responding yet, still waiting after ${(attempts * 5) / 60} minutes...`);
             }
 
             await this.sleep(5000 - (performance.now() - start));
@@ -286,18 +290,17 @@ export class InstallManager {
     }
 
     async install() {
-        logger.info('Starting installation...');
-        
+        logger.info("Starting installation...");
+
         try {
             await this.createComposeFile();
             this.createOEMAssets();
             await this.startContainer();
             await this.monitorContainerPreinstall();
             await this.monitorAPIHealth();
-        }
-        catch(e) {
+        } catch (e) {
             this.changeState(InstallStates.INSTALL_ERROR);
-            logger.error("Errors encountered, could not complete the installation steps.")
+            logger.error("Errors encountered, could not complete the installation steps.");
             return;
         }
         this.changeState(InstallStates.COMPLETED);
@@ -306,13 +309,12 @@ export class InstallManager {
     }
 }
 
-
 export async function isInstalled(): Promise<boolean> {
     // Check if a winboat container exists
     const configInstance = new WinboatConfig();
-    const config = configInstance.readConfig()
+    const config = configInstance.readConfig();
 
-    if(!config) return false
+    if (!config) return false;
 
     const containerRuntime = createContainer(config.containerRuntime);
 

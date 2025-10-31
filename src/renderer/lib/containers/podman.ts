@@ -2,26 +2,25 @@ import { ComposeConfig } from "../../../types";
 import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
 import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus, ContainerAction } from "./container";
-import YAML from 'yaml';
+import YAML from "yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
-const { exec }: typeof import('child_process') = require('child_process');
-const { promisify }: typeof import('util') = require('util');
-const path: typeof import('path') = require('path');
-const fs: typeof import('fs') = require('fs');
+const { exec }: typeof import("child_process") = require("child_process");
+const { promisify }: typeof import("util") = require("util");
+const path: typeof import("path") = require("path");
+const fs: typeof import("fs") = require("fs");
 
 const execAsync = promisify(exec);
 
 export type PodmanSpecs = {
     podmanInstalled: boolean;
     podmanComposeInstalled: boolean;
-
-}
+};
 
 export enum PodmanAPIStatus {
     AVAILABLE = "Available",
-    UNAVAILABLE = "Unavailable"
-};
+    UNAVAILABLE = "Unavailable",
+}
 
 type PodmanInfo = {
     host: {
@@ -61,7 +60,7 @@ export class PodmanContainer extends ContainerManager {
     }
 
     async compose(direction: ComposeDirection): Promise<void> {
-        const extraArguments = direction == "up" ? "-d" : ""; // Run compose in detached mode if we are running compose up TODO: maybe we need to run both in detached mode
+        const extraArguments = direction == "up" ? "-d" : ""; // Run compose in detached mode if we are running compose up
         const command = `${COMPOSE_ENV_VARS} ${this.executableAlias} compose -f ${this.composeFilePath} ${direction} ${extraArguments}`;
 
         try {
@@ -78,12 +77,11 @@ export class PodmanContainer extends ContainerManager {
 
     async container(action: ContainerAction): Promise<void> {
         const command = `${this.executableAlias} container ${action} ${this.containerName}`;
-        
+
         try {
             const { stdout } = await execAsync(command);
             containerLogger.info(`Container action '${action}' response: '${stdout}'`);
-        }
-        catch(e) {
+        } catch (e) {
             containerLogger.error(`Failed to run container action '${command}'`);
             containerLogger.error(e);
             throw e;
@@ -97,15 +95,14 @@ export class PodmanContainer extends ContainerManager {
         try {
             const { stdout } = await execAsync(command);
 
-            for(const line of stdout.trim().split("\n")) {
-                const parts = line.split("->").map((part) => part.trim());
+            for (const line of stdout.trim().split("\n")) {
+                const parts = line.split("->").map(part => part.trim());
                 const hostPart = parts[1];
                 const containerPart = parts[0];
-                
+
                 ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
             }
-        }
-        catch(e) {
+        } catch (e) {
             containerLogger.error(`Failed to run container action '${command}'`);
             containerLogger.error(e);
             throw e;
@@ -121,7 +118,7 @@ export class PodmanContainer extends ContainerManager {
 
         try {
             await execAsync(command);
-        } catch(e) {
+        } catch (e) {
             containerLogger.error(`Failed to remove container '${this.containerName}'`);
             containerLogger.error(e);
         }
@@ -129,12 +126,12 @@ export class PodmanContainer extends ContainerManager {
 
     async getStatus(): Promise<ContainerStatus> {
         const statusMap = {
-            "created": ContainerStatus.CREATED,
-            "exited": ContainerStatus.EXITED,
-            "paused": ContainerStatus.PAUSED,
-            "running": ContainerStatus.RUNNING,
-            "stopping": ContainerStatus.EXITED, // TODO: investigate this status value
-            "unknown": ContainerStatus.UKNOWN
+            created: ContainerStatus.CREATED,
+            exited: ContainerStatus.EXITED,
+            paused: ContainerStatus.PAUSED,
+            running: ContainerStatus.RUNNING,
+            stopping: ContainerStatus.EXITED, // TODO: investigate this status value
+            unknown: ContainerStatus.UNKNOWN,
         } as const;
         const command = `${this.executableAlias} inspect --format "{{.State.Status}}" ${this.containerName}`;
 
@@ -142,20 +139,22 @@ export class PodmanContainer extends ContainerManager {
             const { stdout } = await execAsync(command);
             const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
-        } catch(e) {
+        } catch (e) {
             containerLogger.error(`Failed to get status of podman container ${e}:'`);
-            return ContainerStatus.UKNOWN;
+            return ContainerStatus.UNKNOWN;
         }
     }
 
     async exists(): Promise<boolean> {
-        const command = `${this.executableAlias} ps -a --filter "name=${this.containerName}" --format "{{.Names}}"`
+        const command = `${this.executableAlias} ps -a --filter "name=${this.containerName}" --format "{{.Names}}"`;
 
         try {
             const { stdout: exists } = await execAsync(command);
-            return exists.includes('WinBoat');
-        } catch(e) {
-            containerLogger.error(`Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`);
+            return exists.includes("WinBoat");
+        } catch (e) {
+            containerLogger.error(
+                `Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`,
+            );
             containerLogger.error(e);
             return false;
         }
@@ -168,20 +167,20 @@ export class PodmanContainer extends ContainerManager {
     static override async _getSpecs(): Promise<PodmanSpecs> {
         let specs: PodmanSpecs = {
             podmanInstalled: false,
-            podmanComposeInstalled: false
+            podmanComposeInstalled: false,
         };
 
         try {
             const { stdout: podmanOutput } = await execAsync("podman --version");
             specs.podmanInstalled = !!podmanOutput;
-        } catch(e) {
+        } catch (e) {
             containerLogger.error("Error checking podman version");
         }
 
         try {
             const { stdout: podmanComposeOutput } = await execAsync(`${COMPOSE_ENV_VARS} podman compose --version`);
             specs.podmanComposeInstalled = !!podmanComposeOutput;
-        } catch(e) {
+        } catch (e) {
             containerLogger.error("Error checking podman compose version");
         }
 

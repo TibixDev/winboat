@@ -23,7 +23,7 @@ export type WinboatConfigObj = {
     multiMonitor: number;
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
-    containerRuntime: ContainerRuntimes
+    containerRuntime: ContainerRuntimes;
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -38,7 +38,7 @@ const defaultConfig: WinboatConfigObj = {
     multiMonitor: 0,
     rdpArgs: [],
     disableAnimations: false,
-    containerRuntime: ContainerRuntimes.DOCKER // TODO: Ideally should be podman once we flesh out everything
+    containerRuntime: ContainerRuntimes.DOCKER, // TODO: Ideally should be podman once we flesh out everything
 };
 
 export class WinboatConfig {
@@ -52,7 +52,7 @@ export class WinboatConfig {
     }
 
     constructor() {
-        this.#configData = this.readConfig()!;        
+        this.#configData = this.readConfig()!;
         console.log("Reading current config", this.#configData);
     }
 
@@ -81,9 +81,9 @@ export class WinboatConfig {
         fs.writeFileSync(this.#configPath, JSON.stringify(this.#configData, null, 4), "utf-8");
     }
 
-    readConfig(writeDefault = true): WinboatConfigObj | null{
+    readConfig(writeDefault = true): WinboatConfigObj | null {
         if (!fs.existsSync(this.#configPath)) {
-            if(!writeDefault) return null;
+            if (!writeDefault) return null;
             // Also the create the directory because we're not guaranteed to have it
             if (!fs.existsSync(WINBOAT_DIR)) {
                 fs.mkdirSync(WINBOAT_DIR);

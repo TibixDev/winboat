@@ -1,10 +1,10 @@
- import { ComposeConfig } from "../../../types";
-import {  WINBOAT_DIR } from "../constants";
+import { ComposeConfig } from "../../../types";
+import { WINBOAT_DIR } from "../constants";
 import { createLogger } from "../../utils/log";
 import { ComposePortEntry } from "../../utils/port";
-const path: typeof import('path') = require('path');
+const path: typeof import("path") = require("path");
 
-export const containerLogger = createLogger(path.join(WINBOAT_DIR, 'container.log'));
+export const containerLogger = createLogger(path.join(WINBOAT_DIR, "container.log"));
 
 export type ComposeDirection = "up" | "down";
 export type ContainerAction = "start" | "stop" | "pause" | "unpause";
@@ -37,5 +37,5 @@ export enum ContainerStatus {
     RUNNING = "Running",
     PAUSED = "Paused",
     EXITED = "Exited",
-    UKNOWN = "Unknown"
-};
+    UNKNOWN = "Unknown",
+}

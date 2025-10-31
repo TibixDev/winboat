@@ -21,8 +21,8 @@ export const defaultSpecs: Specs = {
     cpuCores: 0,
     ramGB: 0,
     kvmEnabled: false,
-    freeRDP3Installed: false
-}
+    freeRDP3Installed: false,
+};
 
 export async function getSpecs() {
     const specs: Specs = { ...defaultSpecs };

@@ -10,7 +10,7 @@ import type {
 } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
-import YAML from 'yaml';
+import YAML from "yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { openLink } from "../utils/openLink";
@@ -261,7 +261,7 @@ export class Winboat {
     private constructor() {
         this.#wbConfig = WinboatConfig.getInstance();
         this.containerMgr = createContainer(this.#wbConfig.config.containerRuntime);
-        
+
         // This is a special interval which will never be destroyed
         setInterval(async () => {
             const _containerStatus = await this.containerMgr!.getStatus();
@@ -416,7 +416,7 @@ export class Winboat {
 
     async getMetrics() {
         const res = await nodeFetch(`${this.apiUrl}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
-        const metrics = await res.json() as Metrics;
+        const metrics = (await res.json()) as Metrics;
         return metrics;
     }
 
@@ -427,7 +427,7 @@ export class Winboat {
     }
 
     parseCompose() {
-        const composeFile = fs.readFileSync(this.containerMgr!.composeFilePath, 'utf-8');
+        const composeFile = fs.readFileSync(this.containerMgr!.composeFilePath, "utf-8");
         const composeContents = YAML.parse(composeFile) as ComposeConfig;
         return composeContents;
     }
@@ -442,7 +442,10 @@ export class Winboat {
 
     async #connectQMPManager() {
         try {
-            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", getActiveHostPort(this.containerMgr!, CommonPorts.QMP)!).catch(e => {
+            this.qmpMgr = await QMPManager.createConnection(
+                "127.0.0.1",
+                getActiveHostPort(this.containerMgr!, CommonPorts.QMP)!,
+            ).catch(e => {
                 logger.error(e);
                 throw e;
             });
@@ -482,7 +485,7 @@ export class Winboat {
         this.containerActionLoading.value = true;
         try {
             await this.containerMgr!.container("start");
-        } catch(e) {
+        } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
             throw e;
@@ -566,13 +569,13 @@ export class Winboat {
         // 2. Remove the container
 
         await this.containerMgr!.remove();
-        console.info("Removed container")
+        console.info("Removed container");
 
         // 3. Remove the container volume or folder
         const compose = this.parseCompose();
         const storage = compose.services.windows.volumes.find(vol => vol.includes("/storage"));
         if (storage?.startsWith("data:")) {
-            if(this.#wbConfig?.config.containerRuntime !== ContainerRuntimes.DOCKER) {
+            if (this.#wbConfig?.config.containerRuntime !== ContainerRuntimes.DOCKER) {
                 logger.error("Volume not supported on podman runtime");
             }
             // In this case we have a volume (legacy)
@@ -731,7 +734,7 @@ export class Winboat {
     get apiUrl(): string | undefined {
         const apiPort = getActiveHostPort(this.containerMgr!, CommonPorts.API);
 
-        if(!apiPort) return undefined;
+        if (!apiPort) return undefined;
 
         return `http://127.0.0.1:${apiPort}`;
     }

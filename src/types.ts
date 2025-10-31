@@ -21,7 +21,7 @@ export type InstallConfiguration = {
     customIsoPath?: string;
     shareHomeFolder: boolean;
     container: ContainerManager;
-}
+};
 
 export type WinApp = {
     id?: string;
@@ -47,7 +47,7 @@ export type LongPortMapping = {
     app_protocol?: string;
     mode?: "host" | "ingress";
     name?: string;
-}
+};
 
 export type ComposeConfig = {
     name: string;
@@ -57,8 +57,8 @@ export type ComposeConfig = {
     networks?: {
         [key: string]: {
             external: boolean;
-        }
-    }
+        };
+    };
     services: {
         windows: {
             image: string;

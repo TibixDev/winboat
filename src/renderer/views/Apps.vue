@@ -5,7 +5,12 @@
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
-                        <img alt="Icon for current app" v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
+                        <img
+                            alt="Icon for current app"
+                            v-if="currentAppForm.Icon"
+                            :src="currentAppForm.Icon"
+                            class="size-24"
+                        />
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
@@ -221,7 +226,7 @@
                     <span
                         v-if="
                             winboat.containerStatus.value === ContainerStatus.EXITED ||
-                            winboat.containerStatus.value === ContainerStatus.UKNOWN
+                            winboat.containerStatus.value === ContainerStatus.UNKNOWN
                         "
                     >
                         The WinBoat Container is not running, please start it to view your apps list.
@@ -237,19 +242,19 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue';
-import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from 'vue';
-import { Winboat } from '../lib/winboat';
-import { ContainerStatus } from '../lib/containers/common';
-import { type WinApp } from '../../types';
-import WBContextMenu from '../components/WBContextMenu.vue';
-import WBMenuItem from '../components/WBMenuItem.vue';
-import { AppIcons, DEFAULT_ICON } from '../data/appicons';
-import { GUEST_API_PORT } from '../lib/constants';
-import { debounce } from '../utils/debounce';
-import { Jimp, JimpMime } from 'jimp';
-const nodeFetch: typeof import('node-fetch').default = require('node-fetch');
-const FormData: typeof import('form-data') = require('form-data');
+import { Icon } from "@iconify/vue";
+import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from "vue";
+import { Winboat } from "../lib/winboat";
+import { ContainerStatus } from "../lib/containers/common";
+import { type WinApp } from "../../types";
+import WBContextMenu from "../components/WBContextMenu.vue";
+import WBMenuItem from "../components/WBMenuItem.vue";
+import { AppIcons, DEFAULT_ICON } from "../data/appicons";
+import { GUEST_API_PORT } from "../lib/constants";
+import { debounce } from "../utils/debounce";
+import { Jimp, JimpMime } from "jimp";
+const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
+const FormData: typeof import("form-data") = require("form-data");
 
 const winboat = Winboat.getInstance();
 const apps = ref<WinApp[]>([]);

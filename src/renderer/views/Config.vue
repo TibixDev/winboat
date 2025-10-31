@@ -119,9 +119,11 @@
                             :value="isNaN(freerdpPort) ? '' : freerdpPort"
                             @input="
                                 (e: any) => {
-                                    (freerdpPort = Number(
-                                        /^\d+$/.exec(e.target.value)?.at(0) || portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
-                                    )) }
+                                    freerdpPort = Number(
+                                        /^\d+$/.exec(e.target.value)?.at(0) ||
+                                            portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
+                                    );
+                                }
                             "
                         >
                             <x-label v-if="isNaN(freerdpPort)">None</x-label>
@@ -616,15 +618,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
-import { Winboat } from '../lib/winboat';
-import { ContainerStatus } from '../lib/containers/common';
-import type { ComposeConfig } from '../../types';
-import { getSpecs } from '../lib/specs';
-import { Icon } from '@iconify/vue';
-import { RdpArg, WinboatConfig } from '../lib/config';
-import { USBManager, type PTSerializableDeviceInfo } from '../lib/usbmanager';
+import { Winboat } from "../lib/winboat";
+import { ContainerStatus } from "../lib/containers/common";
+import type { ComposeConfig } from "../../types";
+import { getSpecs } from "../lib/specs";
+import { Icon } from "@iconify/vue";
+import { RdpArg, WinboatConfig } from "../lib/config";
+import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
     PORT_MAX,
@@ -735,7 +737,7 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number ?? GUEST_RDP_PORT;
+    freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
     origFreerdpPort.value = freerdpPort.value;
 
     origApplicationScale.value = wbConfig.config.scaleDesktop;
@@ -769,14 +771,14 @@ async function saveCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, { 
+    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
         protocol: "tcp",
-        hostIP: "127.0.0.1"
+        hostIP: "127.0.0.1",
     });
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, { 
+    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
         protocol: "udp",
-        hostIP: "127.0.0.1"
+        hostIP: "127.0.0.1",
     });
 
     compose.value!.services.windows.ports = portMapper.value!.composeFormat;
@@ -811,7 +813,7 @@ async function addRequiredComposeFieldsUSB() {
     if (!hasQmpPort()) {
         portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT, {
             protocol: "tcp",
-            hostIP: "127.0.0.1"
+            hostIP: "127.0.0.1",
         });
     }
 
@@ -829,7 +831,7 @@ async function addRequiredComposeFieldsUSB() {
         const delimeter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? "" : ",";
         compose.value!.services.windows.environment.HOST_PORTS += delimeter + GUEST_QMP_PORT;
     }
-    
+
     await saveCompose();
 
     isUpdatingUSBPrerequisites.value = false;
@@ -854,15 +856,21 @@ const errors = computedAsync(async () => {
         errCollection.push("You cannot allocate more RAM to Windows than you have available");
     }
 
-    if (freerdpPort.value !== origFreerdpPort.value && !isNaN(freerdpPort.value) && !(await ComposePortMapper.isPortOpen(freerdpPort.value))) {
+    if (
+        freerdpPort.value !== origFreerdpPort.value &&
+        !isNaN(freerdpPort.value) &&
+        !(await ComposePortMapper.isPortOpen(freerdpPort.value))
+    ) {
         errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
     return errCollection;
 });
 
-const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.some(x => x.includes(USB_BUS_PATH));
-const hasQmpArgument = (_compose: typeof compose) => _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
+const hasUsbVolume = (_compose: typeof compose) =>
+    _compose.value?.services.windows.volumes?.some(x => x.includes(USB_BUS_PATH));
+const hasQmpArgument = (_compose: typeof compose) =>
+    _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) =>
     _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);

@@ -148,22 +148,22 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { routes } from './router';
-import { Icon } from '@iconify/vue';
-import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
-import { isInstalled } from './lib/install';
-import { Winboat } from './lib/winboat';
-import { openAnchorLink } from './utils/openLink';
-import { WinboatConfig } from './lib/config';
-import { USBManager } from './lib/usbmanager';
-import { GUEST_NOVNC_PORT } from './lib/constants';
+import { RouterLink, useRoute, useRouter } from "vue-router";
+import { routes } from "./router";
+import { Icon } from "@iconify/vue";
+import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
+import { isInstalled } from "./lib/install";
+import { Winboat } from "./lib/winboat";
+import { openAnchorLink } from "./utils/openLink";
+import { WinboatConfig } from "./lib/config";
+import { USBManager } from "./lib/usbmanager";
+import { GUEST_NOVNC_PORT } from "./lib/constants";
 import { setIntervalImmediately } from "./utils/interval";
-import { CommonPorts, getActiveHostPort } from './lib/containers/common';
-const { BrowserWindow }: typeof import('@electron/remote') = require('@electron/remote')
-const os: typeof import('os') = require('node:os')
-const path: typeof import('path') = require('node:path')
-const remote: typeof import('@electron/remote') = require('@electron/remote');
+import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
+const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
+const os: typeof import("os") = require("node:os");
+const path: typeof import("path") = require("node:path");
+const remote: typeof import("@electron/remote") = require("@electron/remote");
 
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;

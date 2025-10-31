@@ -6,11 +6,10 @@ const { createServer, isIPv4, isIPv6 }: typeof import("net") = require("node:net
 
 const logger = createLogger(path.join(WINBOAT_DIR, "ports.log"));
 
-
 enum PortType {
     HOST = "Host",
-    CONTAINER = "Container"
-};
+    CONTAINER = "Container",
+}
 
 type Port = number;
 
@@ -25,7 +24,7 @@ export class Range {
 
     /**
      * Instantiates a {@link Range} from the compose string representation.
-     * 
+     *
      * @param token Format: `<start>-<end>`
      */
     constructor(token: string);
@@ -34,13 +33,13 @@ export class Range {
      * Instantiates a {@link Range} from numerical `start` and `end` values
      *
      * @param start Start of the Range
-     * @param end End of the Range 
+     * @param end End of the Range
      */
     constructor(start: number, end: number);
     constructor(_tokenOrStart: number | string, _end?: number) {
         if (typeof _tokenOrStart === "number") {
             if (!_end) throw new Error("Invalid constructor call");
-            
+
             this.start = _tokenOrStart;
             this.end = _end;
             return;
@@ -50,7 +49,6 @@ export class Range {
 
         this.start = parseInt(splitToken[0]);
         this.end = parseInt(splitToken[1]);
-        
     }
 
     toString(): string {
@@ -70,7 +68,7 @@ export class Range {
 export class ComposePortEntry {
     static readonly defaultOptions = {
         hostIP: "0.0.0.0",
-        protocol: "tcp"
+        protocol: "tcp",
     };
 
     hostIP: string;
@@ -80,14 +78,14 @@ export class ComposePortEntry {
 
     /**
      * Parses a short form Compose Port mapping according to the [Compose Specification](https://github.com/compose-spec/compose-spec/blob/main/spec.md#ports).
-     * 
+     *
      * @param entry Format: `[HOST:]CONTAINER[/PROTOCOL]`
      */
     constructor(entry: string);
     constructor(hostPort: number, guestPort: number, options?: PortEntryOptions);
     constructor(_entryOrHostPort: string | number, _guestPort?: number, _options?: PortEntryOptions) {
-        if(typeof _entryOrHostPort === "number") {
-            if(!_guestPort || !_options) throw new Error("Invalid constructor call");
+        if (typeof _entryOrHostPort === "number") {
+            if (!_guestPort || !_options) throw new Error("Invalid constructor call");
 
             this.hostIP = _options.hostIP ?? ComposePortEntry.defaultOptions.hostIP;
             this.protocol = _options.protocol ?? ComposePortEntry.defaultOptions.protocol;
@@ -104,7 +102,7 @@ export class ComposePortEntry {
 
     /**
      * Converts the {@link ComposePortEntry} into a valid compose string representation
-     * 
+     *
      * @note If it was initialized from a compose port entry with implicit default values, then those will be included explicitly (e.g. `/tcp` or `0.0.0.0` binding)
      */
     get entry(): string {
@@ -133,9 +131,9 @@ export class ComposePortEntry {
 
     /**
      * Parses the part of the compose mapping specified by `type`, as defined by the compose spec.
-     * 
+     *
      * @note Implicit default values are respected
-     * 
+     *
      * @example ComposePortEntry.parsePort(PortType.HOST, "8080"); // returns 8080
      */
     static parsePort(type: PortType, entry: string): Port | Range {
@@ -154,20 +152,20 @@ export class ComposePortEntry {
     }
 
     private static checkValidIP(ip: string, entry: string): string {
-        if(!isIPv4(ip) && !isIPv6(ip)) throw new Error(`Invalid compose entry: ${entry}, IP: ${ip}`);
+        if (!isIPv4(ip) && !isIPv6(ip)) throw new Error(`Invalid compose entry: ${entry}, IP: ${ip}`);
         return ip;
     }
 
     /**
      * Parses the optional IP part of the port mapping, as defined by the compose spec.
-     * 
+     *
      * @note Implicit default values are respected
-     * 
-     * @example ComposePortEntry.parseIP("69:4200"); // returns "0.0.0.0" 
+     *
+     * @example ComposePortEntry.parseIP("69:4200"); // returns "0.0.0.0"
      */
     static parseIP(entry: string): string {
         const parts = entry.split(":");
-        
+
         // As per the compose spec, there must be at least 2 colons in the entry for an IP to be specified
         if (parts.length < 3) return "0.0.0.0";
 
@@ -175,7 +173,7 @@ export class ComposePortEntry {
         let lastPort = parts.at(-2)!;
         let colonNum = 1;
 
-        if(lastPort.length === 0) {
+        if (lastPort.length === 0) {
             lastPort = parts.at(-1)!;
             colonNum = 2;
         }
@@ -185,7 +183,7 @@ export class ComposePortEntry {
         const rawIP = entry.substring(0, hostPortLocation);
 
         // In case the IP isn't enclosed with square brackets, we don't need any further processing
-        if(rawIP[0] !== "[") return ComposePortEntry.checkValidIP(rawIP, entry);
+        if (rawIP[0] !== "[") return ComposePortEntry.checkValidIP(rawIP, entry);
 
         const IP = rawIP.substring(1, rawIP.length - 1);
 
@@ -206,15 +204,15 @@ export class ComposePortMapper {
     constructor(compose: ComposeConfig) {
         this.shortPorts = [];
         this.longPorts = [];
-        
-        for(const composeMapping of compose.services.windows.ports) {
+
+        for (const composeMapping of compose.services.windows.ports) {
             this.pushPortEntry(composeMapping);
         }
     }
 
     /**
      * **WARNING**: Could introduce dupliate entries, use carefully!
-     * 
+     *
      * Pushes a port entry to the internal port array.
      */
     private pushPortEntry(entry: string | LongPortMapping) {
@@ -222,7 +220,7 @@ export class ComposePortMapper {
             this.shortPorts.push(new ComposePortEntry(entry));
             return;
         }
-        
+
         this.longPorts.push(entry);
     }
 
@@ -235,10 +233,9 @@ export class ComposePortMapper {
         }
 
         // TODO: investigate whether we need to handle long syntax port entries here
-        const idx = this.shortPorts.findIndex((entry) => 
-            typeof entry.container === "number" && 
-            entry.container === guestPort &&
-            entry.protocol === protocol
+        const idx = this.shortPorts.findIndex(
+            entry =>
+                typeof entry.container === "number" && entry.container === guestPort && entry.protocol === protocol,
         );
 
         return idx === -1 ? undefined : idx;
@@ -249,28 +246,24 @@ export class ComposePortMapper {
      */
     getShortPortMapping(guestPort: number | string, protocol: PortEntryProtocol = "tcp"): ComposePortEntry | undefined {
         const mappingIdx = this.findGuestPortIndex(guestPort, protocol);
-        
-        if(!mappingIdx) return undefined;
+
+        if (!mappingIdx) return undefined;
 
         return this.shortPorts[mappingIdx];
     }
-    
+
     /**
      * Creates a new port mapping or overwrites an existing one.
      * In case the host port is not open, it tries to find one.
      */
-    setShortPortMapping(
-        guestPort: number | string,
-        hostPort: number | string,
-        options?: PortEntryOptions,
-    ) {
+    setShortPortMapping(guestPort: number | string, hostPort: number | string, options?: PortEntryOptions) {
         if (typeof hostPort === "string") {
             hostPort = Number.parseInt(hostPort);
         }
         if (typeof guestPort === "string") {
             guestPort = Number.parseInt(guestPort);
         }
-        
+
         const insertAt = this.findGuestPortIndex(guestPort, options?.protocol) ?? this.shortPorts.length;
 
         this.shortPorts[insertAt] = new ComposePortEntry(hostPort, guestPort, options);
