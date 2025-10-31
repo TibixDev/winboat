@@ -51,6 +51,20 @@
 
             <!-- Buttons -->
             <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
+                <button title="Copy" class="generic-hover" skin="flat" v-on:click="passwordDialog?.showModal()">
+                    <Icon icon="icomoon-free:key" style="width: 3.6rem; height: 3.6rem"></Icon>
+                    <dialog ref="passwordDialog">
+                        <h3>Window VM Password</h3>
+                        <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">{{
+                            compose?.services.windows.environment.PASSWORD
+                        }}</pre>
+                        <footer>
+                            <x-button v-on:click="passwordDialog?.close()">
+                                <x-label>Close</x-label>
+                            </x-button>
+                        </footer>
+                    </dialog>
+                </button>
                 <button
                     title="Start"
                     class="generic-hover"
@@ -180,6 +194,7 @@ import { openAnchorLink } from "../utils/openLink";
 const winboat = Winboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
 const wallpaper = ref("");
+const passwordDialog = ref<HTMLDialogElement | null>(null);
 
 onMounted(async () => {
     compose.value = winboat.parseCompose();
