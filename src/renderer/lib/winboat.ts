@@ -664,7 +664,7 @@ export class Winboat {
                 .catch(reason => {
                     const error = reason as ExecFileAsyncError;
                     // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
-                    // #define ERRINFO_LOGOFF_BY_USER 0x0000000C
+                    // ERRINFO_LOGOFF_BY_USER
                     if (error.code !== 12) {
                         throw error;
                     } else {
