@@ -20,6 +20,7 @@ import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { PortManager } from "../utils/port";
+import { LinuxShortcutManager } from "./linuxShortcuts";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -112,6 +113,7 @@ class AppManager {
     appCache: WinApp[] = [];
     appUsageCache: { [key: string]: number } = {};
     readonly #wbConfig: WinboatConfig | null = null;
+    private shortcutMgr: LinuxShortcutManager | null = null;
 
     constructor() {
         if (!fs.existsSync(USAGE_PATH)) {
@@ -119,6 +121,10 @@ class AppManager {
         }
 
         this.#wbConfig = WinboatConfig.getInstance();
+    }
+
+    setShortcutManager(manager: LinuxShortcutManager) {
+        this.shortcutMgr = manager;
     }
 
     async updateAppCache(apiURL: string, options: { forceRead?: boolean } = {}) {
@@ -134,6 +140,9 @@ class AppManager {
         }
 
         this.appCache = newApps;
+        if (this.shortcutMgr) {
+            await this.shortcutMgr.sync(this.appCache);
+        }
     }
 
     async getApps(apiURL: string): Promise<WinApp[]> {
@@ -196,9 +205,15 @@ class AppManager {
         this.appUsageCache[name] = 0;
         await this.writeToDisk();
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.concat(customWinApp);
+        if (this.shortcutMgr) {
+            await this.shortcutMgr.sync(this.appCache);
+        }
     }
 
     async updateCustomApp(oldName: string, updatedApp: { Name: string; Path: string; Args: string; Icon: string }) {
+        const originalApp = this.appCache.find(app => app.Name === oldName) ?? null;
+        const wasPinned = originalApp ? this.shortcutMgr?.isAppSelected(originalApp) ?? false : false;
+
         this.appCache = this.appCache.map(app => (app.Name === oldName ? { ...app, ...updatedApp } : app));
 
         // update appUsage if name changed
@@ -213,6 +228,18 @@ class AppManager {
         );
 
         await this.writeToDisk();
+        if (this.shortcutMgr) {
+            if (wasPinned) {
+                const updatedEntry = this.appCache.find(app => app.Name === updatedApp.Name);
+                if (originalApp) {
+                    this.shortcutMgr.removeSelection(originalApp);
+                }
+                if (updatedEntry) {
+                    this.shortcutMgr.updateSelection(updatedEntry, true);
+                }
+            }
+            await this.shortcutMgr.sync(this.appCache);
+        }
     }
 
     /**
@@ -224,6 +251,10 @@ class AppManager {
         this.appUsageCache = Object.fromEntries(Object.entries(this.appUsageCache).filter(([key]) => key !== app.Name));
         await this.writeToDisk();
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.filter(a => a.Name !== app.Name);
+        if (this.shortcutMgr) {
+            this.shortcutMgr.removeSelection(app);
+            await this.shortcutMgr.sync(this.appCache);
+        }
     }
 }
 
@@ -261,6 +292,7 @@ export class Winboat {
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
     portMgr: Ref<PortManager | null> = ref(null);
+    shortcutMgr: LinuxShortcutManager | null = null;
 
     static getInstance() {
         Winboat.instance ??= new Winboat();
@@ -287,6 +319,18 @@ export class Winboat {
         this.#wbConfig = WinboatConfig.getInstance();
 
         this.appMgr = new AppManager();
+        this.shortcutMgr = new LinuxShortcutManager();
+        this.appMgr.setShortcutManager(this.shortcutMgr);
+    }
+
+    isAppPinnedToShortcuts(app: WinApp) {
+        return this.shortcutMgr?.isAppSelected(app) ?? false;
+    }
+
+    async setShortcutPinned(app: WinApp, pinned: boolean) {
+        if (!this.shortcutMgr || !this.appMgr) return;
+        this.shortcutMgr.updateSelection(app, pinned);
+        await this.shortcutMgr.sync(this.appMgr.appCache);
     }
 
     /**

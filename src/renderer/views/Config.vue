@@ -513,6 +513,65 @@
                     </div>
                 </x-card>
 
+                <!-- Linux Shortcuts -->
+                <x-card
+                    class="flex flex-col gap-3 p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div class="flex flex-row justify-between items-start gap-4">
+                        <div>
+                            <div class="flex flex-row gap-2 items-center mb-2">
+                                <Icon class="inline-flex text-violet-400 size-8" icon="mdi:application-export"></Icon>
+                                <h1 class="my-0 text-lg font-semibold">Linux Shortcuts</h1>
+                            </div>
+                            <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0 max-w-[38ch]">
+                                Keep your favourite Windows apps available from your Linux launcher. WinBoat will create
+                                <code>.desktop</code> entries and keep them in sync with your apps list.
+                            </p>
+                            <p
+                                class="text-xs !mt-1"
+                                :class="selectedShortcutCount ? 'text-neutral-500' : 'text-yellow-300'"
+                            >
+                                {{ selectedShortcutHint }}
+                            </p>
+                        </div>
+                        <x-switch
+                            :toggled="linuxShortcutsEnabled"
+                            @toggle="toggleLinuxShortcutSync"
+                            size="large"
+                        ></x-switch>
+                    </div>
+
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div class="flex flex-row gap-2 items-center">
+                            <x-switch
+                                :toggled="includeDesktopShortcuts"
+                                :disabled="!linuxShortcutsEnabled"
+                                @toggle="toggleDesktopShortcutMirroring"
+                                size="medium"
+                            ></x-switch>
+                            <x-label class="text-neutral-300">Also place shortcuts on Desktop</x-label>
+                        </div>
+                        <x-button
+                            class="flex flex-row gap-2 items-center"
+                            :disabled="!linuxShortcutsEnabled || isSyncingLinuxShortcuts"
+                            @click="syncLinuxShortcuts(true)"
+                        >
+                            <x-throbber v-if="isSyncingLinuxShortcuts" class="w-6 h-6"></x-throbber>
+                            <template v-else>
+                                <Icon class="size-5" icon="mdi:refresh"></Icon>
+                                <x-label>Refresh Shortcuts</x-label>
+                            </template>
+                        </x-button>
+                    </div>
+                    <p
+                        v-if="shortcutStatusMessage"
+                        class="text-sm !mt-0"
+                        :class="shortcutStatusIsError ? 'text-red-400' : 'text-emerald-300'"
+                    >
+                        {{ shortcutStatusMessage }}
+                    </p>
+                </x-card>
+
                 <!-- Disable Animations -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
@@ -617,13 +676,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
 import { ContainerStatus, Winboat } from "../lib/winboat";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
-import { RdpArg, WinboatConfig } from "../lib/config";
+import { type LinuxShortcutPreferences, RdpArg, WinboatConfig } from "../lib/config";
+import { SHORTCUT_CHANGE_EVENT } from "../lib/linuxShortcuts";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
@@ -642,6 +702,7 @@ const $emit = defineEmits(["rerender"]);
 
 const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
+const wbConfig = WinboatConfig.getInstance();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
@@ -669,6 +730,24 @@ const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
 const origApplicationScale = ref(0);
 const rdpArgs = ref<RdpArg[]>([]);
+const linuxShortcutsEnabled = ref(wbConfig.config.linuxShortcuts.enabled);
+const includeDesktopShortcuts = ref(wbConfig.config.linuxShortcuts.includeDesktop);
+const isSyncingLinuxShortcuts = ref(false);
+const shortcutStatusMessage = ref("");
+const shortcutStatusIsError = ref(false);
+let shortcutStatusTimeout: NodeJS.Timeout | null = null;
+const selectedShortcutCount = ref(wbConfig.config.linuxShortcuts.selectedApps.length);
+const selectedShortcutHint = computed(() => {
+    const count = selectedShortcutCount.value;
+    if (!count) {
+        return "No apps selected • use the Apps page right-click menu to add shortcuts.";
+    }
+    const plural = count === 1 ? "" : "s";
+    return `${count} app${plural} selected • manage via Apps → right-click → Linux Shortcut`;
+});
+const handleShortcutChange = () => {
+    selectedShortcutCount.value = wbConfig.config.linuxShortcuts.selectedApps.length;
+};
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -684,10 +763,9 @@ let qmpPortManager = ref<PortManager | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
-const wbConfig = WinboatConfig.getInstance();
-
 onMounted(async () => {
     await assignValues();
+    window.addEventListener(SHORTCUT_CHANGE_EVENT, handleShortcutChange);
 });
 
 watch(
@@ -741,6 +819,9 @@ async function assignValues() {
     origApplicationScale.value = wbConfig.config.scaleDesktop;
 
     rdpArgs.value = wbConfig.config.rdpArgs;
+    linuxShortcutsEnabled.value = wbConfig.config.linuxShortcuts.enabled;
+    includeDesktopShortcuts.value = wbConfig.config.linuxShortcuts.includeDesktop;
+    selectedShortcutCount.value = wbConfig.config.linuxShortcuts.selectedApps.length;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
@@ -882,6 +963,83 @@ async function resetWinboat() {
     await winboat.resetWinboat();
     app.exit();
 }
+
+function showShortcutStatus(message: string, isError = false) {
+    shortcutStatusMessage.value = message;
+    shortcutStatusIsError.value = isError;
+    if (shortcutStatusTimeout) {
+        clearTimeout(shortcutStatusTimeout);
+    }
+    shortcutStatusTimeout = setTimeout(() => {
+        shortcutStatusMessage.value = "";
+        shortcutStatusIsError.value = false;
+    }, 4000);
+}
+
+function updateLinuxShortcutPrefs(patch: Partial<LinuxShortcutPreferences>) {
+    const current = wbConfig.config.linuxShortcuts;
+    const next: LinuxShortcutPreferences = {
+        ...current,
+        ...patch,
+    };
+    wbConfig.config.linuxShortcuts = next;
+    linuxShortcutsEnabled.value = next.enabled;
+    includeDesktopShortcuts.value = next.includeDesktop;
+    selectedShortcutCount.value = next.selectedApps.length;
+    return next;
+}
+
+async function syncLinuxShortcuts(manual = false, messageOverride?: string) {
+    if (!winboat.shortcutMgr || !winboat.appMgr) {
+        return;
+    }
+
+    isSyncingLinuxShortcuts.value = true;
+    try {
+        await winboat.shortcutMgr.sync(winboat.appMgr.appCache);
+        const count = wbConfig.config.linuxShortcuts.selectedApps.length;
+        selectedShortcutCount.value = count;
+        if (manual) {
+            if (messageOverride) {
+                showShortcutStatus(messageOverride, false);
+            } else if (!wbConfig.config.linuxShortcuts.enabled) {
+                showShortcutStatus("Shortcuts removed");
+            } else {
+                const plural = count === 1 ? "" : "s";
+                const message = count
+                    ? `Shortcuts updated for ${count} app${plural}`
+                    : "No apps selected yet";
+                showShortcutStatus(message, count === 0);
+            }
+        }
+    } catch (error) {
+        console.error("Failed to sync Linux shortcuts", error);
+        showShortcutStatus("Failed to update shortcuts", true);
+    } finally {
+        isSyncingLinuxShortcuts.value = false;
+    }
+}
+
+async function toggleLinuxShortcutSync() {
+    const next = updateLinuxShortcutPrefs({ enabled: !linuxShortcutsEnabled.value });
+    await syncLinuxShortcuts(true, next.enabled ? undefined : "Shortcuts disabled");
+}
+
+async function toggleDesktopShortcutMirroring() {
+    if (!linuxShortcutsEnabled.value) {
+        return;
+    }
+
+    const next = updateLinuxShortcutPrefs({ includeDesktop: !includeDesktopShortcuts.value });
+    await syncLinuxShortcuts(true, next.includeDesktop ? "Desktop shortcuts enabled" : "Desktop shortcuts disabled");
+}
+
+onUnmounted(() => {
+    if (shortcutStatusTimeout) {
+        clearTimeout(shortcutStatusTimeout);
+    }
+    window.removeEventListener(SHORTCUT_CHANGE_EVENT, handleShortcutChange);
+});
 
 // Reactivity utterly fails here, so we use this function to
 // refresh via the button

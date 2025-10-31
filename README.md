@@ -36,6 +36,7 @@ WinBoat is currently in beta, so expect to occasionally run into hiccups and bug
 - **🚀 Run Any App**: If it runs on Windows, it can run on WinBoat. Enjoy the full range of Windows applications as native OS-level windows in your Linux environment
 - **🖥️ Full Windows Desktop**: Access the complete Windows desktop experience when you need it, or run individual apps seamlessly integrated into your Linux workflow
 - **📁 Filesystem Integration**: Your home directory is mounted in Windows, allowing easy file sharing between the two systems without any hassle
+- **📎 Native Shortcuts**: Right-click any app to pin it as a `.desktop` launcher in your Linux menu or on the desktop
 - **✨ And many more**: Smartcard passthrough, resource monitoring, and more features being added regularly
 
 ## How Does It Work?

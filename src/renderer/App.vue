@@ -154,12 +154,14 @@ import { Icon } from "@iconify/vue";
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
 import { isInstalled } from "./lib/install";
 import { Winboat } from "./lib/winboat";
+import type { WinApp } from "../types";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
-import { GUEST_NOVNC_PORT } from "./lib/constants";
+import { GUEST_API_PORT, GUEST_NOVNC_PORT } from "./lib/constants";
 import { setIntervalImmediately } from "./utils/interval";
-const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
+const { BrowserWindow, dialog }: typeof import("@electron/remote") = require("@electron/remote");
+const { ipcRenderer }: typeof import("electron") = require("electron");
 const os: typeof import("os") = require("node:os");
 
 const $router = useRouter();
@@ -176,6 +178,18 @@ const updateDialog = useTemplateRef("updateDialog");
 const rerenderCounter = ref(0);
 const novncURL = ref("");
 let animationCheckInterval: NodeJS.Timeout | null = null;
+const pendingShortcutQueue: string[] = [];
+let processingShortcutQueue = false;
+
+const handleShortcutLaunch = (_event: unknown, appName: string) => {
+    if (typeof appName !== "string" || !appName.trim() || appName.startsWith("--")) {
+        return;
+    }
+    pendingShortcutQueue.push(appName);
+    void processShortcutQueue();
+};
+
+ipcRenderer.on("shortcut-launch-app", handleShortcutLaunch);
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
@@ -183,6 +197,16 @@ onMounted(async () => {
         winboat = Winboat.getInstance(); // Instantiate singleton class
         wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
+        watch(
+            () => winboat!.isOnline.value,
+            online => {
+                if (online) {
+                    void processShortcutQueue();
+                }
+            },
+            { immediate: false },
+        );
+        void processShortcutQueue();
         $router.push("/home");
     } else {
         console.log("Not installed, redirecting to setup...");
@@ -241,7 +265,73 @@ onUnmounted(() => {
     if (animationCheckInterval) {
         clearInterval(animationCheckInterval);
     }
+    ipcRenderer.off("shortcut-launch-app", handleShortcutLaunch);
+    pendingShortcutQueue.length = 0;
 });
+
+const normaliseAppName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+async function launchAppByName(appName: string) {
+    if (!winboat?.appMgr) {
+        throw new Error("WinBoat is still starting up");
+    }
+
+    const matchApp = (apps: WinApp[]) => {
+        const normalisedTarget = normaliseAppName(appName);
+        return (
+            apps.find(app => app.Name === appName) ??
+            apps.find(app => app.Name.toLowerCase() === appName.toLowerCase()) ??
+            apps.find(app => normaliseAppName(app.Name) === normalisedTarget)
+        );
+    };
+
+    let targetApp = matchApp(winboat.appMgr.appCache);
+
+    if (!targetApp && winboat.isOnline.value) {
+        try {
+            const port = winboat.portMgr.value?.getHostPort(GUEST_API_PORT) ?? GUEST_API_PORT;
+            const apiUrl = `http://127.0.0.1:${port}`;
+            await winboat.appMgr.updateAppCache(apiUrl, { forceRead: true });
+            targetApp = matchApp(winboat.appMgr.appCache);
+        } catch (error) {
+            console.error("Failed to refresh apps for shortcut launch", error);
+        }
+    }
+
+    if (!targetApp) {
+        throw new Error(`"${appName}" is not available in WinBoat`);
+    }
+
+    if (!winboat.isOnline.value) {
+        throw new Error("WinBoat guest is offline");
+    }
+
+    await winboat.launchApp(targetApp);
+}
+
+async function processShortcutQueue() {
+    if (processingShortcutQueue) return;
+    if (!winboat || !winboat.appMgr) return;
+
+    processingShortcutQueue = true;
+    try {
+        while (pendingShortcutQueue.length > 0) {
+            const target = pendingShortcutQueue.shift();
+            if (!target || target.startsWith("--")) {
+                continue;
+            }
+            try {
+                await launchAppByName(target);
+            } catch (error: any) {
+                const reason = error instanceof Error ? error.message : "Unknown error";
+                console.error(`Failed to launch shortcut ${target}`, error);
+                dialog.showErrorBox("WinBoat Shortcut", `Could not launch "${target}": ${reason}`);
+            }
+        }
+    } finally {
+        processingShortcutQueue = false;
+    }
+}
 
 function handleMinimize() {
     console.log("Minimize");
