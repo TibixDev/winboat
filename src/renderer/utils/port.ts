@@ -171,8 +171,17 @@ export class ComposePortEntry {
         // As per the compose spec, there must be at least 2 colons in the entry for an IP to be specified
         if (parts.length < 3) return "0.0.0.0";
 
+        // Extra logic for allowing empty host port, needed for supporting podman's publish syntax
+        let lastPort = parts.at(-2)!;
+        let colonNum = 1;
+
+        if(lastPort.length === 0) {
+            lastPort = parts.at(-1)!;
+            colonNum = 2;
+        }
+
         // Here we find the index where the host ip ends (removing one makes sure we remove the colon as well)
-        const hostPortLocation = entry.indexOf(parts.at(-2)!) - 1;
+        const hostPortLocation = entry.indexOf(lastPort) - colonNum;
         const rawIP = entry.substring(0, hostPortLocation);
 
         // In case the IP isn't enclosed with square brackets, we don't need any further processing

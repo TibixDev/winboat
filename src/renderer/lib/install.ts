@@ -246,6 +246,7 @@ export class InstallManager {
 
         while (true) {
             const start = performance.now();
+            
             try {
                 const apiHostPort = getActiveHostPort(this.container, CommonPorts.API)!;
                 const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, { signal: AbortSignal.timeout(5000) });
@@ -280,7 +281,7 @@ export class InstallManager {
                 logger.info(`API not responding yet, still waiting after ${attempts * 5 / 60} minutes...`);
             }
 
-            this.sleep(5000 - (performance.now() - start));
+            await this.sleep(5000 - (performance.now() - start));
         }
     }
 

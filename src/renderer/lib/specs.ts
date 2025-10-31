@@ -1,12 +1,15 @@
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { ContainerSpecs } from "./containers/common";
 const fs: typeof import("fs") = require("node:fs");
 const os: typeof import("os") = require("node:os");
 const { exec }: typeof import("child_process") = require("node:child_process");
 const { promisify }: typeof import("util") = require("node:util");
 const execAsync = promisify(exec);
 
-export function satisfiesPrequisites(specs: Specs) {
+export function satisfiesPrequisites(specs: Specs, containerSpecs?: ContainerSpecs) {
     return (
+        containerSpecs &&
+        Object.values(containerSpecs).every(x => x) &&
         specs.freeRDP3Installed &&
         specs.kvmEnabled &&
         specs.ramGB >= 4 &&

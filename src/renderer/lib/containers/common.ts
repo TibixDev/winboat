@@ -27,13 +27,15 @@ export const ContainerImplementations = {
     [ContainerRuntimes.PODMAN]: PodmanContainer,
 } as const satisfies Record<ContainerRuntimes, any>; // this makes it so ContainerImplementations has to map ContainerRuntimes to something exhaustively
 
-type ContainerSpecs = {
+type ContainerSpecMap = {
     [ContainerRuntimes.DOCKER]: DockerSpecs
     [ContainerRuntimes.PODMAN]: PodmanSpecs
 };
 
-export async function getContainerSpecs<T extends ContainerRuntimes>(type: T): Promise<ContainerSpecs[T]> {
-    return await ContainerImplementations[type]._getSpecs() as ContainerSpecs[T];
+export type ContainerSpecs = ContainerSpecMap[ContainerRuntimes];
+
+export async function getContainerSpecs<T extends ContainerRuntimes>(type: T): Promise<ContainerSpecMap[T]> {
+    return await ContainerImplementations[type]._getSpecs() as ContainerSpecMap[T];
 }
 
 export function createContainer<T extends ContainerRuntimes>(type: T, ...params: ConstructorParameters<typeof ContainerImplementations[T]>) {

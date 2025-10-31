@@ -186,7 +186,7 @@
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
-                                :disabled="!satisfiesPrequisites(specs)"
+                                :disabled="!satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
                             </x-button>
@@ -857,11 +857,6 @@ onUnmounted(() => {
 
 const containerSpecs = computedAsync(async () => {
     return await getContainerSpecs(containerRuntime.value);
-})
-
-const satisfiesContainerPrerequisites = computed(() => {
-    if(!containerSpecs.value) return false;
-    return Object.values(containerSpecs.value).every(x => x);
 })
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {

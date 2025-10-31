@@ -116,17 +116,16 @@
                     <div class="flex flex-row justify-center items-center gap-2">
                         <x-input
                             class="max-w-16 text-right text-[1.1rem]"
-                            min="0"
-                            :max="PORT_MAX"
-                            :value="freerdpPort"
+                            :value="isNaN(freerdpPort) ? '' : freerdpPort"
                             @input="
-                                (e: any) =>
+                                (e: any) => {
                                     (freerdpPort = Number(
-                                        /^\d+$/.exec(e.target.value)![0] || portMapper?.getShortPortMapping(GUEST_RDP_PORT)!.host,
-                                    ))
+                                        /^\d+$/.exec(e.target.value)?.at(0) || portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
+                                    )) }
                             "
-                            required
-                        />
+                        >
+                            <x-label v-if="isNaN(freerdpPort)">None</x-label>
+                        </x-input>
                     </div>
                 </x-card>
                 <div class="flex flex-col">
@@ -855,7 +854,7 @@ const errors = computedAsync(async () => {
         errCollection.push("You cannot allocate more RAM to Windows than you have available");
     }
 
-    if (freerdpPort.value !== origFreerdpPort.value && !(await ComposePortMapper.isPortOpen(freerdpPort.value))) {
+    if (freerdpPort.value !== origFreerdpPort.value && !isNaN(freerdpPort.value) && !(await ComposePortMapper.isPortOpen(freerdpPort.value))) {
         errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
@@ -877,7 +876,7 @@ const saveButtonDisabled = computed(() => {
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
         shareHomeFolder.value !== origShareHomeFolder.value ||
-        freerdpPort.value !== origFreerdpPort.value ||
+        (!isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;
