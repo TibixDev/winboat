@@ -537,6 +537,9 @@
                         ></x-switch>
                     </div>
                 </x-card>
+
+                <!-- LogCard -->
+                <LogsCard></LogsCard>
             </div>
         </div>
 
@@ -572,7 +575,7 @@
             >
                 <div>
                     <div class="flex flex-row items-center gap-2 mb-2">
-                        <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator"> </Icon>
+                        <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator"></Icon>
                         <h1 class="text-lg my-0 font-semibold">Advanced Settings</h1>
                     </div>
                     <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
@@ -635,6 +638,7 @@ import {
     DEFAULT_HOST_QMP_PORT,
 } from "../lib/constants";
 import { PortManager } from "../utils/port";
+import LogsCard from "./config/LogsCard.vue";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
 // Emits

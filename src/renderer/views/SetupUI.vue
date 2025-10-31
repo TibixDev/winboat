@@ -671,6 +671,13 @@
                                 <a href="https://rentry.org/winboat_retry_install" @click="openAnchorLink">these</a>
                                 instructions.
                             </x-label>
+                            <LogButton
+                                childrenClass="text-lg text-gray-400 text-center"
+                                title="Install log (winboat.log)"
+                                logFile="install.log"
+                                :dialog="logDialog!!"
+                            />
+                            <LogDialog ref="logDialog"></LogDialog>
                         </div>
 
                         <!-- Completed -->
@@ -698,11 +705,13 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
-import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVNC_PORT } from "../lib/constants";
+import { defaultSpecs, getMemoryInfo, getSpecs, type MemoryInfo, satisfiesPrequisites } from "../lib/specs";
+import { GUEST_NOVNC_PORT, WINDOWS_LANGUAGES, WINDOWS_VERSIONS, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
+import LogButton from "./buttons/LogButton.vue";
+import LogDialog from "./dialogs/LogDialog.vue";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -811,6 +820,7 @@ const confirmPassword = ref("");
 const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
+const logDialog = ref<typeof LogDialog | null>(null);
 
 let installManager: InstallManager | null = null;
 
