@@ -159,8 +159,11 @@ import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { GUEST_NOVNC_PORT } from "./lib/constants";
 import { setIntervalImmediately } from "./utils/interval";
+import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
+const path: typeof import("path") = require("node:path");
+const remote: typeof import("@electron/remote") = require("@electron/remote");
 
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
@@ -218,7 +221,7 @@ onMounted(async () => {
         () => winboat?.isUpdatingGuestServer.value,
         isUpdating => {
             if (isUpdating === true) {
-                novncURL.value = `http://127.0.0.1:${winboat?.getHostPort(GUEST_NOVNC_PORT)}`;
+                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}`;
                 updateDialog.value!.showModal();
                 // Prepare the timeout to show manual update required after 45 seconds
                 updateTimeout = setTimeout(() => {

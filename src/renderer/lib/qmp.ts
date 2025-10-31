@@ -180,15 +180,25 @@ export class QMPManager {
                     logger.error(err);
                     reject(err);
                 }
-                this.qmpSocket.once("data", (data: Buffer) => {
+
+                // This callback processes data received from the QMP socket
+                const receiveData = (data: Buffer) => {
                     try {
+                        const parsedData = JSON.parse(data.toString());
+                        if ("event" in parsedData) return; // In case we get notified of an event (for exampe NETDEV_STREAM_CONNECTED), we ignore it
+
+                        // We remove our callback from the data event when we get the response
+                        this.qmpSocket.off("data", receiveData);
                         resolve(JSON.parse(data.toString()));
                     } catch (e) {
                         logger.error(e);
                         logger.error(`QMP request 'data.toString()': ${data.toString()}`);
                         reject(e);
                     }
-                });
+                };
+
+                // We can't do 'qmpSocket.once', since we may get an event notice inbetween sending the command and receiving the response.
+                this.qmpSocket.on("data", receiveData);
             });
         });
     }
