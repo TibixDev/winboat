@@ -96,7 +96,6 @@ export abstract class SharedContainerManagerBehaviour extends ContainerManager {
             dead: ContainerStatus.UNKNOWN,
         } as const;
         const args = ["inspect", "--format={{.State.Status}}", this.containerName];
-
         try {
             const { stdout } = await execFileAsync(this.executableAlias, args);
             const status = stdout.trim() as keyof typeof statusMap;
@@ -108,8 +107,7 @@ export abstract class SharedContainerManagerBehaviour extends ContainerManager {
     }
 
     async exists(): Promise<boolean> {
-        const args = ["ps", "-a", "--filter", `name=${this.containerName}`, '--format "{{.Names}}"'];
-
+        const args = ["ps", "-a", "--filter", `name=${this.containerName}`, "--format", "{{.Names}}"];
         try {
             const { stdout: exists } = await execFileAsync(this.executableAlias, args);
             return exists.includes("WinBoat");
