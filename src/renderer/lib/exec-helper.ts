@@ -36,3 +36,12 @@ function escapeString(str: string): string {
     }
     return fixed_string;
 }
+
+export function concatEnv(a: { [key: string]: string }, b?: { [key: string]: string }) {
+    if (b !== undefined) {
+        for (const key of Object.keys(b)) {
+            a[key] = b[key];
+        }
+    }
+    return a;
+}
