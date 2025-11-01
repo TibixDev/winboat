@@ -18,8 +18,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { PortManager } from "../utils/port";
-import { execFileAsync, ExecFileAsyncError } from "./exec-helper";
+import { ExecFileAsyncError } from "./exec-helper";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 
@@ -619,7 +618,6 @@ export class Winboat {
         const freeRDPInstallation = await getFreeRDP();
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
-        logger.info(`Using FreeRDP Command: '${freeRDPWrapper}'`);
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);

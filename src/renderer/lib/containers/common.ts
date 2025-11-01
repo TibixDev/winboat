@@ -1,5 +1,4 @@
 import { PortEntryProtocol } from "../../../types";
-import { ComposePortEntry } from "../../utils/port";
 import { GUEST_API_PORT, GUEST_NOVNC_PORT, GUEST_QMP_PORT, GUEST_RDP_PORT } from "../constants";
 import { ContainerManager } from "./container";
 import { DockerContainer, DockerSpecs } from "./docker";
