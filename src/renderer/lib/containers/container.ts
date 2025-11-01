@@ -2,6 +2,9 @@ import { ComposeConfig } from "../../../types";
 import { WINBOAT_DIR } from "../constants";
 import { createLogger } from "../../utils/log";
 import { ComposePortEntry } from "../../utils/port";
+import { PodmanSpecs } from "./podman";
+import { DockerSpecs } from "./docker";
+
 const path: typeof import("path") = require("path");
 
 export const containerLogger = createLogger(path.join(WINBOAT_DIR, "container.log"));
@@ -27,7 +30,7 @@ export abstract class ContainerManager {
     abstract get containerName(): string;
 
     // static "abstract" function
-    static async _getSpecs(): Promise<any> {
+    static async _getSpecs(): Promise<PodmanSpecs | DockerSpecs> {
         throw new Error("Can't get specs of abstract class ContainerManager");
     }
 }
