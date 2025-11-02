@@ -5,7 +5,12 @@
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
-                        <img alt="Icon for current app" v-if="currentAppForm.Icon" :src="currentAppForm.Icon" class="size-24" />
+                        <img
+                            alt="Icon for current app"
+                            v-if="currentAppForm.Icon"
+                            :src="currentAppForm.Icon"
+                            class="size-24"
+                        />
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
@@ -112,16 +117,24 @@
                     <x-icon href="#add" class="qualifier"></x-icon>
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
-                <x-select @change="(e: any) => (sortBy = e.detail.newValue)" :disabled="!winboat.isOnline.value">
+                <x-select
+                    @change="
+                        (e: any) => {
+                            sortBy = e.detail.newValue;
+                            WinboatConfig.getInstance().config.appsSortOrder = e.detail.newValue;
+                        }
+                    "
+                    :disabled="!winboat.isOnline.value"
+                >
                     <x-menu class="">
-                        <x-menuitem value="name">
+                        <x-menuitem value="name" :toggled="WinboatConfig.getInstance().config.appsSortOrder === 'name'">
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
                                 <span class="qualifier"> Sort By: </span>
                                 Name
                             </x-label>
                         </x-menuitem>
-                        <x-menuitem value="usage" toggled>
+                        <x-menuitem value="usage" :toggled="WinboatConfig.getInstance().config.appsSortOrder === 'usage'">
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
                                 <span class="qualifier"> Sort By: </span>
@@ -247,13 +260,14 @@ import { AppIcons, DEFAULT_ICON } from "../data/appicons";
 import { GUEST_API_PORT } from "../lib/constants";
 import { debounce } from "../utils/debounce";
 import { Jimp, JimpMime } from "jimp";
+import { WinboatConfig } from "../lib/config";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const FormData: typeof import("form-data") = require("form-data");
 
 const winboat = Winboat.getInstance();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
-const sortBy = ref("usage");
+const sortBy = ref(WinboatConfig.getInstance().config.appsSortOrder);
 const filterBy = ref("all");
 const addCustomAppDialog = useTemplateRef("addCustomAppDialog");
 const customAppName = ref("");
