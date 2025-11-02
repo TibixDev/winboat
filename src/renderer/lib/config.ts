@@ -22,7 +22,7 @@ export class WinboatVersion {
         const versionTags = versionToken.split("-");
         const versionNumbers = versionTags[0].split(".").map(value => {
             const parsedValue = parseInt(value);
-            
+
             if(Number.isNaN(parsedValue)) {
                 throw new Error(`Invalid winboat version format: '${versionToken}'`);
             }
@@ -64,6 +64,7 @@ export type WinboatConfigObj = {
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
     versionData: WinboatVersionData;
+    appsSortOrder: string;
 };
 
 const currentVersion = new WinboatVersion(import.meta.env.VITE_APP_VERSION);
@@ -85,7 +86,8 @@ const defaultConfig: WinboatConfigObj = {
     versionData: {
         previous: currentVersion, // As of 0.9.0 this won't exist on the filesystem, so we just set it to the current version
         current: currentVersion
-    }
+    },
+    appsSortOrder: 'name',
 };
 
 export class WinboatConfig {
