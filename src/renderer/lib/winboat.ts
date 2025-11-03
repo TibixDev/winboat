@@ -426,14 +426,14 @@ export class Winboat {
         return status.rdpConnected;
     }
 
-    parseCompose() {
-        const composeFile = fs.readFileSync(this.containerMgr!.composeFilePath, "utf-8");
+    static readCompose(composePath: string): ComposeConfig {
+        const composeFile = fs.readFileSync(composePath, "utf-8");
         const composeContents = YAML.parse(composeFile) as ComposeConfig;
         return composeContents;
     }
 
     getCredentials() {
-        const compose = this.parseCompose();
+        const compose = Winboat.readCompose(this.containerMgr!.composeFilePath);
         return {
             username: compose.services.windows.environment.USERNAME,
             password: compose.services.windows.environment.PASSWORD,
@@ -572,7 +572,7 @@ export class Winboat {
         console.info("Removed container");
 
         // 3. Remove the container volume or folder
-        const compose = this.parseCompose();
+        const compose = Winboat.readCompose(this.containerMgr!.composeFilePath);
         const storage = compose.services.windows.volumes.find(vol => vol.includes("/storage"));
         if (storage?.startsWith("data:")) {
             if (this.#wbConfig?.config.containerRuntime !== ContainerRuntimes.DOCKER) {

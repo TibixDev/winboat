@@ -390,6 +390,7 @@
                     </div>
                 </x-card>
 
+                <!-- Application Scaling -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
                 >
@@ -544,51 +545,55 @@
         <div>
             <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
 
-            <!-- Experimental Features -->
-            <x-card
-                class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
-            >
-                <div>
-                    <div class="flex flex-row items-center gap-2 mb-2">
-                        <Icon
-                            class="text-violet-400 inline-flex size-8"
-                            icon="streamline-ultimate:lab-tube-experiment"
+            <div class="flex flex-col gap-4">
+                <!-- Experimental Features -->
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
+                >
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon
+                                class="text-violet-400 inline-flex size-8"
+                                icon="streamline-ultimate:lab-tube-experiment"
+                            />
+                            <h1 class="text-lg my-0 font-semibold">Experimental Features</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, you'll have access to experimental features that may not be stable or complete
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                            :toggled="wbConfig.config.experimentalFeatures"
+                            @toggle="toggleExperimentalFeatures"
+                            size="large"
                         />
-                        <h1 class="text-lg my-0 font-semibold">Experimental Features</h1>
                     </div>
-                    <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                        If enabled, you'll have access to experimental features that may not be stable or complete
-                    </p>
-                </div>
-                <div class="flex flex-row justify-center items-center gap-2">
-                    <x-switch
-                        :toggled="wbConfig.config.experimentalFeatures"
-                        @toggle="toggleExperimentalFeatures"
-                        size="large"
-                    />
-                </div>
-            </x-card>
-            <x-card
-                class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
-            >
-                <div>
-                    <div class="flex flex-row items-center gap-2 mb-2">
-                        <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator"> </Icon>
-                        <h1 class="text-lg my-0 font-semibold">Advanced Settings</h1>
+                </x-card>
+
+                <!-- Advanced Settings -->
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
+                >
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator"> </Icon>
+                            <h1 class="text-lg my-0 font-semibold">Advanced Settings</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, you'll have access to advanced settings that may prevent WinBoat from working if
+                            misconfigured
+                        </p>
                     </div>
-                    <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                        If enabled, you'll have access to advanced settings that may prevent WinBoat from working if
-                        misconfigured
-                    </p>
-                </div>
-                <div class="flex flex-row justify-center items-center gap-2">
-                    <x-switch
-                        :toggled="wbConfig.config.advancedFeatures"
-                        @toggle="toggleAdvancedFeatures"
-                        size="large"
-                    />
-                </div>
-            </x-card>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                            :toggled="wbConfig.config.advancedFeatures"
+                            @toggle="toggleAdvancedFeatures"
+                            size="large"
+                        />
+                    </div>
+                </x-card>
+            </div>
         </div>
 
         <div>
@@ -722,7 +727,7 @@ function updateApplicationScale(value: string | number) {
  * so we can display them and track when a change has been made
  */
 async function assignValues() {
-    compose.value = winboat.parseCompose();
+    compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
     portMapper.value = new ComposePortMapper(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);

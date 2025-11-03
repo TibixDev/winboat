@@ -1066,7 +1066,7 @@ function install() {
         container: createContainer(containerRuntime.value), // Hardcdde for now
     };
 
-    const wbConfig = new WinboatConfig(); // Create winboat config.
+    const wbConfig = WinboatConfig.getInstance(); // Create winboat config.
     wbConfig.config.containerRuntime = containerRuntime.value; // Save which runtime to use.
 
     installManager = new InstallManager(installConfig);

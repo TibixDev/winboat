@@ -259,15 +259,14 @@ export class InstallManager {
                     logger.info("WinBoat Guest Server is up and healthy!");
                     this.changeState(InstallStates.COMPLETED);
 
-                    const winboat = Winboat.getInstance();
-                    const config = winboat.parseCompose();
-                    const filteredVolumes = config.services.windows.volumes.filter(
+                    const compose = Winboat.readCompose(this.container.composeFilePath);
+                    const filteredVolumes = compose.services.windows.volumes.filter(
                         volume => !volume.endsWith("/boot.iso"),
                     );
 
-                    if (config.services.windows.volumes.length !== filteredVolumes.length) {
-                        config.services.windows.volumes = filteredVolumes;
-                        await winboat.replaceCompose(config, false);
+                    if (compose.services.windows.volumes.length !== filteredVolumes.length) {
+                        compose.services.windows.volumes = filteredVolumes;
+                        await this.container.writeCompose(compose);
                     }
 
                     return;
@@ -311,8 +310,7 @@ export class InstallManager {
 
 export async function isInstalled(): Promise<boolean> {
     // Check if a winboat container exists
-    const configInstance = new WinboatConfig();
-    const config = configInstance.readConfig();
+    const config = WinboatConfig.readConfigObject();
 
     if (!config) return false;
 
