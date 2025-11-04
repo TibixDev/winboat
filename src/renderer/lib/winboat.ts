@@ -76,6 +76,7 @@ const stockArgs = [
     "/microphone:sys:pulse",
     "/floatbar",
     "/compression",
+    "/sec:tls",
 ];
 
 /**
