@@ -255,7 +255,41 @@ if command -v node &> /dev/null; then
         
         # Check if it's apt-installed (in /usr/bin)
         if [[ "$NODE_LOCATION" == "/usr/bin/node" ]] || [[ "$NODE_LOCATION" == "/usr/local/bin/node" ]]; then
-            log_info "Removing system-installed Node.js..."
+            echo ""
+            log_warning "╔══════════════════════════════════════════════════════════════╗"
+            log_warning "║      NODE.JS REMOVAL REQUIRED - USER CONFIRMATION           ║"
+            log_warning "╚══════════════════════════════════════════════════════════════╝"
+            echo ""
+            log_warning "Your system has Node.js $NODE_VERSION installed via apt (Ubuntu packages)"
+            log_warning "WinBoat requires Node.js v23+ to function properly."
+            echo ""
+            log_warning "${RED}The following will be REMOVED from your system:${NC}"
+            log_warning "  • /usr/bin/node and /usr/bin/npm"
+            log_warning "  • All Node.js system packages from apt"
+            log_warning "  • Global npm packages installed system-wide"
+            echo ""
+            log_info "${GREEN}Node.js v23 will be installed in a NEW location:${NC}"
+            log_info "  • Installed via nvm (Node Version Manager)"
+            log_info "  • Located in: ~/.nvm/ (your home directory)"
+            log_info "  • Isolated - won't affect other users"
+            log_info "  • Can have multiple versions installed"
+            echo ""
+            log_warning "${YELLOW}IMPORTANT: This is a significant change!${NC}"
+            log_warning "If you have other programs that depend on system Node.js,"
+            log_warning "they may need reconfiguration after this change."
+            echo ""
+            read -p "Do you want to proceed with Node.js removal? (yes/no): " nodejs_confirm
+            echo ""
+            
+            if [ "$nodejs_confirm" != "yes" ]; then
+                log_error "Node.js removal cancelled by user"  
+                log_error "Cannot proceed with WinBoat installation"
+                log_info "To continue, please manually upgrade Node.js to v23+ first"
+                log_info "Or run: nvm install 23 && nvm use 23"
+                exit 1
+            fi
+            
+            log_info "User confirmed - proceeding with Node.js removal..."
             sudo apt remove -y nodejs npm 2>&1 | tee -a "$LOG_FILE"
             sudo apt autoremove -y 2>&1 | tee -a "$LOG_FILE"
             log_success "Old Node.js removed"
