@@ -728,6 +728,23 @@ function updateApplicationScale(value: string | number) {
  */
 async function assignValues() {
     compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
+    
+    // Handle case where no compose file exists yet (before Windows installation)
+    if (!compose.value) {
+        // Set safe defaults
+        freerdpPort.value = 3389;
+        origFreerdpPort.value = 3389;
+        numCores.value = 4;
+        origNumCores.value = 4;
+        ramGB.value = 8;
+        origRamGB.value = 8;
+        
+        const specs = await getSpecs();
+        maxRamGB.value = specs.ramGB;
+        maxNumCores.value = specs.cpuCores;
+        return; // Exit early - can't load other values without compose
+    }
+    
     portMapper.value = new ComposePortMapper(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
@@ -742,7 +759,7 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
+    freerdpPort.value = (portMapper.value?.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? 3389;
     origFreerdpPort.value = freerdpPort.value;
 
     origApplicationScale.value = wbConfig.config.scaleDesktop;
