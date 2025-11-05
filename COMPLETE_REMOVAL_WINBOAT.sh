@@ -53,22 +53,27 @@ fi
 # ============================================
 print_status "Stopping WinBoat containers..."
 
-# Stop containers matching winboat
+# Stop and remove ALL containers matching winboat (case-insensitive)
 CONTAINERS=$(docker ps -aq --filter "name=winboat" 2>/dev/null || true)
+CONTAINERS+=" $(docker ps -aq --filter "name=WinBoat" 2>/dev/null || true)"
 if [ -n "$CONTAINERS" ]; then
+    # Force stop and remove (trim whitespace)
+    CONTAINERS=$(echo $CONTAINERS | tr -s ' ')
     docker stop $CONTAINERS 2>/dev/null || true
-    docker rm $CONTAINERS 2>/dev/null || true
+    docker rm -f $CONTAINERS 2>/dev/null || true
     print_success "Removed WinBoat containers"
 else
     print_success "No WinBoat containers found"
 fi
 
-# Stop containers using Windows image
+# Stop and remove ALL containers using Windows image
 WINDOWS_CONTAINERS=$(docker ps -aq --filter "ancestor=ghcr.io/dockur/windows" 2>/dev/null || true)
 if [ -n "$WINDOWS_CONTAINERS" ]; then
     docker stop $WINDOWS_CONTAINERS 2>/dev/null || true
-    docker rm $WINDOWS_CONTAINERS 2>/dev/null || true
+    docker rm -f $WINDOWS_CONTAINERS 2>/dev/null || true
     print_success "Removed Windows containers"
+else
+    print_success "No Windows containers found"
 fi
 
 # ============================================
