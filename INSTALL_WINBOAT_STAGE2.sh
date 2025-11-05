@@ -70,15 +70,76 @@ log_info() {
 # Clear log file
 > "$LOG_FILE"
 
-# Check if already run
+# ===================================================================
+# AUTO-RECOVERY: Check for failed previous installation
+# ===================================================================
+
 if [ -f "$LOCK_FILE" ]; then
-    log_warning "Stage 2 installer has already been run. Lock file exists."
-    log_warning "To run again, delete: $LOCK_FILE"
-    exit 0
+    log_warning "╔══════════════════════════════════════════════════════════════╗"
+    log_warning "║  PREVIOUS INSTALLATION DETECTED (Lock file exists)          ║"
+    log_warning "╚══════════════════════════════════════════════════════════════╝"
+    echo ""
+    log_warning "A previous Stage 2 installation attempt was detected."
+    log_warning "This usually happens if:"
+    log_warning "  • Password prompt was closed or cancelled"
+    log_warning "  • Installation was interrupted (Ctrl+C)"
+    log_warning "  • System error occurred during installation"
+    echo ""
+    log_info "Lock file: $LOCK_FILE"
+    
+    # Check for partial installation
+    if [ -d "$INSTALL_DIR" ]; then
+        log_warning "Partial installation found at: $INSTALL_DIR"
+    fi
+    
+    echo ""
+    log_info "${YELLOW}AUTO-RECOVERY: Cleaning up and retrying installation...${NC}"
+    log_info "This will happen automatically in 10 seconds."
+    log_info "Press Ctrl+C to cancel if you want to investigate first."
+    echo ""
+    
+    for i in {10..1}; do
+        echo -ne "\r  Auto-cleanup in: ${i}s  "
+        sleep 1
+    done
+    echo -e "\r  ${GREEN}✓ Proceeding with cleanup${NC}"
+    echo ""
+    
+    # Clean up lock file
+    log_info "Removing lock file..."
+    rm -f "$LOCK_FILE"
+    log_success "Lock file removed"
+    
+    # Clean up partial installation
+    if [ -d "$INSTALL_DIR" ]; then
+        log_info "Removing partial installation..."
+        rm -rf "$INSTALL_DIR"
+        log_success "Partial installation removed"
+    fi
+    
+    # Clean up old log
+    if [ -f "$LOG_FILE" ]; then
+        log_info "Archiving old log file..."
+        mv "$LOG_FILE" "$LOG_FILE.old"
+        log_success "Old log archived to: $LOG_FILE.old"
+    fi
+    
+    # Clean up root-owned .winboat directory (from failed sudo)
+    if [ -d "$HOME/.winboat" ]; then
+        log_info "Removing leftover configuration..."
+        sudo rm -rf "$HOME/.winboat" 2>/dev/null || true
+        log_success "Leftover configuration removed"
+    fi
+    
+    echo ""
+    log_success "Cleanup complete! Starting fresh installation..."
+    echo ""
+    sleep 2
 fi
 
 # Create lock file
 touch "$LOCK_FILE"
+log_info "Lock file created (prevents duplicate runs)"
 
 echo ""
 log "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
