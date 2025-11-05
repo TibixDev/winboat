@@ -388,6 +388,16 @@ cd "$INSTALL_DIR"
 npm install >> "$LOG_FILE" 2>&1
 log_success "Dependencies installed ($(ls node_modules | wc -l) packages)"
 
+# Fix Electron sandbox permissions (required for development)
+log_info "Configuring Electron sandbox permissions..."
+if [ -f "$INSTALL_DIR/node_modules/electron/dist/chrome-sandbox" ]; then
+    sudo chown root:root "$INSTALL_DIR/node_modules/electron/dist/chrome-sandbox"
+    sudo chmod 4755 "$INSTALL_DIR/node_modules/electron/dist/chrome-sandbox"
+    log_success "Electron sandbox configured"
+else
+    log_warning "Electron sandbox not found - may need manual configuration"
+fi
+
 # Increase file watcher limit for development
 log_info "Configuring system for development..."
 echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.conf >> "$LOG_FILE" 2>&1
