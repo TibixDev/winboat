@@ -199,6 +199,53 @@ docker system prune -f >/dev/null 2>&1 || true
 print_success "Docker system cleaned"
 
 # ============================================
+# 9. Setup Stage 2 Auto-Install
+# ============================================
+print_status "Setting up Stage 2 automatic installation..."
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STAGE2_SCRIPT="$SCRIPT_DIR/INSTALL_WINBOAT_STAGE2.sh"
+
+if [ ! -f "$STAGE2_SCRIPT" ]; then
+    print_warning "Stage 2 installer not found at: $STAGE2_SCRIPT"
+    print_warning "Stage 2 auto-install will be skipped"
+    SKIP_STAGE2=true
+else
+    # Make Stage 2 script executable
+    chmod +x "$STAGE2_SCRIPT"
+    
+    # Create systemd user service directory
+    mkdir -p "$HOME/.config/systemd/user"
+    
+    # Create systemd user service
+    cat > "$HOME/.config/systemd/user/winboat-stage2-install.service" << EOFSERVICE
+[Unit]
+Description=WinBoat Stage 2 Installation (Post-Reboot)
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'sleep 5 && $STAGE2_SCRIPT'
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
+EOFSERVICE
+
+    # Enable the service
+    systemctl --user daemon-reload
+    systemctl --user enable winboat-stage2-install.service
+    
+    print_success "Stage 2 auto-install configured"
+    print_success "Will run automatically 30 seconds after next login"
+    SKIP_STAGE2=false
+fi
+
+echo ""
+
+# ============================================
 # Summary
 # ============================================
 echo ""
@@ -211,8 +258,30 @@ echo ""
 echo "Remaining Docker storage:"
 docker system df || true
 echo ""
-echo "To reinstall WinBoat with your fixes:"
-echo "  1. Reboot your system (recommended)"
-echo "  2. Run: cd winboat-repo && npm run dev"
-echo "  3. Or use the 1-click installer"
-echo ""
+
+if [ "$SKIP_STAGE2" = false ]; then
+    echo "╔═══════════════════════════════════════════════════════╗"
+    echo "║     AUTOMATIC STAGE 2 INSTALLATION CONFIGURED         ║"
+    echo "╚═══════════════════════════════════════════════════════╝"
+    echo ""
+    echo "After reboot, Stage 2 will automatically:"
+    echo "  1. Wait 30 seconds for desktop to load"
+    echo "  2. Update your system (apt update && upgrade)"
+    echo "  3. Install all dependencies (Docker, Node.js, FreeRDP)"
+    echo "  4. Clone WinBoat from: sprinteroz/winboat"
+    echo "  5. Install and launch WinBoat"
+    echo ""
+    echo "Your system will now reboot in 10 seconds..."
+    echo "Press Ctrl+C to cancel the reboot"
+    echo ""
+    
+    sleep 10
+    echo "Rebooting now..."
+    sudo reboot
+else
+    echo "To reinstall WinBoat manually:"
+    echo "  1. Reboot your system (recommended)"
+    echo "  2. Run: cd winboat-repo && npm run dev"
+    echo "  3. Or use the 1-click installer"
+    echo ""
+fi
