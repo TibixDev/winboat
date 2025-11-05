@@ -70,18 +70,6 @@
                 </div>
             </div>
 
-            <template>
-                <div class="apps-grid">
-                    <div
-                        v-for="app in apps"
-                        :key="app.id"
-                        class="app-tile"
-                        @contextmenu.prevent="openContextMenu($event, app)"
-                    >
-                        {{ app.Name }}
-                    </div>
-                </div>
-            </template>
             <footer>
                 <x-button @click="cancelAddCustomApp" id="cancel-button">
                     <x-label>Cancel</x-label>
