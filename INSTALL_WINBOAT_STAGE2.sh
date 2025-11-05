@@ -549,11 +549,19 @@ log "${GREEN}║  Ready to launch WinBoat! All fixes are now active!         ║
 log "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Auto-launch WinBoat
-log_info "Launching WinBoat in 5 seconds..."
-log_info "Press Ctrl+C to cancel and launch manually later"
-sleep 5
+log "${YELLOW}To launch WinBoat:${NC}"
+log "  ${GREEN}Option 1:${NC} Double-click the ${GREEN}WinBoat-Dev${NC} icon on your Desktop"
+log "  ${GREEN}Option 2:${NC} Run: ${GREEN}~/start-winboat-dev.sh${NC}"
+log "  ${GREEN}Option 3:${NC} Run: ${GREEN}cd ~/winboat-dev && npm run dev${NC}"
+echo ""
 
-log_info "Starting WinBoat..."
-cd "$INSTALL_DIR"
-npm run dev
+log_success "Stage 2 installation completed successfully!"
+log_info "This window will close in 10 seconds..."
+echo ""
+
+for i in {10..1}; do
+    echo -ne "\r  Closing in: ${i}s  "
+    sleep 1
+done
+echo -e "\r  ${GREEN}✓ Done!${NC}                "
+echo ""
