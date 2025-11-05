@@ -7,6 +7,8 @@ export type Specs = {
     ramGB: number;
     kvmEnabled: boolean;
     freeRDP3Installed: boolean;
+    rdpPortAvailable: boolean;
+    xrdpRunning: boolean;
 };
 
 export type InstallConfiguration = {

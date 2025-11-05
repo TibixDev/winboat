@@ -238,6 +238,17 @@
                                     How?
                                 </a>
                             </li>
+                            <li class="flex items-center gap-2">
+                                <span v-if="specs.rdpPortAvailable && !specs.xrdpRunning" class="text-green-500">✔</span>
+                                <span v-else class="text-yellow-500">⚠</span>
+                                Port 3389 available (RDP)
+                                <span v-if="specs.xrdpRunning" class="text-yellow-500 text-sm">
+                                    (xrdp is running - stop it with: <span class="font-mono bg-neutral-700 rounded-md px-1">sudo systemctl stop xrdp</span>)
+                                </span>
+                                <span v-else-if="!specs.rdpPortAvailable" class="text-yellow-500 text-sm">
+                                    (Port 3389 is in use by another service)
+                                </span>
+                            </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
