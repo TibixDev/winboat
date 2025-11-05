@@ -37,7 +37,11 @@ function escapeString(str: string): string {
     return fixed_string;
 }
 
-export function concatEnv(a: { [key: string]: string }, b?: { [key: string]: string }) {
+type EnvMap = { 
+    [key: string]: string
+};
+
+export function concatEnv(a: EnvMap, b?: EnvMap) {
     if (b !== undefined) {
         for (const key of Object.keys(b)) {
             a[key] = b[key];

@@ -39,10 +39,12 @@ export class DockerContainer extends ContainerManager {
 
     async compose(direction: ComposeDirection): Promise<void> {
         const args = ["compose", "-f", this.composeFilePath, direction];
+        
         if (direction === "up") {
-            // Run compose in detached mode if we are running compose up TODO: maybe we need to run both in detached mode
+            // Run compose in detached mode if we are running compose up
             args.push("-d");
         }
+
         try {
             const { stderr } = await execFileAsync(this.executableAlias, args);
             if (stderr) {
@@ -107,6 +109,7 @@ export class DockerContainer extends ContainerManager {
         const statusMap = {
             created: ContainerStatus.CREATED,
             restarting: ContainerStatus.UNKNOWN,
+            removing: ContainerStatus.UNKNOWN,
             running: ContainerStatus.RUNNING,
             paused: ContainerStatus.PAUSED,
             exited: ContainerStatus.EXITED,

@@ -65,9 +65,10 @@ export class PodmanContainer extends ContainerManager {
         const args = ["compose", "-f", this.composeFilePath, direction];
 
         if (direction === "up") {
-            // Run compose in detached mode if we are running compose up TODO: maybe we need to run both in detached mode
+            // Run compose in detached mode if we are running compose up
             args.push("-d");
         }
+
         try {
             const { stderr } = await execFileAsync(this.executableAlias, args, {
                 env: concatEnv(process.env as { [key: string]: string }, COMPOSE_ENV_VARS),
@@ -134,12 +135,15 @@ export class PodmanContainer extends ContainerManager {
         const statusMap = {
             created: ContainerStatus.CREATED,
             restarting: ContainerStatus.UNKNOWN,
+            initialized: ContainerStatus.UNKNOWN,
+            removing: ContainerStatus.UNKNOWN,
             running: ContainerStatus.RUNNING,
             paused: ContainerStatus.PAUSED,
             exited: ContainerStatus.EXITED,
             dead: ContainerStatus.UNKNOWN,
         } as const;
         const args = ["inspect", "--format={{.State.Status}}", this.containerName];
+        
         try {
             const { stdout } = await execFileAsync(this.executableAlias, args);
             const status = stdout.trim() as keyof typeof statusMap;

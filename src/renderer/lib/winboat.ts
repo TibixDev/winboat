@@ -648,29 +648,29 @@ export class Winboat {
             ]);
         }
 
-        args = args.filter(function (v, _i, _a) {
-            return v.trim() !== "";
-        });
+        args = args.filter((v, _i, _a) => v.trim() !== "");
+
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
-        if (freeRDPInstallation) {
+        if (!freeRDPInstallation) {
+            logger.error("No FreeRDP installation found");
+            return;
+        }
+
+        try {        
             logger.info(`Launch FreeRDP with command:\n${freeRDPInstallation.stringifyExec(args)}`);
-            freeRDPInstallation
-                .exec(args)
-                .then(_value => {})
-                .catch(reason => {
-                    const error = reason as ExecFileAsyncError;
-                    // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
-                    // ERRINFO_LOGOFF_BY_USER
-                    if (error.code !== 12) {
-                        throw error;
-                    } else {
-                        logger.info("FreeRDP disconnected due to user logging off.");
-                    }
-                });
-        } else {
-            logger.error("No freeRDP installation found");
+            await freeRDPInstallation.exec(args);
+        } catch(e) {
+            const execError = e as ExecFileAsyncError;
+            
+            // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
+            // ERRINFO_LOGOFF_BY_USER
+            if (execError.code !== 12) {
+                throw execError;
+            }
+
+            logger.info("FreeRDP disconnected due to user logging off.");
         }
     }
 

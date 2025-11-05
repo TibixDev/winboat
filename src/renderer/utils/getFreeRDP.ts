@@ -4,9 +4,9 @@ export class FreeRDPInstallation {
     file: string;
     defaultArgs: string[];
 
-    constructor(file: string, defaultArgs?: string[]) {
+    constructor(file: string, defaultArgs: string[] = []) {
         this.file = file;
-        this.defaultArgs = defaultArgs || [];
+        this.defaultArgs = defaultArgs;
     }
 
     exec(args: string[]): Promise<{
