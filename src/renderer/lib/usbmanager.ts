@@ -1,8 +1,8 @@
 const { usb, getDeviceList }: typeof import("usb") = require("usb");
-const fs: typeof import("fs") = require("fs");
-const { execSync }: typeof import("child_process") = require("child_process");
+const fs: typeof import("fs") = require("node:fs");
+const { execSync }: typeof import("child_process") = require("node:child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
-const path: typeof import("path") = require("path");
+const path: typeof import("path") = require("node:path");
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
 import { Winboat, logger } from "./winboat";
@@ -33,24 +33,25 @@ type VidPidHex = {
 };
 
 export class USBManager {
-    private static instance: USBManager;
+    private static instance: USBManager | null = null;
     // Current list of USB devices
     devices: Ref<Device[]> = ref([]);
     // Current list of passed-through USB devices
     ptDevices: Ref<PTSerializableDeviceInfo[]> = ref([]);
     // ^^ To be kept in sync with WinboatConfig.config.passedThroughDevices
 
-    #linuxDeviceDatabase: LinuxDeviceDatabase = {};
-    #deviceStringCache: Map<string, DeviceStrings> = new Map<string, DeviceStrings>();
-    #mtpDeviceCache: Map<string, boolean> = new Map<string, boolean>();
-    #winboat: Winboat = new Winboat();
-    #wbConfig: WinboatConfig = new WinboatConfig();
+    readonly #linuxDeviceDatabase: LinuxDeviceDatabase = {};
+    readonly #deviceStringCache: Map<string, DeviceStrings> = new Map<string, DeviceStrings>();
+    readonly #mtpDeviceCache: Map<string, boolean> = new Map<string, boolean>();
+    readonly #winboat: Winboat = Winboat.getInstance();
+    readonly #wbConfig: WinboatConfig = WinboatConfig.getInstance();
 
-    constructor() {
-        if (USBManager.instance) {
-            return USBManager.instance;
-        }
+    static getInstance() {
+        USBManager.instance ??= new USBManager();
+        return USBManager.instance;
+    }
 
+    private constructor() {
         this.#linuxDeviceDatabase = readLinuxDeviceDatabase();
         this.devices.value = getDeviceList();
         // Pre-cache existing devices, otherwise on detach we won't have any info about them
@@ -59,10 +60,6 @@ export class USBManager {
         this.ptDevices.value = this.#wbConfig.config.passedThroughDevices;
         this.#setupDeviceUpdateListeners();
         this.#setupGuestListener();
-
-        USBManager.instance = this;
-
-        return USBManager.instance;
     }
 
     /**
@@ -171,7 +168,7 @@ export class USBManager {
                 const deviceStrings = getDeviceStringsFromLsusb(vendorIdHex, productIdHex);
 
                 if (deviceStrings.manufacturer) {
-                    vendor = { name: deviceStrings.manufacturer!, devices: {} };
+                    vendor = { name: deviceStrings.manufacturer, devices: {} };
                 }
             }
         } catch (e) {
@@ -185,9 +182,7 @@ export class USBManager {
         });
 
         // Format: [VID:PID] Vendor Name | Product Name
-        return `[${vendorIdHex}:${productIdHex}] ${vendor ? vendor.name : "Unknown Vendor"} | ${
-            product ? product : "Unknown Product"
-        }`;
+        return `[${vendorIdHex}:${productIdHex}] ${vendor ? vendor.name : "Unknown Vendor"} | ${product || "Unknown Product"}`;
     }
 
     /**
@@ -235,7 +230,7 @@ export class USBManager {
 
         // Avoid duplicates
         if (
-            this.#wbConfig.config.passedThroughDevices.find(
+            this.#wbConfig.config.passedThroughDevices.some(
                 d => d.vendorId === ptDevice.vendorId && d.productId === ptDevice.productId,
             )
         ) {
@@ -375,7 +370,7 @@ export class USBManager {
         } catch (e) {
             logger.error(`There was an error checking whether USB device '${vendorId}:${productId}' exists`);
             logger.error(e);
-            logger.error(`QMP response: ${response}`);
+            logger.error(`QMP response: ${JSON.stringify(response)}`);
         }
         return false;
     }
@@ -406,7 +401,7 @@ export class USBManager {
         } catch (e) {
             logger.error(`There was an error adding USB device '${vendorid}:${productid}'`);
             logger.error(e);
-            logger.error(`QMP response: ${response}`);
+            logger.error(`QMP response: ${JSON.stringify(response)}`);
         }
         logger.info("QMPAddDevice", vendorid, productid);
     }
@@ -419,7 +414,7 @@ export class USBManager {
         } catch (e) {
             logger.error(`There was an error removing USB device '${vendorId}:${productId}'`);
             logger.error(e);
-            logger.error(`QMP response: ${response}`);
+            logger.error(`QMP response: ${JSON.stringify(response)}`);
         }
         logger.info("QMPRemoveDevice", vendorId, productId);
     }
@@ -448,12 +443,14 @@ function readLinuxDeviceDatabase(): LinuxDeviceDatabase {
     const vendors: LinuxDeviceDatabase = {};
     let currentVendor = null;
 
+    const vendorRegex = new RegExp(/^([0-9a-f]{4})\s+(.+)$/i);
+    const deviceRegex = new RegExp(/^\t([0-9a-f]{4})\s+(.+)$/i);
     for (const line of lines) {
         if (line.startsWith("#") || line.trim() === "") continue;
 
-        if (line[0] !== "\t") {
+        if (!line.startsWith("\t")) {
             // Vendor line
-            const match = line.match(/^([0-9a-f]{4})\s+(.+)$/i);
+            const match = vendorRegex.exec(line);
             if (match) {
                 currentVendor = match[1].toLowerCase();
                 vendors[currentVendor] = {
@@ -461,9 +458,9 @@ function readLinuxDeviceDatabase(): LinuxDeviceDatabase {
                     devices: {},
                 };
             }
-        } else if (line[0] === "\t" && line[1] !== "\t") {
+        } else if (line.startsWith("\t") && line[1] !== "\t") {
             // Device line
-            const match = line.match(/^\t([0-9a-f]{4})\s+(.+)$/i);
+            const match = deviceRegex.exec(line);
             if (match && currentVendor) {
                 vendors[currentVendor].devices[match[1].toLowerCase()] = match[2].trim();
             }
@@ -485,11 +482,11 @@ function getDeviceStringsFromLsusb(vidHex: string, pidHex: string): DeviceString
         const lsusbOutput = execSync(`lsusb -d ${vidHex}:${pidHex} -v 2>/dev/null`, { encoding: "utf8" });
 
         // Parse manufacturer string
-        const manufacturerMatch = lsusbOutput.match(/^\s*iManufacturer\s+\d+\s+(.+)$/m);
+        const manufacturerMatch = new RegExp(/^\s*iManufacturer\s+\d+\s+(.+)$/m).exec(lsusbOutput);
         const manufacturer = manufacturerMatch ? manufacturerMatch[1].trim() : null;
 
         // Parse product string
-        const productMatch = lsusbOutput.match(/^\s*iProduct\s+\d+\s+(.+)$/m);
+        const productMatch = new RegExp(/^\s*iProduct\s+\d+\s+(.+)$/m).exec(lsusbOutput);
         const product = productMatch ? productMatch[1].trim() : null;
 
         return { manufacturer, product };
@@ -510,7 +507,7 @@ function freeMTPDevice(deviceBus: string) {
         if (fuserOutput.includes(deviceBus)) {
             logger.info(`[freeMTPDevice] Freed device at bus ${deviceBus}`);
         }
-    } catch (e) {
+    } catch {
         logger.info(`[freeMTPDevice] Device at ${deviceBus} either doesn't need freeing or couldn't be freed`);
     }
 }

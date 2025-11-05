@@ -4,9 +4,6 @@
   which has bugs in the library that prevent proper functionality.
 -->
 <template>
-    <!-- Invisible trigger area that covers the parent element -->
-    <div v-if="hasTrigger" ref="triggerRef" class="wb-contextmenu-trigger" @contextmenu.prevent="showMenu"></div>
-
     <!-- Context menu popup -->
     <teleport to="body">
         <div
@@ -22,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onUnmounted, nextTick } from "vue";
 
 interface Props {
     trigger?: "contextmenu" | "click" | "none";
@@ -37,7 +34,6 @@ const emit = defineEmits<{
     hide: [];
 }>();
 
-const contextMenuRef = ref<HTMLElement>();
 const triggerRef = ref<HTMLElement>();
 const menuRef = ref<HTMLElement>();
 
@@ -64,13 +60,16 @@ const showMenu = (event: MouseEvent) => {
     isVisible.value = true;
     emit("show");
 
+    // prevent layout jump
+    adjustPosition();
+    document.addEventListener("click", hideMenu);
+    document.addEventListener("contextmenu", hideMenu);
+    window.addEventListener("scroll", hideMenu);
+    window.addEventListener("resize", hideMenu);
+
     // Close on next tick to allow menu to render
     nextTick(() => {
         adjustPosition();
-        document.addEventListener("click", hideMenu);
-        document.addEventListener("contextmenu", hideMenu);
-        window.addEventListener("scroll", hideMenu);
-        window.addEventListener("resize", hideMenu);
     });
 };
 

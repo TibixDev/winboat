@@ -1,14 +1,11 @@
 import { type WindowsVersionKey } from "./renderer/lib/constants";
+import { ContainerManager } from "./renderer/lib/containers/container";
 import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {
     cpuCores: number;
     ramGB: number;
     kvmEnabled: boolean;
-    dockerInstalled: boolean;
-    dockerComposeInstalled: boolean;
-    dockerIsRunning: boolean;
-    dockerIsInUserGroups: boolean;
     freeRDP3Installed: boolean;
 };
 
@@ -23,11 +20,14 @@ export type InstallConfiguration = {
     password: string;
     customIsoPath?: string;
     shareHomeFolder: boolean;
+    container: ContainerManager;
 };
 
 export type WinApp = {
+    id?: string;
     Name: string;
     Path: string;
+    Args: string;
     Icon: string;
     Source: string;
     Usage?: number;
@@ -37,10 +37,27 @@ export type CustomAppCallbacks = {
     [key: string]: null | ((context: Winboat) => void);
 };
 
+export type PortEntryProtocol = "tcp" | "udp";
+
+export type LongPortMapping = {
+    target: number;
+    published?: string;
+    host_ip?: string;
+    protocol?: PortEntryProtocol;
+    app_protocol?: string;
+    mode?: "host" | "ingress";
+    name?: string;
+};
+
 export type ComposeConfig = {
     name: string;
     volumes: {
         [key: string]: null | string;
+    };
+    networks?: {
+        [key: string]: {
+            external: boolean;
+        };
     };
     services: {
         windows: {
@@ -60,7 +77,7 @@ export type ComposeConfig = {
                 [key: string]: string; // Allow additional env vars
             };
             privileged: boolean;
-            ports: string[];
+            ports: Array<string | LongPortMapping>;
             cap_add: string[];
             stop_grace_period: string;
             restart: string;

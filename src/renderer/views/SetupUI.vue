@@ -4,7 +4,7 @@
             <div>
                 <div id="stepStatus" class="flex flex-row justify-center gap-4 pt-2">
                     <div
-                        v-for="(step, idx) of steps"
+                        v-for="(_, idx) of steps"
                         :key="idx"
                         class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000"
                         :class="{
@@ -16,26 +16,22 @@
                 </div>
                 <Transition name="bounce" mode="out-in">
                     <div :key="currentStepIdx" id="stepIcon" class="flex items-center justify-center relative h-full">
-                        <Icon
-                            key="icon1"
-                            class="size-[60%] text-violet-400 z-30 relative"
-                            :icon="currentStep.icon"
-                        ></Icon>
+                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.icon" />
                         <Icon
                             key="icon-gradient"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"
                             :icon="currentStep.icon"
-                        ></Icon>
+                        />
                         <Icon
                             key="icon2"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]"
                             :icon="currentStep.icon"
-                        ></Icon>
+                        />
                         <Icon
                             key="icon3"
                             class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]"
                             :icon="currentStep.icon"
-                        ></Icon>
+                        />
                     </div>
                 </Transition>
             </div>
@@ -64,9 +60,9 @@
                             WinBoat is open-source software licensed under the MIT License. Please review the license
                             agreement below.
                         </p>
-                        <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">{{
-                            license
-                        }}</pre>
+                        <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">
+                            {{ license }}
+                        </pre>
                         <div class="flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">I Agree</x-button>
@@ -85,11 +81,13 @@
                                 <span v-else class="text-red-500">✘</span>
                                 At least 4 GB of RAM (Detected: {{ specs.ramGB }} GB)
                             </li>
+
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.cpuCores >= 2" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
                                 At least 2 CPU cores (Detected: {{ specs.cpuCores }} cores)
                             </li>
+
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
@@ -103,61 +101,130 @@
                                     How?
                                 </a>
                             </li>
+
                             <li class="flex items-center gap-2">
-                                <span v-if="specs.dockerInstalled" class="text-green-500">✔</span>
+                                <span v-if="containerInstalled(containerSpecs)" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                Docker installed
+
+                                <div>
+                                    <x-select
+                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
+                                        class="w-fit"
+                                    >
+                                        <x-menu>
+                                            <x-menuitem
+                                                v-for="(runtime, key) in Object.values(ContainerRuntimes)"
+                                                :key="key"
+                                                :value="runtime"
+                                                :toggled="runtime === containerRuntime"
+                                            >
+                                                <x-label>{{ runtime }}</x-label>
+                                            </x-menuitem>
+                                        </x-menu>
+                                    </x-select>
+                                </div>
+                                installed
                                 <a
                                     href="https://docs.docker.com/engine/install/"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
+                                    >How?</a
                                 >
-                                    How?
-                                </a>
                             </li>
-                            <li class="flex items-center gap-2">
-                                <span v-if="specs.dockerComposeInstalled" class="text-green-500">✔</span>
-                                <span v-else class="text-red-500">✘</span>
-                                Docker Compose v2 installed
-                                <a
-                                    href="https://docs.docker.com/compose/install/#plugin-linux-only"
-                                    @click="openAnchorLink"
-                                    target="_blank"
-                                    class="text-violet-400 hover:underline ml-1"
-                                >
-                                    How?
-                                </a>
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span v-if="specs.dockerIsInUserGroups" class="text-green-500">✔</span>
-                                <span v-else class="text-red-500">✘</span>
-                                User added to the
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
-                                <span class="text-gray-600"> (Relog required) </span>
-                                <a
-                                    href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
-                                    @click="openAnchorLink"
-                                    target="_blank"
-                                    class="text-violet-400 hover:underline ml-1"
-                                >
-                                    How?
-                                </a>
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span v-if="specs.dockerIsRunning" class="text-green-500">✔</span>
-                                <span v-else class="text-red-500">✘</span>
-                                Docker daemon is running
-                                <span class="text-gray-600"> (Also enable on boot) </span>
-                                <a
-                                    href="https://docs.docker.com/config/daemon/start/"
-                                    @click="openAnchorLink"
-                                    target="_blank"
-                                    class="text-violet-400 hover:underline ml-1"
-                                >
-                                    How?
-                                </a>
-                            </li>
+
+                            <!-- Docker Specific Requirements -->
+                            <template v-if="containerRuntime == ContainerRuntimes.DOCKER">
+                                <li class="flex items-center gap-2">
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'dockerComposeInstalled' in containerSpecs &&
+                                            containerSpecs.dockerComposeInstalled
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
+                                    <span v-else class="text-red-500">✘</span>
+                                    Docker Compose v2 installed
+                                    <a
+                                        href="https://docs.docker.com/compose/install/#plugin-linux-only"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
+                                </li>
+
+                                <li class="flex items-center gap-2">
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'dockerIsInUserGroups' in containerSpecs &&
+                                            containerSpecs.dockerIsInUserGroups
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
+                                    <span v-else class="text-red-500">✘</span>
+                                    User added to the
+                                    <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
+                                    <span class="text-gray-600"> (Relog required) </span>
+                                    <a
+                                        href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
+                                </li>
+
+                                <li class="flex items-center gap-2">
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'dockerIsRunning' in containerSpecs &&
+                                            containerSpecs.dockerIsRunning
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
+                                    <span v-else class="text-red-500">✘</span>
+                                    Docker daemon is running
+                                    <span class="text-gray-600"> (Also enable on boot) </span>
+                                    <a
+                                        href="https://docs.docker.com/config/daemon/start/"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
+                                </li>
+                            </template>
+
+                            <!-- Podman Specific Requirements -->
+                            <template v-else>
+                                <li class="flex items-center gap-2">
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'podmanComposeInstalled' in containerSpecs &&
+                                            containerSpecs.podmanComposeInstalled
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
+                                    <span v-else class="text-red-500">✘</span>
+                                    Podman Compose installed
+                                    <a
+                                        href="https://github.com/containers/podman-compose?tab=readme-ov-file#installation"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
+                                </li>
+                            </template>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
@@ -178,7 +245,7 @@
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
-                                :disabled="!satisfiesPrequisites(specs)"
+                                :disabled="!satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
                             </x-button>
@@ -235,8 +302,9 @@
                                 class="px-6"
                                 :disabled="!installFolder || installFolderErrors?.length"
                                 @click="currentStepIdx++"
-                                >Next</x-button
                             >
+                                Next
+                            </x-button>
                         </div>
                     </div>
 
@@ -304,9 +372,9 @@
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
                                 <div class="flex items-center gap-2">
-                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile"
-                                        >Select ISO File</x-button
-                                    >
+                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile">
+                                        Select ISO File
+                                    </x-button>
                                     <span class="relative group">
                                         <Icon icon="line-md:alert" class="text-neutral-400 cursor-pointer" />
                                         <span
@@ -385,9 +453,9 @@
                                 </div>
 
                                 <div>
-                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400"
-                                        >Confirm Password</label
-                                    >
+                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400">
+                                        Confirm Password
+                                    </label>
                                     <x-input
                                         id="confirm-password"
                                         class="w-64 max-w-64"
@@ -399,7 +467,7 @@
                                         :value="confirmPassword"
                                         @input="(e: any) => (confirmPassword = e.target.value)"
                                     >
-                                        <x-icon href="#lock"></x-icon>
+                                        <x-icon href="#lock" />
                                         <x-label>Confirm Password</x-label>
                                     </x-input>
                                 </div>
@@ -428,8 +496,9 @@
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
-                                >Next</x-button
                             >
+                                Next
+                            </x-button>
                         </div>
                     </div>
 
@@ -459,7 +528,7 @@
                                         :max="specs.cpuCores"
                                         step="1"
                                         ticks
-                                    ></x-slider>
+                                    />
                                     <x-label>{{ cpuCores }} Core{{ cpuCores > 1 ? "s" : "" }}</x-label>
                                 </div>
                             </div>
@@ -471,7 +540,7 @@
                                         v-if="memoryInfo.availableGB < ramGB"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
-                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5" />
                                         Warning
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
@@ -492,7 +561,7 @@
                                         :min="MIN_RAM_GB"
                                         :max="specs.ramGB"
                                         step="1"
-                                    ></x-slider>
+                                    />
                                     <x-label>{{ ramGB }} GB</x-label>
                                 </div>
                             </div>
@@ -526,7 +595,7 @@
                                         :min="MIN_DISK_GB"
                                         :max="installFolderDiskSpaceGB || 0"
                                         step="8"
-                                    ></x-slider>
+                                    />
                                     <x-label>{{ diskSpaceGB }} GB</x-label>
                                 </div>
                             </div>
@@ -582,12 +651,16 @@
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Windows Version</span>
-                                    <span class="text-base text-white">{{ WINDOWS_VERSIONS[windowsVersion] }}</span>
+                                    <span class="text-sm text-gray-400">Container Runtime</span>
+                                    <span class="text-base text-white">{{ containerRuntime }}</span>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">Language</span>
                                     <span class="text-base text-white">{{ windowsLanguage }}</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm text-gray-400">Windows Version</span>
+                                    <span class="text-base text-white">{{ WINDOWS_VERSIONS[windowsVersion] }}</span>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">CPU Cores</span>
@@ -621,8 +694,9 @@
                                     currentStepIdx++;
                                     install();
                                 "
-                                >Install</x-button
                             >
+                                Install
+                            </x-button>
                         </div>
                     </div>
 
@@ -632,7 +706,7 @@
                         <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
-                            <a :href="novncURL" @click="openAnchorLink">in your browser</a>.
+                            <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
                         </p>
 
                         <!-- Installing -->
@@ -664,7 +738,9 @@
                                 An error occurred while installing Windows. Please check the logs in
                                 <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
                                 and verify
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker logs WinBoat</span>
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5"
+                                    >{{ installManager!.container.executableAlias }} logs WinBoat</span
+                                >
                                 in your terminal for more information.
                             </x-label>
                             <x-label class="text-lg text-gray-400 text-center">
@@ -704,12 +780,14 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVN
 import { InstallManager, type InstallState, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
-import { PortManager } from "../utils/port";
+import { ContainerImplementations, ContainerRuntimes, DockerSpecs, PodmanSpecs } from "../lib/containers/common";
+import { WinboatConfig } from "../lib/config";
+import { createContainer, getContainerSpecs } from "../lib/containers/common";
 
-const path: typeof import("path") = require("path");
+const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
-const fs: typeof import("fs") = require("fs");
-const os: typeof import("os") = require("os");
+const fs: typeof import("fs") = require("node:fs");
+const os: typeof import("os") = require("node:os");
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
 
 type Step = {
@@ -813,8 +891,10 @@ const confirmPassword = ref("");
 const homeFolderSharing = ref(false);
 const installState = ref<InstallState>(InstallStates.IDLE);
 const preinstallMsg = ref("");
+const containerRuntime = ref(ContainerRuntimes.DOCKER);
+const vncPort = ref(8006);
 
-let installManager: InstallManager | null = null;
+let installManager: InstallManager | null;
 
 onMounted(async () => {
     specs.value = await getSpecs();
@@ -835,6 +915,17 @@ onUnmounted(() => {
         clearInterval(memoryInterval.value);
     }
 });
+
+const containerSpecs = computedAsync(async () => {
+    return await getContainerSpecs(containerRuntime.value);
+});
+
+function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
+    if (!containerSpecs) return false;
+    if ("dockerInstalled" in containerSpecs) return containerSpecs.dockerInstalled;
+    if ("podmanInstalled" in containerSpecs) return containerSpecs.podmanInstalled;
+    return false;
+}
 
 const usernameErrors = computed(() => {
     let errors: string[] = [];
@@ -871,12 +962,6 @@ const passwordErrors = computed(() => {
     }
 
     return errors;
-});
-
-const novncURL = computed(() => {
-    const port = installManager?.portMgr.value?.getHostPort(GUEST_NOVNC_PORT) ?? GUEST_NOVNC_PORT;
-
-    return `http://127.0.0.1:${port}`;
 });
 
 function selectIsoFile() {
@@ -978,7 +1063,11 @@ function install() {
         password: password.value,
         shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
+        container: createContainer(containerRuntime.value), // Hardcdde for now
     };
+
+    const wbConfig = WinboatConfig.getInstance(); // Create winboat config.
+    wbConfig.config.containerRuntime = containerRuntime.value; // Save which runtime to use.
 
     installManager = new InstallManager(installConfig);
 
@@ -991,6 +1080,10 @@ function install() {
     installManager.emitter.on("preinstallMsg", msg => {
         preinstallMsg.value = msg;
         console.log("Preinstall msg", msg);
+    });
+
+    installManager.emitter.on("vncPortChanged", port => {
+        vncPort.value = port;
     });
 
     installManager.install();

@@ -74,7 +74,7 @@
                             :toggled="shareHomeFolder"
                             @toggle="(_: any) => (shareHomeFolder = !shareHomeFolder)"
                             size="large"
-                        ></x-switch>
+                        />
                     </div>
                 </x-card>
 
@@ -96,7 +96,7 @@
                             :toggled="autoStartContainer"
                             @toggle="(_: any) => (autoStartContainer = !autoStartContainer)"
                             size="large"
-                        ></x-switch>
+                        />
                     </div>
                 </x-card>
 
@@ -116,17 +116,18 @@
                     <div class="flex flex-row justify-center items-center gap-2">
                         <x-input
                             class="max-w-16 text-right text-[1.1rem]"
-                            min="0"
-                            :max="PORT_MAX"
-                            :value="freerdpPort"
+                            :value="isNaN(freerdpPort) ? '' : freerdpPort"
                             @input="
-                                (e: any) =>
-                                    (freerdpPort = Number(
-                                        /^\d+$/.exec(e.target.value)![0] || winboat.getHostPort(GUEST_RDP_PORT),
-                                    ))
+                                (e: any) => {
+                                    freerdpPort = Number(
+                                        /^\d+$/.exec(e.target.value)?.at(0) ||
+                                            portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
+                                    );
+                                }
                             "
-                            required
-                        ></x-input>
+                        >
+                            <x-label v-if="isNaN(freerdpPort)">None</x-label>
+                        </x-input>
                     </div>
                 </x-card>
                 <div class="flex flex-col">
@@ -134,7 +135,7 @@
                 </div>
                 <x-button
                     :disabled="saveButtonDisabled || isUpdatingUSBPrerequisites"
-                    @click="saveDockerCompose()"
+                    @click="saveCompose()"
                     class="w-24"
                 >
                     <span v-if="!isApplyingChanges || isUpdatingUSBPrerequisites">Save</span>
@@ -163,7 +164,7 @@
                             >
                                 <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
                                 <h1 class="my-0 text-base font-normal text-yellow-200">
-                                    We need to update your Docker Compose in order to use this feature!
+                                    We need to update your Compose in order to use this feature!
                                 </h1>
 
                                 <x-button
@@ -389,6 +390,7 @@
                     </div>
                 </x-card>
 
+                <!-- Application Scaling -->
                 <x-card
                     class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
                 >
@@ -416,7 +418,7 @@
                             class="!max-w-16"
                             v-on:keydown="(e: any) => ensureNumericInput(e)"
                             v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
-                        ></x-input>
+                        />
                         <x-button
                             type="button"
                             class="size-8 !p-0"
@@ -512,55 +514,86 @@
                         ></x-switch>
                     </div>
                 </x-card>
+
+                <!-- Disable Animations -->
+                <x-card
+                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:animation-outline"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">Disable Animations</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't
+                            working well)
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-switch
+                            :toggled="wbConfig.config.disableAnimations"
+                            @toggle="
+                                (_: any) => (wbConfig.config.disableAnimations = !wbConfig.config.disableAnimations)
+                            "
+                            size="large"
+                        ></x-switch>
+                    </div>
+                </x-card>
             </div>
         </div>
 
         <div>
             <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
 
-            <!-- Experimental Features -->
-            <x-card
-                class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
-            >
-                <div>
-                    <div class="flex flex-row items-center gap-2 mb-2">
-                        <Icon class="text-violet-400 inline-flex size-8" icon="streamline-ultimate:lab-tube-experiment">
-                        </Icon>
-                        <h1 class="text-lg my-0 font-semibold">Experimental Features</h1>
+            <div class="flex flex-col gap-4">
+                <!-- Experimental Features -->
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
+                >
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon
+                                class="text-violet-400 inline-flex size-8"
+                                icon="streamline-ultimate:lab-tube-experiment"
+                            />
+                            <h1 class="text-lg my-0 font-semibold">Experimental Features</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, you'll have access to experimental features that may not be stable or complete
+                        </p>
                     </div>
-                    <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                        If enabled, you'll have access to experimental features that may not be stable or complete
-                    </p>
-                </div>
-                <div class="flex flex-row justify-center items-center gap-2">
-                    <x-switch
-                        :toggled="wbConfig.config.experimentalFeatures"
-                        @toggle="toggleExperimentalFeatures"
-                        size="large"
-                    ></x-switch>
-                </div>
-            </x-card>
-            <x-card
-                class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
-            >
-                <div>
-                    <div class="flex flex-row items-center gap-2 mb-2">
-                        <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator"> </Icon>
-                        <h1 class="text-lg my-0 font-semibold">Advanced Settings</h1>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                            :toggled="wbConfig.config.experimentalFeatures"
+                            @toggle="toggleExperimentalFeatures"
+                            size="large"
+                        />
                     </div>
-                    <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                        If enabled, you'll have access to advanced settings that may prevent WinBoat from working if
-                        misconfigured
-                    </p>
-                </div>
-                <div class="flex flex-row justify-center items-center gap-2">
-                    <x-switch
-                        :toggled="wbConfig.config.advancedFeatures"
-                        @toggle="toggleAdvancedFeatures"
-                        size="large"
-                    ></x-switch>
-                </div>
-            </x-card>
+                </x-card>
+
+                <!-- Advanced Settings -->
+                <x-card
+                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
+                >
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator"> </Icon>
+                            <h1 class="text-lg my-0 font-semibold">Advanced Settings</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, you'll have access to advanced settings that may prevent WinBoat from working if
+                            misconfigured
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                            :toggled="wbConfig.config.advancedFeatures"
+                            @toggle="toggleAdvancedFeatures"
+                            size="large"
+                        />
+                    </div>
+                </x-card>
+            </div>
         </div>
 
         <div>
@@ -592,7 +625,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
-import { ContainerStatus, Winboat } from "../lib/winboat";
+import { Winboat } from "../lib/winboat";
+import { ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
@@ -607,14 +641,14 @@ import {
     GUEST_RDP_PORT,
     DEFAULT_HOST_QMP_PORT,
 } from "../lib/constants";
-import { PortManager } from "../utils/port";
+import { ComposePortEntry, ComposePortMapper } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
 // Emits
 const $emit = defineEmits(["rerender"]);
 
-const winboat = new Winboat();
-const usbManager = new USBManager();
+const winboat = Winboat.getInstance();
+const usbManager = USBManager.getInstance();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
@@ -653,11 +687,11 @@ const rerenderAdvanced = ref(0);
 
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
 // A great example is when the container is offline. In that case, winboat's portManager isn't instantiated.
-let qmpPortManager = ref<PortManager | null>(null);
+let portMapper = ref<ComposePortMapper | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
-const wbConfig = new WinboatConfig();
+const wbConfig = WinboatConfig.getInstance();
 
 onMounted(async () => {
     await assignValues();
@@ -682,19 +716,19 @@ function ensureNumericInput(e: any) {
 }
 
 function updateApplicationScale(value: string | number) {
-    let val = typeof value === "string" ? parseInt(value) : value;
-    const clamped = typeof val !== "number" || isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
+    let val = typeof value === "string" ? Number.parseInt(value) : value;
+    const clamped = typeof val !== "number" || Number.isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
     wbConfig.config.scaleDesktop = clamped;
     origApplicationScale.value = clamped;
 }
 
 /**
- * Assigns the initial values from the Docker Compose file to the reactive refs
+ * Assigns the initial values from the Compose file to the reactive refs
  * so we can display them and track when a change has been made
  */
 async function assignValues() {
-    compose.value = winboat.parseCompose();
-    qmpPortManager.value = winboat.portMgr.value ?? (await PortManager.parseCompose(compose.value));
+    compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
+    portMapper.value = new ComposePortMapper(compose.value);
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -708,7 +742,7 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = qmpPortManager.value.getHostPort(GUEST_RDP_PORT);
+    freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
     origFreerdpPort.value = freerdpPort.value;
 
     origApplicationScale.value = wbConfig.config.scaleDesktop;
@@ -723,10 +757,10 @@ async function assignValues() {
 }
 
 /**
- * Saves the currently specified values to the Docker Compose file
+ * Saves the currently specified values to the Compose file
  * and then re-assigns the initial values to the reactive refs
  */
-async function saveDockerCompose() {
+async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
 
@@ -742,8 +776,17 @@ async function saveDockerCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    await qmpPortManager.value!.setPortMapping(GUEST_RDP_PORT, freerdpPort.value, { findOpenPorts: false }); // no need to find open ports, since we already check that in the 'errors' computed
-    compose.value!.services.windows.ports = qmpPortManager.value!.composeFormat;
+    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
+        protocol: "tcp",
+        hostIP: "127.0.0.1",
+    });
+
+    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
+        protocol: "udp",
+        hostIP: "127.0.0.1",
+    });
+
+    compose.value!.services.windows.ports = portMapper.value!.composeFormat;
 
     isApplyingChanges.value = true;
     try {
@@ -759,7 +802,7 @@ async function saveDockerCompose() {
 
 /**
  * Adds the required fields for USB passthrough to work
- * to the Docker Compose file if they don't already exist
+ * to the Compose file if they don't already exist
  */
 async function addRequiredComposeFieldsUSB() {
     if (!usbPassthroughDisabled.value) {
@@ -773,7 +816,10 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
     if (!hasQmpPort()) {
-        await qmpPortManager.value!.setPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT);
+        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT, {
+            protocol: "tcp",
+            hostIP: "127.0.0.1",
+        });
     }
 
     if (!compose.value!.services.windows.environment.ARGUMENTS) {
@@ -791,7 +837,7 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.environment.HOST_PORTS += delimeter + GUEST_QMP_PORT;
     }
 
-    await saveDockerCompose();
+    await saveCompose();
 
     isUpdatingUSBPrerequisites.value = false;
 }
@@ -815,17 +861,22 @@ const errors = computedAsync(async () => {
         errCollection.push("You cannot allocate more RAM to Windows than you have available");
     }
 
-    if (freerdpPort.value !== origFreerdpPort.value && !(await PortManager.isPortOpen(freerdpPort.value))) {
+    if (
+        freerdpPort.value !== origFreerdpPort.value &&
+        !isNaN(freerdpPort.value) &&
+        !(await ComposePortMapper.isPortOpen(freerdpPort.value))
+    ) {
         errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
     return errCollection;
 });
 
-const hasUsbVolume = (_compose: typeof compose) => _compose.value?.services.windows.volumes?.includes(USB_BUS_PATH);
+const hasUsbVolume = (_compose: typeof compose) =>
+    _compose.value?.services.windows.volumes?.some(x => x.includes(USB_BUS_PATH));
 const hasQmpArgument = (_compose: typeof compose) =>
     _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
-const hasQmpPort = () => qmpPortManager.value?.hasPortMapping(GUEST_QMP_PORT) ?? false;
+const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) =>
     _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
 
@@ -838,7 +889,7 @@ const saveButtonDisabled = computed(() => {
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
         shareHomeFolder.value !== origShareHomeFolder.value ||
-        freerdpPort.value !== origFreerdpPort.value ||
+        (!isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;
@@ -895,12 +946,13 @@ async function toggleExperimentalFeatures() {
     // since USB passthrough is an experimental feature
     if (!wbConfig.config.experimentalFeatures) {
         await usbManager.removeAllPassthroughDevicesAndConfig();
+
         // Create the QMP interval if experimental features are enabled
         // This would get created by default since we're changing the compose and re-deploying,
         // but a scenario could also occur where the user is re-enabling experimental features
         // after the compose changes, which then would cause a bug
         // TODO: Remove after USB passthrough is no longer experimental
-    } else if (winboat.containerStatus.value == ContainerStatus.Running && !winboat.hasQMPInterval) {
+    } else if (winboat.containerStatus.value == ContainerStatus.RUNNING && !winboat.hasQMPInterval) {
         console.log("Creating QMP interval because experimental features were turned on");
         winboat.createQMPInterval();
     }

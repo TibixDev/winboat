@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -45,6 +46,10 @@ type Metrics struct {
 		Total      uint64  `json:"total"`      // MB
 		Percentage float64 `json:"percentage"` // %
 	} `json:"disk"`
+}
+
+type RDPStatusResponse struct {
+	RdpConnection bool `json:"rdpConnected"`
 }
 
 func getApps(w http.ResponseWriter, r *http.Request) {
@@ -123,17 +128,32 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
-	// Grep for any active RDP sessions via qwinsta
-	// Run the PowerShell script
-	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\rdp-status.ps1")
+	// Check for RDP Status via quser.exe
+	cmd := exec.Command("quser.exe")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Check if the output contains both "active" and "rdp" todo: Check for VNC Sessions
+	hasRdpSession := strings.Contains(strings.ToLower(string(output)), "active") &&
+		strings.Contains(strings.ToLower(string(output)), "rdp")
+
+	response := RDPStatusResponse{
+		RdpConnection: hasRdpSession,
+	}
+
+	// Convert the response from guest server to JSON
+	// Expected output { "rdp_connected": "true" } if a session is active
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Failed to marshal JSON response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(output)
+	w.Write(jsonResponse)
 }
 
 func applyUpdate(w http.ResponseWriter, r *http.Request) {

@@ -1,16 +1,15 @@
 import { getFreeRDP } from "../utils/getFreeRDP";
-const fs: typeof import("fs") = require("fs");
-const os: typeof import("os") = require("os");
-const { exec }: typeof import("child_process") = require("child_process");
-const { promisify }: typeof import("util") = require("util");
+import { ContainerSpecs } from "./containers/common";
+const fs: typeof import("fs") = require("node:fs");
+const os: typeof import("os") = require("node:os");
+const { exec }: typeof import("child_process") = require("node:child_process");
+const { promisify }: typeof import("util") = require("node:util");
 const execAsync = promisify(exec);
 
-export function satisfiesPrequisites(specs: Specs) {
+export function satisfiesPrequisites(specs: Specs, containerSpecs?: ContainerSpecs) {
     return (
-        specs.dockerInstalled &&
-        specs.dockerComposeInstalled &&
-        specs.dockerIsRunning &&
-        specs.dockerIsInUserGroups &&
+        containerSpecs &&
+        Object.values(containerSpecs).every(x => x) &&
         specs.freeRDP3Installed &&
         specs.kvmEnabled &&
         specs.ramGB >= 4 &&
@@ -22,10 +21,6 @@ export const defaultSpecs: Specs = {
     cpuCores: 0,
     ramGB: 0,
     kvmEnabled: false,
-    dockerInstalled: false,
-    dockerComposeInstalled: false,
-    dockerIsRunning: false,
-    dockerIsInUserGroups: false,
     freeRDP3Installed: false,
 };
 
@@ -35,7 +30,7 @@ export async function getSpecs() {
     // Physical CPU cores check
     try {
         const res = (await execAsync('lscpu -p | egrep -v "^#" | sort -u -t, -k 2,4 | wc -l')).stdout;
-        specs.cpuCores = parseInt(res.trim(), 10);
+        specs.cpuCores = Number.parseInt(res.trim(), 10);
     } catch (e) {
         console.error("Error getting CPU cores:", e);
     }
@@ -57,50 +52,6 @@ export async function getSpecs() {
         }
     } catch (e) {
         console.error("Error reading /proc/cpuinfo or checking /dev/kvm:", e);
-    }
-
-    // Docker check
-    try {
-        const { stdout: dockerOutput } = await execAsync("docker --version");
-        specs.dockerInstalled = !!dockerOutput;
-    } catch (e) {
-        console.error("Error checking for Docker installation:", e);
-    }
-
-    // Docker Compose plugin check with version validation
-    try {
-        const { stdout: dockerComposeOutput } = await execAsync("docker compose version");
-        if (dockerComposeOutput) {
-            // Example output: "Docker Compose version v2.35.1"
-            // Example output 2: "Docker Compose version 2.36.2"
-            const versionMatch = dockerComposeOutput.match(/(\d+\.\d+\.\d+)/);
-            if (versionMatch) {
-                const majorVersion = parseInt(versionMatch[1].split(".")[0], 10);
-                specs.dockerComposeInstalled = majorVersion >= 2;
-            } else {
-                specs.dockerComposeInstalled = false; // No valid version found
-            }
-        } else {
-            specs.dockerComposeInstalled = false; // No output, plugin not installed
-        }
-    } catch (e) {
-        console.error("Error checking Docker Compose version:", e);
-    }
-
-    // Docker is running check
-    try {
-        const { stdout: dockerOutput } = await execAsync("docker ps");
-        specs.dockerIsRunning = !!dockerOutput;
-    } catch (e) {
-        console.error("Error checking if Docker is running:", e);
-    }
-
-    // Docker user group check
-    try {
-        const userGroups = (await execAsync("id -Gn")).stdout;
-        specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes("docker");
-    } catch (e) {
-        console.error("Error checking user groups for docker:", e);
     }
 
     // FreeRDP 3.x.x check (including Flatpak)
@@ -130,11 +81,12 @@ export async function getMemoryInfo() {
         const totalMemLine = memInfo.split("\n").find(line => line.startsWith("MemTotal"));
         const availableMemLine = memInfo.split("\n").find(line => line.startsWith("MemAvailable"));
         if (totalMemLine) {
-            memoryInfo.totalGB = Math.round((parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
+            memoryInfo.totalGB = Math.round((Number.parseInt(totalMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
         }
 
         if (availableMemLine) {
-            memoryInfo.availableGB = Math.round((parseInt(availableMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
+            memoryInfo.availableGB =
+                Math.round((Number.parseInt(availableMemLine.split(/\s+/)[1]) / 1024 / 1024) * 100) / 100;
         }
 
         return memoryInfo;

@@ -2,7 +2,7 @@
   <table>
     <tr>
       <td>
-        <img src="gh-assets/winboat_logo.svg" alt="WinBoat Logo" width="150">
+        <img src="icons/winboat_logo.svg" alt="WinBoat Logo" width="150">
       </td>
       <td>
         <h1 style="color: #7C86FF; margin: 0; font-size: 32px;">WinBoat</h1>
@@ -24,6 +24,10 @@
 ## ⚠️ Work in Progress ⚠️
 
 WinBoat is currently in beta, so expect to occasionally run into hiccups and bugs. You should be comfortable with some level of troubleshooting if you decide to try it, however we encourage you to give it a shot anyway.
+
+> [!NOTE]
+> #### 🧊 Feature Freeze
+> We're preparing for a 0.9.0 release, which already includes tons of changes. From this point forward, we'll be focusing on stabilizing the feature/fix set we have already merged or we're actively working on. Handling most pull requests or feature requests will be postponed up until we have a stable release and we can confidently start merging and reviewing again.
 
 ## Features
 

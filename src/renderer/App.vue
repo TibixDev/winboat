@@ -37,9 +37,9 @@
                     <ol class="mt-2 list-decimal list-inside">
                         <li>
                             Use VNC over at
-                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">{{
-                                novncURL
-                            }}</a>
+                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">
+                                {{ novncURL }}
+                            </a>
                             to access Windows
                         </li>
                         <li>Press Win + R or search for <code>Run</code>, type in <code>services.msc</code></li>
@@ -51,8 +51,10 @@
                                 href="https://github.com/TibixDev/winboat/releases"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                >https://github.com/TibixDev/winboat/releases</a
-                            >, you should pick version <strong>{{ appVer }}</strong>
+                            >
+                                https://github.com/TibixDev/winboat/releases
+                            </a>
+                            , you should pick version <strong>{{ appVer }}</strong>
                         </li>
                         <li>Navigate to <code>C:\Program Files\WinBoat</code> and delete the contents</li>
                         <li>Extract the freshly downloaded zip into the same folder</li>
@@ -149,16 +151,18 @@
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { routes } from "./router";
 import { Icon } from "@iconify/vue";
-import { onMounted, ref, useTemplateRef, watch } from "vue";
+import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
 import { isInstalled } from "./lib/install";
 import { Winboat } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { GUEST_NOVNC_PORT } from "./lib/constants";
+import { setIntervalImmediately } from "./utils/interval";
+import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
-const os: typeof import("os") = require("os");
-const path: typeof import("path") = require("path");
+const os: typeof import("os") = require("node:os");
+const path: typeof import("path") = require("node:path");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 
 const $router = useRouter();
@@ -171,27 +175,53 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
-const rerenderCounter = ref(0); // TODO: Hack for non-reactive data
+// TODO: Hack for non-reactive data
+const rerenderCounter = ref(0);
 const novncURL = ref("");
+let animationCheckInterval: NodeJS.Timeout | null = null;
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
-    if (!winboatInstalled) {
+    if (winboatInstalled) {
+        winboat = Winboat.getInstance(); // Instantiate singleton class
+        wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
+        USBManager.getInstance(); // Instantiate singleton class
+        $router.push("/home");
+    } else {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
-    } else {
-        winboat = new Winboat(); // Instantiate singleton class
-        wbConfig = new WinboatConfig(); // Instantiate singleton class
-        new USBManager(); // Instantiate singleton class
-        $router.push("/home");
     }
+
+    // Apply or remove disable-animations class based on config
+    const updateAnimationClass = () => {
+        if (wbConfig?.config.disableAnimations) {
+            document.body.classList.add("disable-animations");
+            console.log("Animations disabled");
+        } else {
+            document.body.classList.remove("disable-animations");
+            console.log("Animations enabled");
+        }
+    };
+
+    // Poll for config changes since the Proxy doesn't trigger Vue reactivity
+    // This is similar to how rerenderCounter is used elsewhere in the codebase
+    // Start with undefined so that the first call will always apply the current state
+    let lastAnimationState: boolean | undefined = undefined;
+    animationCheckInterval = setIntervalImmediately(() => {
+        const currentState = wbConfig?.config.disableAnimations;
+        if (currentState !== lastAnimationState) {
+            lastAnimationState = currentState;
+            updateAnimationClass();
+            rerenderCounter.value++; // Force re-render to update transitions
+        }
+    }, 1000); // Check every 1000ms
 
     // Watch for guest server updates and show dialog
     watch(
         () => winboat?.isUpdatingGuestServer.value,
         isUpdating => {
             if (isUpdating === true) {
-                novncURL.value = `http://127.0.0.1:${winboat?.getHostPort(GUEST_NOVNC_PORT)}`;
+                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}`;
                 updateDialog.value!.showModal();
                 // Prepare the timeout to show manual update required after 45 seconds
                 updateTimeout = setTimeout(() => {
@@ -207,6 +237,13 @@ onMounted(async () => {
             }
         },
     );
+});
+
+onUnmounted(() => {
+    // Clean up the interval when component unmounts
+    if (animationCheckInterval) {
+        clearInterval(animationCheckInterval);
+    }
 });
 
 function handleMinimize() {
@@ -295,5 +332,41 @@ dialog::backdrop {
         rgb(129 140 248) 50px
     );
     -webkit-mask-image: -webkit-gradient(linear, left 0%, left bottom, from(rgba(0, 0, 0, 1)), to(rgba(0, 0, 0, 0)));
+}
+
+/* Disable all animations when the setting is enabled */
+body.disable-animations,
+body.disable-animations *,
+body.disable-animations *::before,
+body.disable-animations *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Specifically disable Vue transition components */
+body.disable-animations .fade-enter-active,
+body.disable-animations .fade-leave-active,
+body.disable-animations .devices-move,
+body.disable-animations .devices-enter-active,
+body.disable-animations .devices-leave-active,
+body.disable-animations .menu-move,
+body.disable-animations .menu-enter-active,
+body.disable-animations .menu-leave-active,
+body.disable-animations .apps-move,
+body.disable-animations .apps-enter-active,
+body.disable-animations .apps-leave-active,
+body.disable-animations .bounce-enter-active,
+body.disable-animations .bounce-leave-active,
+body.disable-animations .bouncedown-enter-active,
+body.disable-animations .bouncedown-leave-active,
+body.disable-animations .bounce-in,
+body.disable-animations .bouncedown-in {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Disable keyframe animations */
+body.disable-animations .blob-anim {
+    animation: none !important;
 }
 </style>

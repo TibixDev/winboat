@@ -19,7 +19,6 @@
         "email": "staff@winboat.app"
     },
     "devDependencies": {
-        "@types/json-to-pretty-yaml": "^1.2.1",
         "@types/node-fetch": "^2.6.12",
         "@types/screenshot-desktop": "^1.12.3",
         "@types/turndown": "^5.0.5",
@@ -48,7 +47,6 @@
         "electron-store": "^11.0.0",
         "form-data": "^4.0.4",
         "jimp": "^1.6.0",
-        "json-to-pretty-yaml": "^1.2.2",
         "marked": "^15.0.6",
         "nanoevents": "^9.1.0",
         "node-fetch": "2",
