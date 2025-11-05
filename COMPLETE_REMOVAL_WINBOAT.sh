@@ -196,7 +196,39 @@ if [ -f "$HOME/.local/share/applications/winboat.desktop" ]; then
 fi
 
 # ============================================
-# 8. Clean Docker System
+# 8. Remove WinBoat Installation Directories
+# ============================================
+print_status "Removing WinBoat installation directories..."
+
+# Common installation locations (including development installs)
+INSTALL_LOCATIONS=(
+    "$HOME/winboat-dev"
+    "$HOME/winboat"
+    "$HOME/.winboat"
+)
+
+for location in "${INSTALL_LOCATIONS[@]}"; do
+    if [ -d "$location" ]; then
+        print_success "Found installation: $location"
+        rm -rf "$location"
+        print_success "Removed $location (including all hidden files and configs)"
+    fi
+done
+
+# Also check for any winboat directories in home
+find "$HOME" -maxdepth 1 -type d -name "*winboat*" 2>/dev/null | while read -r winboat_dir; do
+    if [[ "$winboat_dir" != *"winboat-repo"* ]]; then
+        print_success "Found additional WinBoat directory: $winboat_dir"
+        read -p "    Remove this directory? (y/n): " remove_extra
+        if [ "$remove_extra" = "y" ]; then
+            rm -rf "$winboat_dir"
+            print_success "Removed $winboat_dir"
+        fi
+    fi
+done
+
+# ============================================
+# 9. Clean Docker System
 # ============================================
 print_status "Cleaning Docker system..."
 
@@ -204,7 +236,7 @@ docker system prune -f >/dev/null 2>&1 || true
 print_success "Docker system cleaned"
 
 # ============================================
-# 9. Setup Stage 2 Auto-Install
+# 10. Setup Stage 2 Auto-Install
 # ============================================
 print_status "Setting up Stage 2 automatic installation..."
 
