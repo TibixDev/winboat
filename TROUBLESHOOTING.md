@@ -4,6 +4,7 @@ This guide helps you resolve common issues when using WinBoat.
 
 ## Table of Contents
 - [Port 3389 Conflict (xrdp)](#port-3389-conflict-xrdp)
+- [Podman-Specific Issues](#podman-specific-issues)
 - [Installation Issues](#installation-issues)
 
 ---
@@ -81,6 +82,106 @@ WinBoat needs to expose the Windows RDP port (3389) to allow you to connect to t
 ### Prevention
 
 The WinBoat installation wizard now includes a pre-requisite check that warns you if port 3389 is in use or if xrdp is running. Pay attention to this warning during installation and follow the suggested steps to stop xrdp before proceeding.
+
+---
+
+## Podman-Specific Issues
+
+### Problem: Guest Server Unreachable with Podman
+
+When using Podman, you may find that the WinBoat Guest API (port 7148) is unreachable, causing apps not to launch.
+
+#### Cause
+
+Podman's rootless networking mode (slirp4netns) doesn't allow host loopback connections by default, preventing the guest server from being accessible.
+
+#### Solution
+
+**Method 1: Configure slirp4netns (Recommended)**
+
+1. Stop the WinBoat container:
+   ```bash
+   podman stop WinBoat
+   ```
+
+2. Edit the compose file:
+   ```bash
+   nano ~/.winboat/docker-compose.yml
+   ```
+
+3. Add this line under `services.windows`:
+   ```yaml
+   network_mode: "slirp4netns:port_handler=slirp4netns,enable_ipv6=true,allow_host_loopback=true"
+   ```
+
+4. Restart:
+   ```bash
+   cd ~/.winboat
+   podman-compose up -d
+   ```
+
+**Method 2: Socat Port Forwarding**
+
+```bash
+# Install socat in container
+podman exec -ti WinBoat bash -c "apt update && apt -y install socat"
+
+# Configure forwarding
+podman exec WinBoat sed -i -e 's/^return 0$/nohup socat TCP-LISTEN:7148,reuseaddr,fork TCP:20.20.20.21:7148 \&\nnohup socat TCP-LISTEN:3389,reuseaddr,fork TCP:20.20.20.21:3389 \&\nreturn 0/' /run/network.sh
+
+# Restart
+podman restart WinBoat
+```
+
+**Method 3: Environment Variables**
+
+Add to docker-compose.yml under `services.windows.environment`:
+```yaml
+HOST_PORTS: "7149"
+USER_PORTS: "7148"
+```
+
+### Problem: Podman Permission Denied
+
+If you get "permission denied" errors when running Podman commands.
+
+#### Solution
+
+```bash
+# Enable user lingering
+sudo loginctl enable-linger $USER
+
+# Enable and start Podman socket
+systemctl --user enable podman.socket
+systemctl --user start podman.socket
+
+# Verify
+systemctl --user status podman.socket
+
+# Log out and log back in
+```
+
+### Problem: SELinux Blocking Container (Fedora)
+
+On Fedora-based systems, SELinux may prevent the container from starting.
+
+#### Solution
+
+```bash
+# Check SELinux status
+getenforce
+
+# Temporary: Set permissive
+sudo setenforce 0
+
+# Permanent: Edit /etc/selinux/config
+# Change SELINUX=enforcing to SELINUX=permissive
+
+# Restart container
+podman restart WinBoat
+```
+
+For more Podman-specific information, see [PODMAN_SETUP.md](PODMAN_SETUP.md).
 
 ---
 
