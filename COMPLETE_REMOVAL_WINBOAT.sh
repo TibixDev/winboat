@@ -218,7 +218,7 @@ else
     # Create systemd user service directory
     mkdir -p "$HOME/.config/systemd/user"
     
-    # Create systemd user service
+    # Create systemd user service that opens a terminal for password input
     cat > "$HOME/.config/systemd/user/winboat-stage2-install.service" << EOFSERVICE
 [Unit]
 Description=WinBoat Stage 2 Installation (Post-Reboot)
@@ -226,7 +226,7 @@ After=graphical-session.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'sleep 5 && $STAGE2_SCRIPT'
+ExecStart=/bin/bash -c 'sleep 5 && gnome-terminal --title="WinBoat Stage 2 Installation" --wait -- bash -c "$STAGE2_SCRIPT; echo; echo Press Enter to close...; read"'
 StandardOutput=journal
 StandardError=journal
 
