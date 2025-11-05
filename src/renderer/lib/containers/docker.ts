@@ -36,7 +36,12 @@ export class DockerContainer extends ContainerManager {
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
-        containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
+
+        // mask plain password
+        const composePassword = compose.services.windows.environment.PASSWORD ?? "";
+        const maskedCompose = JSON.stringify(composeContent, null, 2).replaceAll(composePassword, "*".repeat(composePassword.length));
+
+        containerLogger.info(`Compose file content: ${maskedCompose}`);
     }
 
     async compose(direction: ComposeDirection): Promise<void> {
