@@ -240,51 +240,99 @@ log "${BLUE}  STEP 4/7: Installing Node.js${NC}"
 log "${BLUE}════════════════════════════════════════════════════════${NC}"
 echo ""
 
+# Check current Node.js installation
 if command -v node &> /dev/null; then
     NODE_VERSION=$(node --version)
     NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d'.' -f1 | sed 's/v//')
+    NODE_LOCATION=$(which node)
+    
+    log_info "Found Node.js $NODE_VERSION at: $NODE_LOCATION"
     
     if [ "$NODE_MAJOR" -ge 23 ]; then
-        log_success "Node.js already installed: $NODE_VERSION"
+        log_success "Node.js version is sufficient: $NODE_VERSION"
     else
-        log_warning "Node.js $NODE_VERSION is installed but WinBoat requires v23+"
-        log_info "Installing Node.js v23 via nvm..."
+        log_warning "Node.js $NODE_VERSION is too old (WinBoat requires v23+)"
         
-        # Install nvm if not present
-        if [ ! -d "$HOME/.nvm" ]; then
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash >> "$LOG_FILE" 2>&1
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        # Check if it's apt-installed (in /usr/bin)
+        if [[ "$NODE_LOCATION" == "/usr/bin/node" ]] || [[ "$NODE_LOCATION" == "/usr/local/bin/node" ]]; then
+            log_info "Removing system-installed Node.js..."
+            sudo apt remove -y nodejs npm 2>&1 | tee -a "$LOG_FILE"
+            sudo apt autoremove -y 2>&1 | tee -a "$LOG_FILE"
+            log_success "Old Node.js removed"
         fi
         
-        # Install Node.js 23
-        nvm install 23 >> "$LOG_FILE" 2>&1
-        nvm use 23 >> "$LOG_FILE" 2>&1
-        nvm alias default 23 >> "$LOG_FILE" 2>&1
-        log_success "Node.js v23 installed via nvm"
+        log_info "Will install Node.js v23 via nvm"
     fi
 else
-    log_info "Node.js not found. Installing via nvm..."
-    
-    # Install nvm
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash >> "$LOG_FILE" 2>&1
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    
-    # Install Node.js 23
-    nvm install 23 >> "$LOG_FILE" 2>&1
-    nvm use 23 >> "$LOG_FILE" 2>&1
-    nvm alias default 23 >> "$LOG_FILE" 2>&1
-    
-    log_success "Node.js installed via nvm"
+    log_info "Node.js not found. Will install via nvm..."
 fi
 
-# Ensure Node.js is available
+# Install nvm if not present
+if [ ! -d "$HOME/.nvm" ]; then
+    log_info "Installing nvm (Node Version Manager)..."
+    log_info "This may take 1-2 minutes depending on your connection..."
+    
+    # Download nvm with timeout
+    if ! curl --connect-timeout 30 --max-time 120 -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash >> "$LOG_FILE" 2>&1; then
+        log_error "Failed to install nvm"
+        log_error "Check your internet connection and try again"
+        exit 1
+    fi
+    
+    log_success "nvm installed"
+else
+    log_success "nvm already installed"
+fi
+
+# Load nvm
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-log_info "Current Node.js version: $(node --version)"
-log_info "Current npm version: $(npm --version)"
+# Verify nvm loaded
+if ! command -v nvm &> /dev/null; then
+    log_error "nvm failed to load"
+    log_error "Try running: source ~/.nvm/nvm.sh"
+    exit 1
+fi
+
+log_info "nvm version: $(nvm --version)"
+
+# Check if Node.js 23 is already installed via nvm
+if nvm ls 23 &> /dev/null; then
+    log_success "Node.js v23 already installed via nvm"
+    nvm use 23 >> "$LOG_FILE" 2>&1
+else
+    log_info "Installing Node.js v23 via nvm..."
+    log_info "This will download ~20MB and may take 2-5 minutes..."
+    echo ""
+    
+    # Install Node.js 23 with progress (not to log file so user sees progress)
+    if ! nvm install 23; then
+        log_error "Failed to install Node.js v23"
+        log_error "This might be a network issue. Check your connection."
+        log_info "You can try manually: nvm install 23"
+        exit 1
+    fi
+    
+    log_success "Node.js v23 downloaded and installed"
+fi
+
+# Set Node.js 23 as default
+log_info "Setting Node.js v23 as default..."
+nvm use 23 >> "$LOG_FILE" 2>&1
+nvm alias default 23 >> "$LOG_FILE" 2>&1
+
+# Verify Node.js is working
+if ! command -v node &> /dev/null; then
+    log_error "Node.js installation failed - 'node' command not found"
+    exit 1
+fi
+
+FINAL_NODE_VERSION=$(node --version)
+FINAL_NPM_VERSION=$(npm --version)
+
+log_success "Node.js ready: $FINAL_NODE_VERSION"
+log_success "npm ready: $FINAL_NPM_VERSION"
 
 echo ""
 
