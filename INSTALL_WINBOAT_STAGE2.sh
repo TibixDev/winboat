@@ -27,9 +27,9 @@ INSTALL_DIR="$HOME/winboat-dev"
 # ============================================
 # REPOSITORY CONFIGURATION
 # ============================================
-# FOR TESTING: Use sprinteroz fork (your testing fork)
+# FOR TESTING: Use sprinteroz fork with FIX branch (all 13 commits)
 REPO_URL="https://github.com/sprinteroz/winboat.git"
-REPO_BRANCH="main"
+REPO_BRANCH="fix/port-3389-xrdp-conflict"
 
 # FOR PRODUCTION: Uncomment these lines before submitting PR to main repo
 # After testing completes successfully, change to upstream repo
