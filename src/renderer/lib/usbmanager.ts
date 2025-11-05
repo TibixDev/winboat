@@ -1,11 +1,11 @@
 const { usb, getDeviceList }: typeof import("usb") = require("usb");
-const fs: typeof import("fs") = require("node:fs");
-const { execSync }: typeof import("child_process") = require("node:child_process");
+const fs: typeof import("fs") = require("fs");
+const { execFileSync }: typeof import("child_process") = require("child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const path: typeof import("path") = require("node:path");
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
-import { Winboat, logger } from "./winboat";
+import { logger, Winboat } from "./winboat";
 import { WinboatConfig } from "./config";
 import { assert } from "@vueuse/core";
 
@@ -332,7 +332,7 @@ export class USBManager {
         }
 
         // Lookup MTP
-        const lsusbOutput = execSync(`lsusb -vd ${vendorIdHex}:${productIdHex} 2>/dev/null`, { encoding: "utf8" });
+        const lsusbOutput = execFileSync("lsusb", ["-vd", `${vendorIdHex}:${productIdHex}`], { encoding: "utf8" });
         const isMTP = lsusbOutput.includes("MTP");
 
         // Set cache and return
@@ -479,7 +479,7 @@ function readLinuxDeviceDatabase(): LinuxDeviceDatabase {
 function getDeviceStringsFromLsusb(vidHex: string, pidHex: string): DeviceStrings {
     try {
         // Run lsusb -v for the specific device, suppress stderr
-        const lsusbOutput = execSync(`lsusb -d ${vidHex}:${pidHex} -v 2>/dev/null`, { encoding: "utf8" });
+        const lsusbOutput = execFileSync("lsusb", ["-d", `${vidHex}:${pidHex}`, "-v"], { encoding: "utf8" });
 
         // Parse manufacturer string
         const manufacturerMatch = new RegExp(/^\s*iManufacturer\s+\d+\s+(.+)$/m).exec(lsusbOutput);
@@ -503,7 +503,7 @@ function getDeviceStringsFromLsusb(vidHex: string, pidHex: string): DeviceString
  */
 function freeMTPDevice(deviceBus: string) {
     try {
-        const fuserOutput = execSync(`fuser -k ${deviceBus}`, { encoding: "utf8" });
+        const fuserOutput = execFileSync("fuser", ["-k", deviceBus], { encoding: "utf8" });
         if (fuserOutput.includes(deviceBus)) {
             logger.info(`[freeMTPDevice] Freed device at bus ${deviceBus}`);
         }
