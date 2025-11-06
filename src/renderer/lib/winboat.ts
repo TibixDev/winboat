@@ -1,17 +1,16 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR, GUEST_API_PORT, GUEST_RDP_PORT, GUEST_QMP_PORT, GUEST_NOVNC_PORT } from "./constants";
+import { WINBOAT_DIR } from "./constants";
 import type {
     ComposeConfig,
+    CustomAppCallbacks,
     GuestServerUpdateResponse,
     GuestServerVersion,
     Metrics,
-    WinApp,
-    CustomAppCallbacks,
+    WinApp
 } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
 import YAML from "yaml";
-import PrettyYAML from "json-to-pretty-yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { openLink } from "../utils/openLink";
@@ -19,14 +18,16 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { ComposePortEntry, PortManager } from "../utils/port";
+import { ExecFileAsyncError } from "./exec-helper";
+import { ContainerManager, ContainerStatus } from "./containers/container";
+import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
-const fs: typeof import("fs") = require("fs");
-const path: typeof import("path") = require("path");
-const process: typeof import("process") = require("process");
-const { promisify }: typeof import("util") = require("util");
-const { exec }: typeof import("child_process") = require("child_process");
+const fs: typeof import("fs") = require("node:fs");
+const path: typeof import("path") = require("node:path");
+const process: typeof import("process") = require("node:process");
+const { promisify }: typeof import("util") = require("node:util");
+const { exec }: typeof import("child_process") = require("node:child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const FormData: typeof import("form-data") = require("form-data");
 
@@ -44,6 +45,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
+        Args: "",
         Usage: 0,
     },
     {
@@ -51,6 +53,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
         Source: "internal",
         Path: "%windir%\\explorer.exe",
+        Args: "",
         Usage: 0,
     },
     {
@@ -58,6 +61,7 @@ const presetApps: WinApp[] = [
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
         Path: CustomAppCommands.NOVNC_COMMAND,
+        Args: "",
         Usage: 0,
     },
 ];
@@ -78,7 +82,7 @@ const stockArgs = [
  * Returns second/original param if first is undefined or null, else first/test param
  */
 const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string) => {
-    return test === undefined || test === null ? original : test;
+    return test ?? original;
 };
 
 /**
@@ -87,42 +91,31 @@ const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string
  */
 const customAppCallbacks: CustomAppCallbacks = {
     [CustomAppCommands.NOVNC_COMMAND]: (ctx: Winboat) => {
-        const novncHostPort = ctx.getHostPort(GUEST_NOVNC_PORT);
+        const novncHostPort = getActiveHostPort(ctx.containerMgr!, CommonPorts.NOVNC);
         openLink(`http://127.0.0.1:${novncHostPort}`);
     },
 };
 
-export const ContainerStatus = {
-    Created: "created",
-    Restarting: "restarting",
-    Running: "running",
-    Paused: "paused",
-    Exited: "exited",
-    Dead: "dead",
-} as const;
-
 const QMP_WAIT_MS = 2000;
-
-type ContainerStatusValue = (typeof ContainerStatus)[keyof typeof ContainerStatus];
+const FETCH_TIMEOUT = 1000;
 
 class AppManager {
     appCache: WinApp[] = [];
     appUsageCache: { [key: string]: number } = {};
-    #wbConfig: WinboatConfig | null = null;
+    readonly #wbConfig: WinboatConfig | null = null;
 
     constructor() {
         if (!fs.existsSync(USAGE_PATH)) {
             fs.writeFileSync(USAGE_PATH, "{}");
         }
 
-        this.#wbConfig = new WinboatConfig();
+        this.#wbConfig = WinboatConfig.getInstance();
     }
 
-    async updateAppCache(apiURL: string, options: { forceRead: boolean } = { forceRead: false }) {
+    async updateAppCache(apiURL: string, options: { forceRead?: boolean } = {}) {
         const res = await nodeFetch(`${apiURL}/apps`);
         const newApps = (await res.json()) as WinApp[];
-        newApps.push(...presetApps);
-        newApps.push(...this.#wbConfig!.config.customApps);
+        newApps.push(...presetApps, ...this.#wbConfig!.config.customApps);
 
         if (this.appCache.values.length == newApps.length && !options.forceRead) return;
 
@@ -144,11 +137,11 @@ class AppManager {
         this.appCache = [];
 
         // Populate appCache with dummy WinApp object containing data from the disk
-        for (let i = 0; i < fsUsage.length; i++) {
+        for (const element of fsUsage) {
             this.appCache.push({
                 ...presetApps[0],
-                Name: fsUsage[i][0],
-                Usage: fsUsage[i][1],
+                Name: element[0],
+                Usage: element[1],
             });
         }
 
@@ -178,12 +171,14 @@ class AppManager {
      * Adds a custom app to WinBoat's application list
      * @param name Name of the app
      * @param path Path of the app
+     * @param args Args of the app
      * @param icon Icon of the app
      */
-    async addCustomApp(name: string, path: string, icon: string) {
+    async addCustomApp(name: string, path: string, args: string, icon: string) {
         const customWinApp: WinApp = {
             Name: name,
             Path: path,
+            Args: args,
             Icon: icon,
             Source: "custom",
             Usage: 0,
@@ -192,6 +187,23 @@ class AppManager {
         this.appUsageCache[name] = 0;
         await this.writeToDisk();
         this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.concat(customWinApp);
+    }
+
+    async updateCustomApp(oldName: string, updatedApp: { Name: string; Path: string; Args: string; Icon: string }) {
+        this.appCache = this.appCache.map(app => (app.Name === oldName ? { ...app, ...updatedApp } : app));
+
+        // update appUsage if name changed
+        if (oldName !== updatedApp.Name) {
+            this.appUsageCache[updatedApp.Name] = this.appUsageCache[oldName] ?? 0;
+            delete this.appUsageCache[oldName];
+        }
+
+        // update persisted app config
+        this.#wbConfig!.config.customApps = this.#wbConfig!.config.customApps.map(app =>
+            app.Name == oldName ? { ...app, ...updatedApp } : app,
+        );
+
+        await this.writeToDisk();
     }
 
     /**
@@ -207,10 +219,9 @@ class AppManager {
 }
 
 export class Winboat {
-    private static instance: Winboat;
+    private static instance: Winboat | null = null;
     // Update Intervals
     #healthInterval: NodeJS.Timeout | null = null;
-    #containerInterval: NodeJS.Timeout | null = null;
     #metricsInverval: NodeJS.Timeout | null = null;
     #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
     #qmpInterval: NodeJS.Timeout | null = null;
@@ -218,7 +229,7 @@ export class Winboat {
     // Variables
     isOnline: Ref<boolean> = ref(false);
     isUpdatingGuestServer: Ref<boolean> = ref(false);
-    containerStatus: Ref<ContainerStatusValue> = ref(ContainerStatus.Exited);
+    containerStatus: Ref<ContainerStatus> = ref(ContainerStatus.EXITED);
     containerActionLoading: Ref<boolean> = ref(false);
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
@@ -237,25 +248,30 @@ export class Winboat {
             percentage: 0,
         },
     });
-    #wbConfig: WinboatConfig | null = null;
+    readonly #wbConfig: WinboatConfig | null = null;
     appMgr: AppManager | null = null;
     qmpMgr: QMPManager | null = null;
-    portMgr: Ref<PortManager | null> = ref(null);
+    containerMgr: ContainerManager | null = null;
 
-    constructor() {
-        if (Winboat.instance) {
-            return Winboat.instance;
-        }
+    static getInstance() {
+        Winboat.instance ??= new Winboat();
+        return Winboat.instance;
+    }
+
+    private constructor() {
+        this.#wbConfig = WinboatConfig.getInstance();
+        this.containerMgr = createContainer(this.#wbConfig.config.containerRuntime);
 
         // This is a special interval which will never be destroyed
-        this.#containerInterval = setInterval(async () => {
-            const _containerStatus = await this.getContainerStatus();
+        setInterval(async () => {
+            const _containerStatus = await this.containerMgr!.getStatus();
 
             if (_containerStatus !== this.containerStatus.value) {
                 this.containerStatus.value = _containerStatus;
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
-                if (_containerStatus === ContainerStatus.Running) {
+                if (_containerStatus === ContainerStatus.RUNNING) {
+                    await this.containerMgr!.port(); // Cache active port mappings
                     await this.createAPIIntervals();
                 } else {
                     await this.destroyAPIIntervals();
@@ -263,13 +279,7 @@ export class Winboat {
             }
         }, 1000);
 
-        this.#wbConfig = new WinboatConfig();
-
         this.appMgr = new AppManager();
-
-        Winboat.instance = this;
-
-        return Winboat.instance;
     }
 
     /**
@@ -280,17 +290,6 @@ export class Winboat {
         const HEALTH_WAIT_MS = 1000;
         const METRICS_WAIT_MS = 1000;
         const RDP_STATUS_WAIT_MS = 1000;
-
-        // *** Port Manager ***
-        // If the container was already running before opening WinBoat, the ports will already be used by the container
-        // So we don't need to remap any ports
-        // TODO: Investigate whether we need to remap user ports
-        if (!this.portMgr.value) {
-            const compose = this.parseCompose();
-            this.portMgr.value = await PortManager.parseCompose(compose, {
-                findOpenPorts: false,
-            });
-        }
 
         // *** Health Interval ***
         // Make sure we don't have any existing intervals
@@ -306,7 +305,7 @@ export class Winboat {
                 logger.info(`Winboat Guest API went ${this.isOnline ? "online" : "offline"}`);
 
                 if (this.isOnline.value) {
-                    // await this.checkVersionAndUpdateGuestServer();
+                    await this.checkVersionAndUpdateGuestServer();
                 }
             }
         }, HEALTH_WAIT_MS);
@@ -408,60 +407,33 @@ export class Winboat {
     async getHealth() {
         // If /health returns 200, then the guest is ready
         try {
-            const apiPort = this.getHostPort(GUEST_API_PORT);
-            const apiUrl = `http://127.0.0.1:${apiPort}`;
-
-            const res = await nodeFetch(`${apiUrl}/health`);
+            const res = await nodeFetch(`${this.apiUrl}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
             return res.status === 200;
-        } catch (e) {
+        } catch {
             return false;
         }
     }
 
-    async getContainerStatus() {
-        try {
-            const { stdout: _containerStatus } = await execAsync(`docker inspect --format="{{.State.Status}}" WinBoat`);
-            return _containerStatus.trim() as ContainerStatusValue;
-        } catch (e) {
-            console.error("Failed to get container status, most likely we are in the process of resetting");
-            return ContainerStatus.Dead;
-        }
-    }
-
     async getMetrics() {
-        const apiPort = this.getHostPort(GUEST_API_PORT);
-        const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const res = await nodeFetch(`${apiUrl}/metrics`);
+        const res = await nodeFetch(`${this.apiUrl}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const metrics = (await res.json()) as Metrics;
         return metrics;
     }
 
     async getRDPConnectedStatus() {
-        const apiPort = this.getHostPort(GUEST_API_PORT);
-        const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const res = await nodeFetch(`${apiUrl}/rdp/status`);
+        const res = await nodeFetch(`${this.apiUrl}/rdp/status`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const status = (await res.json()) as { rdpConnected: boolean };
         return status.rdpConnected;
     }
 
-    parseCompose() {
-        const composeFile = fs.readFileSync(path.join(WINBOAT_DIR, "docker-compose.yml"), "utf-8");
+    static readCompose(composePath: string): ComposeConfig {
+        const composeFile = fs.readFileSync(composePath, "utf-8");
         const composeContents = YAML.parse(composeFile) as ComposeConfig;
         return composeContents;
     }
 
-    /**
-     * Returns the host port that maps to the given guest port
-     *
-     * @param guestPort The port that gets looked up
-     * @returns The host port that maps to the given guest port, or null if not found
-     */
-    getHostPort(guestPort: number | string): number {
-        return this.portMgr.value?.getHostPort(guestPort) ?? parseInt(guestPort.toString());
-    }
-
     getCredentials() {
-        const compose = this.parseCompose();
+        const compose = Winboat.readCompose(this.containerMgr!.composeFilePath);
         return {
             username: compose.services.windows.environment.USERNAME,
             password: compose.services.windows.environment.PASSWORD,
@@ -470,8 +442,10 @@ export class Winboat {
 
     async #connectQMPManager() {
         try {
-            const qmpHostPort = this.getHostPort(GUEST_QMP_PORT);
-            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", qmpHostPort).catch(e => {
+            this.qmpMgr = await QMPManager.createConnection(
+                "127.0.0.1",
+                getActiveHostPort(this.containerMgr!, CommonPorts.QMP)!,
+            ).catch(e => {
                 logger.error(e);
                 throw e;
             });
@@ -479,7 +453,6 @@ export class Winboat {
             assert("return" in capabilities);
 
             const commands = await this.qmpMgr.executeCommand("query-commands");
-
             // @ts-ignore property "result" already exists due to assert
             assert(commands.return.every(x => "name" in x));
         } catch (e) {
@@ -511,16 +484,7 @@ export class Winboat {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
-            const compose = this.parseCompose();
-            this.portMgr.value = await PortManager.parseCompose(compose);
-
-            if (!this.portMgr.value!.composeFormat.every(elem => compose.services.windows.ports.includes(elem))) {
-                compose.services.windows.ports = this.portMgr.value!.composeFormat;
-                await this.replaceCompose(compose);
-            }
-
-            const { stdout } = await execAsync("docker container start WinBoat");
-            logger.info(`Container response: ${stdout}`);
+            await this.containerMgr!.container("start");
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
@@ -533,14 +497,7 @@ export class Winboat {
     async stopContainer() {
         logger.info("Stopping WinBoat container...");
         this.containerActionLoading.value = true;
-        try {
-            const { stdout } = await execAsync("docker container stop WinBoat");
-            logger.info(`Container response: ${stdout}`);
-        } catch (e) {
-            logger.error("There was an error performing the container action.");
-            logger.error(e);
-            throw e;
-        }
+        await this.containerMgr!.container("stop");
         logger.info("Successfully stopped WinBoat container");
         this.containerActionLoading.value = false;
     }
@@ -548,17 +505,7 @@ export class Winboat {
     async pauseContainer() {
         logger.info("Pausing WinBoat container...");
         this.containerActionLoading.value = true;
-        try {
-            const { stdout } = await execAsync("docker container pause WinBoat");
-            logger.info(`Container response: ${stdout}`);
-            // TODO: The heartbeat check should set this, but it doesn't because normal fetch timeout doesn't exist
-            // Fix it once you change fetch to something else
-            this.isOnline.value = false;
-        } catch (e) {
-            logger.error("There was an error performing the container action.");
-            logger.error(e);
-            throw e;
-        }
+        await this.containerMgr!.container("pause");
         logger.info("Successfully paused WinBoat container");
         this.containerActionLoading.value = false;
     }
@@ -566,28 +513,26 @@ export class Winboat {
     async unpauseContainer() {
         logger.info("Unpausing WinBoat container...");
         this.containerActionLoading.value = true;
-        try {
-            const { stdout } = await execAsync("docker container unpause WinBoat");
-            logger.info(`Container response: ${stdout}`);
-        } catch (e) {
-            logger.error("There was an error performing the container action.");
-            logger.error(e);
-            throw e;
-        }
+        await this.containerMgr!.container("unpause");
         logger.info("Successfully unpaused WinBoat container");
         this.containerActionLoading.value = false;
     }
 
+    // TODO: refactor / possibly remove this
     async replaceCompose(composeConfig: ComposeConfig, restart = true) {
         logger.info("Going to replace compose config");
         this.containerActionLoading.value = true;
 
-        const composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml");
+        const composeFilePath = this.containerMgr!.composeFilePath;
 
-        if (restart) {
-            // 1. Compose down the current container
-            await execAsync(`docker compose -f ${composeFilePath} down`);
+        // 0. Stop the current container if it's online
+        if (this.containerStatus.value === ContainerStatus.RUNNING) {
+            await this.stopContainer();
         }
+
+        // TODO: use restart argument
+        // 1. Compose down the current container
+        await this.containerMgr!.compose("down");
 
         // 2. Create a backup directory if it doesn't exist
         const backupDir = path.join(WINBOAT_DIR, "backup");
@@ -598,20 +543,16 @@ export class Winboat {
         }
 
         // 3. Move the current compose file to backup
-        const backupFile = `${Date.now()}-docker-compose.yml`;
+        const backupFile = `${Date.now()}-${path.basename(this.containerMgr!.composeFilePath)}`;
         fs.renameSync(composeFilePath, path.join(backupDir, backupFile));
         logger.info(`Backed up current compose at: ${path.join(backupDir, backupFile)}`);
 
         // 4. Write new compose file
-        const newComposeYAML = PrettyYAML.stringify(composeConfig).replaceAll("null", "");
-        fs.writeFileSync(composeFilePath, newComposeYAML, { encoding: "utf8" });
+        this.containerMgr!.writeCompose(composeConfig);
         logger.info(`Wrote new compose file to: ${composeFilePath}`);
 
-        if (restart) {
-            // 5. Deploy the container with the new compose file
-            await execAsync(`docker compose -f ${composeFilePath} up -d`);
-            remote.getCurrentWindow().reload();
-        }
+        // 5. Deploy the container with the new compose file
+        await this.containerMgr!.compose("up");
 
         logger.info("Replace compose config completed, successfully deployed new container");
 
@@ -626,13 +567,17 @@ export class Winboat {
         console.info("Stopped container");
 
         // 2. Remove the container
-        await execAsync("docker rm WinBoat");
+
+        await this.containerMgr!.remove();
         console.info("Removed container");
 
         // 3. Remove the container volume or folder
-        const compose = this.parseCompose();
+        const compose = Winboat.readCompose(this.containerMgr!.composeFilePath);
         const storage = compose.services.windows.volumes.find(vol => vol.includes("/storage"));
         if (storage?.startsWith("data:")) {
+            if (this.#wbConfig?.config.containerRuntime !== ContainerRuntimes.DOCKER) {
+                logger.error("Volume not supported on podman runtime");
+            }
             // In this case we have a volume (legacy)
             await execAsync("docker volume rm winboat_data");
             console.info("Removed volume");
@@ -663,17 +608,16 @@ export class Winboat {
             return;
         }
 
+        const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
-        const compose = this.parseCompose();
-        const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
+
+        const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
-        const freeRDPBin = await getFreeRDP();
+        const freeRDPInstallation = await getFreeRDP();
 
-        logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
-
-        const cleanAppName = app.Name.replace(/[,.'"]/g, "");
+        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -684,49 +628,55 @@ export class Winboat {
             .map(argStr =>
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
-            .concat(newArgs)
-            .join(" ");
-
-        let cmd = `${freeRDPBin} /u:"${username}"\
-        /p:"${password}"\
-        /v:127.0.0.1\
-        /port:${rdpHostPort}\
-        ${this.#wbConfig?.config.multiMonitor == 2 ? "+span" : ""}\
-        -wallpaper\
-        ${this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : ""}\
-        ${this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : ""}\
-        /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
-        ${combinedArgs}\
-        /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}" &`;
+            .concat(newArgs);
+        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
-            cmd = `${freeRDPBin} /u:"${username}"\
-                /p:"${password}"\
-                /v:127.0.0.1\
-                /port:${rdpHostPort}\
-                ${combinedArgs}\
-                +f\
-                ${this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : ""}\
-                /scale:${this.#wbConfig?.config.scale ?? 100}\
-                &`;
+            args = args.concat([
+                "+f",
+                this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
+                `/scale:${this.#wbConfig?.config.scale ?? 100}`,
+            ]);
+        } else {
+            args = args.concat([
+                this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
+                "-wallpaper",
+                this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
+                `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
+                `/wm-class:winboat-${cleanAppName}`,
+                `/app:program:${app.Path},name:${cleanAppName}`,
+            ]);
         }
 
-        // Multiple spaces become one
-        cmd = cmd.replace(/\s+/g, " ");
+        args = args.filter((v, _i, _a) => v.trim() !== "");
+
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
-        logger.info(`Launch command:\n${cmd}`);
+        if (!freeRDPInstallation) {
+            logger.error("No FreeRDP installation found");
+            return;
+        }
 
-        await execAsync(cmd);
+        try {        
+            logger.info(`Launch FreeRDP with command:\n${freeRDPInstallation.stringifyExec(args)}`);
+            await freeRDPInstallation.exec(args);
+        } catch(e) {
+            const execError = e as ExecFileAsyncError;
+            
+            // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
+            // ERRINFO_LOGOFF_BY_USER
+            if (execError.code !== 12) {
+                throw execError;
+            }
+
+            logger.info("FreeRDP disconnected due to user logging off.");
+        }
     }
 
     async checkVersionAndUpdateGuestServer() {
         // 1. Get the version of the guest server and compare it to the current version
-        const apiPort = this.getHostPort(GUEST_API_PORT);
-        const apiUrl = `http://127.0.0.1:${apiPort}`;
-        const versionRes = await nodeFetch(`${apiUrl}/version`);
+        const versionRes = await nodeFetch(`${this.apiUrl}/version`);
         const version = (await versionRes.json()) as GuestServerVersion;
 
         const appVersion = import.meta.env.VITE_APP_VERSION;
@@ -754,9 +704,7 @@ export class Winboat {
         formData.append("updateFile", fs.createReadStream(zipPath));
 
         try {
-            const apiPort = this.getHostPort(GUEST_API_PORT);
-            const apiUrl = `http://127.0.0.1:${apiPort}`;
-            const res = await nodeFetch(`${apiUrl}/update`, {
+            const res = await nodeFetch(`${this.apiUrl}/update`, {
                 method: "POST",
                 body: formData as any,
             });
@@ -792,5 +740,13 @@ export class Winboat {
      */
     get hasQMPInterval() {
         return this.#qmpInterval !== null;
+    }
+
+    get apiUrl(): string | undefined {
+        const apiPort = getActiveHostPort(this.containerMgr!, CommonPorts.API);
+
+        if (!apiPort) return undefined;
+
+        return `http://127.0.0.1:${apiPort}`;
     }
 }

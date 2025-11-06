@@ -1,7 +1,6 @@
 import { createMemoryHistory, createRouter, RouteRecordRaw } from "vue-router";
 
 import Home from "./views/Home.vue";
-import InstallCenter from "./views/InstallCenter.vue";
 import SetupUI from "./views/SetupUI.vue";
 import Apps from "./views/Apps.vue";
 import About from "./views/About.vue";

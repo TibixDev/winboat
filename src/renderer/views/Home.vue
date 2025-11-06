@@ -10,9 +10,15 @@
 
                 <!-- Status Text -->
                 <div>
-                    <h1 class="text-3xl mt-0 mb-6">
-                        {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
-                    </h1>
+                    <div class="flex flex-row gap-2 items-center justify-center mb-6 *:m-0">
+                        <h1 class="text-3xl">
+                            {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
+                        </h1>
+                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold">
+                            {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
+                        </p>
+                    </div>
+
                     <div
                         class="flex flex-row items-center gap-1.5 mb-1"
                         :class="{ 'text-green-500': winboat.isOnline.value, 'text-red-500': !winboat.isOnline.value }"
@@ -32,16 +38,17 @@
                             </a>
                         </p>
                     </div>
+
                     <div
                         class="flex flex-row items-center gap-1.5"
                         :class="{
-                            'text-green-500': winboat.containerStatus.value === ContainerStatus.Running,
-                            'text-red-500': winboat.containerStatus.value === ContainerStatus.Exited,
-                            'text-yellow-500': winboat.containerStatus.value === ContainerStatus.Paused,
-                            'text-orange-500': winboat.containerStatus.value === ContainerStatus.Dead,
+                            'text-green-500': winboat.containerStatus.value === ContainerStatus.RUNNING,
+                            'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
+                            'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
+                            'text-orange-500': winboat.containerStatus.value === ContainerStatus.UNKNOWN,
                         }"
                     >
-                        <Icon class="size-7" icon="mdi:docker"></Icon>
+                        <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>
                         <p class="!my-0 font-semibold text-lg">
                             Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
                         </p>
@@ -55,8 +62,9 @@
                     title="Start"
                     class="generic-hover"
                     v-if="
-                        winboat.containerStatus.value === ContainerStatus.Exited ||
-                        winboat.containerStatus.value === ContainerStatus.Dead
+                        winboat.containerStatus.value === ContainerStatus.EXITED ||
+                        winboat.containerStatus.value === ContainerStatus.CREATED ||
+                        winboat.containerStatus.value === ContainerStatus.UNKNOWN
                     "
                     @click="winboat.startContainer()"
                 >
@@ -65,7 +73,7 @@
                 <button
                     title="Stop"
                     class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.Running"
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     @click="winboat.stopContainer()"
                 >
                     <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
@@ -75,11 +83,11 @@
                     title="Pause / Unpause"
                     class="generic-hover"
                     v-if="
-                        winboat.containerStatus.value === ContainerStatus.Running ||
-                        winboat.containerStatus.value === ContainerStatus.Paused
+                        winboat.containerStatus.value === ContainerStatus.RUNNING ||
+                        winboat.containerStatus.value === ContainerStatus.PAUSED
                     "
                     @click="
-                        winboat.containerStatus.value === ContainerStatus.Paused
+                        winboat.containerStatus.value === ContainerStatus.PAUSED
                             ? winboat.unpauseContainer()
                             : winboat.pauseContainer()
                     "
@@ -170,19 +178,20 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { ContainerStatus, Winboat } from "../lib/winboat";
+import { Winboat } from "../lib/winboat";
+import { ContainerStatus } from "../lib/containers/common";
 import { type ComposeConfig } from "../../types";
 import { WINDOWS_VERSIONS } from "../lib/constants";
 import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
 import { openAnchorLink } from "../utils/openLink";
 
-const winboat = new Winboat();
+const winboat = Winboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
 const wallpaper = ref("");
 
 onMounted(async () => {
-    compose.value = winboat.parseCompose();
+    compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
     wallpaper.value = compose.value?.services.windows.environment.VERSION.includes("11")
         ? "./img/wallpaper/win11.webp"
         : "./img/wallpaper/win10.webp";

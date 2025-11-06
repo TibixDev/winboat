@@ -1,9 +1,9 @@
 import { WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
-const path: typeof import("path") = require("path");
+const path: typeof import("path") = require("node:path");
 import { type Socket } from "net";
 import { assert } from "@vueuse/core";
-const { createConnection }: typeof import("net") = require("net");
+const { createConnection }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(WINBOAT_DIR, "qmp.log"));
 
@@ -110,7 +110,7 @@ export type QMPResponse<T extends QMPCommand> = QMPReturn<
 >;
 
 export class QMPManager {
-    private static IS_ALIVE_TIMEOUT = 2000;
+    private static readonly IS_ALIVE_TIMEOUT = 2000;
     qmpSocket: Socket;
 
     /**
@@ -180,15 +180,25 @@ export class QMPManager {
                     logger.error(err);
                     reject(err);
                 }
-                this.qmpSocket.once("data", (data: Buffer) => {
+
+                // This callback processes data received from the QMP socket
+                const receiveData = (data: Buffer) => {
                     try {
+                        const parsedData = JSON.parse(data.toString());
+                        if ("event" in parsedData) return; // In case we get notified of an event (for exampe NETDEV_STREAM_CONNECTED), we ignore it
+
+                        // We remove our callback from the data event when we get the response
+                        this.qmpSocket.off("data", receiveData);
                         resolve(JSON.parse(data.toString()));
                     } catch (e) {
                         logger.error(e);
                         logger.error(`QMP request 'data.toString()': ${data.toString()}`);
                         reject(e);
                     }
-                });
+                };
+
+                // We can't do 'qmpSocket.once', since we may get an event notice inbetween sending the command and receiving the response.
+                this.qmpSocket.on("data", receiveData);
             });
         });
     }
