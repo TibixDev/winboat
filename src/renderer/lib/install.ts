@@ -308,7 +308,7 @@ export class InstallManager {
 
 export async function isInstalled(): Promise<boolean> {
     // Check if a winboat container exists
-    const config = WinboatConfig.readConfigObject();
+    const config = WinboatConfig.readConfigObject(false);
 
     if (!config) return false;
 
