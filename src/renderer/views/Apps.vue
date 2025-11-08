@@ -127,14 +127,14 @@
                     :disabled="!winboat.isOnline.value"
                 >
                     <x-menu class="">
-                        <x-menuitem value="name" :toggled="WinboatConfig.getInstance().config.appsSortOrder === 'name'">
+                        <x-menuitem value="name" :toggled="sortBy === 'name'">
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
                                 <span class="qualifier"> Sort By: </span>
                                 Name
                             </x-label>
                         </x-menuitem>
-                        <x-menuitem value="usage" :toggled="WinboatConfig.getInstance().config.appsSortOrder === 'usage'">
+                        <x-menuitem value="usage" :toggled="sortBy === 'usage'">
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
                                 <span class="qualifier"> Sort By: </span>
@@ -267,7 +267,7 @@ const FormData: typeof import("form-data") = require("form-data");
 const winboat = Winboat.getInstance();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
-const sortBy = ref(WinboatConfig.getInstance().config.appsSortOrder);
+const sortBy = ref("");
 const filterBy = ref("all");
 const addCustomAppDialog = useTemplateRef("addCustomAppDialog");
 const customAppName = ref("");
@@ -339,6 +339,8 @@ onMounted(async () => {
     const onScroll = () => contextMenuRef.value?.hide();
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onScroll);
+
+    sortBy.value = WinboatConfig.getInstance().config.appsSortOrder
 });
 
 async function refreshApps() {
