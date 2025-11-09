@@ -1,7 +1,7 @@
 import { ComposeConfig } from "../../../types";
 import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
 import { WINBOAT_DIR } from "../constants";
-import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
+import { ComposeArguments, ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from "yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
@@ -61,8 +61,8 @@ export class PodmanContainer extends ContainerManager {
         containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
     }
 
-    async compose(direction: ComposeDirection): Promise<void> {
-        const args = ["compose", "-f", this.composeFilePath, direction];
+    async compose(direction: ComposeDirection, extraArgs: ComposeArguments[] = []): Promise<void> {
+        const args = ["compose", "-f", this.composeFilePath, direction, ...extraArgs];
 
         if (direction === "up") {
             // Run compose in detached mode if we are running compose up
@@ -149,7 +149,7 @@ export class PodmanContainer extends ContainerManager {
             const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch (e) {
-            containerLogger.error(`Failed to get status of docker container ${e}'`);
+            containerLogger.error(`Failed to get status of podman container ${e}'`);
             return ContainerStatus.UNKNOWN;
         }
     }

@@ -262,6 +262,30 @@ export class Winboat {
         this.#wbConfig = WinboatConfig.getInstance();
         this.containerMgr = createContainer(this.#wbConfig.config.containerRuntime);
 
+        if(!this.#wbConfig.config.performedMigrations) {
+            logger.info("Performing migrations for 0.9.0");
+
+            // Compose migration
+            this.containerMgr!.exists().then(async (value) => {
+                if(value) {
+                    logger.info("Composing down current WinBoat container");
+                    await this.containerMgr!.compose("down");
+                }
+
+                const currentCompose = Winboat.readCompose(this.containerMgr!.composeFilePath);
+                const defaultCompose = this.containerMgr!.defaultCompose;
+
+                currentCompose.services.windows.ports = defaultCompose.services.windows.ports;
+
+                this.containerMgr!.writeCompose(currentCompose);
+                
+                logger.info("Composing up WinBoat container");
+                await this.containerMgr!.compose("up", ["--no-start"]);
+
+                this.#wbConfig!.config.performedMigrations = true;
+            })
+        }
+
         // This is a special interval which will never be destroyed
         setInterval(async () => {
             const _containerStatus = await this.containerMgr!.getStatus();

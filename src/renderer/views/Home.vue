@@ -46,6 +46,7 @@
                             'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
                             'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
                             'text-orange-500': winboat.containerStatus.value === ContainerStatus.UNKNOWN,
+                            'text-gray-500': winboat.containerStatus.value === ContainerStatus.CREATED
                         }"
                     >
                         <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>

@@ -8,6 +8,7 @@ const path: typeof import("path") = require("path");
 export const containerLogger = createLogger(path.join(WINBOAT_DIR, "container.log"));
 
 export type ComposeDirection = "up" | "down";
+export type ComposeArguments = "--no-start";
 export type ContainerAction = "start" | "stop" | "pause" | "unpause";
 
 export abstract class ContainerManager {
@@ -18,7 +19,7 @@ export abstract class ContainerManager {
     abstract cachedPortMappings: ComposePortEntry[] | null;
 
     abstract writeCompose(compose: ComposeConfig): void;
-    abstract compose(direction: ComposeDirection): Promise<void>;
+    abstract compose(direction: ComposeDirection, extraArgs?: ComposeArguments[]): Promise<void>;
     abstract container(action: ContainerAction): Promise<void>;
     abstract port(): Promise<ComposePortEntry[]>;
     abstract remove(): Promise<void>;

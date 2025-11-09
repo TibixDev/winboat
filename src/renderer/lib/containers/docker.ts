@@ -3,7 +3,7 @@ import { DOCKER_DEFAULT_COMPOSE } from "../../data/docker";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
 import { WINBOAT_DIR } from "../constants";
-import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
+import { ComposeArguments, ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from "yaml";
 import { execFileAsync, stringifyExecFile } from "../exec-helper";
 
@@ -37,8 +37,8 @@ export class DockerContainer extends ContainerManager {
         containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
     }
 
-    async compose(direction: ComposeDirection): Promise<void> {
-        const args = ["compose", "-f", this.composeFilePath, direction];
+    async compose(direction: ComposeDirection, extraArgs: ComposeArguments[] = []): Promise<void> {
+        const args = ["compose", "-f", this.composeFilePath, direction, ...extraArgs];
         
         if (direction === "up") {
             // Run compose in detached mode if we are running compose up
