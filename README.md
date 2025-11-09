@@ -71,10 +71,14 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
 - **.deb:** The intended format for Debian based distributions
 - **.rpm:** The intended format for Fedora based distributions
-- flake.nix - Install using Nix
-    1. Add to your flake `inputs.winboat.url = "github:TibixDev/winboat";`
-    2. Add `inputs.winboat.packages.${system}.default` to `environment.systemPackages` or `home.packages`
-
+- **Nix (Nixpkgs)**
+    1. Add the winboat package to your config (ensure using nixpkgs-unstable)
+    using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.
+    2. Add the following lines to your nix configuration
+    ```nix
+    virtualisation.docker.enable = true;
+    users.users.{yourUser}.extraGroups = ["docker"];
+    ```
 ## Known Issues About Container Runtimes
 
 - Podman is **unsupported** for now
