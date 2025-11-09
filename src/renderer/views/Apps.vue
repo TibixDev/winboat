@@ -400,6 +400,7 @@ onMounted(async () => {
 
 async function toggleFavorite(app) {
     await winboat.appMgr!.toggleAppFavorite(app);
+    contextMenuRef.value?.hide()
 }
 
 async function refreshApps() {
@@ -536,6 +537,10 @@ function launchApp() {
     }
 }
 
+/**
+* Get App's arg, and find FreeRDP install to generate run
+* app's run command. Then copy into user's clipboard
+*/
 async function copyCommand() {
     if (contextMenuTarget.value) {
         const args = winboat.getLaunchArgs(contextMenuTarget.value);
