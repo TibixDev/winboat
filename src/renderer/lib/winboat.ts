@@ -684,8 +684,8 @@ export class Winboat {
         }
         
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
-        
-        let args = await getLaunchCMD();
+
+        let args = await this.getLaunchCMD(app);
         const freeRDPInstallation = await getFreeRDP();
         
         this.appMgr?.incrementAppUsage(app);
