@@ -628,7 +628,7 @@ export class Winboat {
         console.info("So long and thanks for all the fish!");
     }
     
-    async getLaunchArgs(app: WinApp) {
+    getLaunchArgs(app: WinApp) {
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
 
