@@ -209,7 +209,7 @@
                             />
                         </button>
                         <button
-                            @click.stop="openContextMenu($event, app)"
+                            @click.stop="contextMenuTarget ? contextMenuRef.hide() : openContextMenu($event, app)"
                             class="p-2 rounded-md hover:bg-neutral-700/40 transition"
                         >
                             <Icon icon="mdi:dots-vertical"></Icon>
@@ -249,7 +249,7 @@
                             />
                         </button>
                         <button
-                            @click.stop="openContextMenu($event, app)"
+                            @click.stop="contextMenuTarget ? contextMenuRef.hide() : openContextMenu($event, app)"
                             class="p-2 rounded-md hover:bg-neutral-700/40 transition"
                         >
                             <Icon icon="mdi:dots-vertical"></Icon>
