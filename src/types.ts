@@ -32,6 +32,7 @@ export type WinApp = {
     Args: string;
     Icon: string;
     Source: string;
+    Favorite?: boolean;
     Usage?: number;
 };
 

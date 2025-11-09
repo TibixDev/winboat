@@ -131,6 +131,12 @@ class AppManager {
 
         for (const appIdx in newApps) {
             newApps[appIdx].Usage = this.appCache.find(app => app.Name == newApps[appIdx].Name)?.Usage || 0;
+
+            newApps[appIdx].Favorite =
+                this.#wbConfig?.config.favoriteAppIds?.find(
+                    fav => fav == newApps[appIdx].Path + newApps[appIdx].Args,
+                ) !== undefined;
+
             this.appUsageCache[newApps[appIdx].Name] = newApps[appIdx].Usage;
         }
 
@@ -166,6 +172,33 @@ class AppManager {
         logger.info(`AppCache: ${JSON.stringify(appCacheHumanReadable, null, 4)}`);
 
         return this.appCache;
+    }
+
+    toggleAppFavorite(app: WinApp) {
+        if (!this.#wbConfig?.config) {
+            return;
+        }
+
+        const favorites = [...this.#wbConfig.config.favoriteAppIds];
+        const appKey = `${app.Path}${app.Args}`;
+
+        const index = favorites.indexOf(appKey);
+
+        if (index === -1) {
+            favorites.push(appKey);
+            app.Favorite = true;
+            console.log("fav ");
+        } else {
+            favorites.splice(index, 1);
+            app.Favorite = false;
+            console.log("nope");
+        }
+
+        this.#wbConfig.config.favoriteAppIds = favorites;
+
+        // update cache
+        const cached = this.appCache.find(a => a.Name == app.Name);
+        if (cached) cached.Favorite = app.Favorite;
     }
 
     incrementAppUsage(app: WinApp) {
@@ -674,26 +707,11 @@ export class Winboat {
         console.info("So long and thanks for all the fish!");
     }
 
-    async launchApp(app: WinApp) {
-        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
-
-        if (customAppCallbacks[app.Path]) {
-            logger.info(`Found custom app command for '${app.Name}'`);
-            customAppCallbacks[app.Path]!(this);
-            this.appMgr?.incrementAppUsage(app);
-            this.appMgr?.writeToDisk();
-            return;
-        }
-
+    async getLaunchCMD(app: WinApp) {
         const { username, password } = this.getCredentials();
-        const compose = this.parseCompose();
         const rdpHostPort = this.getHostPort(GUEST_RDP_PORT);
 
-        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
-
         const freeRDPBin = await getFreeRDP();
-
-        logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
 
         const cleanAppName = app.Name.replace(/[,.'"]/g, "");
 
@@ -733,6 +751,27 @@ export class Winboat {
                 /scale:${this.#wbConfig?.config.scale ?? 100}\
                 &`;
         }
+
+        return cmd;
+    }
+
+    async launchApp(app: WinApp) {
+        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
+
+        if (customAppCallbacks[app.Path]) {
+            logger.info(`Found custom app command for '${app.Name}'`);
+            customAppCallbacks[app.Path]!(this);
+            this.appMgr?.incrementAppUsage(app);
+            this.appMgr?.writeToDisk();
+            return;
+        }
+
+        let cmd = await this.getLaunchCMD(app);
+
+        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
+
+        const freeRDPBin = await getFreeRDP();
+        logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
 
         // Multiple spaces become one
         cmd = cmd.replace(/\s+/g, " ");
