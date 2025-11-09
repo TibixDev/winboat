@@ -265,6 +265,11 @@
                     <Icon class="size-4" icon="mdi:play-circle-outline"></Icon>
                     <x-label>Launch</x-label>
                 </WBMenuItem>
+                <WBMenuItem @click="toggleFavorite(contextMenuTarget)">
+                    <Icon class="size-4" icon="mdi:star"></Icon>
+                    <x-lebel v-if="contextMenuTarget?.Favorite">Remove Favorite</x-lebel>
+                    <x-lebel v-else>Add Favorite</x-lebel>
+                </WBMenuItem>
                 <WBMenuItem @click="copyCommand">
                     <Icon class="size-4" icon="mdi:content-copy"></Icon>
                     <x-label>Copy Command</x-label>
