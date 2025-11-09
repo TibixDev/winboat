@@ -628,13 +628,11 @@ export class Winboat {
         console.info("So long and thanks for all the fish!");
     }
     
-    async getLaunchCMD(app: WinApp) {
+    async getLaunchArgs(app: WinApp) {
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
 
         const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
-
-        const freeRDPInstallation = await getFreeRDP();
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -683,7 +681,7 @@ export class Winboat {
         
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
-        let args = await this.getLaunchCMD(app);
+        const args = this.getLaunchArgs(app);
         const freeRDPInstallation = await getFreeRDP();
         
         this.appMgr?.incrementAppUsage(app);

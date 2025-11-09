@@ -312,6 +312,7 @@ import { Icon } from "@iconify/vue";
 import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from "vue";
 import { Winboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
+import { getFreeRDP } from "../utils/getFreeRDP.ts"
 import { type WinApp } from "../../types";
 import WBContextMenu from "../components/WBContextMenu.vue";
 import WBMenuItem from "../components/WBMenuItem.vue";
@@ -537,10 +538,13 @@ function launchApp() {
 
 async function copyCommand() {
     if (contextMenuTarget.value) {
-        const cmd = await winboat.getLaunchCMD(contextMenuTarget.value);
+        const args = winboat.getLaunchArgs(contextMenuTarget.value);
+        const freeRDPInstallation = await getFreeRDP();
+        const cmd = freeRDPInstallation.stringifyExec(args);
+
         try {
             await navigator.clipboard.writeText(cmd);
-            console.log("copied ", cmd, " to clipboard");
+            console.log("copied run command to clipboard");
         } catch (e) {
             console.log("failed to copy Launch Command to clipboard");
         }
