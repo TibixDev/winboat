@@ -1,42 +1,63 @@
 import { type WindowsVersionKey } from "./renderer/lib/constants";
+import { ContainerManager } from "./renderer/lib/containers/container";
+import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {
-    cpuThreads: number;
+    cpuCores: number;
     ramGB: number;
-    diskSpaceGB: number;
     kvmEnabled: boolean;
-    dockerInstalled: boolean;
-    dockerComposeInstalled: boolean,
-    dockerIsRunning: boolean,
-    dockerIsInUserGroups: boolean;
     freeRDP3Installed: boolean;
-    ipTablesLoaded: boolean;
-    iptableNatLoaded: boolean;
-}
+};
 
 export type InstallConfiguration = {
     windowsVersion: WindowsVersionKey;
     windowsLanguage: string;
-    cpuThreads: number;
+    cpuCores: number;
     ramGB: number;
+    installFolder: string;
     diskSpaceGB: number;
     username: string;
     password: string;
     customIsoPath?: string;
-}
+    shareHomeFolder: boolean;
+    container: ContainerManager;
+};
 
 export type WinApp = {
+    id?: string;
     Name: string;
     Path: string;
+    Args: string;
     Icon: string;
     Source: string;
     Usage?: number;
-}
+};
+
+export type CustomAppCallbacks = {
+    [key: string]: null | ((context: Winboat) => void);
+};
+
+export type PortEntryProtocol = "tcp" | "udp";
+
+export type LongPortMapping = {
+    target: number;
+    published?: string;
+    host_ip?: string;
+    protocol?: PortEntryProtocol;
+    app_protocol?: string;
+    mode?: "host" | "ingress";
+    name?: string;
+};
 
 export type ComposeConfig = {
     name: string;
     volumes: {
         [key: string]: null | string;
+    };
+    networks?: {
+        [key: string]: {
+            external: boolean;
+        };
     };
     services: {
         windows: {
@@ -56,7 +77,7 @@ export type ComposeConfig = {
                 [key: string]: string; // Allow additional env vars
             };
             privileged: boolean;
-            ports: string[];
+            ports: Array<string | LongPortMapping>;
             cap_add: string[];
             stop_grace_period: string;
             restart: string;
@@ -68,35 +89,35 @@ export type ComposeConfig = {
 
 export type Metrics = {
     cpu: {
-        usage: number, // Percentage, from 0 to 100%
-        frequency: number, // Frequency in Mhz (e.g. 2700)
-    },
+        usage: number; // Percentage, from 0 to 100%
+        frequency: number; // Frequency in Mhz (e.g. 2700)
+    };
     ram: {
-        used: number, // RAM Usage in MB (e.g. 500)
-        total: number // RAM Total in MB (e.g. 4096)
-        percentage: number // RAM Usage in percentage (e.g. 70%)
-    },
+        used: number; // RAM Usage in MB (e.g. 500)
+        total: number; // RAM Total in MB (e.g. 4096)
+        percentage: number; // RAM Usage in percentage (e.g. 70%)
+    };
     disk: {
-        used: number, // Disk Usage in MB (e.g. 29491)
-        total: number, // Disk Total in MB (e.g. 102400)
-        percentage: number // Disk Usage in percentage (e.g. 70%)
-    }
-}
+        used: number; // Disk Usage in MB (e.g. 29491)
+        total: number; // Disk Total in MB (e.g. 102400)
+        percentage: number; // Disk Usage in percentage (e.g. 70%)
+    };
+};
 
 export type GuestServerVersion = {
     version: string;
     commit_hash: string;
     build_time: string;
-}
+};
 
 export type GuestServerUpdateResponse = {
     filename: string;
     status: string;
     temp_path: string;
-}
+};
 
 export type USBDevice = {
-    vendorID: string,
-    productID: string,
-    alias: string
+    vendorID: string;
+    productID: string;
+    alias: string;
 };

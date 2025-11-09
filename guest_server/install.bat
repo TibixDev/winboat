@@ -1,6 +1,7 @@
 @echo off
 set INSTALL_DIR=C:\Program Files\WinBoat
 set EXE_PATH=%INSTALL_DIR%\winboat_guest_server.exe
+set TIME_SYNC_SCRIPT_PATH=%INSTALL_DIR%\scripts\time-sync.bat
 set NSSM_PATH=%INSTALL_DIR%\nssm.exe
 set OEM_DIR=C:\OEM
 
@@ -25,3 +26,6 @@ netsh advfirewall firewall add rule name="Allow WinBoat API 7148" dir=in action=
 
 :: Start the service
 "%NSSM_PATH%" start WinBoatGuestServer
+
+:: Startup Tasks
+schtasks /create /tn "TimeSyncTask" /sc ONSTART /RL HIGHEST /tr "\"%TIME_SYNC_SCRIPT_PATH%\"" /RU SYSTEM

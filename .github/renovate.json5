@@ -1,18 +1,13 @@
 {
-    $schema: 'https://docs.renovatebot.com/renovate-schema.json',
-    extends: [
-        'config:recommended',
-        ':disableRateLimiting',
-    ],
-    "includePaths": ["**/src/renderer/lib/**"],
-    "regexManagers": [
+    $schema: "https://docs.renovatebot.com/renovate-schema.json",
+    extends: ["config:recommended", ":disableRateLimiting"],
+    includePaths: ["**/src/renderer/lib/**"],
+    regexManagers: [
         {
-            "fileMatch": ["src/renderer/lib/install\\.ts$"],
-            "matchStrings": [
-                "\"image\":\\s*\"(?<depName>ghcr\\.io/dockur/windows):(?<currentValue>[^\"]+)\""
-            ],
-            "datasourceTemplate": "docker",
-            "depTypeTemplate": "container"
-        }
-    ]
+            fileMatch: ["src/renderer/lib/install\\.ts$"],
+            matchStrings: ['"image":\\s*"(?<depName>ghcr\\.io/dockur/windows):(?<currentValue>[^"]+)"'],
+            datasourceTemplate: "docker",
+            depTypeTemplate: "container",
+        },
+    ],
 }

@@ -1,10 +1,9 @@
-const { shell }: typeof import('@electron/remote') = require('@electron/remote');
+const { shell }: typeof import("@electron/remote") = require("@electron/remote");
 
 export function openLink(link: string) {
-    if (link.startsWith('http')) {
+    if (link.startsWith("http")) {
         shell.openExternal(link);
-    }
-    else {
+    } else {
         shell.showItemInFolder(link);
     }
 }
@@ -12,7 +11,7 @@ export function openLink(link: string) {
 export function openAnchorLink(e: MouseEvent) {
     e.preventDefault();
     const target = e.target as HTMLAnchorElement;
-    const href = target.getAttribute('href');
+    const href = target.getAttribute("href");
     if (href) {
         openLink(href);
     }

@@ -1,12 +1,16 @@
 {
     "name": "winboat",
-    "version": "0.8.3",
+    "version": "0.8.7",
     "description": "Windows for Penguins",
+    "type": "module",
     "main": "main/main.js",
+    "engines": {
+        "node": ">=23.6.0"
+    },
     "scripts": {
-        "dev": "node scripts/dev-server.js",
+        "dev": "node scripts/dev-server.ts",
         "build-guest-server": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.js && electron-builder --linux"
+        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.ts && electron-builder --linux"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
@@ -15,7 +19,6 @@
         "email": "staff@winboat.app"
     },
     "devDependencies": {
-        "@types/json-to-pretty-yaml": "^1.2.1",
         "@types/node-fetch": "^2.6.12",
         "@types/screenshot-desktop": "^1.12.3",
         "@types/turndown": "^5.0.5",
@@ -26,6 +29,7 @@
         "electron": "^35.1.5",
         "electron-builder": "^26.0.12",
         "postcss": "^8.5.1",
+        "prettier": "3.6.2",
         "tailwindcss": "^3.4.17",
         "typescript": "~5.6.3",
         "vite": "^6.0.7",
@@ -37,10 +41,12 @@
         "@vueuse/core": "^13.1.0",
         "@vueuse/motion": "^2.2.6",
         "apexcharts": "^4.5.0",
+        "argon2": "^0.44.0",
+        "check-disk-space": "^3.4.0",
         "consola": "^3.4.2",
+        "electron-store": "^11.0.0",
         "form-data": "^4.0.4",
         "jimp": "^1.6.0",
-        "json-to-pretty-yaml": "^1.2.2",
         "marked": "^15.0.6",
         "nanoevents": "^9.1.0",
         "node-fetch": "2",

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -26,6 +27,9 @@ var (
 	CommitHash     = "n/a"
 	BuildTimestamp = "n/a"
 )
+
+const AUTHKEY_HASH_REG = "WinBoatAuthHash"
+const AUTHKEY_HASH_OEM_LOCATION = "C:\\OEM\\auth.hash"
 
 type Metrics struct {
 	CPU struct {
@@ -42,6 +46,10 @@ type Metrics struct {
 		Total      uint64  `json:"total"`      // MB
 		Percentage float64 `json:"percentage"` // %
 	} `json:"disk"`
+}
+
+type RDPStatusResponse struct {
+	RdpConnection bool `json:"rdpConnected"`
 }
 
 func getApps(w http.ResponseWriter, r *http.Request) {
@@ -120,20 +128,54 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
-	// Grep for any active RDP sessions via qwinsta
-	// Run the PowerShell script
-	cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts\\rdp-status.ps1")
+	// Check for RDP Status via quser.exe
+	cmd := exec.Command("quser.exe")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to execute script: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Check if the output contains both "active" and "rdp" todo: Check for VNC Sessions
+	hasRdpSession := strings.Contains(strings.ToLower(string(output)), "active") &&
+		strings.Contains(strings.ToLower(string(output)), "rdp")
+
+	response := RDPStatusResponse{
+		RdpConnection: hasRdpSession,
+	}
+
+	// Convert the response from guest server to JSON
+	// Expected output { "rdp_connected": "true" } if a session is active
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, "Failed to marshal JSON response: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(output)
+	w.Write(jsonResponse)
 }
 
 func applyUpdate(w http.ResponseWriter, r *http.Request) {
+	// Verify password
+	expectedHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
+	if err != nil || expectedHash == nil {
+		http.Error(w, "Unauthorized: failed to read auth hash", http.StatusUnauthorized)
+		return
+	}
+
+	password := r.FormValue("password")
+	if password == "" {
+		http.Error(w, "Unauthorized: password is required", http.StatusUnauthorized)
+		return
+	}
+
+	isValid, err := verifyPasswordSecure(*expectedHash, password)
+	if err != nil || !isValid {
+		http.Error(w, "Unauthorized: invalid password", http.StatusUnauthorized)
+		return
+	}
+
 	r.ParseMultipartForm(100 << 20) // Limit upload size to 100MB
 	var buf bytes.Buffer
 
@@ -228,7 +270,64 @@ func getIcon(w http.ResponseWriter, r *http.Request) {
 	w.Write(output)
 }
 
+func setAuthHash(w http.ResponseWriter, r *http.Request) {
+	// If there's an existing hash, reject
+	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
+	if err != nil {
+		http.Error(w, "Failed to read existing auth hash: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if existingHash != nil {
+		http.Error(w, "Auth hash already set", http.StatusBadRequest)
+		return
+	}
+
+	// Get auth hash from POST body
+	authHash := r.PostFormValue("authHash")
+	if authHash == "" {
+		http.Error(w, "authHash is required", http.StatusBadRequest)
+		return
+	}
+
+	// Store it securely
+	err = setSecureRegKey(AUTHKEY_HASH_REG, authHash)
+	if err != nil {
+		http.Error(w, "Failed to store auth hash: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Success
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]string{"status": "ok"}
+	json.NewEncoder(w).Encode(response)
+}
+
 func main() {
+	// Try to initialize auth key hash if not present
+	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
+	if err != nil {
+		log.Println("Warning: failed to read auth hash from registry:", err)
+	}
+
+	// Hash not found in registry
+	if existingHash == nil {
+		// Check OEM location and try to read from there
+		oemHashBytes, err := os.ReadFile(AUTHKEY_HASH_OEM_LOCATION)
+		if err != nil {
+			log.Println("Auth hash not found in registry or OEM location.")
+		} else {
+			oemHash := string(bytes.TrimSpace(oemHashBytes))
+			err = setSecureRegKey(AUTHKEY_HASH_REG, oemHash)
+			if err != nil {
+				log.Println("Failed to initialize auth hash from OEM location:", err)
+			} else {
+				log.Println("Initialized auth hash from OEM location.")
+			}
+		}
+	}
+
+	// Setup routes
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
 	r.HandleFunc("/health", getHealth).Methods("GET")
@@ -237,6 +336,7 @@ func main() {
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
+	r.HandleFunc("/auth/set-hash", setAuthHash).Methods("POST")
 	handler := cors.Default().Handler(r)
 
 	log.Println("Starting WinBoat Guest Server on :7148...")
