@@ -735,6 +735,34 @@ export class Winboat {
         }
         logger.info("Update completed, Winboat Guest Server is online");
 
+        // 6. [OPTIONAL] Apply authentication hash in case it's not set yet, because
+        // it will be required during future updates
+        try {
+            const { password } = this.getCredentials();
+            const hash = await argon2.hash(password);
+            
+            const authFormData = new FormData();
+            authFormData.append("authHash", hash);
+            
+            const authRes = await nodeFetch(`${this.apiUrl}/auth/set-hash`, {
+                method: "POST",
+                body: authFormData as any,
+            });
+            
+            if (authRes.status === 200) {
+                logger.info("Successfully set auth hash for existing installation");
+            } else if (authRes.status === 400) {
+                // Hash already set, this is expected for existing installations that already have it
+                logger.info("Auth hash already set, skipping enrollment");
+            } else {
+                const errorText = await authRes.text();
+                logger.warn(`Unexpected response when setting auth hash: ${authRes.status} - ${errorText}`);
+            }
+        } catch (e) {
+            logger.error("Failed to set auth hash (non-critical error)");
+            logger.error(e);
+        }
+
         // Done!
         this.isUpdatingGuestServer.value = false;
     }
