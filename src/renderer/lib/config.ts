@@ -18,6 +18,7 @@ export type WinboatConfigObj = {
     rdpMonitoringEnabled: boolean;
     passedThroughDevices: PTSerializableDeviceInfo[];
     customApps: WinApp[];
+    favoriteAppIds: string[];
     experimentalFeatures: boolean;
     advancedFeatures: boolean;
     multiMonitor: number;
@@ -33,6 +34,7 @@ const defaultConfig: WinboatConfigObj = {
     rdpMonitoringEnabled: false,
     passedThroughDevices: [],
     customApps: [],
+    favoriteAppIds: [],
     experimentalFeatures: false,
     advancedFeatures: false,
     multiMonitor: 0,
