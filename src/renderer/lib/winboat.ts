@@ -177,11 +177,9 @@ class AppManager {
         if (index === -1) {
             favorites.push(appKey);
             app.Favorite = true;
-            console.log("fav ");
         } else {
             favorites.splice(index, 1);
             app.Favorite = false;
-            console.log("nope");
         }
 
         this.#wbConfig.config.favoriteAppIds = favorites;
