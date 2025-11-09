@@ -1,10 +1,12 @@
 import { ComposeConfig } from "../../../types";
 import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
 import { WINBOAT_DIR } from "../constants";
-import { ComposeDirection, containerLogger, ContainerManager, ContainerStatus, ContainerAction } from "./container";
+import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from "yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
+import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper";
+
 const { exec }: typeof import("child_process") = require("child_process");
 const { promisify }: typeof import("util") = require("util");
 const path: typeof import("path") = require("path");
@@ -38,7 +40,7 @@ type PodmanInfo = {
     version: object;
 };
 
-const COMPOSE_ENV_VARS = "PODMAN_COMPOSE_PROVIDER=podman-compose PODMAN_COMPOSE_WARNING_LOGS=false";
+const COMPOSE_ENV_VARS = { PODMAN_COMPOSE_PROVIDER: "podman-compose", PODMAN_COMPOSE_WARNING_LOGS: "false" };
 
 export class PodmanContainer extends ContainerManager {
     defaultCompose = PODMAN_DEFAULT_COMPOSE;
@@ -60,40 +62,45 @@ export class PodmanContainer extends ContainerManager {
     }
 
     async compose(direction: ComposeDirection): Promise<void> {
-        const extraArguments = direction == "up" ? "-d" : ""; // Run compose in detached mode if we are running compose up
-        const command = `${COMPOSE_ENV_VARS} ${this.executableAlias} compose -f ${this.composeFilePath} ${direction} ${extraArguments}`;
+        const args = ["compose", "-f", this.composeFilePath, direction];
+
+        if (direction === "up") {
+            // Run compose in detached mode if we are running compose up
+            args.push("-d");
+        }
 
         try {
-            const { stdout, stderr } = await execAsync(command);
+            const { stderr } = await execFileAsync(this.executableAlias, args, {
+                env: concatEnv(process.env as { [key: string]: string }, COMPOSE_ENV_VARS),
+            });
             if (stderr) {
                 containerLogger.error(stderr);
             }
         } catch (e) {
-            containerLogger.error(`Failed to run compose command '${command}'`);
+            containerLogger.error(`Failed to run compose command '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
             throw e;
         }
     }
 
     async container(action: ContainerAction): Promise<void> {
-        const command = `${this.executableAlias} container ${action} ${this.containerName}`;
-
+        const args = ["container", action, this.containerName];
         try {
-            const { stdout } = await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
             containerLogger.info(`Container action '${action}' response: '${stdout}'`);
         } catch (e) {
-            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
             throw e;
         }
     }
 
     async port(): Promise<ComposePortEntry[]> {
-        const command = `${this.executableAlias} port ${this.containerName}`;
+        const args = ["port", this.containerName];
         const ret = [];
 
         try {
-            const { stdout } = await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
 
             for (const line of stdout.trim().split("\n")) {
                 const parts = line.split("->").map(part => part.trim());
@@ -103,7 +110,7 @@ export class PodmanContainer extends ContainerManager {
                 ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
             }
         } catch (e) {
-            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
             throw e;
         }
@@ -114,10 +121,10 @@ export class PodmanContainer extends ContainerManager {
     }
 
     async remove(): Promise<void> {
-        const command = `${this.executableAlias} rm ${this.containerName}`;
+        const args = ["rm", this.containerName];
 
         try {
-            await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
         } catch (e) {
             containerLogger.error(`Failed to remove container '${this.containerName}'`);
             containerLogger.error(e);
@@ -127,29 +134,30 @@ export class PodmanContainer extends ContainerManager {
     async getStatus(): Promise<ContainerStatus> {
         const statusMap = {
             created: ContainerStatus.CREATED,
-            exited: ContainerStatus.EXITED,
-            paused: ContainerStatus.PAUSED,
+            restarting: ContainerStatus.UNKNOWN,
+            initialized: ContainerStatus.UNKNOWN,
+            removing: ContainerStatus.UNKNOWN,
             running: ContainerStatus.RUNNING,
-            stopping: ContainerStatus.EXITED, // TODO: investigate this status value
-            unknown: ContainerStatus.UNKNOWN,
+            paused: ContainerStatus.PAUSED,
+            exited: ContainerStatus.EXITED,
+            dead: ContainerStatus.UNKNOWN,
         } as const;
-        const command = `${this.executableAlias} inspect --format "{{.State.Status}}" ${this.containerName}`;
-
+        const args = ["inspect", "--format={{.State.Status}}", this.containerName];
+        
         try {
-            const { stdout } = await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
             const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch (e) {
-            containerLogger.error(`Failed to get status of podman container ${e}:'`);
+            containerLogger.error(`Failed to get status of docker container ${e}'`);
             return ContainerStatus.UNKNOWN;
         }
     }
 
     async exists(): Promise<boolean> {
-        const command = `${this.executableAlias} ps -a --filter "name=${this.containerName}" --format "{{.Names}}"`;
-
+        const args = ["ps", "-a", "--filter", `name=${this.containerName}`, "--format", "{{.Names}}"];
         try {
-            const { stdout: exists } = await execAsync(command);
+            const { stdout: exists } = await execFileAsync(this.executableAlias, args);
             return exists.includes("WinBoat");
         } catch (e) {
             containerLogger.error(
@@ -171,14 +179,16 @@ export class PodmanContainer extends ContainerManager {
         };
 
         try {
-            const { stdout: podmanOutput } = await execAsync("podman --version");
+            const { stdout: podmanOutput } = await execFileAsync("podman", ["--version"]);
             specs.podmanInstalled = !!podmanOutput;
         } catch (e) {
             containerLogger.error("Error checking podman version");
         }
 
         try {
-            const { stdout: podmanComposeOutput } = await execAsync(`${COMPOSE_ENV_VARS} podman compose --version`);
+            const { stdout: podmanComposeOutput } = await execFileAsync("podman", ["compose", "--version"], {
+                env: concatEnv(process.env as { [key: string]: string }, COMPOSE_ENV_VARS),
+            });
             specs.podmanComposeInstalled = !!podmanComposeOutput;
         } catch (e) {
             containerLogger.error("Error checking podman compose version");

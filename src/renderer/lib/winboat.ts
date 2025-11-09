@@ -1,12 +1,12 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR, GUEST_API_PORT, GUEST_RDP_PORT, GUEST_QMP_PORT, GUEST_NOVNC_PORT } from "./constants";
+import { WINBOAT_DIR } from "./constants";
 import type {
     ComposeConfig,
+    CustomAppCallbacks,
     GuestServerUpdateResponse,
     GuestServerVersion,
     Metrics,
-    WinApp,
-    CustomAppCallbacks,
+    WinApp
 } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -18,7 +18,7 @@ import { WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { ComposePortEntry, ComposePortMapper } from "../utils/port";
+import { ExecFileAsyncError } from "./exec-helper";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 
@@ -611,11 +611,14 @@ export class Winboat {
 
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
-        const freeRDPBin = await getFreeRDP();
+
         const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
 
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
-        logger.info(`Using FreeRDP Command: '${freeRDPBin}'`);
+
+        const freeRDPInstallation = await getFreeRDP();
+
+        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -626,42 +629,50 @@ export class Winboat {
             .map(argStr =>
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
-            .concat(newArgs)
-            .join(" ");
-
-        let cmd = `${freeRDPBin} /u:"${username}"\
-        /p:"${password}"\
-        /v:127.0.0.1\
-        /port:${rdpHostPort}\
-        ${this.#wbConfig?.config.multiMonitor == 2 ? "+span" : ""}\
-        -wallpaper\
-        ${this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : ""}\
-        ${this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : ""}\
-        /scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}\
-        ${combinedArgs}\
-        /wm-class:"winboat-${cleanAppName}"\
-        /app:program:"${app.Path}",name:"${cleanAppName}",cmd:"${app.Args}" &`;
+            .concat(newArgs);
+        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
-            cmd = `${freeRDPBin} /u:"${username}"\
-                /p:"${password}"\
-                /v:127.0.0.1\
-                /port:${rdpHostPort}\
-                ${combinedArgs}\
-                +f\
-                ${this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : ""}\
-                /scale:${this.#wbConfig?.config.scale ?? 100}\
-                &`;
+            args = args.concat([
+                "+f",
+                this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
+                `/scale:${this.#wbConfig?.config.scale ?? 100}`,
+            ]);
+        } else {
+            args = args.concat([
+                this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
+                "-wallpaper",
+                this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
+                `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
+                `/wm-class:winboat-${cleanAppName}`,
+                `/app:program:${app.Path},name:${cleanAppName}`,
+            ]);
         }
 
-        // Multiple spaces become one
-        cmd = cmd.replaceAll(/\s+/g, " ");
+        args = args.filter((v, _i, _a) => v.trim() !== "");
+
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
 
-        logger.info(`Launch command:\n${cmd}`);
+        if (!freeRDPInstallation) {
+            logger.error("No FreeRDP installation found");
+            return;
+        }
 
-        await execAsync(cmd);
+        try {        
+            logger.info(`Launch FreeRDP with command:\n${freeRDPInstallation.stringifyExec(args)}`);
+            await freeRDPInstallation.exec(args);
+        } catch(e) {
+            const execError = e as ExecFileAsyncError;
+            
+            // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
+            // ERRINFO_LOGOFF_BY_USER
+            if (execError.code !== 12) {
+                throw execError;
+            }
+
+            logger.info("FreeRDP disconnected due to user logging off.");
+        }
     }
 
     async checkVersionAndUpdateGuestServer() {

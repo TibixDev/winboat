@@ -5,12 +5,10 @@ import { ComposePortEntry } from "../../utils/port";
 import { WINBOAT_DIR } from "../constants";
 import { ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
 import YAML from "yaml";
-const { exec }: typeof import("child_process") = require("child_process");
-const { promisify }: typeof import("util") = require("util");
+import { execFileAsync, stringifyExecFile } from "../exec-helper";
+
 const path: typeof import("path") = require("path");
 const fs: typeof import("fs") = require("fs");
-
-const execAsync = promisify(exec);
 
 export type DockerSpecs = {
     dockerInstalled: boolean;
@@ -40,40 +38,43 @@ export class DockerContainer extends ContainerManager {
     }
 
     async compose(direction: ComposeDirection): Promise<void> {
-        const extraArguments = direction == "up" ? "-d" : ""; // Run compose in detached mode if we are running compose up TODO: maybe we need to run both in detached mode
-        const command = `${this.executableAlias} compose -f ${this.composeFilePath} ${direction} ${extraArguments}`;
+        const args = ["compose", "-f", this.composeFilePath, direction];
+        
+        if (direction === "up") {
+            // Run compose in detached mode if we are running compose up
+            args.push("-d");
+        }
 
         try {
-            const { stdout, stderr } = await execAsync(command);
+            const { stderr } = await execFileAsync(this.executableAlias, args);
             if (stderr) {
                 containerLogger.error(stderr);
             }
         } catch (e) {
-            containerLogger.error(`Failed to run compose command '${command}'`);
+            containerLogger.error(`Failed to run compose command '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
             throw e;
         }
     }
 
     async container(action: ContainerAction): Promise<void> {
-        const command = `${this.executableAlias} container ${action} ${this.containerName}`;
-
+        const args = ["container", action, this.containerName];
         try {
-            const { stdout } = await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
             containerLogger.info(`Container action '${action}' response: '${stdout}'`);
         } catch (e) {
-            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
             throw e;
         }
     }
 
     async port(): Promise<ComposePortEntry[]> {
-        const command = `${this.executableAlias} port ${this.containerName}`;
+        const args = ["port", this.containerName];
         const ret = [];
 
         try {
-            const { stdout } = await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
 
             for (const line of stdout.trim().split("\n")) {
                 const parts = line.split("->").map(part => part.trim());
@@ -83,21 +84,21 @@ export class DockerContainer extends ContainerManager {
                 ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
             }
         } catch (e) {
-            containerLogger.error(`Failed to run container action '${command}'`);
+            containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
             throw e;
         }
 
-        containerLogger.info("Podman container active port mappings: ", JSON.stringify(ret));
+        containerLogger.info("Docker container active port mappings: ", JSON.stringify(ret));
         this.cachedPortMappings = ret;
         return ret;
     }
 
     async remove(): Promise<void> {
-        const command = `${this.executableAlias} rm ${this.containerName}`;
+        const args = ["rm", this.containerName];
 
         try {
-            const { stdout } = await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
         } catch (e) {
             containerLogger.error(`Failed to remove container '${this.containerName}'`);
             containerLogger.error(e);
@@ -108,15 +109,15 @@ export class DockerContainer extends ContainerManager {
         const statusMap = {
             created: ContainerStatus.CREATED,
             restarting: ContainerStatus.UNKNOWN,
+            removing: ContainerStatus.UNKNOWN,
             running: ContainerStatus.RUNNING,
             paused: ContainerStatus.PAUSED,
             exited: ContainerStatus.EXITED,
             dead: ContainerStatus.UNKNOWN,
         } as const;
-        const command = `${this.executableAlias} inspect --format="{{.State.Status}}" ${this.containerName}`;
-
+        const args = ["inspect", "--format={{.State.Status}}", this.containerName];
         try {
-            const { stdout } = await execAsync(command);
+            const { stdout } = await execFileAsync(this.executableAlias, args);
             const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch (e) {
@@ -126,10 +127,9 @@ export class DockerContainer extends ContainerManager {
     }
 
     async exists(): Promise<boolean> {
-        const command = `${this.executableAlias} ps -a --filter "name=${this.containerName}" --format "{{.Names}}"`;
-
+        const args = ["ps", "-a", "--filter", `name=${this.containerName}`, "--format", "{{.Names}}"];
         try {
-            const { stdout: exists } = await execAsync(command);
+            const { stdout: exists } = await execFileAsync(this.executableAlias, args);
             return exists.includes("WinBoat");
         } catch (e) {
             containerLogger.error(
@@ -153,7 +153,7 @@ export class DockerContainer extends ContainerManager {
         };
 
         try {
-            const { stdout: dockerOutput } = await execAsync("docker --version");
+            const { stdout: dockerOutput } = await execFileAsync("docker", ["--version"]);
             specs.dockerInstalled = !!dockerOutput;
         } catch (e) {
             console.error("Error checking for Docker installation:", e);
@@ -161,7 +161,7 @@ export class DockerContainer extends ContainerManager {
 
         // Docker Compose plugin check with version validation
         try {
-            const { stdout: dockerComposeOutput } = await execAsync("docker compose version");
+            const { stdout: dockerComposeOutput } = await execFileAsync("docker", ["compose", "version"]);
             if (dockerComposeOutput) {
                 // Example output: "Docker Compose version v2.35.1"
                 // Example output 2: "Docker Compose version 2.36.2"
@@ -181,7 +181,7 @@ export class DockerContainer extends ContainerManager {
 
         // Docker is running check
         try {
-            const { stdout: dockerOutput } = await execAsync("docker ps");
+            const { stdout: dockerOutput } = await execFileAsync("docker", ["ps"]);
             specs.dockerIsRunning = !!dockerOutput;
         } catch (e) {
             console.error("Error checking if Docker is running:", e);
@@ -189,7 +189,7 @@ export class DockerContainer extends ContainerManager {
 
         // Docker user group check
         try {
-            const { stdout: userGroups } = await execAsync("id -Gn");
+            const { stdout: userGroups } = await execFileAsync("id", ["-Gn"]);
             specs.dockerIsInUserGroups = userGroups.split(/\s+/).includes("docker");
         } catch (e) {
             console.error("Error checking user groups for docker:", e);
