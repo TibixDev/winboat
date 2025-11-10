@@ -102,7 +102,7 @@
                     <img
                         class="w-16 rounded-full"
                         src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Windows_10_Default_Profile_Picture.svg/2048px-Windows_10_Default_Profile_Picture.svg.png"
-                        alt="Profile Picture"
+                        alt="Profile"
                     />
                     <div>
                         <x-label class="text-lg font-semibold">{{ os.userInfo().username }}</x-label>
@@ -153,11 +153,10 @@ import { routes } from "./router";
 import { Icon } from "@iconify/vue";
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
 import { isInstalled } from "./lib/install";
-import { Winboat } from "./lib/winboat";
+import { Winboat, logger } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
-import { GUEST_NOVNC_PORT } from "./lib/constants";
 import { setIntervalImmediately } from "./utils/interval";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
@@ -183,10 +182,32 @@ let animationCheckInterval: NodeJS.Timeout | null = null;
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
     if (winboatInstalled) {
-        winboat = Winboat.getInstance(); // Instantiate singleton class
         wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
+        winboat = Winboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
         $router.push("/home");
+        
+        if(!wbConfig.config.performedComposeMigrations) {
+            logger.info("Performing migrations for 0.9.0");
+
+            // Compose migration
+            if(await winboat.containerMgr!.exists()) {
+                logger.info("Composing down current WinBoat container");
+                await winboat.containerMgr!.compose("down");
+            }
+
+            const currentCompose = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
+            const defaultCompose = winboat.containerMgr!.defaultCompose;
+
+            currentCompose.services.windows.ports = defaultCompose.services.windows.ports;
+
+            winboat.containerMgr!.writeCompose(currentCompose);
+            
+            logger.info("Composing up WinBoat container");
+            await winboat.containerMgr!.compose("up", ["--no-start"]);
+
+            wbConfig!.config.performedComposeMigrations = true;
+        }
     } else {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
@@ -314,12 +335,10 @@ dialog::backdrop {
 
 .fade-enter-from {
     opacity: 0;
-    /* transform: translateX(20vw); */
 }
 
 .fade-leave-to {
     opacity: 0;
-    /* transform: translateX(-20vw); */
 }
 
 /* Stripes for the top of the window to indicate experimental features enabled */

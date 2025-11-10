@@ -24,7 +24,7 @@ export type WinboatConfigObj = {
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
-    performedMigrations: boolean;
+    performedComposeMigrations: boolean;
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -39,8 +39,9 @@ const defaultConfig: WinboatConfigObj = {
     multiMonitor: 0,
     rdpArgs: [],
     disableAnimations: false,
-    containerRuntime: ContainerRuntimes.DOCKER, // TODO: Ideally should be podman once we flesh out everything
-    performedMigrations: false
+    // TODO: Ideally should be podman once we flesh out everything
+    containerRuntime: ContainerRuntimes.DOCKER,
+    performedComposeMigrations: false
 };
 
 export class WinboatConfig {

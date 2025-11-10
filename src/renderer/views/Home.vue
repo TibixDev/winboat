@@ -256,5 +256,3 @@ const chartOptions = ref({
     labels: ["Average Results"],
 });
 </script>
-
-<style scoped></style>

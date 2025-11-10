@@ -116,7 +116,7 @@
                     <div class="flex flex-row justify-center items-center gap-2">
                         <x-input
                             class="max-w-16 text-right text-[1.1rem]"
-                            :value="isNaN(freerdpPort) ? '' : freerdpPort"
+                            :value="Number.isNaN(freerdpPort) ? '' : freerdpPort"
                             @input="
                                 (e: any) => {
                                     freerdpPort = Number(
@@ -126,7 +126,7 @@
                                 }
                             "
                         >
-                            <x-label v-if="isNaN(freerdpPort)">None</x-label>
+                            <x-label v-if="Number.isNaN(freerdpPort)">None</x-label>
                         </x-input>
                     </div>
                 </x-card>
@@ -625,7 +625,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
-import { Winboat } from "../lib/winboat";
+import { logger, Winboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
@@ -634,14 +634,13 @@ import { RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
-    PORT_MAX,
     USB_VID_BLACKLIST,
     RESTART_ON_FAILURE,
     RESTART_NO,
     GUEST_RDP_PORT,
-    DEFAULT_HOST_QMP_PORT,
+    GUEST_QMP_PORT,
 } from "../lib/constants";
-import { ComposePortEntry, ComposePortMapper } from "../utils/port";
+import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
 // Emits
@@ -654,7 +653,6 @@ const usbManager = USBManager.getInstance();
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
 const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
-const GUEST_QMP_PORT = "7149";
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -710,7 +708,7 @@ function ensureNumericInput(e: any) {
         return;
     }
 
-    if (!/[0-9]/.test(e.key)) {
+    if (!/\d/.test(e.key)) {
         e.preventDefault();
     }
 }
@@ -816,7 +814,15 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
     if (!hasQmpPort()) {
-        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT, {
+        const composePorts = winboat.containerMgr!.defaultCompose.services.windows.ports;
+        const portEntries = composePorts.filter(x => typeof x === "string").map(x => new ComposePortEntry(x));
+        const QMPPredicate = (entry: ComposePortEntry) => 
+            (entry.host instanceof Range || Number.isNaN(entry.host)) && // We allow NaN in case the QMP port entry isn't already there on podman for whatever reason
+            typeof entry.container === "number" &&
+            entry.container === GUEST_QMP_PORT;
+        const QMPPort = portEntries.find(QMPPredicate)!.host;
+
+        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, QMPPort, {
             protocol: "tcp",
             hostIP: "127.0.0.1",
         });
@@ -863,7 +869,7 @@ const errors = computedAsync(async () => {
 
     if (
         freerdpPort.value !== origFreerdpPort.value &&
-        !isNaN(freerdpPort.value) &&
+        !Number.isNaN(freerdpPort.value) &&
         !(await ComposePortMapper.isPortOpen(freerdpPort.value))
     ) {
         errCollection.push("You must choose an open port for your FreeRDP port!");
@@ -878,7 +884,7 @@ const hasQmpArgument = (_compose: typeof compose) =>
     _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) =>
-    _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
+    _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT.toString());
 
 const usbPassthroughDisabled = computed(() => {
     return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
@@ -889,7 +895,7 @@ const saveButtonDisabled = computed(() => {
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
         shareHomeFolder.value !== origShareHomeFolder.value ||
-        (!isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
+        (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;

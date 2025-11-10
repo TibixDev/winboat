@@ -7,10 +7,10 @@ import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
 import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper";
 
-const { exec }: typeof import("child_process") = require("child_process");
-const { promisify }: typeof import("util") = require("util");
-const path: typeof import("path") = require("path");
-const fs: typeof import("fs") = require("fs");
+const { exec }: typeof import("node:child_process") = require("node:child_process");
+const { promisify }: typeof import("node:util") = require("node:util");
+const path: typeof import("node:path") = require("node:path");
+const fs: typeof import("node:fs") = require("node:fs");
 
 const execAsync = promisify(exec);
 
@@ -124,7 +124,7 @@ export class PodmanContainer extends ContainerManager {
         const args = ["rm", this.containerName];
 
         try {
-            const { stdout } = await execFileAsync(this.executableAlias, args);
+            await execFileAsync(this.executableAlias, args);
         } catch (e) {
             containerLogger.error(`Failed to remove container '${this.containerName}'`);
             containerLogger.error(e);
@@ -183,6 +183,7 @@ export class PodmanContainer extends ContainerManager {
             specs.podmanInstalled = !!podmanOutput;
         } catch (e) {
             containerLogger.error("Error checking podman version");
+            containerLogger.error(e);
         }
 
         try {
@@ -192,6 +193,7 @@ export class PodmanContainer extends ContainerManager {
             specs.podmanComposeInstalled = !!podmanComposeOutput;
         } catch (e) {
             containerLogger.error("Error checking podman compose version");
+            containerLogger.error(e);
         }
 
         return specs;

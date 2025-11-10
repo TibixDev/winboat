@@ -7,8 +7,8 @@ import { ComposeArguments, ComposeDirection, ContainerAction, containerLogger, C
 import YAML from "yaml";
 import { execFileAsync, stringifyExecFile } from "../exec-helper";
 
-const path: typeof import("path") = require("path");
-const fs: typeof import("fs") = require("fs");
+const path: typeof import("node:path") = require("node:path");
+const fs: typeof import("node:fs") = require("node:fs");
 
 export type DockerSpecs = {
     dockerInstalled: boolean;
@@ -17,7 +17,6 @@ export type DockerSpecs = {
     dockerIsInUserGroups: boolean;
 };
 
-// TODO: We probably need to separate these into their respective files.
 export class DockerContainer extends ContainerManager {
     defaultCompose = DOCKER_DEFAULT_COMPOSE;
     composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
@@ -98,7 +97,7 @@ export class DockerContainer extends ContainerManager {
         const args = ["rm", this.containerName];
 
         try {
-            const { stdout } = await execFileAsync(this.executableAlias, args);
+            await execFileAsync(this.executableAlias, args);
         } catch (e) {
             containerLogger.error(`Failed to remove container '${this.containerName}'`);
             containerLogger.error(e);
@@ -165,9 +164,9 @@ export class DockerContainer extends ContainerManager {
             if (dockerComposeOutput) {
                 // Example output: "Docker Compose version v2.35.1"
                 // Example output 2: "Docker Compose version 2.36.2"
-                const versionMatch = dockerComposeOutput.match(/(\d+\.\d+\.\d+)/);
+                const versionMatch = /(\d+\.\d+\.\d+)/.exec(dockerComposeOutput);
                 if (versionMatch) {
-                    const majorVersion = parseInt(versionMatch[1].split(".")[0], 10);
+                    const majorVersion = Number.parseInt(versionMatch[1].split(".")[0], 10);
                     specs.dockerComposeInstalled = majorVersion >= 2;
                 } else {
                     specs.dockerComposeInstalled = false; // No valid version found
