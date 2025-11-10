@@ -1,10 +1,6 @@
-import { type PortEntryProtocol, type ComposeConfig, LongPortMapping } from "../../types";
-import { GUEST_RDP_PORT, PORT_MAX, PORT_SEARCH_RANGE, PORT_SPACING, WINBOAT_DIR } from "../lib/constants";
-import { createLogger } from "./log";
-import path from "path";
-const { createServer, isIPv4, isIPv6 }: typeof import("net") = require("node:net");
+import { type ComposeConfig, LongPortMapping, type PortEntryProtocol } from "../../types";
 
-const logger = createLogger(path.join(WINBOAT_DIR, "ports.log"));
+const { createServer, isIPv4, isIPv6 }: typeof import("net") = require("node:net");
 
 enum PortType {
     HOST = "Host",

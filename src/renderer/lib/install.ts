@@ -1,18 +1,17 @@
-import { type ComposeConfig, type InstallConfiguration } from "../../types";
-import { GUEST_API_PORT, GUEST_NOVNC_PORT, RESTART_ON_FAILURE, WINBOAT_DIR } from "./constants";
-import { ref, type Ref } from "vue";
+import { type InstallConfiguration } from "../../types";
+import { WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
-import { ComposePortMapper } from "../utils/port";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
+
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
-
+const argon2: typeof import("argon2") = require("argon2");
 const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
 export const InstallStates = {
@@ -122,7 +121,7 @@ export class InstallManager {
         this.container.writeCompose(composeContent);
     }
 
-    createOEMAssets() {
+    async createOEMAssets() {
         this.changeState(InstallStates.CREATING_OEM);
         logger.info("Creating OEM assets");
 
@@ -182,6 +181,15 @@ export class InstallManager {
             logger.info("OEM assets created successfully");
         } catch (error) {
             logger.error(`Failed to copy OEM assets: ${error}`);
+            throw error;
+        }
+        
+        // Create password hash file in oemPath
+        try {
+            const hash = await argon2.hash(this.conf.password);
+            fs.writeFileSync(path.join(oemPath, "auth.hash"), hash, { encoding: "utf8" });
+        } catch (error) {
+            logger.error(`Failed to create password hash: ${error}`);
             throw error;
         }
     }
@@ -293,7 +301,7 @@ export class InstallManager {
 
         try {
             await this.createComposeFile();
-            this.createOEMAssets();
+            await this.createOEMAssets();
             await this.startContainer();
             await this.monitorContainerPreinstall();
             await this.monitorAPIHealth();
