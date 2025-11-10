@@ -89,7 +89,7 @@
         </dialog>
 
         <!-- UI / SetupUI -->
-        <div v-if="useRoute().name !== 'SetupUI'" class="flex flex-row h-[calc(100vh-2rem)]">
+        <div v-if="!['SetupUI', 'Migration'].includes(useRoute().name!.toString())" class="flex flex-row h-[calc(100vh-2rem)]">
             <x-nav class="flex flex-col flex-none gap-0.5 w-72 backdrop-blur-xl bg-gray-500/10 backdrop-contrast-90">
                 <div
                     v-if="winboat?.rdpConnected.value"
@@ -161,8 +161,6 @@ import { setIntervalImmediately } from "./utils/interval";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
-const path: typeof import("path") = require("node:path");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
 
 const $router = useRouter();
 const appVer = import.meta.env.VITE_APP_VERSION;
@@ -185,9 +183,9 @@ onMounted(async () => {
         wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
         winboat = Winboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
-        $router.push("/home");
-        
+
         if(!wbConfig.config.performedComposeMigrations) {
+            $router.push("/migration")
             logger.info("Performing migrations for 0.9.0");
 
             // Compose migration
@@ -208,6 +206,8 @@ onMounted(async () => {
 
             wbConfig!.config.performedComposeMigrations = true;
         }
+
+        $router.push("/home");
     } else {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");

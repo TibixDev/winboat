@@ -264,7 +264,7 @@ export class InstallManager {
 
                     if (compose.services.windows.volumes.length !== filteredVolumes.length) {
                         compose.services.windows.volumes = filteredVolumes;
-                        await this.container.writeCompose(compose);
+                        this.container.writeCompose(compose);
                     }
 
                     return;
