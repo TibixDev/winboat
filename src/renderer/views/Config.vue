@@ -158,6 +158,7 @@
                                 <span class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2"> Experimental </span>
                             </h1>
                         </div>
+
                         <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
                             <x-card
                                 class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
@@ -183,7 +184,40 @@
                                 </x-button>
                             </x-card>
                         </template>
-                        <template v-else>
+                        <template v-if="!udevRulePresent && wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
+                            <x-card
+                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-blue-400/20"
+                            >
+                                <Icon class="inline-flex text-blue-500 size-8" icon="mdi:information-outline"></Icon>
+                                <h1 class="my-0 text-base font-normal text-blue-200">
+                                    We need to add a udev rule in order to use this feature
+                                </h1>
+                                <a
+                                    title="Get Help"
+                                    href="todo"
+                                    @click="/* todo */ () => 0"
+                                    class="text-blue-400 hover:blue-red-500 hover:underline -ml-3 transition"
+                                >
+                                    <Icon icon="mingcute:question-fill" class="size-6 pointer-events-none"></Icon>
+                                </a>
+
+                                <x-button
+                                    :disabled="isCreatingUdevRule"
+                                    class="mt-1 !bg-gradient-to-tl from-blue-200/20 to-transparent ml-auto hover:from-blue-300/30 transition !border-0"
+                                    @click="createUSBUdevRule"
+                                >
+                                    <x-label
+                                        class="ext-lg font-normal text-blue-450"
+                                        v-if="!isCreatingUdevRule"
+                                    >
+                                        Add
+                                    </x-label>
+
+                                    <x-throbber v-else class="w-8 text-blue-300"></x-throbber>
+                                </x-button>
+                            </x-card>
+                        </template>
+                        <template v-if="!usbPassthroughDisabled && !isUpdatingUSBPrerequisites && (udevRulePresent || wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER)">
                             <x-label
                                 class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
                                 v-if="usbManager.ptDevices.value.length == 0"
@@ -626,7 +660,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
 import { logger, Winboat } from "../lib/winboat";
-import { ContainerStatus } from "../lib/containers/common";
+import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
@@ -639,15 +673,17 @@ import {
     RESTART_NO,
     GUEST_RDP_PORT,
     GUEST_QMP_PORT,
+    UDEV_DIR
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
+const { promisify }: typeof import("node:util") = require("node:util");
+const path: typeof import("node:path") = require("node:path");
+const fs: typeof import("node:fs") = require("node:fs");
+const statAsync = promisify(fs.stat);
 
 // Emits
 const $emit = defineEmits(["rerender"]);
-
-const winboat = Winboat.getInstance();
-const usbManager = USBManager.getInstance();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
@@ -678,6 +714,9 @@ const rdpArgs = ref<RdpArg[]>([]);
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
 const rerenderExperimental = ref(0);
+const udevRulePresent = ref(false);
+const isCreatingUdevRule = ref(false);
+
 // For RDP Args
 const rerenderAdvanced = ref(0);
 // ^ This ref is needed because reactivity fails on wbConfig.
@@ -690,8 +729,12 @@ let portMapper = ref<ComposePortMapper | null>(null);
 
 // For General
 const wbConfig = WinboatConfig.getInstance();
+const winboat = Winboat.getInstance();
+const usbManager = USBManager.getInstance();
 
 onMounted(async () => {
+    udevRulePresent.value = await checkUSBUdevRule();
+    console.log("udev rule: ", udevRulePresent.value);
     await assignValues();
 });
 
@@ -718,6 +761,33 @@ function updateApplicationScale(value: string | number) {
     const clamped = typeof val !== "number" || Number.isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
     wbConfig.config.scaleDesktop = clamped;
     origApplicationScale.value = clamped;
+}
+
+/**
+ * Checks whether the udev rule for granting the uaccess tag for USB device nodes is present.
+ * Only required in case podman is used as the container runtime.
+ */
+async function checkUSBUdevRule() {
+    const udevRulePath = path.join(UDEV_DIR, "99-winboat-usb.rules");
+
+    try {
+        const udevStat = await statAsync(udevRulePath);
+        return udevStat.isFile();
+    }
+    catch {
+        logger.info(`Winboat USB udev file not present in ${udevRulePath}`);
+        return false;
+    }
+}
+
+// TODO!!!: To be implemented 
+async function createUSBUdevRule() {
+    isCreatingUdevRule.value = true;
+
+    setTimeout(() => {
+        udevRulePresent.value = true;
+        isCreatingUdevRule.value = false;
+    }, 5000);
 }
 
 /**

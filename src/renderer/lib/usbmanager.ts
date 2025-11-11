@@ -1,13 +1,14 @@
-const { usb, getDeviceList }: typeof import("usb") = require("usb");
-const fs: typeof import("fs") = require("fs");
-const { execFileSync }: typeof import("child_process") = require("child_process");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
-const path: typeof import("path") = require("node:path");
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
 import { logger, Winboat } from "./winboat";
 import { WinboatConfig } from "./config";
 import { assert } from "@vueuse/core";
+
+const { usb, getDeviceList }: typeof import("usb") = require("usb");
+const fs: typeof import("node:fs") = require("node:fs");
+const { execFileSync }: typeof import("node:child_process") = require("node:child_process");
+const remote: typeof import("@electron/remote") = require("@electron/remote");
+const path: typeof import("node:path") = require("node:path");
 
 type LinuxDeviceDatabase = Record<string, { name: string; devices: Record<string, string> }>;
 

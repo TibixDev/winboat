@@ -7,12 +7,8 @@ import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
 import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper";
 
-const { exec }: typeof import("node:child_process") = require("node:child_process");
-const { promisify }: typeof import("node:util") = require("node:util");
 const path: typeof import("node:path") = require("node:path");
 const fs: typeof import("node:fs") = require("node:fs");
-
-const execAsync = promisify(exec);
 
 export type PodmanSpecs = {
     podmanInstalled: boolean;
