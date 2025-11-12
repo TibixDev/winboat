@@ -13,7 +13,7 @@ export enum ContainerRuntimes {
     PODMAN = "Podman",
 }
 
-// NOTE: These are contaier port values, and should be used as such
+// NOTE: These are container port values, and should be used as such
 export enum CommonPorts {
     RDP = 3389,
     NOVNC = 8006,
