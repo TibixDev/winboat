@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl rounded-md p-3">
         <dialog ref="addCustomAppDialog">
             <h3 class="mb-2">{{ currentAppForm.Source === "custom" ? "Edit App" : "Add App" }}</h3>
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
@@ -104,7 +104,7 @@
                     winboat.containerStatus.value !== ContainerStatus.RUNNING || !winboat.isOnline.value,
             }"
         >
-            <x-label class="text-neutral-300">Apps</x-label>
+            <h5 class="pl-2">Apps</h5>
             <div class="flex flex-row gap-2 justify-center items-center">
                 <!-- Refresh button -->
                 <x-button class="flex flex-row gap-1 items-center" @click="refreshApps">
@@ -177,18 +177,18 @@
             <TransitionGroup
                 v-if="apps.length"
                 name="apps"
-                tag="x-card"
-                class="grid gap-4 bg-transparent border-none app-grid"
+                tag="div"
+                class="grid gap-4 bg-transparent border-none app-grid mb-4"
             >
                 <x-card
-                    v-for="app of computedApps"
+                    v-for="app of computedApps.filter(a => a.Favorite)"
                     :key="app.id"
                     class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
                     :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
                     @click="winboat.launchApp(app)"
                     @contextmenu="openContextMenu($event, app)"
                 >
-                    <div class="flex flex-row items-center gap-2 w-[85%]">
+                    <div class="flex flex-row items-center gap-2 w-[70%]">
                         <img
                             class="rounded-md size-10"
                             :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
@@ -196,10 +196,68 @@
                         />
                         <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                     </div>
-                    <Icon icon="cuida:caret-right-outline"></Icon>
+                    <div class="flex flex-row items-center space-x-1">
+                        <button
+                            @mouseenter="hoveredApp = app.id"
+                            @mouseleave="hoveredApp = null"
+                            @click.stop="toggleFavorite(app)"
+                            class="p-2 rounded-md hover:bg-neutral-700/40 transition mr-1"
+                        >
+                            <Icon
+                                :icon="hoveredApp === app.id ? 'mdi:star-remove' : 'mdi:star'"
+                                class="text-neutral-300 transition"
+                            />
+                        </button>
+                        <button
+                            @click.stop="contextMenuTarget ? contextMenuRef.hide() : openContextMenu($event, app)"
+                            class="p-2 rounded-md hover:bg-neutral-700/40 transition"
+                        >
+                            <Icon icon="mdi:dots-vertical"></Icon>
+                        </button>
+                    </div>
                 </x-card>
             </TransitionGroup>
-            <div v-else class="flex justify-center items-center mt-40">
+            <x-label class="text-neutral-300 mb-3">ALL APPS</x-label>
+            <TransitionGroup
+                v-if="apps.length"
+                name="apps"
+                tag="div"
+                class="grid gap-4 bg-transparent border-none app-grid"
+            >
+                <x-card
+                    v-for="app of computedApps.filter(a => !a.Favorite)"
+                    :key="app.id"
+                    class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
+                    :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
+                    @click="winboat.launchApp(app)"
+                    @contextmenu="openContextMenu($event, app)"
+                >
+                    <div class="flex flex-row items-center gap-2 w-[70%]">
+                        <img class="rounded-md size-10" :src="`data:image/png;charset=utf-8;base64,${app.Icon}`" />
+                        <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
+                    </div>
+                    <div class="flex flex-row items-center space-x-1">
+                        <button
+                            @mouseenter="hoveredApp = app.id"
+                            @mouseleave="hoveredApp = null"
+                            @click.stop="toggleFavorite(app)"
+                            class="p-2 rounded-md hover:bg-neutral-700/40 transition mr-1"
+                        >
+                            <Icon
+                                :icon="hoveredApp === app.id ? 'mdi:star-plus-outline' : 'mdi:star-outline'"
+                                class="text-neutral-300 transition"
+                            />
+                        </button>
+                        <button
+                            @click.stop="contextMenuTarget ? contextMenuRef.hide() : openContextMenu($event, app)"
+                            class="p-2 rounded-md hover:bg-neutral-700/40 transition"
+                        >
+                            <Icon icon="mdi:dots-vertical"></Icon>
+                        </button>
+                    </div>
+                </x-card>
+            </TransitionGroup>
+            <div v-if="!apps.length" class="flex justify-center items-center mt-40">
                 <x-throbber class="w-16 h-16"></x-throbber>
             </div>
             <WBContextMenu key="contextMenu" ref="contextMenuRef" @hide="onContextMenuHide">
@@ -207,7 +265,15 @@
                     <Icon class="size-4" icon="mdi:play-circle-outline"></Icon>
                     <x-label>Launch</x-label>
                 </WBMenuItem>
-
+                <WBMenuItem @click="toggleFavorite(contextMenuTarget)">
+                    <Icon class="size-4" icon="mdi:star"></Icon>
+                    <x-lebel v-if="contextMenuTarget?.Favorite">Remove Favorite</x-lebel>
+                    <x-lebel v-else>Add Favorite</x-lebel>
+                </WBMenuItem>
+                <WBMenuItem @click="copyCommand">
+                    <Icon class="size-4" icon="mdi:content-copy"></Icon>
+                    <x-label>Copy Command</x-label>
+                </WBMenuItem>
                 <WBMenuItem @click="contextMenuTarget && openEditAppDialog(contextMenuTarget)">
                     <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
                     <x-label>Edit</x-label>
@@ -246,6 +312,7 @@ import { Icon } from "@iconify/vue";
 import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from "vue";
 import { Winboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
+import { getFreeRDP } from "../utils/getFreeRDP.ts"
 import { type WinApp } from "../../types";
 import WBContextMenu from "../components/WBContextMenu.vue";
 import WBMenuItem from "../components/WBMenuItem.vue";
@@ -261,6 +328,7 @@ const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
 const sortBy = ref("");
 const filterBy = ref("all");
+const hoveredApp = ref(null);
 const addCustomAppDialog = useTemplateRef("addCustomAppDialog");
 const customAppName = ref("");
 const customAppPath = ref("");
@@ -317,7 +385,6 @@ onMounted(async () => {
     watch(winboat.isOnline, async (newVal, _) => {
         if (newVal) {
             await refreshApps();
-            console.log("Apps list: ", apps.value);
         }
     });
 
@@ -330,6 +397,11 @@ onMounted(async () => {
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onScroll);
 });
+
+async function toggleFavorite(app) {
+    await winboat.appMgr!.toggleAppFavorite(app);
+    contextMenuRef.value?.hide()
+}
 
 async function refreshApps() {
     if (winboat.isOnline.value) {
@@ -462,6 +534,25 @@ function onContextMenuHide() {
 function launchApp() {
     if (contextMenuTarget.value) {
         winboat.launchApp(contextMenuTarget.value);
+    }
+}
+
+/**
+* Get App's arg, and find FreeRDP install to generate run
+* app's run command. Then copy into user's clipboard
+*/
+async function copyCommand() {
+    if (contextMenuTarget.value) {
+        const args = winboat.getLaunchArgs(contextMenuTarget.value);
+        const freeRDPInstallation = await getFreeRDP();
+        const cmd = freeRDPInstallation.stringifyExec(args);
+
+        try {
+            await navigator.clipboard.writeText(cmd);
+            console.log("copied run command to clipboard");
+        } catch (e) {
+            console.log("failed to copy Launch Command to clipboard");
+        }
     }
 }
 
