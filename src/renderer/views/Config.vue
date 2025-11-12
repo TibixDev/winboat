@@ -54,7 +54,31 @@
                         <p class="text-neutral-100">Cores</p>
                     </div>
                 </x-card>
-
+                <!-- Disk Size -->
+                <x-card
+                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="solar:ssd-round-linear"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">Disk Size</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            How much space is allocated for the virtual disk
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-input
+                            class="max-w-16 text-right text-[1.1rem]"
+                            :min="minDiskGB"
+                            :max="maxDiskGB"
+                            :value="diskGB"
+                            @input="(e: any) => (diskGB = Number(/^\d+$/.exec(e.target.value)![0] || minDiskGB))"
+                            required
+                        ></x-input>
+                        <p class="text-neutral-100">GB</p>
+                    </div>
+                </x-card>
                 <!-- Shared Home Folder -->
                 <x-card
                     class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
@@ -641,6 +665,8 @@ import {
     GUEST_RDP_PORT,
     DEFAULT_HOST_QMP_PORT,
 } from "../lib/constants";
+
+const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
 import { ComposePortEntry, ComposePortMapper } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
@@ -657,6 +683,9 @@ const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain
 const GUEST_QMP_PORT = "7149";
 
 // For Resources
+const diskGB = ref<number | null>(null);
+const minDiskGB = ref(0);
+const maxDiskGB = ref(0);
 const compose = ref<ComposeConfig | null>(null);
 const numCores = ref(0);
 const origNumCores = ref(0);
@@ -753,6 +782,23 @@ async function assignValues() {
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuCores;
 
+    let storagePath;
+    
+    for (const volume of compose.value.services.windows.volumes) {
+        if (volume.endsWith('/storage')) {
+            storagePath = volume.split(':')[0].trim();
+            break
+        }
+    }
+
+    const diskSpace = await checkDiskSpace(storagePath!);
+    const freeGB = Math.floor(diskSpace.free / (1024 * 1024 * 1024));
+    const virtualDiskSize = parseInt(compose.value.services.windows.environment.DISK_SIZE.split('G')[0])
+    
+    minDiskGB.value = virtualDiskSize;
+    maxDiskGB.value = freeGB;
+    diskGB.value = virtualDiskSize;
+
     refreshAvailableDevices();
 }
 
@@ -763,6 +809,7 @@ async function assignValues() {
 async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
+    compose.value!.services.windows.environment.DISK_SIZE = `${diskGB.value}`;
 
     const composeHasHomefolderShare = compose.value!.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
 
@@ -869,6 +916,15 @@ const errors = computedAsync(async () => {
         errCollection.push("You must choose an open port for your FreeRDP port!");
     }
 
+    if (diskGB.value! < minDiskGB.value) {
+        errCollection.push(`You cannot allocate less than ${minDiskGB.value} GB`);
+    }
+    
+    if (diskGB.value! >= maxDiskGB.value) {
+        errCollection.push(`You cannot allocate more or equal to ${maxDiskGB.value} GB`);
+    }
+
+
     return errCollection;
 });
 
@@ -890,7 +946,8 @@ const saveButtonDisabled = computed(() => {
         origRamGB.value !== ramGB.value ||
         shareHomeFolder.value !== origShareHomeFolder.value ||
         (!isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
-        autoStartContainer.value !== origAutoStartContainer.value;
+        autoStartContainer.value !== origAutoStartContainer.value ||
+        minDiskGB.value !== diskGB.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;
 
