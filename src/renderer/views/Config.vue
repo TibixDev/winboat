@@ -665,7 +665,7 @@ import {
     GUEST_RDP_PORT,
     DEFAULT_HOST_QMP_PORT,
 } from "../lib/constants";
-import { PortManager } from "../utils/port";
+
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
 import { ComposePortEntry, ComposePortMapper } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
