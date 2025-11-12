@@ -30,6 +30,7 @@ const { promisify }: typeof import("util") = require("node:util");
 const { exec }: typeof import("child_process") = require("node:child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const FormData: typeof import("form-data") = require("form-data");
+const argon2: typeof import("argon2") = require("argon2");
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");
@@ -699,9 +700,12 @@ export class Winboat {
 
         logger.info("ZIP Path", zipPath);
 
-        // 4. Send the payload to the guest server, as a multipart/form-data with updateFile
+        // 4. Send the payload to the guest server
+        // as a multipart/form-data with updateFile and password
         const formData = new FormData();
         formData.append("updateFile", fs.createReadStream(zipPath));
+        const { password } = this.getCredentials();
+        formData.append("password", password);
 
         try {
             const res = await nodeFetch(`${this.apiUrl}/update`, {
@@ -730,6 +734,34 @@ export class Winboat {
             _isOnline = await this.getHealth();
         }
         logger.info("Update completed, Winboat Guest Server is online");
+
+        // 6. [OPTIONAL] Apply authentication hash in case it's not set yet, because
+        // it will be required during future updates
+        try {
+            const { password } = this.getCredentials();
+            const hash = await argon2.hash(password);
+            
+            const authFormData = new FormData();
+            authFormData.append("authHash", hash);
+            
+            const authRes = await nodeFetch(`${this.apiUrl}/auth/set-hash`, {
+                method: "POST",
+                body: authFormData as any,
+            });
+            
+            if (authRes.status === 200) {
+                logger.info("Successfully set auth hash for existing installation");
+            } else if (authRes.status === 400) {
+                // Hash already set, this is expected for existing installations that already have it
+                logger.info("Auth hash already set, skipping enrollment");
+            } else {
+                const errorText = await authRes.text();
+                logger.warn(`Unexpected response when setting auth hash: ${authRes.status} - ${errorText}`);
+            }
+        } catch (e) {
+            logger.error("Failed to set auth hash (non-critical error)");
+            logger.error(e);
+        }
 
         // Done!
         this.isUpdatingGuestServer.value = false;

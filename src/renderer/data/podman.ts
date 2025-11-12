@@ -14,7 +14,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     },
     services: {
         windows: {
-            image: "ghcr.io/dockur/windows:5.12",
+            image: "ghcr.io/dockur/windows:5.13",
             container_name: "WinBoat",
             environment: {
                 VERSION: "11",
