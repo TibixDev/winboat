@@ -116,7 +116,7 @@
                     <div class="flex flex-row justify-center items-center gap-2">
                         <x-input
                             class="max-w-16 text-right text-[1.1rem]"
-                            :value="isNaN(freerdpPort) ? '' : freerdpPort"
+                            :value="Number.isNaN(freerdpPort) ? '' : freerdpPort"
                             @input="
                                 (e: any) => {
                                     freerdpPort = Number(
@@ -126,7 +126,7 @@
                                 }
                             "
                         >
-                            <x-label v-if="isNaN(freerdpPort)">None</x-label>
+                            <x-label v-if="Number.isNaN(freerdpPort)">None</x-label>
                         </x-input>
                     </div>
                 </x-card>
@@ -158,6 +158,7 @@
                                 <span class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2"> Experimental </span>
                             </h1>
                         </div>
+
                         <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
                             <x-card
                                 class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
@@ -183,7 +184,23 @@
                                 </x-button>
                             </x-card>
                         </template>
-                        <template v-else>
+                        <template v-if="wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
+                            <x-card
+                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                            >
+                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                <h1 class="my-0 text-base font-normal text-yellow-200">
+                                    USB Passthrough is not yet supported while using Podman as the container runtime.
+                                </h1>
+                            </x-card>
+                        </template>
+                        <template
+                            v-if="
+                                !usbPassthroughDisabled &&
+                                !isUpdatingUSBPrerequisites &&
+                                wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER
+                            "
+                        >
                             <x-label
                                 class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
                                 v-if="usbManager.ptDevices.value.length == 0"
@@ -514,31 +531,6 @@
                         ></x-switch>
                     </div>
                 </x-card>
-
-                <!-- Disable Animations -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:animation-outline"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Disable Animations</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't
-                            working well)
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-switch
-                            :toggled="wbConfig.config.disableAnimations"
-                            @toggle="
-                                (_: any) => (wbConfig.config.disableAnimations = !wbConfig.config.disableAnimations)
-                            "
-                            size="large"
-                        ></x-switch>
-                    </div>
-                </x-card>
             </div>
         </div>
 
@@ -593,6 +585,31 @@
                         />
                     </div>
                 </x-card>
+
+                <!-- Disable Animations -->
+                <x-card
+                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:animation-outline"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">Disable Animations</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't
+                            working well)
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-switch
+                            :toggled="wbConfig.config.disableAnimations"
+                            @toggle="
+                                (_: any) => (wbConfig.config.disableAnimations = !wbConfig.config.disableAnimations)
+                            "
+                            size="large"
+                        ></x-switch>
+                    </div>
+                </x-card>
             </div>
         </div>
 
@@ -625,8 +642,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
-import { Winboat } from "../lib/winboat";
-import { ContainerStatus } from "../lib/containers/common";
+import { logger, Winboat } from "../lib/winboat";
+import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
@@ -634,27 +651,26 @@ import { RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
-    PORT_MAX,
     USB_VID_BLACKLIST,
     RESTART_ON_FAILURE,
     RESTART_NO,
     GUEST_RDP_PORT,
-    DEFAULT_HOST_QMP_PORT,
+    GUEST_QMP_PORT,
 } from "../lib/constants";
-import { ComposePortEntry, ComposePortMapper } from "../utils/port";
+import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
+const { promisify }: typeof import("node:util") = require("node:util");
+const path: typeof import("node:path") = require("node:path");
+const fs: typeof import("node:fs") = require("node:fs");
+const statAsync = promisify(fs.stat);
 
 // Emits
 const $emit = defineEmits(["rerender"]);
-
-const winboat = Winboat.getInstance();
-const usbManager = USBManager.getInstance();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
 const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
-const GUEST_QMP_PORT = "7149";
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -680,6 +696,8 @@ const rdpArgs = ref<RdpArg[]>([]);
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
 const rerenderExperimental = ref(0);
+const isCreatingUdevRule = ref(false);
+
 // For RDP Args
 const rerenderAdvanced = ref(0);
 // ^ This ref is needed because reactivity fails on wbConfig.
@@ -692,6 +710,8 @@ let portMapper = ref<ComposePortMapper | null>(null);
 
 // For General
 const wbConfig = WinboatConfig.getInstance();
+const winboat = Winboat.getInstance();
+const usbManager = USBManager.getInstance();
 
 onMounted(async () => {
     await assignValues();
@@ -710,7 +730,7 @@ function ensureNumericInput(e: any) {
         return;
     }
 
-    if (!/[0-9]/.test(e.key)) {
+    if (!/\d/.test(e.key)) {
         e.preventDefault();
     }
 }
@@ -816,7 +836,15 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
     if (!hasQmpPort()) {
-        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, DEFAULT_HOST_QMP_PORT, {
+        const composePorts = winboat.containerMgr!.defaultCompose.services.windows.ports;
+        const portEntries = composePorts.filter(x => typeof x === "string").map(x => new ComposePortEntry(x));
+        const QMPPredicate = (entry: ComposePortEntry) =>
+            (entry.host instanceof Range || Number.isNaN(entry.host)) && // We allow NaN in case the QMP port entry isn't already there on podman for whatever reason
+            typeof entry.container === "number" &&
+            entry.container === GUEST_QMP_PORT;
+        const QMPPort = portEntries.find(QMPPredicate)!.host;
+
+        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, QMPPort, {
             protocol: "tcp",
             hostIP: "127.0.0.1",
         });
@@ -863,7 +891,7 @@ const errors = computedAsync(async () => {
 
     if (
         freerdpPort.value !== origFreerdpPort.value &&
-        !isNaN(freerdpPort.value) &&
+        !Number.isNaN(freerdpPort.value) &&
         !(await ComposePortMapper.isPortOpen(freerdpPort.value))
     ) {
         errCollection.push("You must choose an open port for your FreeRDP port!");
@@ -878,7 +906,7 @@ const hasQmpArgument = (_compose: typeof compose) =>
     _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) =>
-    _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT);
+    _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT.toString());
 
 const usbPassthroughDisabled = computed(() => {
     return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
@@ -889,7 +917,7 @@ const saveButtonDisabled = computed(() => {
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
         shareHomeFolder.value !== origShareHomeFolder.value ||
-        (!isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
+        (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;

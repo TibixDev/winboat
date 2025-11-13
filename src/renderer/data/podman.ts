@@ -7,15 +7,10 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     volumes: {
         data: null,
     },
-    networks: {
-        podman: {
-            external: true,
-        },
-    },
     services: {
         windows: {
             image: "ghcr.io/dockur/windows:5.13",
-            container_name: "WinBoat_Podman",
+            container_name: "WinBoat",
             environment: {
                 VERSION: "11",
                 RAM_SIZE: "4G",
@@ -29,6 +24,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 HOST_PORTS: "7149",
                 ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
             },
+            network_mode: "slirp4netns:port_handler=slirp4netns",
             cap_add: ["NET_ADMIN"],
             privileged: true,
             ports: [

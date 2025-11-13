@@ -776,13 +776,18 @@ import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey, GUEST_NOVNC_PORT } from "../lib/constants";
+import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, type InstallState, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
-import { ContainerImplementations, ContainerRuntimes, DockerSpecs, PodmanSpecs } from "../lib/containers/common";
+import {
+    ContainerRuntimes,
+    DockerSpecs,
+    PodmanSpecs,
+    createContainer,
+    getContainerSpecs,
+} from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
-import { createContainer, getContainerSpecs } from "../lib/containers/common";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");

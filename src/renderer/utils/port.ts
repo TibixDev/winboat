@@ -102,7 +102,8 @@ export class ComposePortEntry {
      * @note If it was initialized from a compose port entry with implicit default values, then those will be included explicitly (e.g. `/tcp` or `0.0.0.0` binding)
      */
     get entry(): string {
-        return `${this.hostIP}:${this.host}:${this.container}/${this.protocol}`;
+        const host = Number.isNaN(this.host) ? "" : this.host; // This accounts for podman's empty host (see: podman publish syntax)
+        return `${this.hostIP}:${host}:${this.container}/${this.protocol}`;
     }
 
     static parseProtocol(entry: string): PortEntryProtocol {
@@ -179,7 +180,7 @@ export class ComposePortEntry {
         const rawIP = entry.substring(0, hostPortLocation);
 
         // In case the IP isn't enclosed with square brackets, we don't need any further processing
-        if (rawIP[0] !== "[") return ComposePortEntry.checkValidIP(rawIP, entry);
+        if (!rawIP[0].startsWith("[")) return ComposePortEntry.checkValidIP(rawIP, entry);
 
         const IP = rawIP.substring(1, rawIP.length - 1);
 
@@ -252,17 +253,31 @@ export class ComposePortMapper {
      * Creates a new port mapping or overwrites an existing one.
      * In case the host port is not open, it tries to find one.
      */
-    setShortPortMapping(guestPort: number | string, hostPort: number | string, options?: PortEntryOptions) {
-        if (typeof hostPort === "string") {
-            hostPort = Number.parseInt(hostPort);
+    setShortPortMapping(guestPort: number | string, hostPort: number | string, options?: PortEntryOptions): void;
+    setShortPortMapping(guestPort: number | string, hostRange: number | Range, options?: PortEntryOptions): void;
+    setShortPortMapping(
+        _guestPort: number | string,
+        _host: number | string | Range,
+        _options?: PortEntryOptions,
+    ): void {
+        if (typeof _host === "string") {
+            _host = Number.parseInt(_host);
         }
-        if (typeof guestPort === "string") {
-            guestPort = Number.parseInt(guestPort);
+        if (typeof _guestPort === "string") {
+            _guestPort = Number.parseInt(_guestPort);
         }
 
-        const insertAt = this.findGuestPortIndex(guestPort, options?.protocol) ?? this.shortPorts.length;
+        const insertAt = this.findGuestPortIndex(_guestPort, _options?.protocol) ?? this.shortPorts.length;
 
-        this.shortPorts[insertAt] = new ComposePortEntry(hostPort, guestPort, options);
+        if (!(_host instanceof Range)) {
+            this.shortPorts[insertAt] = new ComposePortEntry(_host, _guestPort, _options);
+            return;
+        }
+
+        // TODO: Create ComposePortEntry constructor overload for Ranges as well to avoid this
+        this.shortPorts[insertAt] = new ComposePortEntry(
+            `${_options?.hostIP ?? "0.0.0.0"}:${_host}:${_guestPort}/${_options?.protocol ?? "tcp"}`,
+        );
     }
 
     /**

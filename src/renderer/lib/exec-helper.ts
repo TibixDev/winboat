@@ -25,10 +25,10 @@ export function stringifyExecFile(file: string, args: string[]): string {
 function escapeString(str: string): string {
     let fixed_string = "";
     let index = 0;
-    let safe = RegExp("^[a-zA-Z0-9,._+:@%/-]$");
+    let safe = /^[a-zA-Z0-9,._+:@%/-]$/;
     while (index < str.length) {
         let char = str[index];
-        if (char.match(safe) == null) {
+        if (safe.exec(char) == null) {
             fixed_string += "\\";
         }
         fixed_string += char;
@@ -37,8 +37,8 @@ function escapeString(str: string): string {
     return fixed_string;
 }
 
-type EnvMap = { 
-    [key: string]: string
+type EnvMap = {
+    [key: string]: string;
 };
 
 export function concatEnv(a: EnvMap, b?: EnvMap) {

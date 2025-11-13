@@ -183,7 +183,7 @@ export class InstallManager {
             logger.error(`Failed to copy OEM assets: ${error}`);
             throw error;
         }
-        
+
         // Create password hash file in oemPath
         try {
             const hash = await argon2.hash(this.conf.password);
@@ -274,7 +274,7 @@ export class InstallManager {
 
                     if (compose.services.windows.volumes.length !== filteredVolumes.length) {
                         compose.services.windows.volumes = filteredVolumes;
-                        await this.container.writeCompose(compose);
+                        this.container.writeCompose(compose);
                     }
 
                     return;
@@ -318,7 +318,7 @@ export class InstallManager {
 
 export async function isInstalled(): Promise<boolean> {
     // Check if a winboat container exists
-    const config = WinboatConfig.readConfigObject();
+    const config = WinboatConfig.readConfigObject(false);
 
     if (!config) return false;
 

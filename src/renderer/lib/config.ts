@@ -24,6 +24,7 @@ export type WinboatConfigObj = {
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
+    performedComposeMigrations: boolean;
 };
 
 const defaultConfig: WinboatConfigObj = {
@@ -38,7 +39,9 @@ const defaultConfig: WinboatConfigObj = {
     multiMonitor: 0,
     rdpArgs: [],
     disableAnimations: false,
-    containerRuntime: ContainerRuntimes.DOCKER, // TODO: Ideally should be podman once we flesh out everything
+    // TODO: Ideally should be podman once we flesh out everything
+    containerRuntime: ContainerRuntimes.DOCKER,
+    performedComposeMigrations: false,
 };
 
 export class WinboatConfig {
@@ -59,13 +62,14 @@ export class WinboatConfig {
     get config(): WinboatConfigObj {
         // Return a proxy to intercept property sets
         return new Proxy(this.#configData, {
-            get: (target, key) => target[key as keyof WinboatConfigObj],
-            set: (target, key, value) => {
-                // @ts-expect-error This is valid
-                target[key as keyof WinboatConfigObj] = value;
+            get: (target, key) => Reflect.get(target, key),
+            set: (target, key, value: WinboatConfigObj) => {
+                const result = Reflect.set(target, key, value);
+
                 WinboatConfig.writeConfigObject(target);
                 console.info("Wrote modified config to disk");
-                return true;
+
+                return result;
             },
         });
     }

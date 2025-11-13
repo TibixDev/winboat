@@ -250,7 +250,6 @@ import { type WinApp } from "../../types";
 import WBContextMenu from "../components/WBContextMenu.vue";
 import WBMenuItem from "../components/WBMenuItem.vue";
 import { AppIcons, DEFAULT_ICON } from "../data/appicons";
-import { GUEST_API_PORT } from "../lib/constants";
 import { debounce } from "../utils/debounce";
 import { Jimp, JimpMime } from "jimp";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
@@ -284,9 +283,11 @@ const AllSources = computed(() => {
         uwp: "Microsoft Store",
         internal: "Internal",
     };
-    apps.value.forEach(app => {
+
+    for (const app of apps.value) {
         sourceList[app.Source] = sourceMap[app.Source] || app.Source;
-    });
+    }
+
     return sourceList;
 });
 

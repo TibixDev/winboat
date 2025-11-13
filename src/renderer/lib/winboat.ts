@@ -6,7 +6,7 @@ import type {
     GuestServerUpdateResponse,
     GuestServerVersion,
     Metrics,
-    WinApp
+    WinApp,
 } from "../../types";
 import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
@@ -520,7 +520,11 @@ export class Winboat {
     }
 
     // TODO: refactor / possibly remove this
-    async replaceCompose(composeConfig: ComposeConfig, restart = true) {
+    /** 
+        Replaces the compose file, and and updates the container.
+        @note Use {@link ContainerManager.writeCompose} in case only disk write is needed
+    */
+    async replaceCompose(composeConfig: ComposeConfig) {
         logger.info("Going to replace compose config");
         this.containerActionLoading.value = true;
 
@@ -531,7 +535,6 @@ export class Winboat {
             await this.stopContainer();
         }
 
-        // TODO: use restart argument
         // 1. Compose down the current container
         await this.containerMgr!.compose("down");
 
@@ -645,7 +648,7 @@ export class Winboat {
                 this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
                 `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
                 `/wm-class:winboat-${cleanAppName}`,
-                `/app:program:${app.Path},name:${cleanAppName}`,
+                `/app:program:${app.Path},name:${cleanAppName},cmd:"${app.Args}"`,
             ]);
         }
 
@@ -659,19 +662,30 @@ export class Winboat {
             return;
         }
 
-        try {        
+        try {
             logger.info(`Launch FreeRDP with command:\n${freeRDPInstallation.stringifyExec(args)}`);
             await freeRDPInstallation.exec(args);
-        } catch(e) {
+        } catch (e) {
             const execError = e as ExecFileAsyncError;
-            
-            // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
-            // ERRINFO_LOGOFF_BY_USER
-            if (execError.code !== 12) {
-                throw execError;
-            }
+            const ERRINFO_RPC_INITIATED_DISCONNECT = 0x00000001;
+            const ERRINFO_LOGOFF_BY_USER = 0x0000000c;
 
-            logger.info("FreeRDP disconnected due to user logging off.");
+            // TODO: Handle all FreeRDP error codes
+            // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
+            switch (execError.code) {
+                case ERRINFO_RPC_INITIATED_DISCONNECT: {
+                    logger.info("FreeRDP connection already established.");
+                    logger.info("Creating new session..");
+                    break;
+                }
+                case ERRINFO_LOGOFF_BY_USER: {
+                    logger.info("FreeRDP disconnected due to user logging off.");
+                    break;
+                }
+                default: {
+                    logger.warn(`FreeRDP process returned error code '${execError.code}'`);
+                }
+            }
         }
     }
 
@@ -740,15 +754,15 @@ export class Winboat {
         try {
             const { password } = this.getCredentials();
             const hash = await argon2.hash(password);
-            
+
             const authFormData = new FormData();
             authFormData.append("authHash", hash);
-            
+
             const authRes = await nodeFetch(`${this.apiUrl}/auth/set-hash`, {
                 method: "POST",
                 body: authFormData as any,
             });
-            
+
             if (authRes.status === 200) {
                 logger.info("Successfully set auth hash for existing installation");
             } else if (authRes.status === 400) {

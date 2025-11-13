@@ -28,12 +28,10 @@ const windowStore = new Store<SchemaType>({
             properties: {
                 width: {
                     type: "number",
-                    minimum: WINDOW_MIN_WIDTH,
                     default: WINDOW_MIN_WIDTH,
                 },
                 height: {
                     type: "number",
-                    minimum: WINDOW_MIN_HEIGHT,
                     default: WINDOW_MIN_HEIGHT,
                 },
             },
