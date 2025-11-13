@@ -89,7 +89,7 @@
         </dialog>
 
         <!-- UI / SetupUI -->
-        <div v-if="!['SetupUI', 'Migration'].includes(useRoute().name!.toString())" class="flex flex-row h-[calc(100vh-2rem)]">
+        <div v-if="!['SetupUI', 'Migration'].includes($route.name?.toString() || '')" class="flex flex-row h-[calc(100vh-2rem)]">
             <x-nav class="flex flex-col flex-none gap-0.5 w-72 backdrop-blur-xl bg-gray-500/10 backdrop-contrast-90">
                 <div
                     v-if="winboat?.rdpConnected.value"
@@ -163,6 +163,7 @@ const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/
 const os: typeof import("os") = require("node:os");
 
 const $router = useRouter();
+const $route = useRoute();
 const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
 let winboat: Winboat | null;
