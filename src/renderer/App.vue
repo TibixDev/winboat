@@ -110,7 +110,7 @@
                     </div>
                 </div>
                 <RouterLink
-                    v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(String(r.name)))"
+                    v-for="route of routes.filter((r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)))"
                     :to="route.path"
                     :key="route.path"
                 >
@@ -148,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
 import { routes } from "./router";
 import { Icon } from "@iconify/vue";
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";

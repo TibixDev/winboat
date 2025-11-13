@@ -520,7 +520,11 @@ export class Winboat {
     }
 
     // TODO: refactor / possibly remove this
-    async replaceCompose(composeConfig: ComposeConfig, restart = true) {
+    /** 
+        Replaces the compose file, and and updates the container.
+        @note Use {@link ContainerManager.writeCompose} in case only disk write is needed
+    */
+    async replaceCompose(composeConfig: ComposeConfig) {
         logger.info("Going to replace compose config");
         this.containerActionLoading.value = true;
 
@@ -531,7 +535,6 @@ export class Winboat {
             await this.stopContainer();
         }
 
-        // TODO: use restart argument
         // 1. Compose down the current container
         await this.containerMgr!.compose("down");
 

@@ -78,6 +78,7 @@ export type ComposeConfig = {
             };
             privileged: boolean;
             ports: Array<string | LongPortMapping>;
+            network_mode?: string;
             cap_add: string[];
             stop_grace_period: string;
             restart: string;
