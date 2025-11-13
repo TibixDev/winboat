@@ -184,40 +184,17 @@
                                 </x-button>
                             </x-card>
                         </template>
-                        <template v-if="!udevRulePresent && wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
+                        <template v-if="wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
                             <x-card
-                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-blue-400/20"
+                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
                             >
-                                <Icon class="inline-flex text-blue-500 size-8" icon="mdi:information-outline"></Icon>
-                                <h1 class="my-0 text-base font-normal text-blue-200">
-                                    We need to add a udev rule in order to use this feature
+                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                <h1 class="my-0 text-base font-normal text-yellow-200">
+                                    USB Passthrough is not yet supported while using Podman as the container runtime.
                                 </h1>
-                                <a
-                                    title="Get Help"
-                                    href="todo"
-                                    @click="/* todo */ () => 0"
-                                    class="text-blue-400 hover:blue-red-500 hover:underline -ml-3 transition"
-                                >
-                                    <Icon icon="mingcute:question-fill" class="size-6 pointer-events-none"></Icon>
-                                </a>
-
-                                <x-button
-                                    :disabled="isCreatingUdevRule"
-                                    class="mt-1 !bg-gradient-to-tl from-blue-200/20 to-transparent ml-auto hover:from-blue-300/30 transition !border-0"
-                                    @click="createUSBUdevRule"
-                                >
-                                    <x-label
-                                        class="ext-lg font-normal text-blue-450"
-                                        v-if="!isCreatingUdevRule"
-                                    >
-                                        Add
-                                    </x-label>
-
-                                    <x-throbber v-else class="w-8 text-blue-300"></x-throbber>
-                                </x-button>
                             </x-card>
                         </template>
-                        <template v-if="!usbPassthroughDisabled && !isUpdatingUSBPrerequisites && (udevRulePresent || wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER)">
+                        <template v-if="!usbPassthroughDisabled && !isUpdatingUSBPrerequisites && wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER">
                             <x-label
                                 class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
                                 v-if="usbManager.ptDevices.value.length == 0"
@@ -548,31 +525,6 @@
                         ></x-switch>
                     </div>
                 </x-card>
-
-                <!-- Disable Animations -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:animation-outline"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Disable Animations</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't
-                            working well)
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-switch
-                            :toggled="wbConfig.config.disableAnimations"
-                            @toggle="
-                                (_: any) => (wbConfig.config.disableAnimations = !wbConfig.config.disableAnimations)
-                            "
-                            size="large"
-                        ></x-switch>
-                    </div>
-                </x-card>
             </div>
         </div>
 
@@ -625,6 +577,31 @@
                             @toggle="toggleAdvancedFeatures"
                             size="large"
                         />
+                    </div>
+                </x-card>
+
+                <!-- Disable Animations -->
+                <x-card
+                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:animation-outline"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">Disable Animations</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't
+                            working well)
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-switch
+                            :toggled="wbConfig.config.disableAnimations"
+                            @toggle="
+                                (_: any) => (wbConfig.config.disableAnimations = !wbConfig.config.disableAnimations)
+                            "
+                            size="large"
+                        ></x-switch>
                     </div>
                 </x-card>
             </div>
@@ -714,7 +691,6 @@ const rdpArgs = ref<RdpArg[]>([]);
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
 const rerenderExperimental = ref(0);
-const udevRulePresent = ref(false);
 const isCreatingUdevRule = ref(false);
 
 // For RDP Args
@@ -733,8 +709,6 @@ const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
 
 onMounted(async () => {
-    udevRulePresent.value = await checkUSBUdevRule();
-    console.log("udev rule: ", udevRulePresent.value);
     await assignValues();
 });
 
@@ -761,33 +735,6 @@ function updateApplicationScale(value: string | number) {
     const clamped = typeof val !== "number" || Number.isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
     wbConfig.config.scaleDesktop = clamped;
     origApplicationScale.value = clamped;
-}
-
-/**
- * Checks whether the udev rule for granting the uaccess tag for USB device nodes is present.
- * Only required in case podman is used as the container runtime.
- */
-async function checkUSBUdevRule() {
-    const udevRulePath = path.join(UDEV_DIR, "99-winboat-usb.rules");
-
-    try {
-        const udevStat = await statAsync(udevRulePath);
-        return udevStat.isFile();
-    }
-    catch {
-        logger.info(`Winboat USB udev file not present in ${udevRulePath}`);
-        return false;
-    }
-}
-
-// TODO!!!: To be implemented 
-async function createUSBUdevRule() {
-    isCreatingUdevRule.value = true;
-
-    setTimeout(() => {
-        udevRulePresent.value = true;
-        isCreatingUdevRule.value = false;
-    }, 5000);
 }
 
 /**
