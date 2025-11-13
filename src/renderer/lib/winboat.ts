@@ -226,6 +226,7 @@ export class Winboat {
     #metricsInverval: NodeJS.Timeout | null = null;
     #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
     #qmpInterval: NodeJS.Timeout | null = null;
+    #shutdownTimer: NodeJS.Timeout | null = null;
 
     // Variables
     isOnline: Ref<boolean> = ref(false);
@@ -346,7 +347,29 @@ export class Winboat {
             if (_rdpConnected !== this.rdpConnected.value) {
                 this.rdpConnected.value = _rdpConnected;
                 logger.info(`RDP connection status changed to ${_rdpConnected ? "connected" : "disconnected"}`);
+
+                if (!this.#wbConfig.config.shutdownTimer) return;
+
+                // if Timer is enabled
+                if (!this.rdpConnected.value) {
+                    if (!this.#shutdownTimer)
+                    {
+                        logger.info(`RDP Disconnected. Starting shutdown timer... ${this.#wbConfig.config.timerLength} remaining.`)
+                        this.#shutdownTimer = setTimeout(async () => {
+                            logger.info("RDP still disconnected, shutting down container")
+                            await this.stopContainer();
+                        }, this.#wbConfig.config.timerLength)
+                    }
+                }
+                else if (this.#shutdownTimer && this.rdpConnected.value) {
+                    clearTimeout(this.#shutdownTimer);
+                    this.#shutdownTimer = null;
+                    logger.info("RDP Reconnected. Shutdown has been cancelled.")
+                }
+
             }
+
+
         }, RDP_STATUS_WAIT_MS);
 
         // *** QMP Interval ***

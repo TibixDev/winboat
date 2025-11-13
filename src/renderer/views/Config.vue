@@ -506,12 +506,52 @@
                     <div class="flex flex-row gap-2 justify-center items-center">
                         <x-switch
                             :toggled="wbConfig.config.rdpMonitoringEnabled"
-                            @toggle="
-                                (_: any) =>
-                                    (wbConfig.config.rdpMonitoringEnabled = !wbConfig.config.rdpMonitoringEnabled)
-                            "
+                            @toggle="toggleRdpMonitoring"
                             size="large"
                         ></x-switch>
+                    </div>
+                </x-card>
+                <x-card v-show="wbConfig.config.rdpMonitoringEnabled" class="flex flow-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:power-20-filled">
+                            </Icon>
+                            <hi class="text-lg my-0 font-semibold">Shutdown Timer</hi>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, the Windows VM will shutdown if there hasn't been an RDP session within a set amount of time.
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                            :toggled="wbConfig.config.shutdownTimer"
+                            @toggle="toggleShutdownTimer"
+                            size="large"
+                            ></x-switch>
+                    </div>
+                </x-card>
+                <x-card v-show="wbConfig.config.rdpMonitoringEnabled" class="flex flow-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:hourglass-three-quarter-16-regular">
+                            </Icon>
+                            <hi class="text-lg my-0 font-semibold">Timer Length</hi>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            The length of inactivity before shutting down the VM.
+                        </p>
+                    </div>
+                    <div class="flex flex-row gap-2 justify-center items-center">
+                        <x-input
+                            type="text"
+                            class="max-w-16 text-right text-[1.1rem]"
+                            :value="timerLength / 60000"
+                            v-on:keydown="(e: any) => ensureNumericInput(e)"
+                            v-on:blur="(e: any) => updateTimerLength(e.target.value * 60000)"
+                        ></x-input>
+                        <p class="text-neutral-100">Minutes</p>
                     </div>
                 </x-card>
 
@@ -618,6 +658,7 @@
                 <span v-else-if="resetQuestionCounter === 2">One final check, are you ABSOLUTELY sure?</span>
                 <span v-else-if="resetQuestionCounter === 3">Resetting Winboat...</span>
             </x-button>
+
         </div>
     </div>
 </template>
@@ -676,6 +717,7 @@ const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
 const origApplicationScale = ref(0);
 const rdpArgs = ref<RdpArg[]>([]);
+const timerLength = ref(0)
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -722,6 +764,12 @@ function updateApplicationScale(value: string | number) {
     origApplicationScale.value = clamped;
 }
 
+function updateTimerLength(value: string | number) {
+    let val = typeof value === "string" ? parseInt(value) : value;
+    wbConfig.config.timerLength = val;
+    timerLength.value = val;
+}
+
 /**
  * Assigns the initial values from the Compose file to the reactive refs
  * so we can display them and track when a change has been made
@@ -752,6 +800,9 @@ async function assignValues() {
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuCores;
+
+
+    timerLength.value = wbConfig.config.timerLength;
 
     refreshAvailableDevices();
 }
@@ -960,6 +1011,17 @@ async function toggleExperimentalFeatures() {
 
 async function toggleAdvancedFeatures() {
     wbConfig.config.advancedFeatures = !wbConfig.config.advancedFeatures;
+    rerenderAdvanced.value++;
+}
+
+async function toggleShutdownTimer() {
+    wbConfig.config.shutdownTimer = !wbConfig.config.shutdownTimer;
+    rerenderAdvanced.value++;
+}
+
+async function toggleRdpMonitoring()
+{
+    wbConfig.config.rdpMonitoringEnabled = !wbConfig.config.rdpMonitoringEnabled;
     rerenderAdvanced.value++;
 }
 </script>
