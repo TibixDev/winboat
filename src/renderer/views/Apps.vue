@@ -284,7 +284,7 @@ const AllSources = computed(() => {
         internal: "Internal",
     };
 
-    for(const app of apps.value) {
+    for (const app of apps.value) {
         sourceList[app.Source] = sourceMap[app.Source] || app.Source;
     }
 

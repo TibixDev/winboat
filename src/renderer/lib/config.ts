@@ -41,7 +41,7 @@ const defaultConfig: WinboatConfigObj = {
     disableAnimations: false,
     // TODO: Ideally should be podman once we flesh out everything
     containerRuntime: ContainerRuntimes.DOCKER,
-    performedComposeMigrations: false
+    performedComposeMigrations: false,
 };
 
 export class WinboatConfig {
@@ -65,10 +65,10 @@ export class WinboatConfig {
             get: (target, key) => Reflect.get(target, key),
             set: (target, key, value: WinboatConfigObj) => {
                 const result = Reflect.set(target, key, value);
-                
+
                 WinboatConfig.writeConfigObject(target);
                 console.info("Wrote modified config to disk");
-                
+
                 return result;
             },
         });

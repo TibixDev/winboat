@@ -3,7 +3,6 @@ const path: typeof import("path") = require("node:path");
 
 // Should be {home}/.winboat
 export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");
-export const UDEV_DIR = "/etc/udev/rules.d";
 
 export const WINDOWS_VERSIONS = {
     "11": "Windows 11 Pro",

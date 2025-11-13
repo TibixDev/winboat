@@ -253,9 +253,13 @@ export class ComposePortMapper {
      * Creates a new port mapping or overwrites an existing one.
      * In case the host port is not open, it tries to find one.
      */
-    setShortPortMapping(guestPort: number | string, hostPort: number | string, options?: PortEntryOptions): void
-    setShortPortMapping(guestPort: number | string, hostRange: number | Range, options?: PortEntryOptions): void
-    setShortPortMapping(_guestPort: number | string, _host: number | string | Range, _options?: PortEntryOptions): void {
+    setShortPortMapping(guestPort: number | string, hostPort: number | string, options?: PortEntryOptions): void;
+    setShortPortMapping(guestPort: number | string, hostRange: number | Range, options?: PortEntryOptions): void;
+    setShortPortMapping(
+        _guestPort: number | string,
+        _host: number | string | Range,
+        _options?: PortEntryOptions,
+    ): void {
         if (typeof _host === "string") {
             _host = Number.parseInt(_host);
         }
@@ -265,13 +269,15 @@ export class ComposePortMapper {
 
         const insertAt = this.findGuestPortIndex(_guestPort, _options?.protocol) ?? this.shortPorts.length;
 
-        if(!(_host instanceof Range)) {
+        if (!(_host instanceof Range)) {
             this.shortPorts[insertAt] = new ComposePortEntry(_host, _guestPort, _options);
             return;
         }
 
         // TODO: Create ComposePortEntry constructor overload for Ranges as well to avoid this
-        this.shortPorts[insertAt] = new ComposePortEntry(`${_options?.hostIP ?? "0.0.0.0"}:${_host}:${_guestPort}/${_options?.protocol ?? "tcp"}`);
+        this.shortPorts[insertAt] = new ComposePortEntry(
+            `${_options?.hostIP ?? "0.0.0.0"}:${_host}:${_guestPort}/${_options?.protocol ?? "tcp"}`,
+        );
     }
 
     /**

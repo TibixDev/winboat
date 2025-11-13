@@ -780,7 +780,13 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../
 import { InstallManager, type InstallState, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
-import { ContainerRuntimes, DockerSpecs, PodmanSpecs, createContainer, getContainerSpecs } from "../lib/containers/common";
+import {
+    ContainerRuntimes,
+    DockerSpecs,
+    PodmanSpecs,
+    createContainer,
+    getContainerSpecs,
+} from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
 
 const path: typeof import("path") = require("node:path");

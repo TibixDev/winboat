@@ -1,7 +1,14 @@
 import { ComposeConfig } from "../../../types";
 import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
 import { WINBOAT_DIR } from "../constants";
-import { ComposeArguments, ComposeDirection, ContainerAction, containerLogger, ContainerManager, ContainerStatus } from "./container";
+import {
+    ComposeArguments,
+    ComposeDirection,
+    ContainerAction,
+    containerLogger,
+    ContainerManager,
+    ContainerStatus,
+} from "./container";
 import YAML from "yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
@@ -139,7 +146,7 @@ export class PodmanContainer extends ContainerManager {
             dead: ContainerStatus.UNKNOWN,
         } as const;
         const args = ["inspect", "--format={{.State.Status}}", this.containerName];
-        
+
         try {
             const { stdout } = await execFileAsync(this.executableAlias, args);
             const status = stdout.trim() as keyof typeof statusMap;

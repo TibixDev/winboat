@@ -37,8 +37,8 @@ function escapeString(str: string): string {
     return fixed_string;
 }
 
-type EnvMap = { 
-    [key: string]: string
+type EnvMap = {
+    [key: string]: string;
 };
 
 export function concatEnv(a: EnvMap, b?: EnvMap) {

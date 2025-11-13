@@ -183,7 +183,7 @@ export class InstallManager {
             logger.error(`Failed to copy OEM assets: ${error}`);
             throw error;
         }
-        
+
         // Create password hash file in oemPath
         try {
             const hash = await argon2.hash(this.conf.password);

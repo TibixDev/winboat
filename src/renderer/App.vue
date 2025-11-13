@@ -89,7 +89,10 @@
         </dialog>
 
         <!-- UI / SetupUI -->
-        <div v-if="!['SetupUI', 'Migration'].includes($route.name?.toString() || '')" class="flex flex-row h-[calc(100vh-2rem)]">
+        <div
+            v-if="!['SetupUI', 'Migration'].includes($route.name?.toString() || '')"
+            class="flex flex-row h-[calc(100vh-2rem)]"
+        >
             <x-nav class="flex flex-col flex-none gap-0.5 w-72 backdrop-blur-xl bg-gray-500/10 backdrop-contrast-90">
                 <div
                     v-if="winboat?.rdpConnected.value"
@@ -110,7 +113,9 @@
                     </div>
                 </div>
                 <RouterLink
-                    v-for="route of routes.filter((r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)))"
+                    v-for="route of routes.filter(
+                        (r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)),
+                    )"
                     :to="route.path"
                     :key="route.path"
                 >
@@ -185,12 +190,12 @@ onMounted(async () => {
         winboat = Winboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
 
-        if(!wbConfig.config.performedComposeMigrations) {
-            $router.push("/migration")
+        if (!wbConfig.config.performedComposeMigrations) {
+            $router.push("/migration");
             logger.info("Performing migrations for 0.9.0");
 
             // Compose migration
-            if(await winboat.containerMgr!.exists()) {
+            if (await winboat.containerMgr!.exists()) {
                 logger.info("Composing down current WinBoat container");
                 await winboat.containerMgr!.compose("down");
             }
@@ -201,7 +206,7 @@ onMounted(async () => {
             currentCompose.services.windows.ports = defaultCompose.services.windows.ports;
 
             winboat.containerMgr!.writeCompose(currentCompose);
-            
+
             logger.info("Composing up WinBoat container");
             await winboat.containerMgr!.compose("up", ["--no-start"]);
 

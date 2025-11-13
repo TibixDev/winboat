@@ -194,7 +194,13 @@
                                 </h1>
                             </x-card>
                         </template>
-                        <template v-if="!usbPassthroughDisabled && !isUpdatingUSBPrerequisites && wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER">
+                        <template
+                            v-if="
+                                !usbPassthroughDisabled &&
+                                !isUpdatingUSBPrerequisites &&
+                                wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER
+                            "
+                        >
                             <x-label
                                 class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
                                 v-if="usbManager.ptDevices.value.length == 0"
@@ -650,7 +656,6 @@ import {
     RESTART_NO,
     GUEST_RDP_PORT,
     GUEST_QMP_PORT,
-    UDEV_DIR
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
@@ -833,7 +838,7 @@ async function addRequiredComposeFieldsUSB() {
     if (!hasQmpPort()) {
         const composePorts = winboat.containerMgr!.defaultCompose.services.windows.ports;
         const portEntries = composePorts.filter(x => typeof x === "string").map(x => new ComposePortEntry(x));
-        const QMPPredicate = (entry: ComposePortEntry) => 
+        const QMPPredicate = (entry: ComposePortEntry) =>
             (entry.host instanceof Range || Number.isNaN(entry.host)) && // We allow NaN in case the QMP port entry isn't already there on podman for whatever reason
             typeof entry.container === "number" &&
             entry.container === GUEST_QMP_PORT;
