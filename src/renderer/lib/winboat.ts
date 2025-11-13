@@ -667,14 +667,25 @@ export class Winboat {
             await freeRDPInstallation.exec(args);
         } catch(e) {
             const execError = e as ExecFileAsyncError;
+            const ERRINFO_RPC_INITIATED_DISCONNECT = 0x00000001;
+            const ERRINFO_LOGOFF_BY_USER = 0x0000000C;
             
+            // TODO: Handle all FreeRDP error codes 
             // https://github.com/FreeRDP/FreeRDP/blob/3fc1c3ce31b5af1098d15603d7b3fe1c93cf77a5/include/freerdp/error.h#L58
-            // ERRINFO_LOGOFF_BY_USER
-            if (execError.code !== 12) {
-                throw execError;
+            switch(execError.code) {
+                case(ERRINFO_RPC_INITIATED_DISCONNECT): {
+                    logger.info("FreeRDP connection already established.");
+                    logger.info("Creating new session..");
+                    break;
+                }
+                case(ERRINFO_LOGOFF_BY_USER): {
+                    logger.info("FreeRDP disconnected due to user logging off.");
+                    break;
+                }
+                default: {
+                    logger.warn(`FreeRDP process returned error code '${execError.code}'`);
+                }
             }
-
-            logger.info("FreeRDP disconnected due to user logging off.");
         }
     }
 
