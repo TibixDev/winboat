@@ -16,6 +16,7 @@ import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper";
 
 const path: typeof import("node:path") = require("node:path");
 const fs: typeof import("node:fs") = require("node:fs");
+const process: typeof import("process") = require("node:process");
 
 export type PodmanSpecs = {
     podmanInstalled: boolean;
