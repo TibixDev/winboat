@@ -21,6 +21,7 @@ const process: typeof import("process") = require("node:process");
 export type PodmanSpecs = {
     podmanInstalled: boolean;
     podmanComposeInstalled: boolean;
+    slirp4netnsInstalled: boolean;
 };
 
 export enum PodmanAPIStatus {
@@ -180,6 +181,7 @@ export class PodmanContainer extends ContainerManager {
         let specs: PodmanSpecs = {
             podmanInstalled: false,
             podmanComposeInstalled: false,
+            slirp4netnsInstalled: false
         };
 
         try {
@@ -197,6 +199,16 @@ export class PodmanContainer extends ContainerManager {
             specs.podmanComposeInstalled = !!podmanComposeOutput;
         } catch (e) {
             containerLogger.error("Error checking podman compose version");
+            containerLogger.error(e);
+        }
+
+         try {
+            const { stdout: slirp4netnsOutput } = await execFileAsync("slirp4netns", ["--version"], {
+                env: concatEnv(process.env as { [key: string]: string }, COMPOSE_ENV_VARS),
+            });
+            specs.slirp4netnsInstalled = !!slirp4netnsOutput;
+        } catch (e) {
+            containerLogger.error("Error checking slirp4netns version");
             containerLogger.error(e);
         }
 

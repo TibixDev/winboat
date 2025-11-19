@@ -224,6 +224,26 @@
                                         >How?</a
                                     >
                                 </li>
+                                    <li class="flex items-center gap-2">
+                                    <span
+                                        v-if="
+                                            containerSpecs &&
+                                            'slirp4netnsInstalled' in containerSpecs &&
+                                            containerSpecs.slirp4netnsInstalled
+                                        "
+                                        class="text-green-500"
+                                        >✔</span
+                                    >
+                                    <span v-else class="text-red-500">✘</span>
+                                    slirp4netns installed
+                                    <a
+                                        href="https://github.com/rootless-containers/slirp4netns?tab=readme-ov-file#install"
+                                        @click="openAnchorLink"
+                                        target="_blank"
+                                        class="text-violet-400 hover:underline ml-1"
+                                        >How?</a
+                                    >
+                                </li>
                             </template>
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
