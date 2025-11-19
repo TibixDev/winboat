@@ -224,7 +224,7 @@
                                         >How?</a
                                     >
                                 </li>
-                                    <li class="flex items-center gap-2">
+                                <li class="flex items-center gap-2">
                                     <span
                                         v-if="
                                             containerSpecs &&
