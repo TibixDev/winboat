@@ -4,7 +4,18 @@ import { router } from "./router";
 import { MotionPlugin } from "@vueuse/motion";
 import "./index.css";
 import { autoScroll } from "./directives/autoscroll";
+import { DEFAULT_HOMEBREW_DIR } from "./lib/constants";
 import VueApexCharts from "vue3-apexcharts";
+
+const process: typeof import("process") = require("node:process");
+
+/**
+ * @note A big chunk of our userbase uses WinBoat under an immutable distro through GearLever.
+ * In case it's the flatpak version of GearLever, PATH, and some other environment variable will get stripped by default.
+ * We include the default homebrew bin directiory for exactly this reason.
+ * It's not WinBoat's responsibility if the PATH envvar is incomplete, but in this case it affects a lot of users.
+ */
+process.env.PATH && (process.env.PATH += `:${DEFAULT_HOMEBREW_DIR}`);
 
 createApp(App)
     .directive("auto-scroll", autoScroll)
