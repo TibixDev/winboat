@@ -651,7 +651,7 @@ export class Winboat {
 
         args = args.filter((v, _i, _a) => v.trim() !== "");
         // Remove plain password from logs
-        cmd = cmd.replaceAll(password, "*".repeat(password.length));
+        cmd = cmd.replaceAll(password, "*****");
 
         this.appMgr?.incrementAppUsage(app);
         this.appMgr?.writeToDisk();
