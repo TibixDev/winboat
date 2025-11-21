@@ -1068,7 +1068,7 @@ function install() {
         password: password.value,
         shareHomeFolder: homeFolderSharing.value,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
-        container: createContainer(containerRuntime.value), // Hardcdde for now
+        container: containerRuntime.value, // Hardcdde for now
     };
 
     const wbConfig = WinboatConfig.getInstance(); // Create winboat config.

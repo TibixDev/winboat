@@ -5,7 +5,7 @@ import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
-import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
+import { CommonPorts, createContainer, getActiveHostPort, ContainerRuntimes } from "./containers/common";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
@@ -46,7 +46,7 @@ export class InstallManager {
         this.state = InstallStates.IDLE;
         this.preinstallMsg = "";
         this.emitter = createNanoEvents<InstallEvents>();
-        this.container = conf.container;
+        this.container = createContainer(conf.container);
     }
 
     changeState(newState: InstallState) {
@@ -99,11 +99,13 @@ export class InstallManager {
 
         // Storage folder mapping
         const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
+        const volumeLabel = this.conf.container === ContainerRuntimes.PODMAN ? ":Z" : "";
+        
         if (storageFolderIdx === -1) {
             logger.warn("No /storage volume found in compose template, adding one...");
-            composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
+            composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage${volumeLabel}`);
         } else {
-            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
+            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage${volumeLabel}`;
         }
 
         // Home folder mapping

@@ -37,7 +37,7 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
             volumes: [
                 "data:/storage",
                 "${HOME}:/shared",
-                "/dev/bus/usb:/dev/bus/usb", // QEMU Synamic USB Passthrough
+                "/dev/bus/usb:/dev/bus/usb", // QEMU Dynamic USB Passthrough
                 "./oem:/oem",
             ],
             devices: ["/dev/kvm"],

@@ -1,7 +1,6 @@
 import { ComposeConfig } from "../../types";
 import { RESTART_ON_FAILURE } from "../lib/constants";
 
-// TODO: investigate whether this approach is even necessary.
 export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     name: "winboat",
     volumes: {
@@ -24,9 +23,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 HOST_PORTS: "7149",
                 ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
             },
-            network_mode: "slirp4netns:port_handler=slirp4netns",
             cap_add: ["NET_ADMIN"],
-            privileged: true,
             ports: [
                 "127.0.0.1::8006", // VNC Web Interface
                 "127.0.0.1::7148", // Winboat Guest Server API
@@ -37,10 +34,9 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             stop_grace_period: "120s",
             restart: RESTART_ON_FAILURE,
             volumes: [
-                "data:/storage",
-                "${HOME}:/shared",
-                "/dev/bus/usb:/dev/bus/usb:rslave", // QEMU Synamic USB Passthrough
-                "./oem:/oem",
+                "data:/storage:Z",
+                "${HOME}:/shared:Z",
+                "./oem:/oem:Z",
             ],
             devices: ["/dev/kvm", "/dev/net/tun", "/dev/bus/usb"],
         },

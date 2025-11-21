@@ -667,11 +667,6 @@ const statAsync = promisify(fs.stat);
 // Emits
 const $emit = defineEmits(["rerender"]);
 
-// Constants
-const HOMEFOLDER_SHARE_STR = "${HOME}:/shared";
-const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
-const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
-
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
 const numCores = ref(0);
@@ -712,6 +707,12 @@ let portMapper = ref<ComposePortMapper | null>(null);
 const wbConfig = WinboatConfig.getInstance();
 const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
+
+// Constants
+const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v => v.startsWith("${HOME}"))!;
+// ^ We have to do this because the Podman and Docker equivalents differ (:Z ending on Podman)
+const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
+const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
 
 onMounted(async () => {
     await assignValues();
