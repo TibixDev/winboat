@@ -784,7 +784,6 @@ import {
     ContainerRuntimes,
     DockerSpecs,
     PodmanSpecs,
-    createContainer,
     getContainerSpecs,
 } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";

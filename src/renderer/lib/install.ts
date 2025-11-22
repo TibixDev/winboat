@@ -99,13 +99,12 @@ export class InstallManager {
 
         // Storage folder mapping
         const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
-        const volumeLabel = this.conf.container === ContainerRuntimes.PODMAN ? ":Z" : "";
         
         if (storageFolderIdx === -1) {
             logger.warn("No /storage volume found in compose template, adding one...");
-            composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage${volumeLabel}`);
+            composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
         } else {
-            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage${volumeLabel}`;
+            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
         }
 
         // Home folder mapping
