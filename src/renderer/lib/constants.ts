@@ -3,6 +3,7 @@ const path: typeof import("path") = require("node:path");
 
 // Should be {home}/.winboat
 export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");
+export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const WINDOWS_VERSIONS = {
     "11": "Windows 11 Pro",
