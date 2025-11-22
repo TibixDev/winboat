@@ -5,7 +5,7 @@ import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
-import { CommonPorts, createContainer, getActiveHostPort, ContainerRuntimes } from "./containers/common";
+import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");

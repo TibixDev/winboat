@@ -4,12 +4,51 @@ import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
 import { ContainerRuntimes } from "./containers/common";
+import { logger } from "./winboat";
 
 export type RdpArg = {
     original?: string;
     newArg: string;
     isReplacement: boolean;
 };
+
+export class WinboatVersion {
+    public readonly generation: number;
+    public readonly major: number;
+    public readonly minor: number;
+    public readonly alpha: boolean;
+
+    constructor(public readonly versionToken: string) {
+        const versionTags = versionToken.split("-");
+        const versionNumbers = versionTags[0].split(".").map(value => {
+            const parsedValue = parseInt(value);
+            
+            if(Number.isNaN(parsedValue)) {
+                throw new Error(`Invalid winboat version format: '${versionToken}'`);
+            }
+
+            return parsedValue;
+        });
+
+        this.alpha = !!versionTags[1]?.includes("alpha");
+        this.generation = versionNumbers[0];
+        this.major = versionNumbers[1];
+        this.minor = versionNumbers[2];
+    }
+
+    toString(): string {
+        return this.versionToken;
+    }
+
+    toJSON(): string {
+        return this.toString();
+    }
+}
+
+type WinboatVersionData = {
+    previous: WinboatVersion,
+    current: WinboatVersion
+}
 
 export type WinboatConfigObj = {
     scale: number;
@@ -25,7 +64,10 @@ export type WinboatConfigObj = {
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
     performedComposeMigrations: boolean;
+    versionData: WinboatVersionData;
 };
+
+const currentVersion = new WinboatVersion(import.meta.env.VITE_APP_VERSION);
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
@@ -42,6 +84,10 @@ const defaultConfig: WinboatConfigObj = {
     // TODO: Ideally should be podman once we flesh out everything
     containerRuntime: ContainerRuntimes.DOCKER,
     performedComposeMigrations: false,
+    versionData: {
+        previous: currentVersion, // As of 0.9.0 this won't exist on the filesystem, so we just set it to the current version
+        current: currentVersion
+    }
 };
 
 export class WinboatConfig {
@@ -56,6 +102,15 @@ export class WinboatConfig {
 
     private constructor() {
         this.#configData = WinboatConfig.readConfigObject()!;
+
+        // Set correct versionData
+        if(this.config.versionData.current.versionToken !== currentVersion.versionToken) {
+            this.config.versionData.previous = this.config.versionData.current;
+            this.config.versionData.current = currentVersion;
+
+            logger.info(`Updated version data from '${this.config.versionData.previous.toString()}' to '${currentVersion.toString()}'`);
+        }
+
         console.log("Reading current config", this.#configData);
     }
 
@@ -99,7 +154,16 @@ export class WinboatConfig {
 
         try {
             const rawConfig = fs.readFileSync(WinboatConfig.configPath, "utf-8");
-            const configObj = JSON.parse(rawConfig) as WinboatConfigObj;
+            const configObjRaw = JSON.parse(rawConfig);
+
+            // Parse winboat version data
+            if(configObjRaw.versionData) {
+                configObjRaw.versionData.current = new WinboatVersion(configObjRaw.versionData.current);
+                configObjRaw.versionData.previous = new WinboatVersion(configObjRaw.versionData.previous);
+            }
+
+            const configObj = configObjRaw as WinboatConfigObj;
+
             console.log("Successfully read the config file");
 
             // Some fields might be missing after an update, so we merge them with the default config
@@ -111,7 +175,7 @@ export class WinboatConfig {
                     hasMissing = true;
                     console.log(
                         `Added missing config key: ${key} with default value: ${
-                            defaultConfig[key as keyof WinboatConfigObj]
+                            JSON.stringify(defaultConfig[key as keyof WinboatConfigObj])
                         }`,
                     );
                 }

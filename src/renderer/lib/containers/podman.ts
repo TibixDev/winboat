@@ -163,7 +163,7 @@ export class PodmanContainer extends ContainerManager {
         const args = ["ps", "-a", "--filter", `name=${this.containerName}`, "--format", "{{.Names}}"];
         try {
             const { stdout: exists } = await execFileAsync(this.executableAlias, args);
-            return exists.includes("WinBoat");
+            return exists.includes(this.containerName);
         } catch (e) {
             containerLogger.error(
                 `Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`,

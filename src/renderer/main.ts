@@ -11,7 +11,7 @@ const process: typeof import("process") = require("node:process");
 
 /**
  * @note A big chunk of our userbase uses WinBoat under an immutable distro through GearLever.
- * In case it's the flatpak version of GearLever, PATH, and some other environment variable will get stripped by default.
+ * In case it's the flatpak version of GearLever, PATH, and some other environment variables are stripped by default.
  * We include the default homebrew bin directiory for exactly this reason.
  * It's not WinBoat's responsibility if the PATH envvar is incomplete, but in this case it affects a lot of users.
  */
