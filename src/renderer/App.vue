@@ -120,7 +120,7 @@
                     :key="route.path"
                 >
                     <x-navitem>
-                        <Icon class="mr-4 w-5 h-5" :icon="route.meta!.icon as string"></Icon>
+                        <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
                         <x-label>{{ route.name }}</x-label>
                     </x-navitem>
                 </RouterLink>
@@ -163,7 +163,7 @@ import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { setIntervalImmediately } from "./utils/interval";
-import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
+import { CommonPorts, ContainerRuntimes, getActiveHostPort } from "./lib/containers/common";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
 
@@ -185,11 +185,18 @@ let animationCheckInterval: NodeJS.Timeout | null = null;
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
+
     if (winboatInstalled) {
         wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
         winboat = Winboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
 
+        // Avoid performing migrations under podman
+        if(wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN) {
+            wbConfig.config.performedComposeMigrations = true;
+        }
+
+        // Perform migrations under docker
         if (!wbConfig.config.performedComposeMigrations) {
             $router.push("/migration");
             logger.info("Performing migrations for 0.9.0");
