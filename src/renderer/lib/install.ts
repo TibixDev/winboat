@@ -309,6 +309,7 @@ export class InstallManager {
         } catch (e) {
             this.changeState(InstallStates.INSTALL_ERROR);
             logger.error("Errors encountered, could not complete the installation steps.");
+            logger.error(e);
             return;
         }
         this.changeState(InstallStates.COMPLETED);

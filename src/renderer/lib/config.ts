@@ -63,7 +63,6 @@ export type WinboatConfigObj = {
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
-    performedComposeMigrations: boolean;
     versionData: WinboatVersionData;
 };
 
@@ -83,7 +82,6 @@ const defaultConfig: WinboatConfigObj = {
     disableAnimations: false,
     // TODO: Ideally should be podman once we flesh out everything
     containerRuntime: ContainerRuntimes.DOCKER,
-    performedComposeMigrations: false,
     versionData: {
         previous: currentVersion, // As of 0.9.0 this won't exist on the filesystem, so we just set it to the current version
         current: currentVersion
