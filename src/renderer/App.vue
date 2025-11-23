@@ -158,12 +158,13 @@ import { routes } from "./router";
 import { Icon } from "@iconify/vue";
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
 import { isInstalled } from "./lib/install";
-import { Winboat, logger } from "./lib/winboat";
+import { Winboat } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { setIntervalImmediately } from "./utils/interval";
-import { CommonPorts, ContainerRuntimes, getActiveHostPort } from "./lib/containers/common";
+import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
+import { performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
 
@@ -191,35 +192,11 @@ onMounted(async () => {
         winboat = Winboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
 
-        // Avoid performing migrations under podman
-        if(wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN) {
-            wbConfig.config.performedComposeMigrations = true;
-        }
+        // Migrations
+        $router.push("/migration");
+        await performAutoMigrations();
 
-        // Perform migrations under docker
-        if (!wbConfig.config.performedComposeMigrations) {
-            $router.push("/migration");
-            logger.info("Performing migrations for 0.9.0");
-
-            // Compose migration
-            if (await winboat.containerMgr!.exists()) {
-                logger.info("Composing down current WinBoat container");
-                await winboat.containerMgr!.compose("down");
-            }
-
-            const currentCompose = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
-            const defaultCompose = winboat.containerMgr!.defaultCompose;
-
-            currentCompose.services.windows.ports = defaultCompose.services.windows.ports;
-
-            winboat.containerMgr!.writeCompose(currentCompose);
-
-            logger.info("Composing up WinBoat container");
-            await winboat.containerMgr!.compose("up", ["--no-start"]);
-
-            wbConfig!.config.performedComposeMigrations = true;
-        }
-
+        // After migrations, go to home
         $router.push("/home");
     } else {
         console.log("Not installed, redirecting to setup...");
