@@ -706,7 +706,19 @@
                         <p class="text-lg text-gray-400 text-justify">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
-                            <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
+                            <span v-if="linkableInstallSteps.includes(installState)">
+                                <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
+                            </span>
+                            <span v-else>
+                                over at
+                                <div
+                                    style="animation-duration: 3s!important;"
+                                    class="ml-1 inline-block relative text-transparent rounded-md bg-neutral-700 animate-pulse select-none"
+                                >
+                                    in your browser
+                                    <Icon icon="eos-icons:three-dots-loading" class="pointer-events-none absolute top-0 left-[50%] size-16 text-violet-400 -translate-x-[50%] -translate-y-[27.5%]"></Icon>
+                                </div>
+                            </span>
                         </p>
 
                         <!-- Installing -->
@@ -777,7 +789,7 @@ import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
-import { InstallManager, type InstallState, InstallStates } from "../lib/install";
+import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
 import {
@@ -893,10 +905,12 @@ const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");
 const homeFolderSharing = ref(false);
-const installState = ref<InstallState>(InstallStates.IDLE);
+const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
+// These are the install steps where the container is actually up and running
+const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
 
 let installManager: InstallManager | null;
 

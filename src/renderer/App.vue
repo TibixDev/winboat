@@ -202,7 +202,7 @@ onMounted(async () => {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
     }
-
+    
     // Apply or remove disable-animations class based on config
     const updateAnimationClass = () => {
         if (wbConfig?.config.disableAnimations) {

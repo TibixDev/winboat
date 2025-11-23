@@ -14,21 +14,19 @@ const remote: typeof import("@electron/remote") = require("@electron/remote");
 const argon2: typeof import("argon2") = require("argon2");
 const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
-export const InstallStates = {
-    IDLE: "Preparing",
-    CREATING_COMPOSE_FILE: "Creating Compose File",
-    CREATING_OEM: "Creating OEM Assets",
-    STARTING_CONTAINER: "Starting Container",
-    MONITORING_PREINSTALL: "Monitoring Preinstall",
-    INSTALLING_WINDOWS: "Installing Windows",
-    COMPLETED: "Completed",
-    INSTALL_ERROR: "Install Error",
-} as const;
-
-export type InstallState = (typeof InstallStates)[keyof typeof InstallStates];
+export enum InstallStates {
+    IDLE = "Preparing",
+    CREATING_COMPOSE_FILE = "Creating Compose File",
+    CREATING_OEM = "Creating OEM Assets",
+    STARTING_CONTAINER = "Starting Container",
+    MONITORING_PREINSTALL = "Monitoring Preinstall",
+    INSTALLING_WINDOWS = "Installing Windows",
+    COMPLETED = "Completed",
+    INSTALL_ERROR = "Install Error",
+};
 
 interface InstallEvents {
-    stateChanged: (state: InstallState) => void;
+    stateChanged: (state: InstallStates) => void;
     preinstallMsg: (msg: string) => void;
     error: (error: Error) => void;
     vncPortChanged: (port: number) => void;
@@ -37,7 +35,7 @@ interface InstallEvents {
 export class InstallManager {
     conf: InstallConfiguration;
     emitter: Emitter<InstallEvents>;
-    state: InstallState;
+    state: InstallStates;
     preinstallMsg: string;
     container: ContainerManager;
 
@@ -49,7 +47,7 @@ export class InstallManager {
         this.container = createContainer(conf.container);
     }
 
-    changeState(newState: InstallState) {
+    changeState(newState: InstallStates) {
         this.state = newState;
         this.emitter.emit("stateChanged", newState);
         logger.info(`New state: "${newState}"`);
