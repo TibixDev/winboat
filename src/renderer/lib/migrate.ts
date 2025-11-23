@@ -1,7 +1,8 @@
 import { createLogger } from "../utils/log";
+import { ComposePortMapper, Range } from "../utils/port";
 import { WinboatConfig } from "./config";
 import { WINBOAT_DIR } from "./constants";
-import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
+import { CommonPorts, createContainer } from "./containers/common";
 import { ContainerManager } from "./containers/container";
 import { Winboat } from "./winboat";
 
@@ -17,12 +18,15 @@ export async function performAutoMigrations(): Promise<void> {
 
     const wbConfig = WinboatConfig.getInstance(); // Get WinboatConfig instance
     const containerManager = createContainer(wbConfig.config.containerRuntime);
+    const composeMapper = new ComposePortMapper(Winboat.readCompose(containerManager.composeFilePath))
     
     try {
         // In case of a version prior to 0.9.0, the NoVNC port will be set to the default 8006
         // which is how we know we need to perform the migration, because from 0.9.0 we can rely
         // on the stored version strings
-        if (getActiveHostPort(containerManager, CommonPorts.NOVNC) === CommonPorts.NOVNC) {
+        const novncMapping = composeMapper.getShortPortMapping(CommonPorts.NOVNC);
+        console.log(composeMapper);
+        if (!Range.isRange(novncMapping!.host) && novncMapping!.host === CommonPorts.NOVNC) {
             await migrateComposePorts_Pre090(containerManager);
         }
     }

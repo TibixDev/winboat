@@ -642,7 +642,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
-import { logger, Winboat } from "../lib/winboat";
+import { Winboat } from "../lib/winboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";

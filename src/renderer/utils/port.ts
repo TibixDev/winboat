@@ -244,7 +244,7 @@ export class ComposePortMapper {
     getShortPortMapping(guestPort: number | string, protocol: PortEntryProtocol = "tcp"): ComposePortEntry | undefined {
         const mappingIdx = this.findGuestPortIndex(guestPort, protocol);
 
-        if (!mappingIdx) return undefined;
+        if (mappingIdx === undefined) return undefined;
 
         return this.shortPorts[mappingIdx];
     }
