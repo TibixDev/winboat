@@ -2,7 +2,7 @@ import { ComposeConfig } from "../../../types";
 import { DOCKER_DEFAULT_COMPOSE } from "../../data/docker";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
-import { WINBOAT_DIR } from "../constants";
+import { WINBOAT_CONFIG_DIR } from "../constants";
 import {
     ComposeArguments,
     ComposeDirection,
@@ -26,7 +26,7 @@ export type DockerSpecs = {
 
 export class DockerContainer extends ContainerManager {
     defaultCompose = DOCKER_DEFAULT_COMPOSE;
-    composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
+    composeFilePath = path.join(WINBOAT_CONFIG_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
     executableAlias = "docker";
 
     cachedPortMappings: ComposePortEntry[] | null = null;

@@ -1,13 +1,13 @@
 import { createLogger } from "../utils/log";
 import { ComposePortMapper, Range } from "../utils/port";
 import { WinboatConfig } from "./config";
-import { WINBOAT_DIR } from "./constants";
+import { WINBOAT_STATE_DIR } from "./constants";
 import { CommonPorts, createContainer } from "./containers/common";
 import { ContainerManager } from "./containers/container";
 import { Winboat } from "./winboat";
 
 const path: typeof import("path") = require("path");
-const logger = createLogger(path.join(WINBOAT_DIR, "migrations.log"));
+const logger = createLogger(path.join(WINBOAT_STATE_DIR, "migrations.log"));
 
 /**
  * This function performs the necessary automatic migrations

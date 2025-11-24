@@ -1,7 +1,7 @@
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
 import { type WinApp } from "../../types";
-import { WINBOAT_DIR } from "./constants";
+import { WINBOAT_CONFIG_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
 import { ContainerRuntimes } from "./containers/common";
 import { logger } from "./winboat";
@@ -89,7 +89,7 @@ const defaultConfig: WinboatConfigObj = {
 };
 
 export class WinboatConfig {
-    private static readonly configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
+    private static readonly configPath: string = path.join(WINBOAT_CONFIG_DIR, "winboat.config.json");
     private static instance: WinboatConfig | null = null;
     #configData: WinboatConfigObj = { ...defaultConfig };
 
@@ -142,8 +142,8 @@ export class WinboatConfig {
         if (!fs.existsSync(WinboatConfig.configPath)) {
             if (!writeDefault) return null;
             // Also the create the directory because we're not guaranteed to have it
-            if (!fs.existsSync(WINBOAT_DIR)) {
-                fs.mkdirSync(WINBOAT_DIR);
+            if (!fs.existsSync(WINBOAT_CONFIG_DIR)) {
+                fs.mkdirSync(WINBOAT_CONFIG_DIR);
             }
 
             fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(defaultConfig, null, 4), "utf-8");
