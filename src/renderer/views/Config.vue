@@ -531,6 +531,65 @@
                         ></x-switch>
                     </div>
                 </x-card>
+
+                <!-- Logs -->
+                <x-card
+                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="lucide:file-code"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">Logs</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">Select the log you want to open</p>
+                    </div>
+                    <div class="flex flex-col gap-2 justify-center items-center" style="font-size: 0.8125rem">
+                        <x-button
+                            @click="
+                                logTitle = 'Winboat log (winboat.log)';
+                                logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'winboat.log'));
+                                logDialog!.showModal();
+                            "
+                        >
+                            Winboat log (winboat.log)
+                        </x-button>
+                        <x-button
+                            @click="
+                                logTitle = 'Install log (install.log)';
+                                logContent = fs.readFileSync(path.join(WINBOAT_DIR, 'install.log'));
+                                logDialog!.showModal();
+                            "
+                        >
+                            Install log (winboat.log)
+                        </x-button>
+                        <dialog ref="logDialog">
+                            <div class="flex flex-row gap-0 align-middle" style="margin-bottom: 16px">
+                                <h3 class="mb-0 mt-0 content-center">{{ logTitle }}</h3>
+                                <x-button
+                                    title="Copy to clipboard"
+                                    class="p-0 w-9 h-6"
+                                    @click="electron.clipboard.writeText(logContent.toString())"
+                                    skin="flat"
+                                >
+                                    <x-popover modal>
+                                        <x-label>Copied!</x-label>
+                                    </x-popover>
+                                    <icon icon="flowbite:clipboard-clean-outline" class="size-5"></icon>
+                                </x-button>
+                            </div>
+                            <div class="overflow-y-scroll" style="max-height: 60vh; max-width: 90vh">
+                                <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto m-0">{{
+                                    logContent
+                                }}</pre>
+                            </div>
+                            <footer>
+                                <x-button v-on:click="logDialog?.close()">
+                                    <x-label>Close</x-label>
+                                </x-button>
+                            </footer>
+                        </dialog>
+                    </div>
+                </x-card>
             </div>
         </div>
 
@@ -648,16 +707,11 @@ import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
 import { RdpArg, WinboatConfig } from "../lib/config";
-import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
+import { type PTSerializableDeviceInfo, USBManager } from "../lib/usbmanager";
 import { type Device } from "usb";
-import {
-    USB_VID_BLACKLIST,
-    RESTART_ON_FAILURE,
-    RESTART_NO,
-    GUEST_RDP_PORT,
-    GUEST_QMP_PORT,
-} from "../lib/constants";
+import { GUEST_QMP_PORT, GUEST_RDP_PORT, RESTART_NO, RESTART_ON_FAILURE, USB_VID_BLACKLIST } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
+
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const { promisify }: typeof import("node:util") = require("node:util");
 const path: typeof import("node:path") = require("node:path");
@@ -687,6 +741,9 @@ const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
 const origApplicationScale = ref(0);
 const rdpArgs = ref<RdpArg[]>([]);
+const logDialog = ref<HTMLDialogElement | null>(null);
+const logContent = ref("");
+const logTitle = ref("");
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -709,7 +766,9 @@ const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
 
 // Constants
-const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v => v.startsWith("${HOME}"))!;
+const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v =>
+    v.startsWith("${HOME}"),
+)!;
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
 const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
 
