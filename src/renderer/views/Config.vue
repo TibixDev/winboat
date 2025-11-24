@@ -655,6 +655,7 @@ import { type PTSerializableDeviceInfo, USBManager } from "../lib/usbmanager";
 import { type Device } from "usb";
 import { GUEST_QMP_PORT, GUEST_RDP_PORT, RESTART_NO, RESTART_ON_FAILURE, USB_VID_BLACKLIST } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
+import LogsCard from "./config/LogsCard.vue";
 
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const { promisify }: typeof import("node:util") = require("node:util");
