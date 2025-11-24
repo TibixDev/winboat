@@ -89,7 +89,7 @@ const defaultConfig: WinboatConfigObj = {
 };
 
 export class WinboatConfig {
-    private static readonly configPath: string = path.join(WINBOAT_CONFIG_DIR, "winboat.config.json");
+    public static readonly configPath: string = path.join(WINBOAT_CONFIG_DIR, "winboat.config.json");
     private static instance: WinboatConfig | null = null;
     #configData: WinboatConfigObj = { ...defaultConfig };
 

@@ -7,8 +7,8 @@ import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
 
-const fs: typeof import("fs") = require("fs");
-const path: typeof import("path") = require("path");
+const fs: typeof import("fs") = require("node:fs");
+const path: typeof import("path") = require("node:path");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const argon2: typeof import("argon2") = require("argon2");

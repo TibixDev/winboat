@@ -1,5 +1,6 @@
 import { ComposeConfig } from "../../types";
-import { RESTART_ON_FAILURE } from "../lib/constants";
+import { RESTART_ON_FAILURE, WINBOAT_DATA_DIR } from "../lib/constants";
+const path: typeof import("path") = require("node:path");
 
 export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
     name: "winboat",
@@ -38,7 +39,7 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
                 "data:/storage",
                 "${HOME}:/shared",
                 "/dev/bus/usb:/dev/bus/usb", // QEMU Dynamic USB Passthrough
-                "./oem:/oem",
+                `${path.join(WINBOAT_DATA_DIR, "oem")}:/oem`
             ],
             devices: ["/dev/kvm"],
         },
