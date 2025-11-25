@@ -712,11 +712,14 @@
                             <span v-else>
                                 over at
                                 <div
-                                    style="animation-duration: 3s!important;"
+                                    style="animation-duration: 3s !important"
                                     class="ml-1 inline-block relative text-transparent rounded-md bg-neutral-700 animate-pulse select-none"
                                 >
                                     in your browser
-                                    <Icon icon="eos-icons:three-dots-loading" class="pointer-events-none absolute top-0 left-[50%] size-16 text-violet-400 -translate-x-[50%] -translate-y-[27.5%]"></Icon>
+                                    <Icon
+                                        icon="eos-icons:three-dots-loading"
+                                        class="pointer-events-none absolute top-0 left-[50%] size-16 text-violet-400 -translate-x-[50%] -translate-y-[27.5%]"
+                                    ></Icon>
                                 </div>
                             </span>
                         </p>
@@ -794,16 +797,12 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
-import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
+import { defaultSpecs, getMemoryInfo, getSpecs, type MemoryInfo, satisfiesPrequisites } from "../lib/specs";
+import { WINDOWS_LANGUAGES, WINDOWS_VERSIONS, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
-import {
-    ContainerRuntimes,
-    DockerSpecs,
-    PodmanSpecs,
-} from "../lib/containers/common";
+import { ContainerRuntimes, DockerSpecs, getContainerSpecs, PodmanSpecs } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
 import LogButton from "./buttons/LogButton.vue";
 import LogDialog from "./dialogs/LogDialog.vue";
@@ -918,7 +917,11 @@ const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
 // These are the install steps where the container is actually up and running
-const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
+const linkableInstallSteps = [
+    InstallStates.MONITORING_PREINSTALL,
+    InstallStates.INSTALLING_WINDOWS,
+    InstallStates.COMPLETED,
+];
 const logDialog = ref<typeof LogDialog | null>(null);
 
 let installManager: InstallManager | null;
