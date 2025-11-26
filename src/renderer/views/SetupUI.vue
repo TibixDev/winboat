@@ -9,7 +9,7 @@
                         class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000"
                         :class="{
                             'bg-neutral-500': idx < currentStepIdx,
-                            'bg-violet-400': idx === currentStepIdx,
+                            'bg-violet-400': (idx === currentStepIdx && !autoSetupOpen) || (idx === 2 && autoSetupOpen) ,
                             'bg-neutral-700': idx > currentStepIdx,
                         }"
                     ></div>
@@ -1067,6 +1067,7 @@ function openAutoSetup() {
         return;
     }
 
+    currentStepIdx.value++;
     const autoSetupPath = electron.app.isPackaged
         ? path.join(process.resourcesPath, "autosetup")
         : path.join(electron.app.getAppPath(), "..", "..", "autosetup");
@@ -1105,6 +1106,7 @@ function openAutoSetup() {
 }
 
 function closeAutoSetup() {
+    currentStepIdx.value--;
     autoSetupOpen.value = false;
 }
 
