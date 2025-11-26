@@ -919,7 +919,7 @@ const steps: Step[] = [
 
 const autoSetupStep = {
     id: StepID.AUTOSETUP,
-    title: "Auto Install Requirements",
+    title: "Auto Install Dependencies",
     icon: "bx:bxs-server",
 };
 
