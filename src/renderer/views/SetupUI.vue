@@ -1082,7 +1082,7 @@ function openAutoSetup() {
     autoSetupRunning.value = true;
 
     setTimeout(() => {
-        const childProcess = child_process.spawn("pkexec", ["bash", autoSetupScriptPath]);
+        const childProcess = child_process.spawn("pkexec", ["bash", autoSetupScriptPath, process.env['USER']!]);
 
         const rlStdout = readline.createInterface({
           input: childProcess.stdout,
@@ -1103,11 +1103,11 @@ function openAutoSetup() {
         });
 
         childProcess.on("close", () => {
-            if (containerRuntime.value == ContainerRuntimes.DOCKER) {
+            if (containerRuntime.value == ContainerRuntimes.DOCKER && !((containerSpecs.value as DockerSpecs).dockerIsInUserGroups)) {
                 electron.dialog.showMessageBox({
                   type: 'info',
                   title: 'Success',
-                  message: 'Since you have installed Docker, remember to log out and back in.',
+                  message: 'Since your user has been added to the docker group you need to log out and back in (or reboot if that fails).',
                 });
             }
 
