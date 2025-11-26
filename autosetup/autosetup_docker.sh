@@ -4,7 +4,7 @@
 
 source "$(dirname "$0")/common-script.sh"
 source "$(dirname "$0")/common-service-script.sh"
-USER=$1
+USERNAME=$1
 
 install_docker() {
     printf "%b\n" "${YELLOW}Installing Docker...${RC}"
@@ -81,8 +81,8 @@ install_docker_compose() {
 
 docker_permission() {
     printf "%b\n" "${YELLOW}Adding current user to the docker group...${RC}"
-    "$ESCALATION_TOOL" usermod -aG docker "$USER"
-    printf "%b\n" "${GREEN}User $USER added to the docker group successfully.${RC}"
+    "$ESCALATION_TOOL" usermod -aG docker "$USERNAME"
+    printf "%b\n" "${GREEN}User $USERNAME added to the docker group successfully.${RC}"
 }
 
 checkEnv
