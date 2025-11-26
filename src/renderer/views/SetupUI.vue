@@ -1104,7 +1104,7 @@ function openAutoSetup() {
 
         childProcess.on("close", () => {
             if (containerRuntime.value == ContainerRuntimes.DOCKER) {
-                electron.dialog.showMessageBoxSync({
+                electron.dialog.showMessageBox({
                   type: 'info',
                   title: 'Success',
                   message: 'Since you have installed Docker, remember to log out and back in.',
