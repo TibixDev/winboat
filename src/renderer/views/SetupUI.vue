@@ -1063,7 +1063,7 @@ function openAutoSetup() {
       buttons: ['Cancel', 'OK'],
       defaultId: 1,
       title: 'Confirm',
-      message: 'Are you sure you want to open autosetup?',
+      message: 'Are you sure you want to run the dependency install script?',
     });
 
     if (response !== 1) {
