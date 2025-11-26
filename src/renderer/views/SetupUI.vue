@@ -247,7 +247,7 @@
                                 @click="openAutoSetup"
                                 :disabled="!autoSetupSupported"
                             >
-                                Open autosetup
+                                Install requirements
                             </x-button>
                             <x-button
                                 toggled
@@ -260,9 +260,12 @@
                         </div>
                     </div>
 
-                    <!-- Autosetup -->
+                    <!-- Auto install requirements -->
                     <div v-if="currentStep.id === StepID.AUTOSETUP" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <p class="text-lg text-gray-400">
+                          We'll attempt to install the dependencies for you, you can follow the process here - here's roughly what will happen
+                        </p>
                         <div class="flex flex-row items-center mt-4">
                             <XTerminal ref="terminalRef"></XTerminal>
                         </div>
@@ -916,7 +919,7 @@ const steps: Step[] = [
 
 const autoSetupStep = {
     id: StepID.AUTOSETUP,
-    title: "Auto setup",
+    title: "Auto Install Requirements",
     icon: "bx:bxs-server",
 };
 
@@ -1078,31 +1081,33 @@ function openAutoSetup() {
     autoSetupOpen.value = true;
     autoSetupRunning.value = true;
 
-    const childProcess = child_process.spawn("pkexec", ["bash", autoSetupScriptPath]);
+    setTimeout(() => {
+        const childProcess = child_process.spawn("pkexec", ["bash", autoSetupScriptPath]);
 
-    const rlStdout = readline.createInterface({
-      input: childProcess.stdout,
-      crlfDelay: Infinity
-    });
+        const rlStdout = readline.createInterface({
+          input: childProcess.stdout,
+          crlfDelay: Infinity
+        });
 
-    const rlStderr = readline.createInterface({
-      input: childProcess.stderr,
-      crlfDelay: Infinity
-    });
+        const rlStderr = readline.createInterface({
+          input: childProcess.stderr,
+          crlfDelay: Infinity
+        });
 
-    rlStdout.on('line', (line) => {
-      terminalRef.value?.writeln(line);
-    });
+        rlStdout.on('line', (line) => {
+          terminalRef.value?.writeln(line);
+        });
 
-    rlStderr.on('line', (line) => {
-      terminalRef.value?.writeln(line);
-    });
+        rlStderr.on('line', (line) => {
+          terminalRef.value?.writeln(line);
+        });
 
-    childProcess.on("close", () => {
-        autoSetupRunning.value = false;
-        getSpecs().then(res => specs.value = res );
-        getContainerSpecs(containerRuntime.value).then(res => containerSpecs.value = res );
-    });
+        childProcess.on("close", () => {
+            autoSetupRunning.value = false;
+            getSpecs().then(res => specs.value = res );
+            getContainerSpecs(containerRuntime.value).then(res => containerSpecs.value = res );
+        });
+    }, 1000);
 }
 
 function closeAutoSetup() {
