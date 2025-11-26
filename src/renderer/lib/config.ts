@@ -21,10 +21,10 @@ export class WinboatVersion {
     constructor(public readonly versionToken: string) {
         const versionTags = versionToken.split("-");
         const versionNumbers = versionTags[0].split(".").map(value => {
-            const parsedValue = parseInt(value);
+            const parsedValue = Number.parseInt(value);
             
             if(Number.isNaN(parsedValue)) {
-                throw new Error(`Invalid winboat version format: '${versionToken}'`);
+                throw new TypeError(`Invalid winboat version format: '${versionToken}'`);
             }
 
             return parsedValue;
@@ -102,9 +102,12 @@ export class WinboatConfig {
         this.#configData = WinboatConfig.readConfigObject()!;
 
         // Set correct versionData
-        if(this.config.versionData.current.versionToken !== currentVersion.versionToken) {
-            this.config.versionData.previous = this.config.versionData.current;
-            this.config.versionData.current = currentVersion;
+        if(this.#configData.versionData.current.versionToken !== currentVersion.versionToken) {
+            this.#configData.versionData = {
+                previous: this.#configData.versionData.current,
+                current: currentVersion
+            };
+            WinboatConfig.writeConfigObject(this.#configData);
 
             logger.info(`Updated version data from '${this.config.versionData.previous.toString()}' to '${currentVersion.toString()}'`);
         }
@@ -133,25 +136,25 @@ export class WinboatConfig {
         console.info("Wrote modified config to disk");
     }
 
-    static writeConfigObject(configObj: WinboatConfigObj): void {
+    static writeConfigObject(configObj: WinboatConfigObj, configPath = WinboatConfig.configPath): void {
         console.log("writing data: ", configObj);
-        fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(configObj, null, 4), "utf-8");
+        fs.writeFileSync(configPath, JSON.stringify(configObj, null, 4), "utf-8");
     }
 
-    static readConfigObject(writeDefault = true): WinboatConfigObj | null {
-        if (!fs.existsSync(WinboatConfig.configPath)) {
+    static readConfigObject(writeDefault = true, configPath: string = WinboatConfig.configPath): WinboatConfigObj | null {
+        if (!fs.existsSync(configPath)) {
             if (!writeDefault) return null;
             // Also the create the directory because we're not guaranteed to have it
             if (!fs.existsSync(WINBOAT_CONFIG_DIR)) {
                 fs.mkdirSync(WINBOAT_CONFIG_DIR);
             }
 
-            fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(defaultConfig, null, 4), "utf-8");
+            fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 4), "utf-8");
             return { ...defaultConfig };
         }
 
         try {
-            const rawConfig = fs.readFileSync(WinboatConfig.configPath, "utf-8");
+            const rawConfig = fs.readFileSync(configPath, "utf-8");
             const configObjRaw = JSON.parse(rawConfig);
 
             // Parse winboat version data
@@ -181,7 +184,7 @@ export class WinboatConfig {
                 // If we have any missing keys, we should just write the config back to disk so those new keys are saved
                 // We cannot use this.writeConfig() here since #configData is not populated yet
                 if (hasMissing) {
-                    fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(configObj, null, 4), "utf-8");
+                    fs.writeFileSync(configPath, JSON.stringify(configObj, null, 4), "utf-8");
                     console.log("Wrote updated config with missing keys to disk");
                 }
             }

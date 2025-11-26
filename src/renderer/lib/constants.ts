@@ -10,7 +10,7 @@ const XDG_CACHE_HOME = process.env.XDG_CACHE_HOME ?? path.join(process.env.HOME!
 export const WINBOAT_CONFIG_DIR = path.join(XDG_CONFIG_HOME, "winboat");
 export const WINBOAT_DATA_DIR = path.join(XDG_DATA_HOME, "winboat");
 export const WINBOAT_STATE_DIR = path.join(XDG_STATE_HOME, "winboat");
-export const WINBOAT_CACHE_HOME = path.join(XDG_CACHE_HOME, "winboat");
+export const WINBOAT_CACHE_DIR = path.join(XDG_CACHE_HOME, "winboat");
 
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
