@@ -1,6 +1,8 @@
 <template>
-  <div class="terminal-container">
-    <div ref="terminalElement" class="terminal-wrapper"></div>
+  <div class="terminal-outer">
+    <div class="terminal-container">
+      <div ref="terminalElement" class="terminal-wrapper"></div>
+    </div>
   </div>
 </template>
 
@@ -20,11 +22,10 @@ onMounted(() => {
   terminal = new Terminal({
     cursorBlink: true,
     fontSize: 14,
-    allowTransparency: true,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
     theme: {
-      foreground: '#ffffff',
-      background: '#00000000',
+      foreground: 'white',
+      background: 'rgb(38 38 38)',
     },
     disableStdin: true,
   });
@@ -50,3 +51,14 @@ defineExpose({
   writeln: (data: string) => terminal?.writeln(data),
 });
 </script>
+<style scoped>
+  .terminal-container {
+    width: 100%;
+    height: 100%;
+  }
+  .terminal-outer {
+    background-color: rgb(38, 38, 38);
+    border-radius: 8px;
+    padding: 14px;
+  }
+</style>

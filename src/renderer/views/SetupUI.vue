@@ -244,18 +244,18 @@
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="openAutoSetup"
-                                :disabled="!autoSetupSupported"
-                            >
-                                Install requirements
-                            </x-button>
-                            <x-button
-                                toggled
-                                class="px-6"
                                 @click="currentStepIdx++"
                                 :disabled="!satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
+                            </x-button>
+                            <x-button
+                                toggled
+                                class="px-6"
+                                @click="openAutoSetup"
+                                :disabled="!autoSetupSupported"
+                            >
+                                Install dependencies
                             </x-button>
                         </div>
                     </div>
