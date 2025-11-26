@@ -244,6 +244,14 @@
                             <x-button
                                 toggled
                                 class="px-6"
+                                @click="openAutoSetup"
+                                :disabled="!autoSetupSupported"
+                            >
+                                Open autosetup
+                            </x-button>
+                            <x-button
+                                toggled
+                                class="px-6"
                                 @click="currentStepIdx++"
                                 :disabled="!satisfiesPrequisites(specs, containerSpecs)"
                             >
@@ -252,6 +260,23 @@
                         </div>
                     </div>
 
+                    <!-- Autosetup -->
+                    <div v-if="currentStep.id === StepID.AUTOSETUP" class="step-block">
+                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <div class="flex flex-row items-center mt-4">
+                            <XTerminal ref="terminalRef"></XTerminal>
+                        </div>
+                        <div class="flex flex-row gap-4 mt-6">
+                            <x-button
+                                toggled
+                                class="px-6"
+                                @click="closeAutoSetup"
+                                :disabled="autoSetupRunning"
+                            >
+                                Close
+                            </x-button>
+                        </div>
+                    </div>
                     <!-- Install Location -->
                     <div v-if="currentStep.id === StepID.INSTALL_LOCATION" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
@@ -782,8 +807,9 @@
 </template>
 
 <script setup lang="ts">
+import XTerminal from "../components/Terminal.vue";
 import { Icon } from "@iconify/vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
@@ -805,6 +831,9 @@ const electron: typeof import("electron") = require("electron").remote || requir
 const fs: typeof import("fs") = require("node:fs");
 const os: typeof import("os") = require("node:os");
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
+const which: typeof import("which") = require('which')
+const child_process: typeof import("child_process") = require("child_process")
+const readline: typeof import("readline") = require('readline')
 
 type Step = {
     id: string;
@@ -815,6 +844,7 @@ type Step = {
 enum StepID {
     WELCOME = "STEP_WELCOME",
     PREREQUISITES = "STEP_PREREQUISITES",
+    AUTOSETUP = "STEP_AUTOSETUP",
     LICENSE = "STEP_LICENSE",
     INSTALL_LOCATION = "STEP_INSTALL_LOCATION",
     WINDOWS_CONFIG = "STEP_WINDOWS_CONFIG",
@@ -884,13 +914,23 @@ const steps: Step[] = [
     },
 ];
 
+const autoSetupStep = {
+    id: StepID.AUTOSETUP,
+    title: "Auto setup",
+    icon: "bx:bxs-server",
+};
+
+const SUPPORTED_PACKAGE_MANAGERS = ["dnf", "apt-get", "nala", "pacman", "zypper", "apk", "xbps-install", "eopkg"];
 const MIN_CPU_CORES = 1;
 const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
+const autoSetupSupported = ref(false);
+const autoSetupOpen = ref(false);
+const autoSetupRunning = ref(false);
 const currentStepIdx = ref(0);
-const currentStep = computed(() => steps[currentStepIdx.value]);
+const currentStep = computed(() => !autoSetupOpen.value ? steps[currentStepIdx.value] : autoSetupStep );
 const installFolder = ref(path.join(os.homedir(), "winboat"));
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
@@ -909,6 +949,7 @@ const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
+const terminalRef = ref<typeof XTerminal | null>(null);
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
 
@@ -916,6 +957,14 @@ let installManager: InstallManager | null;
 
 onMounted(async () => {
     specs.value = await getSpecs();
+    for (const packageManger of SUPPORTED_PACKAGE_MANAGERS) {
+        if (await which(packageManger)) {
+            console.log("Found package manager:", packageManger);
+            autoSetupSupported.value = true;
+            break;
+        }
+    }
+
     console.log("Specs", specs.value);
 
     memoryInfo.value = await getMemoryInfo();
@@ -1003,6 +1052,60 @@ function selectIsoFile() {
                 console.log("ISO path updated:", customIsoPath.value);
             }
         });
+}
+
+function openAutoSetup() {
+    const response = electron.dialog.showMessageBoxSync({
+      type: 'question',
+      buttons: ['Cancel', 'OK'],
+      defaultId: 1,
+      title: 'Confirm',
+      message: 'Are you sure you want to open autosetup?',
+    });
+
+    if (response !== 1) {
+        return;
+    }
+
+    const autoSetupPath = electron.app.isPackaged
+        ? path.join(process.resourcesPath, "autosetup")
+        : path.join(electron.app.getAppPath(), "..", "..", "autosetup");
+
+    const autoSetupScript = containerRuntime.value == ContainerRuntimes.DOCKER ? "autosetup_docker.sh" : "autosetup_podman.sh";
+    const autoSetupScriptPath = path.join(autoSetupPath, autoSetupScript)
+    
+    autoSetupOpen.value = true;
+    autoSetupRunning.value = true;
+
+    const childProcess = child_process.spawn("pkexec", ["bash", autoSetupScriptPath]);
+
+    const rlStdout = readline.createInterface({
+      input: childProcess.stdout,
+      crlfDelay: Infinity
+    });
+
+    const rlStderr = readline.createInterface({
+      input: childProcess.stderr,
+      crlfDelay: Infinity
+    });
+
+    rlStdout.on('line', (line) => {
+      terminalRef.value?.writeln(line);
+    });
+
+    rlStderr.on('line', (line) => {
+      terminalRef.value?.writeln(line);
+    });
+
+    childProcess.on("close", () => {
+        autoSetupRunning.value = false;
+        getSpecs().then(res => specs.value = res );
+        getContainerSpecs(containerRuntime.value).then(res => containerSpecs.value = res );
+    });
+}
+
+function closeAutoSetup() {
+    autoSetupOpen.value = false;
 }
 
 function deselectIsoFile() {
