@@ -79,8 +79,6 @@ install_docker_compose() {
 docker_permission() {
     printf "%b\n" "${YELLOW}Adding current user to the docker group...${RC}"
     "$ESCALATION_TOOL" usermod -aG docker "$USER"
-    printf "%b\n" "${YELLOW}To use Docker without sudo:${RC}"
-    printf "%b\n" "${GREEN}Log out and back in, run 'newgrp docker', or restart your terminal.${RC}"
     printf "%b\n" "${GREEN}Current user added to the docker group successfully.${RC}"
 }
 

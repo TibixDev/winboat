@@ -1103,10 +1103,24 @@ function openAutoSetup() {
         });
 
         childProcess.on("close", () => {
+            if (containerRuntime.value == ContainerRuntimes.DOCKER) {
+                electron.dialog.showMessageBoxSync({
+                  type: 'info',
+                  title: 'Success',
+                  message: 'Since you have installed Docker, remember to log out and back in.',
+                });
+            }
+
             autoSetupRunning.value = false;
             getSpecs().then(res => specs.value = res );
             getContainerSpecs(containerRuntime.value).then(res => containerSpecs.value = res );
         });
+
+        childProcess.on("error", () => {
+            electron.dialog.showErrorBox("Error", "Setup script failed, please check the terminal logs!");
+            autoSetupRunning.value = false;
+        });
+
     }, 1000);
 }
 
