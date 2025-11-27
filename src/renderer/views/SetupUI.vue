@@ -961,11 +961,13 @@ let installManager: InstallManager | null;
 onMounted(async () => {
     specs.value = await getSpecs();
     for (const packageManger of SUPPORTED_PACKAGE_MANAGERS) {
-        if (await which(packageManger)) {
-            console.log("Found package manager:", packageManger);
-            autoSetupSupported.value = true;
-            break;
-        }
+        try {
+            if (await which(packageManger)) {
+                console.log("Found package manager:", packageManger);
+                autoSetupSupported.value = true;
+                break;
+            }
+        } catch(_) {}
     }
 
     console.log("Specs", specs.value);
