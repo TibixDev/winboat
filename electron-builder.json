@@ -46,6 +46,11 @@
             "filter": ["**/*"]
         },
         {
+            "from": "./autosetup",
+            "to": "autosetup",
+            "filter": ["**/*"]
+        },
+        {
             "from": "./data",
             "to": "data",
             "filter": ["**/*"]

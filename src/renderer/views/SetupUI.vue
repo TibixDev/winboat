@@ -9,7 +9,7 @@
                         class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000"
                         :class="{
                             'bg-neutral-500': idx < currentStepIdx,
-                            'bg-violet-400': idx === currentStepIdx,
+                            'bg-violet-400': (idx === currentStepIdx && !autoSetupOpen) || (idx === 2 && autoSetupOpen) ,
                             'bg-neutral-700': idx > currentStepIdx,
                         }"
                     ></div>
@@ -249,9 +249,42 @@
                             >
                                 Next
                             </x-button>
+                            <x-button
+                                toggled
+                                class="px-6 ml-auto"
+                                @click="openAutoSetup"
+                                v-show="autoSetupSupported && !satisfiesPrequisites(specs, containerSpecs)"
+                            >
+                                Auto-install dependencies
+                            </x-button>
                         </div>
                     </div>
 
+                    <!-- Auto install requirements -->
+                    <div v-if="currentStep.id === StepID.AUTOSETUP" class="step-block">
+                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <p class="text-lg text-gray-400 mb-4">
+                            We'll attempt to automatically install the required dependencies for you. 
+                            You can follow the installation process in the terminal below.
+                        </p>
+                        <p class="text-sm text-gray-500 mb-4">
+                            This process may take a few minutes depending on your system and internet connection. 
+                            Please keep this window open until the installation completes.
+                        </p>
+                        <div class="flex flex-row items-center mt-4">
+                            <XTerminal ref="terminalRef"></XTerminal>
+                        </div>
+                        <div class="flex flex-row gap-4 mt-6">
+                            <x-button
+                                toggled
+                                class="px-6"
+                                @click="closeAutoSetup"
+                                :disabled="autoSetupRunning"
+                            >
+                                Close
+                            </x-button>
+                        </div>
+                    </div>
                     <!-- Install Location -->
                     <div v-if="currentStep.id === StepID.INSTALL_LOCATION" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
@@ -782,8 +815,9 @@
 </template>
 
 <script setup lang="ts">
+import XTerminal from "../components/Terminal.vue";
 import { Icon } from "@iconify/vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
@@ -805,6 +839,9 @@ const electron: typeof import("electron") = require("electron").remote || requir
 const fs: typeof import("fs") = require("node:fs");
 const os: typeof import("os") = require("node:os");
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
+const which: typeof import("which") = require('which')
+const child_process: typeof import("child_process") = require("child_process")
+const readline: typeof import("readline") = require('readline')
 
 type Step = {
     id: string;
@@ -815,6 +852,7 @@ type Step = {
 enum StepID {
     WELCOME = "STEP_WELCOME",
     PREREQUISITES = "STEP_PREREQUISITES",
+    AUTOSETUP = "STEP_AUTOSETUP",
     LICENSE = "STEP_LICENSE",
     INSTALL_LOCATION = "STEP_INSTALL_LOCATION",
     WINDOWS_CONFIG = "STEP_WINDOWS_CONFIG",
@@ -884,13 +922,23 @@ const steps: Step[] = [
     },
 ];
 
+const autoSetupStep = {
+    id: StepID.AUTOSETUP,
+    title: "Dependency Installation",
+    icon: "material-symbols:frame-source-rounded",
+};
+
+const SUPPORTED_PACKAGE_MANAGERS = ["dnf", "apt-get", "nala", "pacman", "zypper", "xbps-install", "eopkg"];
 const MIN_CPU_CORES = 1;
 const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
+const autoSetupSupported = ref(false);
+const autoSetupOpen = ref(false);
+const autoSetupRunning = ref(false);
 const currentStepIdx = ref(0);
-const currentStep = computed(() => steps[currentStepIdx.value]);
+const currentStep = computed(() => !autoSetupOpen.value ? steps[currentStepIdx.value] : autoSetupStep );
 const installFolder = ref(path.join(os.homedir(), "winboat"));
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
@@ -909,6 +957,7 @@ const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
+const terminalRef = ref<typeof XTerminal | null>(null);
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
 
@@ -916,6 +965,16 @@ let installManager: InstallManager | null;
 
 onMounted(async () => {
     specs.value = await getSpecs();
+    for (const packageManger of SUPPORTED_PACKAGE_MANAGERS) {
+        try {
+            if (await which(packageManger)) {
+                console.log("Found package manager:", packageManger);
+                autoSetupSupported.value = true;
+                break;
+            }
+        } catch(_) {}
+    }
+
     console.log("Specs", specs.value);
 
     memoryInfo.value = await getMemoryInfo();
@@ -1003,6 +1062,78 @@ function selectIsoFile() {
                 console.log("ISO path updated:", customIsoPath.value);
             }
         });
+}
+
+function openAutoSetup() {
+    const response = electron.dialog.showMessageBoxSync({
+      type: 'question',
+      buttons: ['Cancel', 'OK'],
+      defaultId: 1,
+      title: 'Confirm',
+      message: 'Are you sure you want to run the dependency install script?',
+    });
+
+    if (response !== 1) {
+        return;
+    }
+
+    currentStepIdx.value++;
+    const autoSetupPath = electron.app.isPackaged
+        ? path.join(process.resourcesPath, "autosetup")
+        : path.join(electron.app.getAppPath(), "..", "..", "autosetup");
+
+    const autoSetupScript = containerRuntime.value == ContainerRuntimes.DOCKER ? "autosetup_docker.sh" : "autosetup_podman.sh";
+    const autoSetupScriptPath = path.join(autoSetupPath, autoSetupScript)
+    
+    autoSetupOpen.value = true;
+    autoSetupRunning.value = true;
+
+    setTimeout(() => {
+        const childProcess = child_process.spawn("pkexec", ["bash", autoSetupScriptPath, process.env['USER']!]);
+
+        const rlStdout = readline.createInterface({
+          input: childProcess.stdout,
+          crlfDelay: Infinity
+        });
+
+        const rlStderr = readline.createInterface({
+          input: childProcess.stderr,
+          crlfDelay: Infinity
+        });
+
+        rlStdout.on('line', (line) => {
+          terminalRef.value?.writeln(line);
+        });
+
+        rlStderr.on('line', (line) => {
+          terminalRef.value?.writeln(line);
+        });
+
+        childProcess.on("close", () => {
+            if (containerRuntime.value == ContainerRuntimes.DOCKER && !((containerSpecs.value as DockerSpecs).dockerIsInUserGroups)) {
+                electron.dialog.showMessageBox({
+                  type: 'info',
+                  title: 'Success',
+                  message: 'Since your user has been added to the docker group you need to log out and back in (or reboot if that fails).',
+                });
+            }
+
+            autoSetupRunning.value = false;
+            getSpecs().then(res => specs.value = res );
+            getContainerSpecs(containerRuntime.value).then(res => containerSpecs.value = res );
+        });
+
+        childProcess.on("error", () => {
+            electron.dialog.showErrorBox("Error", "Setup script failed, please check the terminal logs!");
+            autoSetupRunning.value = false;
+        });
+
+    }, 1000);
+}
+
+function closeAutoSetup() {
+    currentStepIdx.value--;
+    autoSetupOpen.value = false;
 }
 
 function deselectIsoFile() {
