@@ -27,8 +27,8 @@ installPodmanCompose() {
 
                 if [ "$ID" = "opensuse-leap" ]; then
                     zypper addrepo https://download.opensuse.org/repositories/devel:languages:python/$VERSION_ID/devel:languages:python.repo
-                    zypper refresh
-                    zypper install -y python-podman-compose
+                    zypper --gpg-auto-import-keys refresh
+                    zypper --gpg-auto-import-keys install -y podman-compose
                 elif [ "$ID" = "opensuse-tumbleweed" ]; then
                     "$ESCALATION_TOOL" "$PACKAGER" install -y podman-compose
                 else
