@@ -32,7 +32,7 @@ installPodmanCompose() {
                 elif [ "$ID" = "opensuse-tumbleweed" ]; then
                     "$ESCALATION_TOOL" "$PACKAGER" install -y podman-compose
                 else
-                    printf "%b\n" "${RED}Unsupported openSUSE distro: ${PACKAGER}${RC}"
+                    printf "%b\n" "${RED}Unsupported openSUSE distro: ${$ID}${RC}"
                     exit 1
                 fi
                 ;;

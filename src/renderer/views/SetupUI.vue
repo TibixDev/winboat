@@ -251,11 +251,11 @@
                             </x-button>
                             <x-button
                                 toggled
-                                class="px-6"
+                                class="px-6 ml-auto"
                                 @click="openAutoSetup"
-                                :disabled="!autoSetupSupported"
+                                v-show="autoSetupSupported && !satisfiesPrequisites(specs, containerSpecs)"
                             >
-                                Install dependencies
+                                Auto-install dependencies
                             </x-button>
                         </div>
                     </div>
@@ -263,8 +263,13 @@
                     <!-- Auto install requirements -->
                     <div v-if="currentStep.id === StepID.AUTOSETUP" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
-                        <p class="text-lg text-gray-400">
-                          We'll attempt to install the dependencies for you, you can follow the process here - here's roughly what will happen
+                        <p class="text-lg text-gray-400 mb-4">
+                            We'll attempt to automatically install the required dependencies for you. 
+                            You can follow the installation process in the terminal below.
+                        </p>
+                        <p class="text-sm text-gray-500 mb-4">
+                            This process may take a few minutes depending on your system and internet connection. 
+                            Please keep this window open until the installation completes.
                         </p>
                         <div class="flex flex-row items-center mt-4">
                             <XTerminal ref="terminalRef"></XTerminal>
@@ -919,11 +924,11 @@ const steps: Step[] = [
 
 const autoSetupStep = {
     id: StepID.AUTOSETUP,
-    title: "Dependency installation",
-    icon: "bx:bxs-server",
+    title: "Dependency Installation",
+    icon: "material-symbols:frame-source-rounded",
 };
 
-const SUPPORTED_PACKAGE_MANAGERS = ["dnf", "apt-get", "nala", "pacman", "zypper", "apk", "xbps-install", "eopkg"];
+const SUPPORTED_PACKAGE_MANAGERS = ["dnf", "apt-get", "nala", "pacman", "zypper", "xbps-install", "eopkg"];
 const MIN_CPU_CORES = 1;
 const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
