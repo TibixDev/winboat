@@ -559,17 +559,37 @@ async function launchInstallerViaRDP(installerPath: string, installerName: strin
 }
 
 async function installApp(apiUrl: string, installerPath: string): Promise<void> {
+    // Resolve relative paths - if path doesn't start with / or ~, resolve from home directory
+    // or current working directory (whichever makes sense)
+    let resolvedPath = installerPath;
+    if (!path.isAbsolute(installerPath) && !installerPath.startsWith("~")) {
+        // Try resolving from home directory first (common case: Downloads/file.exe)
+        const homePath = path.join(os.homedir(), installerPath);
+        if (fs.existsSync(homePath)) {
+            resolvedPath = homePath;
+        } else {
+            // Try resolving from current working directory
+            resolvedPath = path.resolve(installerPath);
+        }
+    } else if (installerPath.startsWith("~")) {
+        // Expand ~ to home directory
+        resolvedPath = path.join(os.homedir(), installerPath.slice(1));
+    }
+    
+    // Normalize the path
+    resolvedPath = path.normalize(resolvedPath);
+    
     // Validate file
-    if (!fs.existsSync(installerPath)) {
-        throw new Error(`File not found: ${installerPath}`);
+    if (!fs.existsSync(resolvedPath)) {
+        throw new Error(`File not found: ${installerPath} (resolved to: ${resolvedPath})`);
     }
 
-    const stats = fs.statSync(installerPath);
+    const stats = fs.statSync(resolvedPath);
     if (!stats.isFile()) {
-        throw new Error(`Path is not a file: ${installerPath}`);
+        throw new Error(`Path is not a file: ${resolvedPath}`);
     }
 
-    const ext = path.extname(installerPath).toLowerCase();
+    const ext = path.extname(resolvedPath).toLowerCase();
     if (ext !== ".exe" && ext !== ".msi") {
         throw new Error(`Invalid file type. Only .exe and .msi files are supported.`);
     }
@@ -579,10 +599,10 @@ async function installApp(apiUrl: string, installerPath: string): Promise<void> 
         throw new Error(`File size exceeds 100MB limit. File size: ${fileSizeMB.toFixed(2)}MB`);
     }
 
-    console.log(`Uploading installer: ${path.basename(installerPath)}...`);
+    console.log(`Uploading installer: ${path.basename(resolvedPath)}...`);
 
     const form = new FormData();
-    form.append("installer", fs.createReadStream(installerPath));
+    form.append("installer", fs.createReadStream(resolvedPath));
 
     try {
         const url = new URL(`${apiUrl}/upload-installer`);
