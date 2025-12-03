@@ -113,3 +113,4 @@ winboat --api-url http://192.168.1.100:7148 -i app.msi
 - Installation may take a few moments; apps appear in the list shortly after
 - The CLI communicates directly with the WinBoat Guest Server API
 
+
