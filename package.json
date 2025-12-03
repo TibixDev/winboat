@@ -4,13 +4,18 @@
     "description": "Windows for Penguins",
     "type": "module",
     "main": "main/main.js",
+    "bin": {
+        "winboat": "./scripts/winboat-cli.ts"
+    },
     "engines": {
         "node": ">=23.6.0"
     },
     "scripts": {
         "dev": "node scripts/dev-server.ts",
         "build-guest-server": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.ts && electron-builder --linux"
+        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.ts && electron-builder --linux",
+        "install-app": "node scripts/install-app-cli.ts",
+        "winboat": "node scripts/winboat-cli.ts"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {

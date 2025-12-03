@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+    ; Disable RemoteApp allowlist so all applications can be used in Remote Desktop sessions
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\TSAppAllowList]
+    "fDisabledAllowList"=dword:00000001
+
+    ; Allow unlisted programs to be run in Remote Desktop sessions
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services]
+    "fAllowUnlistedRemotePrograms"=dword:00000001
+
+    ; Disable automatic administrator logon at startup
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon]
+    "AutoAdminLogon"="0"
+
+    ; Always use the server's keyboard layout, TODO: Investigate
+    [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout]
+    "IgnoreRemoteKeyboardLayout"=dword:00000001
+
+    ; Disable "Do you want your PC to be discoverable" prompt after each host system reboot
+    [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Network\NewNetworkWindowOff]

@@ -112,6 +112,16 @@
                     <x-label>Refresh</x-label>
                 </x-button>
 
+                <!-- Install App Button -->
+                <x-button 
+                    class="flex flex-row gap-1 items-center" 
+                    @click="triggerInstallerUpload"
+                    :disabled="isInstalling"
+                >
+                    <Icon icon="mdi:package-variant" class="size-4"></Icon>
+                    <x-label>{{ isInstalling ? "Installing..." : "Install App" }}</x-label>
+                </x-button>
+
                 <!-- Custom App Add Button -->
                 <x-button class="flex flex-row gap-1 items-center" @click="openAddAppDialog()">
                     <x-icon href="#add" class="qualifier"></x-icon>
@@ -273,6 +283,7 @@ const currentAppForm = ref<WinApp>({
     Icon: "",
     Source: "",
 });
+const isInstalling = ref(false);
 
 const AllSources = computed(() => {
     let sourceList: Record<string, string> = {};
@@ -524,6 +535,71 @@ async function resetCustomAppForm() {
             input.value = "";
         });
     }, 100);
+}
+
+/**
+ * Triggers the file picker for installer upload using Electron's dialog API
+ */
+async function triggerInstallerUpload() {
+    if (!winboat.isOnline.value) {
+        alert("WinBoat must be online to install applications");
+        return;
+    }
+    
+    if (isInstalling.value) {
+        return; // Already installing
+    }
+
+    const remote: typeof import("@electron/remote") = require("@electron/remote");
+    const { dialog } = remote;
+    const path: typeof import("path") = require("node:path");
+    
+    try {
+        const result = await dialog.showOpenDialog({
+            title: "Select Application Installer",
+            filters: [
+                { name: "Installers", extensions: ["exe", "msi"] },
+                { name: "All Files", extensions: ["*"] }
+            ],
+            properties: ["openFile"],
+        });
+        
+        if (result.canceled || !result.filePaths.length) {
+            return;
+        }
+        
+        const filePath = result.filePaths[0];
+        const ext = path.extname(filePath).toLowerCase();
+        
+        // Validate file type
+        if (ext !== '.exe' && ext !== '.msi') {
+            alert('Invalid file type. Only .exe and .msi files are supported.');
+            return;
+        }
+        
+        isInstalling.value = true;
+        
+        try {
+            await winboat.uploadAndInstall(filePath);
+            
+            // Show success message
+            alert(`Installation started for ${path.basename(filePath)}. The app will appear in your app list shortly.`);
+            
+            // Refresh apps after a delay to allow installation to complete
+            setTimeout(async () => {
+                await refreshApps();
+            }, 5000);
+        } catch (error: any) {
+            console.error('Installation failed:', error);
+            alert(`Failed to install application: ${error.message || 'Unknown error'}`);
+        } finally {
+            isInstalling.value = false;
+        }
+    } catch (error: any) {
+        console.error('File dialog error:', error);
+        alert(`Failed to open file dialog: ${error.message || 'Unknown error'}`);
+        isInstalling.value = false;
+    }
 }
 </script>
 

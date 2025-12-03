@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -303,6 +304,83 @@ func setAuthHash(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func uploadInstaller(w http.ResponseWriter, r *http.Request) {
+	// Parse multipart form (max 100MB)
+	err := r.ParseMultipartForm(100 << 20)
+	if err != nil {
+		http.Error(w, "Failed to parse multipart form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("installer")
+	if err != nil {
+		http.Error(w, "Failed to get installer file: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file extension
+	filename := strings.ToLower(handler.Filename)
+	if !strings.HasSuffix(filename, ".exe") && !strings.HasSuffix(filename, ".msi") {
+		http.Error(w, "Invalid file type. Only .exe and .msi files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	// Save to temp directory with unique filename to avoid conflicts
+	// Use timestamp to ensure uniqueness
+	baseName := strings.TrimSuffix(handler.Filename, filepath.Ext(handler.Filename))
+	ext := filepath.Ext(handler.Filename)
+	timestamp := time.Now().Unix()
+	uniqueFilename := fmt.Sprintf("%s_%d%s", baseName, timestamp, ext)
+	tempPath := filepath.Join(os.TempDir(), uniqueFilename)
+
+	// Remove existing file if it exists (in case of previous failed attempt)
+	// Try multiple times with small delay in case file is locked
+	for i := 0; i < 3; i++ {
+		err := os.Remove(tempPath)
+		if err == nil || os.IsNotExist(err) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	dst, err := os.Create(tempPath)
+	if err != nil {
+		http.Error(w, "Failed to create temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Copy file to temp location
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		dst.Close()
+		os.Remove(tempPath)
+		http.Error(w, "Failed to save file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Close the file explicitly (required on Windows)
+	err = dst.Close()
+	if err != nil {
+		os.Remove(tempPath)
+		http.Error(w, "Failed to close temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Note: We don't execute the installer here. The host will launch it via FreeRDP
+	// so it appears as a native window. The installer is saved and ready to be launched.
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]string{
+		"status":    "installed",
+		"filename":  handler.Filename,
+		"temp_path": tempPath,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
 func main() {
 	// Try to initialize auth key hash if not present
 	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
@@ -337,10 +415,11 @@ func main() {
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
 	r.HandleFunc("/auth/set-hash", setAuthHash).Methods("POST")
+	r.HandleFunc("/upload-installer", uploadInstaller).Methods("POST")
 	handler := cors.Default().Handler(r)
 
-	log.Println("Starting WinBoat Guest Server on :7148...")
-	if err := http.ListenAndServe(":7148", handler); err != nil {
+	log.Println("Starting WinBoat Guest Server on 0.0.0.0:7148...")
+	if err := http.ListenAndServe("0.0.0.0:7148", handler); err != nil {
 		log.Fatal("Server failed: ", err)
 	}
 }
