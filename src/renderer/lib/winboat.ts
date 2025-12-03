@@ -748,6 +748,16 @@ export class Winboat {
             const result = await response.json();
             logger.info(`Installer uploaded successfully: ${JSON.stringify(result)}`);
 
+            // Launch installer via FreeRDP so it appears as native window on host
+            logger.info("Launching installer via FreeRDP...");
+            try {
+                await this.launchInstallerViaFreeRDP(result.temp_path, result.filename);
+                logger.info("Installer window should appear shortly on your host!");
+            } catch (error: any) {
+                logger.error(`Failed to launch installer via FreeRDP: ${error.message}`);
+                // Don't throw - installation might still work, just without GUI
+            }
+
             // Wait a bit for installation to start, then refresh app cache
             setTimeout(async () => {
                 logger.info("Refreshing app cache after installation...");
@@ -759,6 +769,84 @@ export class Winboat {
             logger.error("Failed to upload and install application");
             logger.error(e);
             throw e;
+        }
+    }
+
+    /**
+     * Launches an installer via FreeRDP so it appears as a native window on the host
+     * @param installerPath Path to the installer file on Windows (e.g., C:\WINDOWS\SystemTemp\app.exe)
+     * @param installerName Original filename of the installer
+     */
+    async launchInstallerViaFreeRDP(installerPath: string, installerName: string): Promise<void> {
+        if (!this.isOnline.value) {
+            throw new Error("Cannot launch installer, Winboat is offline");
+        }
+
+        const { username, password } = this.getCredentials();
+        const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
+
+        const freeRDPInstallation = await getFreeRDP();
+        if (!freeRDPInstallation) {
+            throw new Error("FreeRDP 3.x not found. Please install FreeRDP 3.x with sound support.");
+        }
+
+        // Build FreeRDP command for installer
+        const cleanName = installerName.replace(/[,.'"]/g, "").replace(/\.[^.]*$/, ""); // Remove extension and special chars
+        
+        // Determine command based on file extension
+        const isMSI = installerPath.toLowerCase().endsWith(".msi");
+        
+        // For MSI: use msiexec.exe with /i argument
+        // For EXE: run the installer directly
+        const appProgram = isMSI ? "C:\\Windows\\System32\\msiexec.exe" : installerPath;
+        const appCmd = isMSI ? `/i "${installerPath}"` : "";
+
+        // Get user's RDP args configuration (similar to launchApp)
+        const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
+        const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => !a.isReplacement).map(v => v.newArg) ?? [];
+        const combinedArgs = stockArgs
+            .map(argStr =>
+                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
+            )
+            .concat(newArgs);
+
+        const args = [
+            `/u:${username}`,
+            `/p:${password}`,
+            `/v:127.0.0.1`,
+            `/port:${rdpHostPort}`,
+            ...combinedArgs,
+            "-wallpaper",
+            `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
+            `/wm-class:winboat-installer-${cleanName}`,
+            `/app:program:${appProgram},name:${cleanName} Installer,cmd:"${appCmd}"`,
+        ].filter((v) => v.trim() !== "");
+
+        logger.info(`Launching installer via FreeRDP: ${installerName}`);
+        logger.info(`FreeRDP command: ${freeRDPInstallation.stringifyExec(args)}`);
+
+        try {
+            await freeRDPInstallation.exec(args);
+        } catch (e) {
+            const execError = e as ExecFileAsyncError;
+            const ERRINFO_RPC_INITIATED_DISCONNECT = 0x00000001;
+            const ERRINFO_LOGOFF_BY_USER = 0x0000000c;
+
+            // Handle FreeRDP error codes (similar to launchApp)
+            switch (execError.code) {
+                case ERRINFO_RPC_INITIATED_DISCONNECT: {
+                    logger.info("FreeRDP connection already established for installer.");
+                    break;
+                }
+                case ERRINFO_LOGOFF_BY_USER: {
+                    logger.info("FreeRDP disconnected due to user logging off.");
+                    break;
+                }
+                default: {
+                    logger.warn(`FreeRDP process returned error code '${execError.code}'`);
+                    throw e; // Re-throw other errors
+                }
+            }
         }
     }
 
