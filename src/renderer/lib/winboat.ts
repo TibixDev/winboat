@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR } from "./constants";
+import { WINBOAT_CACHE_DIR, WINBOAT_CONFIG_DIR, WINBOAT_DATA_DIR, WINBOAT_STATE_DIR } from "./constants";
 import type {
     ComposeConfig,
     CustomAppCallbacks,
@@ -33,8 +33,8 @@ const FormData: typeof import("form-data") = require("form-data");
 const argon2: typeof import("argon2") = require("argon2");
 
 const execAsync = promisify(exec);
-const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");
-export const logger = createLogger(path.join(WINBOAT_DIR, "winboat.log"));
+const USAGE_PATH = path.join(WINBOAT_CACHE_DIR, "appUsage.json");
+export const logger = createLogger(path.join(WINBOAT_STATE_DIR, "winboat.log"));
 
 enum CustomAppCommands {
     NOVNC_COMMAND = "NOVNC_COMMAND",
@@ -540,7 +540,7 @@ export class Winboat {
         await this.containerMgr!.compose("down");
 
         // 2. Create a backup directory if it doesn't exist
-        const backupDir = path.join(WINBOAT_DIR, "backup");
+        const backupDir = path.join(WINBOAT_CACHE_DIR, "backup");
 
         if (!fs.existsSync(backupDir)) {
             fs.mkdirSync(backupDir);
@@ -597,8 +597,11 @@ export class Winboat {
         }
 
         // 4. Remove WinBoat directory
-        fs.rmSync(WINBOAT_DIR, { recursive: true, force: true });
-        console.info(`Removed ${WINBOAT_DIR}`);
+        fs.rmSync(WINBOAT_CACHE_DIR, { recursive: true, force: true });
+        fs.rmSync(WINBOAT_STATE_DIR, { recursive: true, force: true });
+        fs.rmSync(WINBOAT_CONFIG_DIR, { recursive: true, force: true });
+        fs.rmSync(WINBOAT_DATA_DIR, { recursive: true, force: true });
+        console.info(`Removed '${[WINBOAT_CACHE_DIR, WINBOAT_STATE_DIR, WINBOAT_CONFIG_DIR, WINBOAT_DATA_DIR]}'`);
         console.info("So long and thanks for all the fish!");
     }
 

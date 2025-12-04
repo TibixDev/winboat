@@ -1,11 +1,11 @@
 import { ComposeConfig } from "../../../types";
-import { WINBOAT_DIR } from "../constants";
+import { WINBOAT_STATE_DIR } from "../constants";
 import { createLogger } from "../../utils/log";
 import { ComposePortEntry } from "../../utils/port";
 
 const path: typeof import("node:path") = require("node:path");
 
-export const containerLogger = createLogger(path.join(WINBOAT_DIR, "container.log"));
+export const containerLogger = createLogger(path.join(WINBOAT_STATE_DIR, "container.log"));
 
 export type ComposeDirection = "up" | "down";
 export type ComposeArguments = "--no-start";
