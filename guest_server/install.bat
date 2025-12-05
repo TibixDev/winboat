@@ -21,7 +21,8 @@ xcopy "%OEM_DIR%\*" "%INSTALL_DIR%\" /Y /E
 "%NSSM_PATH%" set WinBoatGuestServer Description "WinBoat Guest Server API on port 7148"
 "%NSSM_PATH%" set WinBoatGuestServer ObjectName "NT AUTHORITY\SYSTEM"
 
-:: Add firewall rule for port 7148
+:: Add firewall rule for port 7148 (remove existing first to avoid errors)
+netsh advfirewall firewall delete rule name="Allow WinBoat API 7148" >nul 2>&1
 netsh advfirewall firewall add rule name="Allow WinBoat API 7148" dir=in action=allow protocol=TCP localport=7148
 
 :: Start the service

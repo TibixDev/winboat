@@ -12,6 +12,12 @@ export type RdpArg = {
     isReplacement: boolean;
 };
 
+export type ArgumentTemplate = {
+    name: string;
+    args: string;
+    description: string;
+};
+
 export class WinboatVersion {
     public readonly generation: number;
     public readonly major: number;
@@ -64,9 +70,34 @@ export type WinboatConfigObj = {
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
     versionData: WinboatVersionData;
+    argumentTemplates?: ArgumentTemplate[];
 };
 
 const currentVersion = new WinboatVersion(import.meta.env.VITE_APP_VERSION);
+
+// Predefined argument templates for common applications
+export const defaultArgumentTemplates: ArgumentTemplate[] = [
+    {
+        name: "Chrome Kiosk",
+        args: "--kiosk --disable-infobars",
+        description: "Launch Chrome in kiosk mode",
+    },
+    {
+        name: "VS Code Dev",
+        args: "--new-window --disable-extensions",
+        description: "Launch VS Code for development",
+    },
+    {
+        name: "Firefox Private",
+        args: "-private-window",
+        description: "Launch Firefox in private browsing mode",
+    },
+    {
+        name: "Notepad New",
+        args: "",
+        description: "Launch Notepad with a new document",
+    },
+];
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,
@@ -85,7 +116,8 @@ const defaultConfig: WinboatConfigObj = {
     versionData: {
         previous: currentVersion, // As of 0.9.0 this won't exist on the filesystem, so we just set it to the current version
         current: currentVersion
-    }
+    },
+    argumentTemplates: defaultArgumentTemplates,
 };
 
 export class WinboatConfig {
