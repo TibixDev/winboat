@@ -84,6 +84,22 @@ export type ComposeConfig = {
             restart: string;
             volumes: string[];
             devices: string[];
+            dns?: string[];
+            // Docker Compose v3+ / Podman Compose deploy resources
+            // Limits set the maximum resources available
+            // Reservations set minimal guaranteed resources (low values = dynamic allocation)
+            deploy?: {
+                resources: {
+                    limits: {
+                        memory: string;
+                        cpus: string;
+                    };
+                    reservations?: {
+                        memory?: string;
+                        cpus?: string;
+                    };
+                };
+            };
         };
     };
 };

@@ -25,6 +25,7 @@ import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } fr
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
+const os: typeof import("os") = require("node:os");
 const process: typeof import("process") = require("node:process");
 const { promisify }: typeof import("util") = require("node:util");
 const { exec }: typeof import("child_process") = require("node:child_process");
@@ -78,6 +79,9 @@ const stockArgs = [
     "/floatbar",
     "/compression",
     "/sec:tls",
+    "/gfx:RFX", // Enable RemoteFX graphics for better UI interaction (helps with clickable notifications)
+    "/rfx", // RemoteFX codec for better interactive content
+    "+auto-reconnect", // Auto-reconnect for better stability
 ];
 
 /**
@@ -227,6 +231,7 @@ export class Winboat {
     #metricsInverval: NodeJS.Timeout | null = null;
     #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
     #qmpInterval: NodeJS.Timeout | null = null;
+    #hostAppSyncDone: boolean = false;
 
     // Variables
     isOnline: Ref<boolean> = ref(false);
@@ -308,6 +313,15 @@ export class Winboat {
 
                 if (this.isOnline.value) {
                     await this.checkVersionAndUpdateGuestServer();
+                    // Sync Windows apps to host application menu when API comes online
+                    if (!this.#hostAppSyncDone && this.apiUrl) {
+                        this.syncHostApps().catch((error) => {
+                            logger.error(`Failed to sync host apps: ${error.message}`);
+                        });
+                    }
+                } else {
+                    // Reset sync flag when API goes offline
+                    this.#hostAppSyncDone = false;
                 }
             }
         }, HEALTH_WAIT_MS);
@@ -763,12 +777,50 @@ export class Winboat {
                 logger.info("Refreshing app cache after installation...");
                 if (this.apiUrl) {
                     await this.appMgr?.updateAppCache(this.apiUrl, { forceRead: true });
+                    // Sync host apps after new installation
+                    this.syncHostApps().catch((error) => {
+                        logger.error(`Failed to sync host apps after installation: ${error.message}`);
+                    });
                 }
             }, 3000);
         } catch (e) {
             logger.error("Failed to upload and install application");
             logger.error(e);
             throw e;
+        }
+    }
+
+    /**
+     * Syncs Windows apps to the host's application menu by creating desktop entries
+     */
+    async syncHostApps(): Promise<void> {
+        if (!this.apiUrl) {
+            logger.warn("Cannot sync host apps: API URL not available");
+            return;
+        }
+
+        try {
+            // Execute sync via CLI (more reliable than trying to import TypeScript in renderer)
+            const winboatCliPath = path.join(process.cwd(), "scripts", "winboat-cli.ts");
+            if (fs.existsSync(winboatCliPath)) {
+                // Use the winboat wrapper script if available, otherwise use node directly
+                const winboatWrapper = path.join(os.homedir(), ".local", "bin", "winboat");
+                const command = fs.existsSync(winboatWrapper)
+                    ? `${winboatWrapper} --sync --api-url ${this.apiUrl}`
+                    : `node ${winboatCliPath} --sync --api-url ${this.apiUrl}`;
+                
+                await execAsync(command, {
+                    cwd: process.cwd(),
+                    env: process.env,
+                });
+                this.#hostAppSyncDone = true;
+                logger.info("Successfully synced Windows apps to host application menu");
+            } else {
+                logger.warn("WinBoat CLI not found, skipping host app sync");
+            }
+        } catch (error: any) {
+            logger.error(`Failed to sync host apps: ${error.message}`);
+            // Don't throw - this is a background operation
         }
     }
 

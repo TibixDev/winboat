@@ -16,7 +16,8 @@
         "build-guest-server": "bash build-guest-server.sh",
         "build:linux-gs": "bash build-guest-server.sh && node scripts/build.ts && electron-builder --linux",
         "install-app": "node scripts/install-app-cli.ts",
-        "winboat": "node scripts/winboat-cli.ts"
+        "winboat": "node scripts/winboat-cli.ts",
+        "sync-apps": "node scripts/sync-host-apps.ts"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {

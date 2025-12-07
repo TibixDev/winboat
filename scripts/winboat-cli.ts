@@ -33,6 +33,8 @@ interface CliOptions {
     launch?: string;
     list?: boolean;
     status?: boolean;
+    sync?: boolean;
+    clean?: boolean;
     apiUrl: string;
 }
 
@@ -47,7 +49,7 @@ interface WinApp {
 
 function parseArgs(): CliOptions {
     const args = process.argv.slice(2);
-    
+
     if (args.length === 0) {
         showHelp();
         process.exit(0);
@@ -59,7 +61,7 @@ function parseArgs(): CliOptions {
 
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
-        
+
         if (arg === "-i" || arg === "--install") {
             if (i + 1 >= args.length) {
                 console.error("Error: -i/--install requires a file path");
@@ -76,6 +78,10 @@ function parseArgs(): CliOptions {
             options.list = true;
         } else if (arg === "--status" || arg === "-s" || arg === "-status") {
             options.status = true;
+        } else if (arg === "--sync") {
+            options.sync = true;
+        } else if (arg === "--clean") {
+            options.clean = true;
         } else if (arg === "--api-url") {
             if (i + 1 >= args.length) {
                 console.error("Error: --api-url requires a URL");
@@ -112,6 +118,8 @@ Options:
   -l, --launch <name>       Launch an application by name
   --list, -ls, -list        List all available applications
   --status, -s, -status     Check WinBoat container and API status
+  --sync                    Sync Windows apps to host application menu
+  --clean                   Clean existing desktop entries before syncing (use with --sync)
   --api-url <url>           Specify custom API URL (default: http://localhost:7148)
   -h, --help                Show this help message
 
@@ -120,6 +128,7 @@ Examples:
   winboat -l "Google Chrome"
   winboat --list
   winboat --status
+  winboat --sync
   winboat --api-url http://localhost:7148 --list
 `);
 }
@@ -174,7 +183,7 @@ function makeRequest(url: string, method: string = "GET", body?: any): Promise<{
 
 async function checkContainerStatus(): Promise<{ running: boolean; exists: boolean; name?: string }> {
     const execAsync = promisify(exec);
-    
+
     // Check Docker
     try {
         const { stdout } = await execAsync("docker ps -a --filter name=WinBoat --format '{{.Names}}|{{.Status}}'");
@@ -186,8 +195,8 @@ async function checkContainerStatus(): Promise<{ running: boolean; exists: boole
                 name: name || "WinBoat",
             };
         }
-    } catch {}
-    
+    } catch { }
+
     // Check Podman
     try {
         const { stdout } = await execAsync("podman ps -a --filter name=WinBoat --format '{{.Names}}|{{.Status}}'");
@@ -199,14 +208,14 @@ async function checkContainerStatus(): Promise<{ running: boolean; exists: boole
                 name: name || "WinBoat",
             };
         }
-    } catch {}
-    
+    } catch { }
+
     return { running: false, exists: false };
 }
 
 async function checkGuestServerRunning(containerName: string = "WinBoat"): Promise<boolean> {
     const execAsync = promisify(exec);
-    
+
     // Try Docker
     try {
         // Check if process is running (Windows tasklist)
@@ -214,22 +223,22 @@ async function checkGuestServerRunning(containerName: string = "WinBoat"): Promi
         if (stdout.includes("winboat_guest_server.exe")) {
             return true;
         }
-        
+
         // Try PowerShell
         const { stdout: psOutput } = await execAsync(`docker exec ${containerName} powershell -Command "Get-Process | Where-Object {$_.ProcessName -like '*winboat*'}" 2>/dev/null || true`);
         if (psOutput && psOutput.trim() && !psOutput.includes("Cannot find")) {
             return true;
         }
-    } catch {}
-    
+    } catch { }
+
     // Try Podman
     try {
         const { stdout } = await execAsync(`podman exec ${containerName} tasklist /FI "IMAGENAME eq winboat_guest_server.exe" 2>/dev/null || true`);
         if (stdout.includes("winboat_guest_server.exe")) {
             return true;
         }
-    } catch {}
-    
+    } catch { }
+
     return false;
 }
 
@@ -237,7 +246,7 @@ async function getApiPortFromCompose(): Promise<number | null> {
     try {
         const compose = await getComposeFile();
         const ports = compose.services?.windows?.ports || [];
-        
+
         for (const portEntry of ports) {
             if (typeof portEntry === "string") {
                 // Format: "127.0.0.1:47280-47289:7148/tcp" or "127.0.0.1:47280:7148/tcp"
@@ -273,13 +282,13 @@ async function getApiPortFromCompose(): Promise<number | null> {
     } catch (error) {
         // Silently fail, will try other methods
     }
-    
+
     return null;
 }
 
 async function getApiPort(): Promise<number | null> {
     const execAsync = promisify(exec);
-    
+
     // First, try to get the ACTUAL port from Docker/Podman (most accurate)
     // This is better than reading the compose file because Docker may assign
     // a different port from the range (e.g., 47286 instead of 47280)
@@ -310,8 +319,8 @@ async function getApiPort(): Promise<number | null> {
                 }
             }
         }
-    } catch {}
-    
+    } catch { }
+
     // Try Podman port command
     try {
         const { stdout } = await execAsync("podman port WinBoat 2>/dev/null || true");
@@ -334,27 +343,27 @@ async function getApiPort(): Promise<number | null> {
                 }
             }
         }
-    } catch {}
-    
+    } catch { }
+
     // Fallback: try to get from compose file (less accurate for port ranges)
     const composePort = await getApiPortFromCompose();
     if (composePort) {
         return composePort;
     }
-    
+
     // Try docker ps format - more complex parsing
     try {
         const { stdout } = await execAsync("docker ps --filter name=WinBoat --format '{{.Ports}}' 2>/dev/null || true");
         if (stdout.trim()) {
             // Format: 0.0.0.0:47280-47289->8006/tcp, 127.0.0.1:47280-47289->7148/tcp, ...
             const portsStr = stdout.trim();
-            
+
             // Try to find port mapping to 7148
             const patterns = [
                 /(\d+\.\d+\.\d+\.\d+):(\d+)->7148/,  // 127.0.0.1:47280->7148
                 /:(\d+)->7148/,                        // :47280->7148
             ];
-            
+
             for (const pattern of patterns) {
                 const match = portsStr.match(pattern);
                 if (match) {
@@ -365,8 +374,8 @@ async function getApiPort(): Promise<number | null> {
                 }
             }
         }
-    } catch {}
-    
+    } catch { }
+
     // Try podman ps format
     try {
         const { stdout } = await execAsync("podman ps --filter name=WinBoat --format '{{.Ports}}' 2>/dev/null || true");
@@ -377,15 +386,15 @@ async function getApiPort(): Promise<number | null> {
                 return parseInt(match[1]);
             }
         }
-    } catch {}
-    
+    } catch { }
+
     return null;
 }
 
 async function testPortConnectivity(host: string, port: number, verbose: boolean = false): Promise<boolean> {
     return new Promise((resolve) => {
         const socket = new net.Socket();
-        
+
         socket.setTimeout(3000);
         socket.once("connect", () => {
             socket.destroy();
@@ -407,7 +416,7 @@ async function testPortConnectivity(host: string, port: number, verbose: boolean
             }
             resolve(false);
         });
-        
+
         socket.connect(port, host);
     });
 }
@@ -418,7 +427,7 @@ async function checkApiHealth(apiUrl: string, verbose: boolean = false): Promise
         const urlObj = new URL(apiUrl);
         const host = urlObj.hostname;
         const port = parseInt(urlObj.port || (urlObj.protocol === "https:" ? "443" : "80"));
-        
+
         if (verbose) {
             console.log(`  Testing port connectivity to ${host}:${port}...`);
             const portOpen = await testPortConnectivity(host, port, verbose);
@@ -431,7 +440,7 @@ async function checkApiHealth(apiUrl: string, verbose: boolean = false): Promise
                 return false;
             }
         }
-        
+
         const response = await makeRequest(`${apiUrl}/health`);
         if (verbose && response.statusCode !== 200) {
             console.log(`  ✗ API health check returned status ${response.statusCode}`);
@@ -472,19 +481,19 @@ async function launchInstallerViaRDP(installerPath: string, installerName: strin
         const compose = await getComposeFile();
         const username = compose.services?.windows?.environment?.USERNAME;
         const password = compose.services?.windows?.environment?.PASSWORD;
-        
+
         if (!username || !password) {
             throw new Error("Could not read credentials from compose file");
         }
-        
+
         const rdpPort = await getRDPPort();
-        
+
         // Find FreeRDP
         const freeRDP = await findFreeRDP();
         if (!freeRDP) {
             throw new Error("FreeRDP 3.x not found. Please install FreeRDP 3.x with sound support.");
         }
-        
+
         // Build FreeRDP command for installer
         const cleanName = installerName.replace(/[,.'"]/g, "").replace(/\.[^.]*$/, ""); // Remove extension
         const stockArgs = [
@@ -495,16 +504,19 @@ async function launchInstallerViaRDP(installerPath: string, installerName: strin
             "/floatbar",
             "/compression",
             "/sec:tls",
+            "/gfx:RFX", // Enable RemoteFX graphics for better UI interaction (helps with clickable notifications)
+            "/rfx", // RemoteFX codec for better interactive content
+            "+auto-reconnect", // Auto-reconnect for better stability
         ];
-        
+
         // Determine command based on file extension
         const isMSI = installerPath.toLowerCase().endsWith(".msi");
-        
+
         // For MSI: use msiexec.exe with /i argument
         // For EXE: run the installer directly
         const appProgram = isMSI ? "C:\\Windows\\System32\\msiexec.exe" : installerPath;
         const appCmd = isMSI ? `/i "${installerPath}"` : "";
-        
+
         const rdpArgs = [
             `/u:${username}`,
             `/p:${password}`,
@@ -516,12 +528,12 @@ async function launchInstallerViaRDP(installerPath: string, installerName: strin
             `/wm-class:winboat-installer-${cleanName}`,
             `/app:program:${appProgram},name:${cleanName} Installer,cmd:"${appCmd}"`,
         ];
-        
+
         const commandArgs = [
             ...(freeRDP.args.length > 0 ? freeRDP.args : []),
             ...rdpArgs,
         ];
-        
+
         // Escape arguments properly for shell execution
         const escapedArgs = commandArgs.map(arg => {
             if (arg.includes(" ") || arg.includes("(") || arg.includes(")")) {
@@ -529,10 +541,10 @@ async function launchInstallerViaRDP(installerPath: string, installerName: strin
             }
             return arg;
         });
-        
+
         // Build full command string with nohup and backgrounding
         const fullCommand = `nohup ${freeRDP.command} ${escapedArgs.join(" ")} > /dev/null 2>&1 &`;
-        
+
         // Use exec to run the shell command
         const child = exec(
             fullCommand,
@@ -545,13 +557,13 @@ async function launchInstallerViaRDP(installerPath: string, installerName: strin
                 }
             }
         );
-        
+
         child.unref(); // Unref to allow Node.js to exit
-        
+
         await new Promise(resolve => setTimeout(resolve, 300)); // Brief delay
-        
+
         console.log("✓ Installer window should appear shortly on your host!");
-        
+
     } catch (error: any) {
         console.error(`\nError launching installer: ${error.message}`);
         throw error;
@@ -575,10 +587,10 @@ async function installApp(apiUrl: string, installerPath: string): Promise<void> 
         // Expand ~ to home directory
         resolvedPath = path.join(os.homedir(), installerPath.slice(1));
     }
-    
+
     // Normalize the path
     resolvedPath = path.normalize(resolvedPath);
-    
+
     // Validate file
     if (!fs.existsSync(resolvedPath)) {
         throw new Error(`File not found: ${installerPath} (resolved to: ${resolvedPath})`);
@@ -637,7 +649,7 @@ async function installApp(apiUrl: string, installerPath: string): Promise<void> 
             console.log("✓ Installer uploaded successfully!");
             console.log(`  Filename: ${result.filename}`);
             console.log(`  Temp path: ${result.temp_path}`);
-            
+
             // Launch installer via FreeRDP so it appears as native window on host
             console.log("\nLaunching installer via FreeRDP...");
             await launchInstallerViaRDP(result.temp_path, result.filename);
@@ -651,18 +663,18 @@ async function installApp(apiUrl: string, installerPath: string): Promise<void> 
 
 async function getComposeFile(): Promise<any> {
     const composePath = path.join(os.homedir(), ".winboat", "docker-compose.yml");
-    
+
     if (!fs.existsSync(composePath)) {
         throw new Error("WinBoat compose file not found. Please ensure WinBoat is set up.");
     }
-    
+
     const composeContent = fs.readFileSync(composePath, "utf-8");
     return YAML.parse(composeContent);
 }
 
 async function getRDPPort(): Promise<number> {
     const execAsync = promisify(exec);
-    
+
     // First, try to get the ACTUAL port from Docker/Podman (most accurate)
     // This is better than reading the compose file because Docker may assign
     // a different port from the range (e.g., 47306 instead of 47300)
@@ -681,8 +693,8 @@ async function getRDPPort(): Promise<number> {
                 }
             }
         }
-    } catch {}
-    
+    } catch { }
+
     // Try Podman port command
     try {
         const { stdout } = await execAsync("podman port WinBoat 2>/dev/null || true");
@@ -697,8 +709,8 @@ async function getRDPPort(): Promise<number> {
                 }
             }
         }
-    } catch {}
-    
+    } catch { }
+
     // Fallback: try docker ps format
     try {
         const { stdout } = await execAsync("docker ps --filter name=WinBoat --format '{{.Ports}}' 2>/dev/null || true");
@@ -710,8 +722,8 @@ async function getRDPPort(): Promise<number> {
                 return parseInt(match[1]);
             }
         }
-    } catch {}
-    
+    } catch { }
+
     // Last resort: check compose file (less accurate for port ranges)
     try {
         const compose = await getComposeFile();
@@ -725,32 +737,32 @@ async function getRDPPort(): Promise<number> {
                 }
             }
         }
-    } catch {}
-    
+    } catch { }
+
     throw new Error("Could not determine RDP port. Please ensure the container is running.");
 }
 
 async function findFreeRDP(): Promise<{ command: string; args: string[] } | null> {
     const execAsync = promisify(exec);
-    
+
     const candidates = [
         { command: "xfreerdp3", args: [] },
         { command: "xfreerdp", args: [] },
         { command: "flatpak", args: ["run", "--command=xfreerdp", "com.freerdp.FreeRDP"] },
     ];
-    
+
     for (const candidate of candidates) {
         try {
-            const args = candidate.args.length > 0 
+            const args = candidate.args.length > 0
                 ? [...candidate.args, "--version"]
                 : ["--version"];
             const { stdout } = await execAsync(`${candidate.command} ${args.join(" ")}`);
             if (stdout.includes("version 3.")) {
                 return candidate;
             }
-        } catch {}
+        } catch { }
     }
-    
+
     return null;
 }
 
@@ -785,23 +797,84 @@ async function launchApp(apiUrl: string, appName: string): Promise<void> {
         const compose = await getComposeFile();
         const username = compose.services?.windows?.environment?.USERNAME;
         const password = compose.services?.windows?.environment?.PASSWORD;
-        
+
         if (!username || !password) {
             throw new Error("Could not read credentials from compose file");
         }
-        
+
+        // CHECK RDP STATUS - If session exists, launch via API to avoid session stealing
+        try {
+            const statusRes = await makeRequest(`${apiUrl}/rdp/status`);
+            if (statusRes.statusCode === 200) {
+                const status = JSON.parse(statusRes.data);
+                if (status.rdpConnected) {
+                    console.log("  ✓ Existing RDP session detected. Launching seamlessly via API...");
+                    console.log(`  Target: ${app.Path} ${app.Args || ""}`);
+
+                    const launchForm = new FormData();
+                    launchForm.append("username", username);
+                    launchForm.append("password", password);
+                    launchForm.append("path", app.Path);
+                    launchForm.append("args", app.Args || "");
+
+                    try {
+                        const url = new URL(`${apiUrl}/launch`);
+                        const client = url.protocol === "https:" ? https : http;
+
+                        await new Promise((resolve, reject) => {
+                            const req = client.request(
+                                {
+                                    method: "POST",
+                                    hostname: url.hostname,
+                                    port: url.port || (url.protocol === "https:" ? 443 : 80),
+                                    path: url.pathname,
+                                    headers: launchForm.getHeaders(),
+                                },
+                                (res) => {
+                                    let data = "";
+                                    res.on("data", (chunk) => data += chunk);
+                                    res.on("end", () => {
+                                        if (res.statusCode === 200) {
+                                            resolve(data);
+                                        } else {
+                                            reject(new Error(`API returned status ${res.statusCode}: ${data}`));
+                                        }
+                                    });
+                                }
+                            );
+                            req.on("error", reject);
+                            launchForm.pipe(req);
+                        });
+
+                        console.log("\n✓ App launched successfully in existing session!");
+                        return;
+                    } catch (apiErr: any) {
+                        console.error(`  ✗ API Launch failed: ${apiErr.message}`);
+                        console.error(`  Debug: URL was ${apiUrl}/launch`);
+                        console.log("  Falling back to new RDP connection...");
+                    }
+                } else {
+                    console.log("  ℹ No active RDP session detected (API returned false). Starting new connection...");
+                }
+            } else {
+                console.log(`  ℹ Status check failed with code ${statusRes.statusCode}. Starting new connection...`);
+            }
+        } catch (e) {
+            // Ignore status check errors and proceed to standard launch
+        }
+
         const rdpPort = await getRDPPort();
         console.log(`  RDP Port: ${rdpPort}`);
         console.log(`  Username: ${username}`);
-        
+
         // Find FreeRDP
         const freeRDP = await findFreeRDP();
         if (!freeRDP) {
             throw new Error("FreeRDP 3.x not found. Please install FreeRDP 3.x with sound support.");
         }
-        
+
         console.log(`  Using: ${freeRDP.command}\n`);
-        
+
         // Build FreeRDP command
         const cleanAppName = app.Name.replace(/[,.'"]/g, "");
         const stockArgs = [
@@ -812,8 +885,13 @@ async function launchApp(apiUrl: string, appName: string): Promise<void> {
             "/floatbar",
             "/compression",
             "/sec:tls",
+            // "/gfx:RFX", // RemoteFX removed - might cause input issues
+            // "/rfx", // RemoteFX removed
+            "/network:auto", // Add network auto-detection for better latency
+            "+auto-reconnect", // Auto-reconnect for better stability
+            // "/kbd:layout:0x00000409", // Optional: Force US keyboard layout if needed
         ];
-        
+
         const rdpArgs = [
             `/u:${username}`,
             `/p:${password}`,
@@ -825,17 +903,17 @@ async function launchApp(apiUrl: string, appName: string): Promise<void> {
             `/wm-class:winboat-${cleanAppName}`,
             `/app:program:${app.Path},name:${cleanAppName},cmd:"${app.Args || ""}"`,
         ];
-        
+
         // Build command arguments array (avoid shell interpretation of special characters)
         // Match the main WinBoat app's approach: use execFile with defaultArgs + args
         const commandArgs = [
             ...(freeRDP.args.length > 0 ? freeRDP.args : []),
             ...rdpArgs,
         ];
-        
+
         console.log("Executing FreeRDP...");
         console.log(`Command: ${freeRDP.command} ${rdpArgs.slice(0, 3).join(" ")} ... (password hidden)\n`);
-        
+
         // Escape arguments properly for shell execution
         // This ensures paths with special characters work correctly
         const escapedArgs = commandArgs.map(arg => {
@@ -845,7 +923,7 @@ async function launchApp(apiUrl: string, appName: string): Promise<void> {
             }
             return arg;
         });
-        
+
         // Use spawn with detached:true, but ensure process is fully started before unref
         // The key: DON'T unref immediately - wait for process to establish itself
         const child = spawn(freeRDP.command, commandArgs, {
@@ -853,19 +931,19 @@ async function launchApp(apiUrl: string, appName: string): Promise<void> {
             stdio: ["ignore", "ignore", "pipe"], // Capture stderr to see errors
             env: process.env,
         });
-        
+
         let errorOutput = "";
         child.stderr?.on("data", (data: Buffer) => {
             errorOutput += data.toString();
         });
-        
+
         // Handle spawn errors
         child.on("error", (error: any) => {
             console.error(`\nFreeRDP spawn error: ${error.message}`);
             console.error(`Make sure FreeRDP is installed: xfreerdp3 --version`);
             process.exit(1);
         });
-        
+
         // Monitor exit to catch immediate failures
         let exited = false;
         child.on("exit", (code: number | null, signal: string | null) => {
@@ -877,16 +955,16 @@ async function launchApp(apiUrl: string, appName: string): Promise<void> {
                 }
             }
         });
-        
+
         // CRITICAL: Wait for process to start before unref
         // This ensures the process is fully detached and won't be killed
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Now unref - process should be safely detached
         if (!exited && !child.killed) {
             child.unref();
         }
-        
+
         // Check if process died
         if (exited || child.killed) {
             console.error(`\nFreeRDP process failed to start.`);
@@ -897,10 +975,10 @@ async function launchApp(apiUrl: string, appName: string): Promise<void> {
             console.error(`${freeRDP.command} ${commandArgs.slice(0, 5).join(" ")} ...`);
             process.exit(1);
         }
-        
+
         console.log("✓ App launch initiated!");
         console.log("The application window should appear shortly.");
-        
+
     } catch (error: any) {
         console.error(`\nError launching app: ${error.message}`);
         console.log("\nTroubleshooting:");
@@ -972,7 +1050,7 @@ async function showStatus(apiUrl: string): Promise<void> {
     if (containerStatus.exists) {
         console.log(`✓ Container found: ${containerStatus.name || "WinBoat"}`);
         console.log(`  Status: ${containerStatus.running ? "Running" : "Stopped"}`);
-        
+
         // Check if guest server is running
         if (containerStatus.running) {
             console.log("Checking guest server process...");
@@ -993,7 +1071,7 @@ async function showStatus(apiUrl: string): Promise<void> {
 
     // Check API health
     console.log("Checking API health...");
-    
+
     // Try to detect the actual API port
     const detectedPort = await getApiPort();
     let testUrl = apiUrl;
@@ -1013,12 +1091,12 @@ async function showStatus(apiUrl: string): Promise<void> {
     } else {
         console.log(`  Using default port: 7148`);
     }
-    
+
     // Ensure no trailing slash
     if (testUrl.endsWith('/')) {
         testUrl = testUrl.slice(0, -1);
     }
-    
+
     const isHealthy = await checkApiHealth(testUrl, true);
     if (isHealthy) {
         // Update apiUrl if we found a different port
@@ -1070,7 +1148,7 @@ async function showStatus(apiUrl: string): Promise<void> {
         }
     } else {
         console.log("✗ API is not accessible");
-        
+
         // Try to find the actual port
         const detectedPort = await getApiPort();
         if (detectedPort && detectedPort !== 7148) {
@@ -1083,7 +1161,7 @@ async function showStatus(apiUrl: string): Promise<void> {
             }
             console.log(`\n  Detected API port: ${detectedPort}`);
             console.log(`  Try: winboat --api-url ${altUrl} --status`);
-            
+
             // Try the detected port
             const altHealthy = await checkApiHealth(altUrl);
             if (altHealthy) {
@@ -1097,7 +1175,7 @@ async function showStatus(apiUrl: string): Promise<void> {
                 console.log(`    - The guest server crashed or failed to start`);
             }
         }
-        
+
         console.log(`\nPlease ensure:`);
         console.log(`  1. The WinBoat container is running`);
         console.log(`  2. The guest server is running inside the container`);
@@ -1143,8 +1221,8 @@ async function detectAndUpdateApiUrl(apiUrl: string): Promise<string> {
 async function main() {
     const options = parseArgs();
 
-    // Check API health first (except for help)
-    if (!options.status && !options.list && !options.install && !options.launch) {
+    // Check API health first (except for help and sync)
+    if (!options.status && !options.list && !options.install && !options.launch && !options.sync) {
         showHelp();
         process.exit(0);
     }
@@ -1238,6 +1316,39 @@ async function main() {
                 process.exit(1);
             }
             await launchApp(finalApiUrl, options.launch);
+        } else if (options.sync) {
+            const containerStatus = await checkContainerStatus();
+            const isHealthy = await checkApiHealth(finalApiUrl, true);
+            if (!isHealthy) {
+                console.error("\nError: WinBoat API is not accessible.");
+                if (containerStatus.exists && !containerStatus.running) {
+                    console.error(`\nThe WinBoat container exists but is not running.`);
+                    console.error(`\nTo start it:`);
+                    console.error(`  docker start ${containerStatus.name || "WinBoat"}`);
+                    console.error(`  or`);
+                    console.error(`  podman start ${containerStatus.name || "WinBoat"}`);
+                } else if (!containerStatus.exists) {
+                    console.error(`\nNo WinBoat container found. Please set up WinBoat first.`);
+                } else {
+                    console.error(`\nThe container is running but the API is not accessible.`);
+                    const detectedPort = await getApiPort();
+                    if (detectedPort && detectedPort !== 7148) {
+                        console.error(`\n  Detected API port: ${detectedPort}`);
+                        console.error(`  Try: winboat --api-url http://localhost:${detectedPort} --sync`);
+                    }
+                }
+                process.exit(1);
+            }
+            // Execute sync script directly (can't import .ts files in ES modules)
+            const currentDir = path.dirname(new URL(import.meta.url).pathname);
+            const syncScriptPath = path.join(currentDir, "sync-host-apps.ts");
+            const execAsyncPromisified = promisify(exec);
+            const nodeCmd = process.execPath;
+            const cleanFlag = options.clean ? " --clean" : "";
+            await execAsyncPromisified(`${nodeCmd} "${syncScriptPath}" --api-url "${finalApiUrl}"${cleanFlag}`, {
+                cwd: currentDir,
+                env: process.env,
+            });
         }
     } catch (error: any) {
         console.error(`Error: ${error.message}`);

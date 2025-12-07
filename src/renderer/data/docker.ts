@@ -41,6 +41,7 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
                 "./oem:/oem",
             ],
             devices: ["/dev/kvm"],
+            dns: ["8.8.8.8", "1.1.1.1"],
         },
     },
 };

@@ -90,6 +90,27 @@ export class InstallManager {
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
 
+        // Configure dynamic resource limits (not reservations)
+        // This allows the container to use resources on-demand up to the limit,
+        // without reserving the full amount upfront
+        // Limits: Maximum resources the container can use (e.g., 16GB RAM, 4 CPUs)
+        // Reservations: Minimal guaranteed resources (low values = dynamic allocation)
+        composeContent.services.windows.deploy = {
+            resources: {
+                limits: {
+                    memory: `${this.conf.ramGB}G`,
+                    cpus: `${this.conf.cpuCores}`,
+                },
+                // Minimal reservations - allows dynamic allocation
+                // Memory/CPU will only be used when needed, up to the limit
+                // This prevents Docker/Podman from reserving the full amount upfront
+                reservations: {
+                    memory: "512M", // Minimal reservation for container overhead
+                    cpus: "0.5", // Minimal CPU reservation
+                },
+            },
+        };
+
         // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
