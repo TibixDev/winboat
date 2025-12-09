@@ -7,5 +7,6 @@ if [ -f /etc/apparmor.d/local/usr.sbin.smbd ]; then
 /shared/ lrwk,
 /shared/** lrwk,
 EOF
+"$ESCALATION_TOOL" apparmor_parser -r /etc/apparmor.d/usr.sbin.smbd
 printf "%b\n" "${GREEN}SMBD Apparmor profile modified!${RC}"
 fi
