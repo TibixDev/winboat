@@ -92,3 +92,4 @@ install_docker_compose
 docker_permission
 
 source "$(dirname "$0")/autosetup_freerdp.sh"
+source "$(dirname "$0")/autosetup_apparmor.sh"

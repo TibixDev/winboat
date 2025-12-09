@@ -74,3 +74,4 @@ installPodman
 installPodmanCompose
 
 source "$(dirname "$0")/autosetup_freerdp.sh"
+source "$(dirname "$0")/autosetup_apparmor.sh"
