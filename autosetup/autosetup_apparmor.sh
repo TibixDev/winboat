@@ -7,4 +7,5 @@ if [ -f /etc/apparmor.d/local/usr.sbin.smbd ]; then
 /shared/ lrwk,
 /shared/** lrwk,
 EOF
+printf "%b\n" "${GREEN}SMBD Apparmor profile modified!${RC}"
 fi
