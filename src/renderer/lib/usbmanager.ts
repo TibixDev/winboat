@@ -1,7 +1,7 @@
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
-import { logger, Winboat } from "./winboat";
-import { WinboatConfig } from "./config";
+import { logger, Winboat } from "./winboat.js";
+import { WinboatConfig } from "./config.js";
 import { assert } from "@vueuse/core";
 
 const { usb, getDeviceList }: typeof import("usb") = require("usb");

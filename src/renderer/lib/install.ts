@@ -1,11 +1,11 @@
-import { type InstallConfiguration } from "../../types";
-import { WINBOAT_DIR } from "./constants";
-import { createLogger } from "../utils/log";
+import { type InstallConfiguration } from "../../types.js";
+import { WINBOAT_DIR } from "./constants.js";
+import { createLogger } from "../utils/log.js";
 import { createNanoEvents, type Emitter } from "nanoevents";
-import { Winboat } from "./winboat";
-import { ContainerManager } from "./containers/container";
-import { WinboatConfig } from "./config";
-import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
+import { Winboat } from "./winboat.js";
+import { ContainerManager } from "./containers/container.js";
+import { WinboatConfig } from "./config.js";
+import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common.js";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
@@ -89,6 +89,27 @@ export class InstallManager {
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
+
+        // Configure dynamic resource limits (not reservations)
+        // This allows the container to use resources on-demand up to the limit,
+        // without reserving the full amount upfront
+        // Limits: Maximum resources the container can use (e.g., 16GB RAM, 4 CPUs)
+        // Reservations: Minimal guaranteed resources (low values = dynamic allocation)
+        composeContent.services.windows.deploy = {
+            resources: {
+                limits: {
+                    memory: `${this.conf.ramGB}G`,
+                    cpus: `${this.conf.cpuCores}`,
+                },
+                // Minimal reservations - allows dynamic allocation
+                // Memory/CPU will only be used when needed, up to the limit
+                // This prevents Docker/Podman from reserving the full amount upfront
+                reservations: {
+                    memory: "512M", // Minimal reservation for container overhead
+                    cpus: "0.5", // Minimal CPU reservation
+                },
+            },
+        };
 
         // Boot image mapping
         if (this.conf.customIsoPath) {

@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -49,7 +50,8 @@ type Metrics struct {
 }
 
 type RDPStatusResponse struct {
-	RdpConnection bool `json:"rdpConnected"`
+	RdpConnection bool   `json:"rdpConnected"`
+	DebugOutput   string `json:"debugOutput,omitempty"`
 }
 
 func getApps(w http.ResponseWriter, r *http.Request) {
@@ -141,6 +143,7 @@ func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
 
 	response := RDPStatusResponse{
 		RdpConnection: hasRdpSession,
+		DebugOutput:   string(output),
 	}
 
 	// Convert the response from guest server to JSON
@@ -303,6 +306,195 @@ func setAuthHash(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func uploadInstaller(w http.ResponseWriter, r *http.Request) {
+	// Parse multipart form (max 100MB)
+	err := r.ParseMultipartForm(100 << 20)
+	if err != nil {
+		http.Error(w, "Failed to parse multipart form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("installer")
+	if err != nil {
+		http.Error(w, "Failed to get installer file: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file extension
+	filename := strings.ToLower(handler.Filename)
+	if !strings.HasSuffix(filename, ".exe") && !strings.HasSuffix(filename, ".msi") {
+		http.Error(w, "Invalid file type. Only .exe and .msi files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	// Save to temp directory with unique filename to avoid conflicts
+	// Use timestamp to ensure uniqueness
+	baseName := strings.TrimSuffix(handler.Filename, filepath.Ext(handler.Filename))
+	ext := filepath.Ext(handler.Filename)
+	timestamp := time.Now().Unix()
+	uniqueFilename := fmt.Sprintf("%s_%d%s", baseName, timestamp, ext)
+	tempPath := filepath.Join(os.TempDir(), uniqueFilename)
+
+	// Remove existing file if it exists (in case of previous failed attempt)
+	// Try multiple times with small delay in case file is locked
+	for i := 0; i < 3; i++ {
+		err := os.Remove(tempPath)
+		if err == nil || os.IsNotExist(err) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	dst, err := os.Create(tempPath)
+	if err != nil {
+		http.Error(w, "Failed to create temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Copy file to temp location
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		dst.Close()
+		os.Remove(tempPath)
+		http.Error(w, "Failed to save file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Close the file explicitly (required on Windows)
+	err = dst.Close()
+	if err != nil {
+		os.Remove(tempPath)
+		http.Error(w, "Failed to close temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Note: We don't execute the installer here. The host will launch it via FreeRDP
+	// so it appears as a native window. The installer is saved and ready to be launched.
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]string{
+		"status":    "installed",
+		"filename":  handler.Filename,
+		"temp_path": tempPath,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+func launchApp(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	username := r.PostFormValue("username")
+	password := r.PostFormValue("password")
+	path := r.PostFormValue("path")
+	args := r.PostFormValue("args")
+
+	if username == "" || password == "" || path == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	// Generate unique task name
+	taskName := fmt.Sprintf("WinBoatLaunch_%d", time.Now().UnixNano())
+
+	// Escape path and args carefully
+	// We want to run: cmd /c start "" "PATH" ARGS
+	// This ensures that even if PATH is quoted, start command handles it correctly (first quote is title)
+	// Actually, just running the program directly via schtasks matches better.
+	// But schtasks /TR requires specific quoting.
+	// Example: /TR "\"C:\Program Files\Calc.exe\" arg1"
+	
+	// Prepare the command for /TR
+	// If path has spaces, it needs quotes.
+	// args should be appended.
+	trCmd := path
+	if strings.Contains(path, " ") && !strings.HasPrefix(path, "\"") {
+		trCmd = fmt.Sprintf("\"%s\"", path)
+	}
+	if args != "" {
+		trCmd = fmt.Sprintf("%s %s", trCmd, args)
+	}
+	
+	// Note: schtasks /TR parsing is finicky. Sometimes wrapping the whole thing in single quotes helps if using exec.Command
+	// exec.Command arguments are passed as separate args to the syscall, so we don't need shell escaping for the args list itself.
+	
+	log.Printf("Creating task %s to run: %s", taskName, trCmd)
+
+	createCmd := exec.Command("schtasks", "/Create", "/F", "/SC", "ONCE", "/ST", "00:00",
+		"/TN", taskName,
+		"/TR", trCmd,
+		"/RU", username,
+		"/RP", password,
+		"/RL", "HIGHEST")
+
+	if output, err := createCmd.CombinedOutput(); err != nil {
+		log.Printf("Failed to create task: %v, Output: %s", err, string(output))
+		http.Error(w, fmt.Sprintf("Failed to create task: %s", string(output)), http.StatusInternalServerError)
+		return
+	}
+
+	// Run Task
+	runCmd := exec.Command("schtasks", "/Run", "/TN", taskName)
+	if output, err := runCmd.CombinedOutput(); err != nil {
+		log.Printf("Failed to run task: %v, Output: %s", err, string(output))
+		// Try to cleanup
+		exec.Command("schtasks", "/Delete", "/F", "/TN", taskName).Run()
+		http.Error(w, fmt.Sprintf("Failed to run task: %s", string(output)), http.StatusInternalServerError)
+		return
+	}
+
+	// Cleanup Task (async)
+	go func() {
+		time.Sleep(5 * time.Second)
+		exec.Command("schtasks", "/Delete", "/F", "/TN", taskName).Run()
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "launched", "task": taskName})
+}
+
+func runStartupScripts() {
+	log.Println("Running startup scripts...")
+	
+	// Get executable directory
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Println("Failed to get executable path:", err)
+		return
+	}
+	appDir := filepath.Dir(exePath)
+	scriptsDir := filepath.Join(appDir, "scripts")
+	
+	// List of scripts to run
+	scripts := []string{
+		"fix-network-share.ps1",
+	}
+	
+	for _, script := range scripts {
+		scriptPath := filepath.Join(scriptsDir, script)
+		if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+			log.Printf("Script not found: %s", scriptPath)
+			continue
+		}
+		
+		log.Printf("Executing %s...", script)
+		cmd := exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("Failed to execute %s: %v", script, err)
+			log.Printf("Output: %s", string(output))
+		} else {
+			log.Printf("Successfully executed %s", script)
+		}
+	}
+}
+
 func main() {
 	// Try to initialize auth key hash if not present
 	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
@@ -327,6 +519,9 @@ func main() {
 		}
 	}
 
+	// Run startup scripts (background)
+	go runStartupScripts()
+
 	// Setup routes
 	r := mux.NewRouter()
 	r.HandleFunc("/apps", getApps).Methods("GET")
@@ -337,10 +532,12 @@ func main() {
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
 	r.HandleFunc("/auth/set-hash", setAuthHash).Methods("POST")
+	r.HandleFunc("/upload-installer", uploadInstaller).Methods("POST")
+	r.HandleFunc("/launch", launchApp).Methods("POST")
 	handler := cors.Default().Handler(r)
 
-	log.Println("Starting WinBoat Guest Server on :7148...")
-	if err := http.ListenAndServe(":7148", handler); err != nil {
+	log.Println("Starting WinBoat Guest Server on 0.0.0.0:7148...")
+	if err := http.ListenAndServe("0.0.0.0:7148", handler); err != nil {
 		log.Fatal("Server failed: ", err)
 	}
 }

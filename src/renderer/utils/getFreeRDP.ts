@@ -1,4 +1,4 @@
-import { execFileAsync, stringifyExecFile } from "../lib/exec-helper";
+import { execFileAsync, stringifyExecFile } from "../lib/exec-helper.js";
 
 export class FreeRDPInstallation {
     file: string;

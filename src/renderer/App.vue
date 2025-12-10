@@ -149,6 +149,9 @@
         <div v-else class="w-full h-[calc(100vh-2rem)]">
             <RouterView />
         </div>
+        
+        <!-- Shortcut Loading Overlay -->
+        <ShortcutLoadingOverlay />
     </main>
 </template>
 
@@ -165,8 +168,11 @@ import { USBManager } from "./lib/usbmanager";
 import { setIntervalImmediately } from "./utils/interval";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
+import type { WinApp } from "../types";
+import ShortcutLoadingOverlay from "./components/ShortcutLoadingOverlay.vue";
+import { useShortcutLaunchState } from "./composables/useShortcutLaunchState";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
-const os: typeof import("os") = require("node:os");
+const os: typeof import("node:os") = require("node:os");
 
 const $router = useRouter();
 const $route = useRoute();
@@ -174,6 +180,9 @@ const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
 let winboat: Winboat | null;
 let wbConfig: WinboatConfig | null;
+
+// Destructure shortcut launch state functions
+const { startLaunch, updateStep, completeLaunch, cancelLaunch } = useShortcutLaunchState();
 
 let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
@@ -184,7 +193,119 @@ const rerenderCounter = ref(0);
 const novncURL = ref("");
 let animationCheckInterval: NodeJS.Timeout | null = null;
 
+// Launcher function to handle app launching - defined at component level so it's available immediately
+const launchAppByName = async (appName: string) => {
+    if (!winboat) {
+        return; // Not ready yet
+    }
+    
+    // Helper to find app dynamically
+    const findMatchingApp = async (searchName: string): Promise<WinApp | undefined> => {
+        let allApps: WinApp[] = [];
+        
+        // Custom Apps
+        if (wbConfig) {
+            allApps.push(...wbConfig.config.customApps);
+        }
+
+        // API Apps (if online)
+        if (winboat && winboat.apiUrl) {
+            try {
+                const res = await fetch(`${winboat.apiUrl}/apps`);
+                const fetchApps = await res.json() as WinApp[];
+                allApps.push(...fetchApps);
+            } catch { /* ignore */ }
+        }
+
+        // Search Strategies
+        // Strategy A: Exact Match
+        let match = allApps.find(a => a.Name === searchName);
+        if (match) return match;
+
+        // Strategy B: Case Insensitive
+        match = allApps.find(a => a.Name.toLowerCase() === searchName.toLowerCase());
+        if (match) return match;
+
+        // Strategy C: Fuzzy / Sanitized Match (Ignore emojis, spaces, casing)
+        const sanitize = (n: string) => n.replace(/^[⚙️🖥️]\s*/, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const searchSanitized = sanitize(searchName);
+        match = allApps.find(a => sanitize(a.Name) === searchSanitized);
+        
+        return match;
+    };
+
+    try {
+        updateStep("starting-container");
+        
+        updateStep("launching-app");
+        
+        let targetApp = await findMatchingApp(appName);
+        
+        // If still not found, try force updating cache and searching again
+        if (!targetApp && winboat && winboat.apiUrl && winboat.appMgr) {
+             await winboat.appMgr.updateAppCache(winboat.apiUrl, { forceRead: true });
+             // Re-run search with updated cache (via findMatchingApp logic again or just manual check)
+             // For simplicity, just check appMgr cache
+             targetApp = winboat.appMgr.appCache.find(a => a.Name === appName);
+        }
+        if (targetApp) {
+            // Check container status
+            const containerStatus = winboat.containerStatus.value;
+            
+            // If container is not running, start it
+            if (containerStatus !== 'running') {
+                try {
+                    await winboat.startContainer();
+                    
+                    // Wait for winboat to come online (with timeout)
+                    const maxWaitTime = 60000; // 60 seconds
+                    const checkInterval = 1000; // 1 second
+                    let waited = 0;
+                    
+                    while (!winboat.isOnline.value && waited < maxWaitTime) {
+                        await new Promise(resolve => setTimeout(resolve, checkInterval));
+                        waited += checkInterval;
+                    }
+                    
+                    if (!winboat.isOnline.value) {
+                        cancelLaunch();
+                        return;
+                    }
+                    
+                } catch (startError) {
+                    cancelLaunch();
+                    return;
+                }
+            }
+            
+            // Check if winboat is online before attempting launch
+            if (!winboat.isOnline.value) {
+                cancelLaunch();
+                return;
+            }
+            
+            
+            try {
+                await winboat.launchApp(targetApp);
+                completeLaunch();
+            } catch (launchError) {
+                throw launchError; // Re-throw to be caught by outer catch
+            }
+        } else {
+            cancelLaunch();
+        }
+        
+    } catch (error) {
+        cancelLaunch();
+    }
+};
+
 onMounted(async () => {
+    // Register IPC listener FIRST, before any async operations
+    if (window.api && window.api.onLaunchAppFromShortcut) {
+        window.api.onLaunchAppFromShortcut(launchAppByName);
+    }
+    
     const winboatInstalled = await isInstalled();
 
     if (winboatInstalled) {
@@ -201,6 +322,24 @@ onMounted(async () => {
     } else {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
+    }
+    
+    // Check pending app
+    const pendingAppId = await window.api.getPendingLaunchApp();
+    if (pendingAppId) {
+        // Wait slightly for connections to stabilize?
+        setTimeout(() => launchAppByName(pendingAppId), 1000);
+    } else {
+        // Also check if launched with --launch-app-name argument (first instance from shortcut)
+        const process = require('process');
+        const launchAppArg = process.argv.find((arg: string) => arg.startsWith('--launch-app-name='));
+        if (launchAppArg) {
+            const appName = launchAppArg.split('=')[1]?.replace(/^"(.*)"$/, '$1');
+            if (appName) {
+                console.log(`First instance launched from shortcut with app: ${appName}`);
+                setTimeout(() => launchAppByName(appName), 1000);
+            }
+        }
     }
     
     // Apply or remove disable-animations class based on config
@@ -226,28 +365,6 @@ onMounted(async () => {
             rerenderCounter.value++; // Force re-render to update transitions
         }
     }, 1000); // Check every 1000ms
-
-    // Watch for guest server updates and show dialog
-    watch(
-        () => winboat?.isUpdatingGuestServer.value,
-        isUpdating => {
-            if (isUpdating === true) {
-                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}`;
-                updateDialog.value!.showModal();
-                // Prepare the timeout to show manual update required after 45 seconds
-                updateTimeout = setTimeout(() => {
-                    manualUpdateRequired.value = true;
-                }, MANUAL_UPDATE_TIMEOUT);
-            } else {
-                // Clear the timeout if the update finished before the timeout
-                if (updateTimeout) {
-                    clearTimeout(updateTimeout);
-                    updateTimeout = null;
-                }
-                manualUpdateRequired.value = false;
-            }
-        },
-    );
 });
 
 onUnmounted(() => {

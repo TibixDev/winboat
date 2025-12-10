@@ -1,6 +1,6 @@
-import { ComposeConfig } from "../../../types";
-import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
-import { WINBOAT_DIR } from "../constants";
+import { ComposeConfig } from "../../../types.js";
+import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman.js";
+import { WINBOAT_DIR } from "../constants.js";
 import {
     ComposeArguments,
     ComposeDirection,
@@ -8,11 +8,11 @@ import {
     containerLogger,
     ContainerManager,
     ContainerStatus,
-} from "./container";
+} from "./container.js";
 import YAML from "yaml";
-import { capitalizeFirstLetter } from "../../utils/capitalize";
-import { ComposePortEntry } from "../../utils/port";
-import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper";
+import { capitalizeFirstLetter } from "../../utils/capitalize.js";
+import { ComposePortEntry } from "../../utils/port.js";
+import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper.js";
 
 const path: typeof import("node:path") = require("node:path");
 const fs: typeof import("node:fs") = require("node:fs");

@@ -1,7 +1,7 @@
-import { ComposeConfig } from "../../../types";
-import { WINBOAT_DIR } from "../constants";
-import { createLogger } from "../../utils/log";
-import { ComposePortEntry } from "../../utils/port";
+import { ComposeConfig } from "../../../types.js";
+import { WINBOAT_DIR } from "../constants.js";
+import { createLogger } from "../../utils/log.js";
+import { ComposePortEntry } from "../../utils/port.js";
 
 const path: typeof import("node:path") = require("node:path");
 

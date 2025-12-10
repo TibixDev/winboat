@@ -1,4 +1,4 @@
-import { InternalApps } from "../data/internalapps";
+import { InternalApps } from "../data/internalapps.js";
 
 export const DEFAULT_ICON = "DEFAULT_ICON";
 

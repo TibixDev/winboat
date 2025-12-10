@@ -1,12 +1,12 @@
-import { PortEntryProtocol } from "../../../types";
-import { ContainerManager } from "./container";
-import { DockerContainer, DockerSpecs } from "./docker";
-import { PodmanContainer, PodmanSpecs } from "./podman";
+import { PortEntryProtocol } from "../../../types.js";
+import { ContainerManager } from "./container.js";
+import { DockerContainer, DockerSpecs } from "./docker.js";
+import { PodmanContainer, PodmanSpecs } from "./podman.js";
 
 // For convenience
-export { type DockerSpecs } from "./docker";
-export { type PodmanSpecs } from "./podman";
-export { ContainerStatus } from "./container";
+export { type DockerSpecs } from "./docker.js";
+export { type PodmanSpecs } from "./podman.js";
+export { ContainerStatus } from "./container.js";
 
 export enum ContainerRuntimes {
     DOCKER = "Docker",

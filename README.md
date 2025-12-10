@@ -32,7 +32,9 @@ WinBoat is currently in beta, so expect to occasionally run into hiccups and bug
 - **🚀 Run Any App**: If it runs on Windows, it can run on WinBoat. Enjoy the full range of Windows applications as native OS-level windows in your Linux environment
 - **🖥️ Full Windows Desktop**: Access the complete Windows desktop experience when you need it, or run individual apps seamlessly integrated into your Linux workflow
 - **📁 Filesystem Integration**: Your home directory is mounted in Windows, allowing easy file sharing between the two systems without any hassle
-- **✨ And many more**: Smartcard passthrough, resource monitoring, and more features being added regularly
+- **🔗 Desktop Shortcuts**: Create Linux desktop shortcuts for your Windows apps - launch them directly from your application menu with WinBoat running seamlessly in the background
+- **⚡ Performance Optimized**: RDP performance tweaks for smoother graphics and reduced latency
+- **✨ And many more**: Smartcard passthrough, resource monitoring, CLI app installation, and more features being added regularly
 
 ## How Does It Work?
 
@@ -95,6 +97,44 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - Install the dependencies (`npm i`)
 - Build the guest server (`npm run build:gs`)
 - Run the app (`npm run dev`)
+
+## Desktop Shortcuts
+
+WinBoat allows you to create Linux desktop shortcuts for your Windows applications with seamless integration:
+
+1. Launch WinBoat and navigate to the Apps view
+2. Right-click on any Windows application
+3. Select "Create Shortcut" from the context menu
+4. The shortcut will appear in your application menu immediately
+
+**Seamless Launch Experience:**
+- When you click a shortcut, WinBoat runs in the background (headless mode)
+- Only the Windows application window appears - no WinBoat UI
+- If the Windows container isn't running, it automatically starts and waits for it to be ready
+- The experience feels just like launching a native Linux application
+
+To remove a shortcut, right-click the app and select "Remove Shortcut".
+
+## CLI Usage
+
+WinBoat includes a command-line interface for managing apps:
+
+```bash
+# Install an application
+winboat -i ~/Downloads/app.exe
+
+# Launch an application
+winboat -l "App Name"
+
+# List all applications
+winboat --list
+
+# Check WinBoat status
+winboat --status
+
+# Show help
+winboat --help
+```
 
 ## Contributing
 

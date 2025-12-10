@@ -1,5 +1,5 @@
-import { ComposeConfig } from "../../types";
-import { RESTART_ON_FAILURE } from "../lib/constants";
+import { ComposeConfig } from "../../types.js";
+import { RESTART_ON_FAILURE } from "../lib/constants.js";
 
 export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     name: "winboat",
@@ -41,6 +41,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 "./oem:/oem",
             ],
             devices: ["/dev/kvm", "/dev/bus/usb"],
+            dns: ["8.8.8.8", "1.1.1.1"],
         },
     },
 };

@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR } from "./constants";
+import { WINBOAT_DIR } from "./constants.js";
 import type {
     ComposeConfig,
     CustomAppCallbacks,
@@ -7,24 +7,25 @@ import type {
     GuestServerVersion,
     Metrics,
     WinApp,
-} from "../../types";
-import { createLogger } from "../utils/log";
-import { AppIcons } from "../data/appicons";
+} from "../../types.js";
+import { createLogger } from "../utils/log.js";
+import { AppIcons } from "../data/appicons.js";
 import YAML from "yaml";
-import { InternalApps } from "../data/internalapps";
-import { getFreeRDP } from "../utils/getFreeRDP";
-import { openLink } from "../utils/openLink";
-import { WinboatConfig } from "./config";
-import { QMPManager } from "./qmp";
+import { InternalApps } from "../data/internalapps.js";
+import { getFreeRDP } from "../utils/getFreeRDP.js";
+import { openLink } from "../utils/openLink.js";
+import { WinboatConfig } from "./config.js";
+import { QMPManager } from "./qmp.js";
 import { assert } from "@vueuse/core";
-import { setIntervalImmediately } from "../utils/interval";
-import { ExecFileAsyncError } from "./exec-helper";
-import { ContainerManager, ContainerStatus } from "./containers/container";
-import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { setIntervalImmediately } from "../utils/interval.js";
+import { ExecFileAsyncError } from "./exec-helper.js";
+import { ContainerManager, ContainerStatus } from "./containers/container.js";
+import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common.js";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
+const os: typeof import("os") = require("node:os");
 const process: typeof import("process") = require("node:process");
 const { promisify }: typeof import("util") = require("node:util");
 const { exec }: typeof import("child_process") = require("node:child_process");
@@ -42,23 +43,23 @@ enum CustomAppCommands {
 
 const presetApps: WinApp[] = [
     {
-        Name: "⚙️ Windows Desktop",
-        Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
+        Name: "Windows Desktop",
+        Icon: AppIcons.WINDOWS_SERVER,
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
         Args: "",
         Usage: 0,
     },
     {
-        Name: "⚙️ Windows Explorer",
-        Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
+        Name: "Windows Explorer",
+        Icon: AppIcons.WINDOWS_EXPLORER,
         Source: "internal",
         Path: "%windir%\\explorer.exe",
         Args: "",
         Usage: 0,
     },
     {
-        Name: "🖥️ Browser Display",
+        Name: "Browser Display",
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
         Path: CustomAppCommands.NOVNC_COMMAND,
@@ -78,6 +79,12 @@ const stockArgs = [
     "/floatbar",
     "/compression",
     "/sec:tls",
+    "/gfx:RFX", // Enable RemoteFX graphics for better UI interaction (helps with clickable notifications)
+    "/rfx", // RemoteFX codec for better interactive content
+    "+auto-reconnect", // Auto-reconnect for better stability
+    "-grab-keyboard", // Don't grab keyboard exclusively, allows better integration
+    "/kbd:layout:0x00000409", // Force US keyboard layout to ensure input mapping works
+    "/mouse:relative", // Ensure relative mouse input for gaming/3D (might help tracking)
 ];
 
 /**
@@ -227,6 +234,7 @@ export class Winboat {
     #metricsInverval: NodeJS.Timeout | null = null;
     #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
     #qmpInterval: NodeJS.Timeout | null = null;
+    #hostAppSyncDone: boolean = false;
 
     // Variables
     isOnline: Ref<boolean> = ref(false);
@@ -304,10 +312,19 @@ export class Winboat {
             const _isOnline = await this.getHealth();
             if (_isOnline !== this.isOnline.value) {
                 this.isOnline.value = _isOnline;
-                logger.info(`Winboat Guest API went ${this.isOnline ? "online" : "offline"}`);
+                logger.info(`Winboat Guest API went ${this.isOnline.value ? "online" : "offline"}`);
 
                 if (this.isOnline.value) {
                     await this.checkVersionAndUpdateGuestServer();
+                    // Sync Windows apps to host application menu when API comes online
+                    if (!this.#hostAppSyncDone && this.apiUrl) {
+                        this.syncHostApps().catch((error) => {
+                            logger.error(`Failed to sync host apps: ${error.message}`);
+                        });
+                    }
+                } else {
+                    // Reset sync flag when API goes offline
+                    this.#hostAppSyncDone = false;
                 }
             }
         }, HEALTH_WAIT_MS);
@@ -602,8 +619,13 @@ export class Winboat {
         console.info("So long and thanks for all the fish!");
     }
 
-    async launchApp(app: WinApp) {
-        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
+    /**
+     * Launches a Windows application via FreeRDP
+     * @param app The application to launch
+     * @param dynamicArgs Optional array of dynamic arguments to inject into the app launch command
+     */
+    async launchApp(app: WinApp, dynamicArgs?: string[]) {
+        if (!this.isOnline.value) throw new Error("Cannot launch app, Winboat is offline");
 
         if (customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
@@ -613,7 +635,12 @@ export class Winboat {
             return;
         }
 
-        const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
+        const cleanAppName = app.Name
+            .replace(/^[⚙️🖥️]\s*/, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-+|-+$/g, "");
         const { username, password } = this.getCredentials();
 
         const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
@@ -634,6 +661,13 @@ export class Winboat {
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs);
+
+        // Add dynamic arguments if provided
+        if (dynamicArgs && dynamicArgs.length > 0) {
+            combinedArgs.push(...dynamicArgs);
+            logger.info(`Added dynamic arguments: ${dynamicArgs.join(" ")}`);
+        }
+
         let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
@@ -643,13 +677,20 @@ export class Winboat {
                 `/scale:${this.#wbConfig?.config.scale ?? 100}`,
             ]);
         } else {
+            // Combine app args with any dynamic args for the app command
+            let appCmdArgs = app.Args;
+            if (dynamicArgs && dynamicArgs.length > 0) {
+                // Append dynamic args to the app's existing args
+                appCmdArgs = app.Args ? `${app.Args} ${dynamicArgs.join(" ")}` : dynamicArgs.join(" ");
+            }
+
             args = args.concat([
                 this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
                 "-wallpaper",
                 this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
                 `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
                 `/wm-class:winboat-${cleanAppName}`,
-                `/app:program:${app.Path},name:${cleanAppName},cmd:"${app.Args}"`,
+                `/app:program:${app.Path},name:${cleanAppName},cmd:"${appCmdArgs}"`,
             ]);
         }
 
@@ -685,6 +726,189 @@ export class Winboat {
                 }
                 default: {
                     logger.warn(`FreeRDP process returned error code '${execError.code}'`);
+                    if (execError.stderr) {
+                        logger.error(`FreeRDP stderr: ${execError.stderr}`);
+                    }
+                    throw e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Uploads and installs an application installer to the Windows guest
+     * @param installerPath Path to the installer file (.exe or .msi)
+     * @returns Promise that resolves when installation is initiated
+     */
+    async uploadAndInstall(installerPath: string): Promise<void> {
+        if (!this.isOnline.value) {
+            throw new Error("Cannot install app, Winboat is offline");
+        }
+
+        if (!fs.existsSync(installerPath)) {
+            throw new Error(`Installer file not found: ${installerPath}`);
+        }
+
+        // Validate file extension
+        const ext = path.extname(installerPath).toLowerCase();
+        if (ext !== ".exe" && ext !== ".msi") {
+            throw new Error("Invalid file type. Only .exe and .msi files are supported");
+        }
+
+        logger.info(`Uploading installer: ${installerPath}`);
+
+        const formData = new FormData();
+        formData.append("installer", fs.createReadStream(installerPath));
+
+        try {
+            const response = await nodeFetch(`${this.apiUrl}/upload-installer`, {
+                method: "POST",
+                body: formData as any,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to upload installer: ${errorText}`);
+            }
+
+            const result = await response.json();
+            logger.info(`Installer uploaded successfully: ${JSON.stringify(result)}`);
+
+            // Launch installer via FreeRDP so it appears as native window on host
+            logger.info("Launching installer via FreeRDP...");
+            try {
+                await this.launchInstallerViaFreeRDP(result.temp_path, result.filename);
+                logger.info("Installer window should appear shortly on your host!");
+            } catch (error: any) {
+                logger.error(`Failed to launch installer via FreeRDP: ${error.message}`);
+                // Don't throw - installation might still work, just without GUI
+            }
+
+            // Wait a bit for installation to start, then refresh app cache
+            setTimeout(async () => {
+                logger.info("Refreshing app cache after installation...");
+                if (this.apiUrl) {
+                    await this.appMgr?.updateAppCache(this.apiUrl, { forceRead: true });
+                    // Sync host apps after new installation
+                    this.syncHostApps().catch((error) => {
+                        logger.error(`Failed to sync host apps after installation: ${error.message}`);
+                    });
+                }
+            }, 3000);
+        } catch (e) {
+            logger.error("Failed to upload and install application");
+            logger.error(e);
+            throw e;
+        }
+    }
+
+    /**
+     * Syncs Windows apps to the host's application menu by creating desktop entries
+     */
+    async syncHostApps(): Promise<void> {
+        if (!this.apiUrl) {
+            logger.warn("Cannot sync host apps: API URL not available");
+            return;
+        }
+
+        try {
+            // Execute sync via CLI (more reliable than trying to import TypeScript in renderer)
+            const winboatCliPath = path.join(process.cwd(), "scripts", "winboat-cli.ts");
+            if (fs.existsSync(winboatCliPath)) {
+                // Use the winboat wrapper script if available, otherwise use node directly
+                const winboatWrapper = path.join(os.homedir(), ".local", "bin", "winboat");
+                const command = fs.existsSync(winboatWrapper)
+                    ? `${winboatWrapper} --sync --api-url ${this.apiUrl}`
+                    : `node ${winboatCliPath} --sync --api-url ${this.apiUrl}`;
+
+                await execAsync(command, {
+                    cwd: process.cwd(),
+                    env: process.env,
+                });
+                this.#hostAppSyncDone = true;
+                logger.info("Successfully synced Windows apps to host application menu");
+            } else {
+                logger.warn("WinBoat CLI not found, skipping host app sync");
+            }
+        } catch (error: any) {
+            logger.error(`Failed to sync host apps: ${error.message}`);
+            // Don't throw - this is a background operation
+        }
+    }
+
+    /**
+     * Launches an installer via FreeRDP so it appears as a native window on the host
+     * @param installerPath Path to the installer file on Windows (e.g., C:\WINDOWS\SystemTemp\app.exe)
+     * @param installerName Original filename of the installer
+     */
+    async launchInstallerViaFreeRDP(installerPath: string, installerName: string): Promise<void> {
+        if (!this.isOnline.value) {
+            throw new Error("Cannot launch installer, Winboat is offline");
+        }
+
+        const { username, password } = this.getCredentials();
+        const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
+
+        const freeRDPInstallation = await getFreeRDP();
+        if (!freeRDPInstallation) {
+            throw new Error("FreeRDP 3.x not found. Please install FreeRDP 3.x with sound support.");
+        }
+
+        // Build FreeRDP command for installer
+        const cleanName = installerName.replace(/[,.'"]/g, "").replace(/\.[^.]*$/, ""); // Remove extension and special chars
+
+        // Determine command based on file extension
+        const isMSI = installerPath.toLowerCase().endsWith(".msi");
+
+        // For MSI: use msiexec.exe with /i argument
+        // For EXE: run the installer directly
+        const appProgram = isMSI ? "C:\\Windows\\System32\\msiexec.exe" : installerPath;
+        const appCmd = isMSI ? `/i "${installerPath}"` : "";
+
+        // Get user's RDP args configuration (similar to launchApp)
+        const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
+        const newArgs = this.#wbConfig?.config.rdpArgs.filter(a => !a.isReplacement).map(v => v.newArg) ?? [];
+        const combinedArgs = stockArgs
+            .map(argStr =>
+                useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
+            )
+            .concat(newArgs);
+
+        const args = [
+            `/u:${username}`,
+            `/p:${password}`,
+            `/v:127.0.0.1`,
+            `/port:${rdpHostPort}`,
+            ...combinedArgs,
+            "-wallpaper",
+            `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
+            `/wm-class:winboat-installer-${cleanName}`,
+            `/app:program:${appProgram},name:${cleanName} Installer,cmd:"${appCmd}"`,
+        ].filter((v) => v.trim() !== "");
+
+        logger.info(`Launching installer via FreeRDP: ${installerName}`);
+        logger.info(`FreeRDP command: ${freeRDPInstallation.stringifyExec(args)}`);
+
+        try {
+            await freeRDPInstallation.exec(args);
+        } catch (e) {
+            const execError = e as ExecFileAsyncError;
+            const ERRINFO_RPC_INITIATED_DISCONNECT = 0x00000001;
+            const ERRINFO_LOGOFF_BY_USER = 0x0000000c;
+
+            // Handle FreeRDP error codes (similar to launchApp)
+            switch (execError.code) {
+                case ERRINFO_RPC_INITIATED_DISCONNECT: {
+                    logger.info("FreeRDP connection already established for installer.");
+                    break;
+                }
+                case ERRINFO_LOGOFF_BY_USER: {
+                    logger.info("FreeRDP disconnected due to user logging off.");
+                    break;
+                }
+                default: {
+                    logger.warn(`FreeRDP process returned error code '${execError.code}'`);
+                    throw e; // Re-throw other errors
                 }
             }
         }
@@ -797,3 +1021,6 @@ export class Winboat {
         return `http://127.0.0.1:${apiPort}`;
     }
 }
+
+// Export ContainerStatus for use in other modules (e.g., desktop shortcuts)
+export { ContainerStatus };

@@ -784,6 +784,27 @@ async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
 
+    // Update dynamic resource limits (not reservations)
+    // This allows the container to use resources on-demand up to the limit,
+    // without reserving the full amount upfront
+    if (!compose.value!.services.windows.deploy) {
+        compose.value!.services.windows.deploy = {
+            resources: {
+                limits: {
+                    memory: `${ramGB.value}G`,
+                    cpus: `${numCores.value}`,
+                },
+                reservations: {
+                    memory: "512M",
+                    cpus: "0.5",
+                },
+            },
+        };
+    } else {
+        compose.value!.services.windows.deploy.resources.limits.memory = `${ramGB.value}G`;
+        compose.value!.services.windows.deploy.resources.limits.cpus = `${numCores.value}`;
+    }
+
     const composeHasHomefolderShare = compose.value!.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
 
     if (shareHomeFolder.value && !composeHasHomefolderShare) {
