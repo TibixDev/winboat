@@ -43,23 +43,23 @@ enum CustomAppCommands {
 
 const presetApps: WinApp[] = [
     {
-        Name: "⚙️ Windows Desktop",
-        Icon: AppIcons[InternalApps.WINDOWS_DESKTOP],
+        Name: "Windows Desktop",
+        Icon: AppIcons.WINDOWS_SERVER,
         Source: "internal",
         Path: InternalApps.WINDOWS_DESKTOP,
         Args: "",
         Usage: 0,
     },
     {
-        Name: "⚙️ Windows Explorer",
-        Icon: AppIcons[InternalApps.WINDOWS_EXPLORER],
+        Name: "Windows Explorer",
+        Icon: AppIcons.WINDOWS_EXPLORER,
         Source: "internal",
         Path: "%windir%\\explorer.exe",
         Args: "",
         Usage: 0,
     },
     {
-        Name: "🖥️ Browser Display",
+        Name: "Browser Display",
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
         Path: CustomAppCommands.NOVNC_COMMAND,
@@ -83,6 +83,8 @@ const stockArgs = [
     "/rfx", // RemoteFX codec for better interactive content
     "+auto-reconnect", // Auto-reconnect for better stability
     "-grab-keyboard", // Don't grab keyboard exclusively, allows better integration
+    "/kbd:layout:0x00000409", // Force US keyboard layout to ensure input mapping works
+    "/mouse:relative", // Ensure relative mouse input for gaming/3D (might help tracking)
 ];
 
 /**
@@ -310,7 +312,7 @@ export class Winboat {
             const _isOnline = await this.getHealth();
             if (_isOnline !== this.isOnline.value) {
                 this.isOnline.value = _isOnline;
-                logger.info(`Winboat Guest API went ${this.isOnline ? "online" : "offline"}`);
+                logger.info(`Winboat Guest API went ${this.isOnline.value ? "online" : "offline"}`);
 
                 if (this.isOnline.value) {
                     await this.checkVersionAndUpdateGuestServer();
@@ -623,7 +625,7 @@ export class Winboat {
      * @param dynamicArgs Optional array of dynamic arguments to inject into the app launch command
      */
     async launchApp(app: WinApp, dynamicArgs?: string[]) {
-        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
+        if (!this.isOnline.value) throw new Error("Cannot launch app, Winboat is offline");
 
         if (customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
@@ -633,8 +635,12 @@ export class Winboat {
             return;
         }
 
-        const cleanAppName = app.Name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
-        // const cleanAppName = app.Name.replaceAll(/[,.'"]/g, ""); // Old logic
+        const cleanAppName = app.Name
+            .replace(/^[⚙️🖥️]\s*/, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-+|-+$/g, "");
         const { username, password } = this.getCredentials();
 
         const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;

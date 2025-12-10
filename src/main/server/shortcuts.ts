@@ -183,17 +183,25 @@ cd "\${projectRoot}"
         return fs.existsSync(desktopFilePath);
     }
 
-    private getDesktopFileName(app: WinApp): string {
-        const sanitizedName = app.Name.replace(/[^a-zA-Z0-9-_]/g, "-")
-            .replace(/-+/g, "-")
-            .toLowerCase();
+    private sanitizeAppName(name: string): string {
+        return name
+            .replace(/^[⚙️🖥️]\s*/, "") // Remove known emojis
+            // Remove generic non-ascii chars if needed, or just let the regex below handle it
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "-") // Replace non-alnum with hyphen
+            .replace(/-+/g, "-") // Collapse
+            .replace(/^-+|-+$/g, ""); // Trim
+    }
 
+    private getDesktopFileName(app: WinApp): string {
+        const sanitizedName = this.sanitizeAppName(app.Name);
         return `winboat-${sanitizedName}.desktop`;
     }
 
     private generateDesktopFileContent(app: WinApp, winboatExecutable: string, iconPath: string): string {
         const displayName = app.Name.replace(/^[⚙️🖥️]\s*/, "");
         const escapedAppName = app.Name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        const sanitizedName = this.sanitizeAppName(app.Name);
 
         return `[Desktop Entry]
 Version=1.0
@@ -205,7 +213,7 @@ Icon=${iconPath}
 Categories=Winboat;Windows;
 Terminal=false
 StartupNotify=true
-StartupWMClass=winboat-${displayName.toLowerCase().replace(/[^a-z0-9]/g, "-")}
+StartupWMClass=winboat-${sanitizedName}
 `;
     }
 

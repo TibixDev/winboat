@@ -56,16 +56,16 @@ const windowStore = new Store<SchemaType>({
 });
 
 let mainWindow: BrowserWindow | null = null;
-let pendingLaunchApp: string | null = null;
+let pendingLaunchId: string | null = null;
 
 // Parse startup arguments immediately
 const launchAppIndex = process.argv.findIndex((arg) => arg.startsWith("--launch-app-name="));
 if (launchAppIndex !== -1) {
     const appNameArg = process.argv[launchAppIndex];
-    const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1");
+    const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1"); // Strip quotes if present
     if (appName) {
         console.log(`Pending launch app (startup): ${appName}`);
-        pendingLaunchApp = appName;
+        pendingLaunchId = appName; // Reuse variable but store Name
     }
 }
 
@@ -88,7 +88,7 @@ if (!gotTheLock) {
                 const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1"); // Remove quotes
                 if (appName) {
                     console.log(`Launching app from shortcut (second-instance): ${appName}`);
-                    mainWindow.webContents.send("launch-app-from-shortcut", appName);
+                    mainWindow.webContents.send('launch-app-from-shortcut', appName);
                 }
             }
         }
@@ -171,9 +171,9 @@ app.on("window-all-closed", function () {
 });
 
 // Desktop Shortcuts IPC Handlers
-ipcMain.handle("get-pending-launch-app", async () => {
-    const app = pendingLaunchApp;
-    pendingLaunchApp = null; // Clear after fetching
+ipcMain.handle("get-pending-launch-app", () => {
+    const app = pendingLaunchId;
+    pendingLaunchId = null; // Clear after fetching
     return app;
 });
 

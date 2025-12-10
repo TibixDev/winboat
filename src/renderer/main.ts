@@ -37,7 +37,9 @@ window.api = {
     removeDesktopShortcut: (app: WinApp) => ipcRenderer.invoke("remove-desktop-shortcut", app),
     hasDesktopShortcut: (app: WinApp) => ipcRenderer.invoke("has-desktop-shortcut", app),
     onLaunchAppFromShortcut: (callback: (appName: string) => void) => {
-        ipcRenderer.on("launch-app-from-shortcut", (_event, appName) => callback(appName));
+        ipcRenderer.on("launch-app-from-shortcut", (_event, appName) => {
+            callback(appName);
+        });
     },
     getPendingLaunchApp: () => ipcRenderer.invoke("get-pending-launch-app"),
 };
