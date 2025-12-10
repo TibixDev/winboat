@@ -94,6 +94,30 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - Make sure you meet the [prerequisites](#prerequisites)
 - Additionally, for development you need to have NodeJS and Go installed on your system
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
+- Install the dependencies (`npm i`)
+- Build the guest server (`npm run build:gs`)
+- Run the app (`npm run dev`)
+
+## Desktop Shortcuts
+
+WinBoat allows you to create Linux desktop shortcuts for your Windows applications with seamless integration:
+
+1. Launch WinBoat and navigate to the Apps view
+2. Right-click on any Windows application
+3. Select "Create Shortcut" from the context menu
+4. The shortcut will appear in your application menu immediately
+
+**Seamless Launch Experience:**
+- When you click a shortcut, WinBoat runs in the background (headless mode)
+- Only the Windows application window appears - no WinBoat UI
+- If the Windows container isn't running, it automatically starts and waits for it to be ready
+- The experience feels just like launching a native Linux application
+
+To remove a shortcut, right-click the app and select "Remove Shortcut".
+
+## CLI Usage
+
+WinBoat includes a command-line interface for managing apps:
 
 ```bash
 # Install an application
