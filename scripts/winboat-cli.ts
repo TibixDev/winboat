@@ -33,8 +33,6 @@ interface CliOptions {
     launch?: string;
     list?: boolean;
     status?: boolean;
-    sync?: boolean;
-    clean?: boolean;
     apiUrl: string;
 }
 
@@ -78,10 +76,7 @@ function parseArgs(): CliOptions {
             options.list = true;
         } else if (arg === "--status" || arg === "-s" || arg === "-status") {
             options.status = true;
-        } else if (arg === "--sync") {
-            options.sync = true;
-        } else if (arg === "--clean") {
-            options.clean = true;
+
         } else if (arg === "--api-url") {
             if (i + 1 >= args.length) {
                 console.error("Error: --api-url requires a URL");
@@ -118,8 +113,6 @@ Options:
   -l, --launch <name>       Launch an application by name
   --list, -ls, -list        List all available applications
   --status, -s, -status     Check WinBoat container and API status
-  --sync                    Sync Windows apps to host application menu
-  --clean                   Clean existing desktop entries before syncing (use with --sync)
   --api-url <url>           Specify custom API URL (default: http://localhost:7148)
   -h, --help                Show this help message
 
@@ -128,7 +121,6 @@ Examples:
   winboat -l "Google Chrome"
   winboat --list
   winboat --status
-  winboat --sync
   winboat --api-url http://localhost:7148 --list
 `);
 }
@@ -1221,8 +1213,8 @@ async function detectAndUpdateApiUrl(apiUrl: string): Promise<string> {
 async function main() {
     const options = parseArgs();
 
-    // Check API health first (except for help and sync)
-    if (!options.status && !options.list && !options.install && !options.launch && !options.sync) {
+    // Check API health first (except for help)
+    if (!options.status && !options.list && !options.install && !options.launch) {
         showHelp();
         process.exit(0);
     }
@@ -1316,39 +1308,10 @@ async function main() {
                 process.exit(1);
             }
             await launchApp(finalApiUrl, options.launch);
-        } else if (options.sync) {
-            const containerStatus = await checkContainerStatus();
-            const isHealthy = await checkApiHealth(finalApiUrl, true);
-            if (!isHealthy) {
-                console.error("\nError: WinBoat API is not accessible.");
-                if (containerStatus.exists && !containerStatus.running) {
-                    console.error(`\nThe WinBoat container exists but is not running.`);
-                    console.error(`\nTo start it:`);
-                    console.error(`  docker start ${containerStatus.name || "WinBoat"}`);
-                    console.error(`  or`);
-                    console.error(`  podman start ${containerStatus.name || "WinBoat"}`);
-                } else if (!containerStatus.exists) {
-                    console.error(`\nNo WinBoat container found. Please set up WinBoat first.`);
-                } else {
-                    console.error(`\nThe container is running but the API is not accessible.`);
-                    const detectedPort = await getApiPort();
-                    if (detectedPort && detectedPort !== 7148) {
-                        console.error(`\n  Detected API port: ${detectedPort}`);
-                        console.error(`  Try: winboat --api-url http://localhost:${detectedPort} --sync`);
-                    }
-                }
-                process.exit(1);
-            }
-            // Execute sync script directly (can't import .ts files in ES modules)
-            const currentDir = path.dirname(new URL(import.meta.url).pathname);
-            const syncScriptPath = path.join(currentDir, "sync-host-apps.ts");
-            const execAsyncPromisified = promisify(exec);
-            const nodeCmd = process.execPath;
-            const cleanFlag = options.clean ? " --clean" : "";
-            await execAsyncPromisified(`${nodeCmd} "${syncScriptPath}" --api-url "${finalApiUrl}"${cleanFlag}`, {
-                cwd: currentDir,
-                env: process.env,
-            });
+        } else {
+            console.error("Error: No action specified");
+            console.error("Use -h or --help for usage information");
+            process.exit(1);
         }
     } catch (error: any) {
         console.error(`Error: ${error.message}`);
@@ -1360,4 +1323,3 @@ main().catch((error) => {
     console.error("Fatal error:", error);
     process.exit(1);
 });
-

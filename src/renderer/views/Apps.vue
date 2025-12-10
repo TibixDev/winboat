@@ -223,6 +223,16 @@
                     <x-label>Edit</x-label>
                 </WBMenuItem>
 
+                <WBMenuItem v-if="!hasShortcut(contextMenuTarget)" @click="createShortcut">
+                    <Icon class="size-4" icon="mdi:link-plus"></Icon>
+                    <x-label>Create Shortcut</x-label>
+                </WBMenuItem>
+
+                <WBMenuItem v-else @click="removeShortcut">
+                    <Icon class="size-4" icon="mdi:link-off"></Icon>
+                    <x-label>Remove Shortcut</x-label>
+                </WBMenuItem>
+
                 <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeCustomApp">
                     <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
                     <x-label>Remove</x-label>
@@ -601,6 +611,104 @@ async function triggerInstallerUpload() {
         isInstalling.value = false;
     }
 }
+
+// Desktop Shortcuts Management
+const appShortcutStates = ref<Map<string, boolean>>(new Map());
+
+/**
+ * Checks if an app has a desktop shortcut
+ */
+function hasShortcut(app: WinApp | null): boolean {
+    if (!app) return false;
+    
+    // Check cached state first
+    if (appShortcutStates.value.has(app.Name)) {
+        return appShortcutStates.value.get(app.Name)!;
+    }
+    
+    return false;
+}
+
+/**
+ * Creates a desktop shortcut for the context menu target app
+ */
+async function createShortcut() {
+    if (!contextMenuTarget.value) return;
+    
+    try {
+        // Create a clean serializable object without the 'id' property
+        const appData = {
+            Name: contextMenuTarget.value.Name,
+            Path: contextMenuTarget.value.Path,
+            Args: contextMenuTarget.value.Args,
+            Icon: contextMenuTarget.value.Icon,
+            Source: contextMenuTarget.value.Source,
+            Usage: contextMenuTarget.value.Usage
+        };
+        
+        const result = await window.api.createDesktopShortcut(appData);
+        if (result.success) {
+            // Update state
+            appShortcutStates.value.set(appData.Name, true);
+            console.log(`Created shortcut for ${appData.Name}`);
+        } else {
+            alert(`Failed to create shortcut: ${result.error || 'Unknown error'}`);
+        }
+    } catch (error: any) {
+        console.error('Failed to create shortcut:', error);
+        alert(`Failed to create shortcut: ${error.message || 'Unknown error'}`);
+    }
+}
+
+/**
+ * Removes a desktop shortcut for the context menu target app
+ */
+async function removeShortcut() {
+    if (!contextMenuTarget.value) return;
+    
+    try {
+        // Create a clean serializable object without the 'id' property
+        const appData = {
+            Name: contextMenuTarget.value.Name,
+            Path: contextMenuTarget.value.Path,
+            Args: contextMenuTarget.value.Args,
+            Icon: contextMenuTarget.value.Icon,
+            Source: contextMenuTarget.value.Source,
+            Usage: contextMenuTarget.value.Usage
+        };
+        
+        const result = await window.api.removeDesktopShortcut(appData);
+        if (result.success) {
+            // Update state
+            appShortcutStates.value.set(appData.Name, false);
+            console.log(`Removed shortcut for ${appData.Name}`);
+        } else {
+            alert(`Failed to remove shortcut: ${result.error || 'Unknown error'}`);
+        }
+    } catch (error: any) {
+        console.error('Failed to remove shortcut:', error);
+        alert(`Failed to remove shortcut: ${error.message || 'Unknown error'}`);
+    }
+}
+
+// Load shortcut states on mount
+onMounted(async () => {
+    // Check shortcut states for all apps
+    if (apps.value.length > 0) {
+        for (const app of apps.value) {
+            const hasShortcutState = await window.api.hasDesktopShortcut(app);
+            appShortcutStates.value.set(app.Name, hasShortcutState);
+        }
+    }
+});
+
+// Update shortcut states when apps list changes
+watch(apps, async (newApps) => {
+    for (const app of newApps) {
+        const hasShortcutState = await window.api.hasDesktopShortcut(app);
+        appShortcutStates.value.set(app.Name, hasShortcutState);
+    }
+});
 </script>
 
 <style scoped>

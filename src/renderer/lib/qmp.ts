@@ -1,5 +1,5 @@
-import { WINBOAT_DIR } from "./constants";
-import { createLogger } from "../utils/log";
+import { WINBOAT_DIR } from "./constants.js";
+import { createLogger } from "../utils/log.js";
 const path: typeof import("path") = require("node:path");
 import { type Socket } from "net";
 import { assert } from "@vueuse/core";

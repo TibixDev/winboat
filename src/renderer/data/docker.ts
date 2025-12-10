@@ -1,5 +1,5 @@
-import { ComposeConfig } from "../../types";
-import { RESTART_ON_FAILURE } from "../lib/constants";
+import { ComposeConfig } from "../../types.js";
+import { RESTART_ON_FAILURE } from "../lib/constants.js";
 
 export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
     name: "winboat",

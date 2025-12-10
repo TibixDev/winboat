@@ -1,4 +1,4 @@
-import { type ComposeConfig, LongPortMapping, type PortEntryProtocol } from "../../types";
+import { type ComposeConfig, LongPortMapping, type PortEntryProtocol } from "../../types.js";
 
 const { createServer, isIPv4, isIPv6 }: typeof import("net") = require("node:net");
 

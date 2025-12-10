@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR } from "./constants";
+import { WINBOAT_DIR } from "./constants.js";
 import type {
     ComposeConfig,
     CustomAppCallbacks,
@@ -7,20 +7,20 @@ import type {
     GuestServerVersion,
     Metrics,
     WinApp,
-} from "../../types";
-import { createLogger } from "../utils/log";
-import { AppIcons } from "../data/appicons";
+} from "../../types.js";
+import { createLogger } from "../utils/log.js";
+import { AppIcons } from "../data/appicons.js";
 import YAML from "yaml";
-import { InternalApps } from "../data/internalapps";
-import { getFreeRDP } from "../utils/getFreeRDP";
-import { openLink } from "../utils/openLink";
-import { WinboatConfig } from "./config";
-import { QMPManager } from "./qmp";
+import { InternalApps } from "../data/internalapps.js";
+import { getFreeRDP } from "../utils/getFreeRDP.js";
+import { openLink } from "../utils/openLink.js";
+import { WinboatConfig } from "./config.js";
+import { QMPManager } from "./qmp.js";
 import { assert } from "@vueuse/core";
-import { setIntervalImmediately } from "../utils/interval";
-import { ExecFileAsyncError } from "./exec-helper";
-import { ContainerManager, ContainerStatus } from "./containers/container";
-import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { setIntervalImmediately } from "../utils/interval.js";
+import { ExecFileAsyncError } from "./exec-helper.js";
+import { ContainerManager, ContainerStatus } from "./containers/container.js";
+import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common.js";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -653,13 +653,13 @@ export class Winboat {
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs);
-        
+
         // Add dynamic arguments if provided
         if (dynamicArgs && dynamicArgs.length > 0) {
             combinedArgs.push(...dynamicArgs);
             logger.info(`Added dynamic arguments: ${dynamicArgs.join(" ")}`);
         }
-        
+
         let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
@@ -675,7 +675,7 @@ export class Winboat {
                 // Append dynamic args to the app's existing args
                 appCmdArgs = app.Args ? `${app.Args} ${dynamicArgs.join(" ")}` : dynamicArgs.join(" ");
             }
-            
+
             args = args.concat([
                 this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
                 "-wallpaper",
@@ -808,7 +808,7 @@ export class Winboat {
                 const command = fs.existsSync(winboatWrapper)
                     ? `${winboatWrapper} --sync --api-url ${this.apiUrl}`
                     : `node ${winboatCliPath} --sync --api-url ${this.apiUrl}`;
-                
+
                 await execAsync(command, {
                     cwd: process.cwd(),
                     env: process.env,
@@ -844,10 +844,10 @@ export class Winboat {
 
         // Build FreeRDP command for installer
         const cleanName = installerName.replace(/[,.'"]/g, "").replace(/\.[^.]*$/, ""); // Remove extension and special chars
-        
+
         // Determine command based on file extension
         const isMSI = installerPath.toLowerCase().endsWith(".msi");
-        
+
         // For MSI: use msiexec.exe with /i argument
         // For EXE: run the installer directly
         const appProgram = isMSI ? "C:\\Windows\\System32\\msiexec.exe" : installerPath;
@@ -1009,3 +1009,6 @@ export class Winboat {
         return `http://127.0.0.1:${apiPort}`;
     }
 }
+
+// Export ContainerStatus for use in other modules (e.g., desktop shortcuts)
+export { ContainerStatus };

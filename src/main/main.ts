@@ -2,6 +2,9 @@ import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
 import { join } from "path";
 import { initialize, enable } from "@electron/remote/main/index.js";
 import Store from "electron-store";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
 
 initialize();
 
@@ -138,9 +141,57 @@ app.on("window-all-closed", function () {
     if (process.platform !== "darwin") app.quit();
 });
 
-app.on("second-instance", _ => {
+app.on("second-instance", (_event, commandLine) => {
     if (mainWindow) {
         mainWindow.focus();
+
+        // Handle --launch-app-name argument from desktop shortcuts
+        const launchAppIndex = commandLine.findIndex(arg => arg.startsWith("--launch-app-name="));
+        if (launchAppIndex !== -1) {
+            const appNameArg = commandLine[launchAppIndex];
+            const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1"); // Remove quotes
+            if (appName) {
+                console.log(`Launching app from shortcut: ${appName}`);
+                mainWindow.webContents.send("launch-app-from-shortcut", appName);
+            }
+        }
+    }
+});
+
+// Desktop Shortcuts IPC Handlers
+// Desktop Shortcuts IPC Handlers
+ipcMain.handle("create-desktop-shortcut", async (_event, app) => {
+    try {
+        const { DesktopShortcutsManager } = require("./server/shortcuts.js");
+        const manager = DesktopShortcutsManager.getInstance();
+        await manager.createShortcut(app);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to create desktop shortcut:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle("remove-desktop-shortcut", async (_event, app) => {
+    try {
+        const { DesktopShortcutsManager } = require("./server/shortcuts.js");
+        const manager = DesktopShortcutsManager.getInstance();
+        await manager.removeShortcut(app);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Failed to remove desktop shortcut:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle("has-desktop-shortcut", async (_event, app) => {
+    try {
+        const { DesktopShortcutsManager } = require("./server/shortcuts.js");
+        const manager = DesktopShortcutsManager.getInstance();
+        return manager.hasShortcut(app);
+    } catch (error: any) {
+        console.error("Failed to check desktop shortcut:", error);
+        return false;
     }
 });
 

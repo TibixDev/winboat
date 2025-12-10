@@ -1,6 +1,6 @@
-import { type WindowsVersionKey } from "./renderer/lib/constants";
-import { ContainerRuntimes } from "./renderer/lib/containers/common";
-import { type Winboat } from "./renderer/lib/winboat";
+import { type WindowsVersionKey } from "./renderer/lib/constants.js";
+import { type ContainerRuntimes } from "./renderer/lib/containers/common.js";
+import { type Winboat } from "./renderer/lib/winboat.js";
 
 export type Specs = {
     cpuCores: number;

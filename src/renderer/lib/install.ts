@@ -1,11 +1,11 @@
-import { type InstallConfiguration } from "../../types";
-import { WINBOAT_DIR } from "./constants";
-import { createLogger } from "../utils/log";
+import { type InstallConfiguration } from "../../types.js";
+import { WINBOAT_DIR } from "./constants.js";
+import { createLogger } from "../utils/log.js";
 import { createNanoEvents, type Emitter } from "nanoevents";
-import { Winboat } from "./winboat";
-import { ContainerManager } from "./containers/container";
-import { WinboatConfig } from "./config";
-import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
+import { Winboat } from "./winboat.js";
+import { ContainerManager } from "./containers/container.js";
+import { WinboatConfig } from "./config.js";
+import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common.js";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");

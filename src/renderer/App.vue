@@ -149,6 +149,9 @@
         <div v-else class="w-full h-[calc(100vh-2rem)]">
             <RouterView />
         </div>
+        
+        <!-- Shortcut Loading Overlay -->
+        <ShortcutLoadingOverlay />
     </main>
 </template>
 
@@ -165,8 +168,11 @@ import { USBManager } from "./lib/usbmanager";
 import { setIntervalImmediately } from "./utils/interval";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
+import type { WinApp } from "../types";
+import ShortcutLoadingOverlay from "./components/ShortcutLoadingOverlay.vue";
+import { useShortcutLaunchState } from "./composables/useShortcutLaunchState";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
-const os: typeof import("os") = require("node:os");
+const os: typeof import("node:os") = require("node:os");
 
 const $router = useRouter();
 const $route = useRoute();
@@ -226,28 +232,6 @@ onMounted(async () => {
             rerenderCounter.value++; // Force re-render to update transitions
         }
     }, 1000); // Check every 1000ms
-
-    // Watch for guest server updates and show dialog
-    watch(
-        () => winboat?.isUpdatingGuestServer.value,
-        isUpdating => {
-            if (isUpdating === true) {
-                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}`;
-                updateDialog.value!.showModal();
-                // Prepare the timeout to show manual update required after 45 seconds
-                updateTimeout = setTimeout(() => {
-                    manualUpdateRequired.value = true;
-                }, MANUAL_UPDATE_TIMEOUT);
-            } else {
-                // Clear the timeout if the update finished before the timeout
-                if (updateTimeout) {
-                    clearTimeout(updateTimeout);
-                    updateTimeout = null;
-                }
-                manualUpdateRequired.value = false;
-            }
-        },
-    );
 });
 
 onUnmounted(() => {

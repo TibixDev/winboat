@@ -1,10 +1,10 @@
-import { createLogger } from "../utils/log";
-import { ComposePortMapper, Range } from "../utils/port";
-import { WinboatConfig } from "./config";
-import { WINBOAT_DIR } from "./constants";
-import { CommonPorts, createContainer } from "./containers/common";
-import { ContainerManager } from "./containers/container";
-import { Winboat } from "./winboat";
+import { createLogger } from "../utils/log.js";
+import { ComposePortMapper, Range } from "../utils/port.js";
+import { WinboatConfig } from "./config.js";
+import { WINBOAT_DIR } from "./constants.js";
+import { CommonPorts, createContainer } from "./containers/common.js";
+import { ContainerManager } from "./containers/container.js";
+import { Winboat } from "./winboat.js";
 
 const path: typeof import("path") = require("path");
 const logger = createLogger(path.join(WINBOAT_DIR, "migrations.log"));
