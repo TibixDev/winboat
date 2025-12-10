@@ -76,26 +76,33 @@ if (!gotTheLock) {
     app.quit();
 } else {
     app.on("second-instance", (_event, commandLine) => {
-        // Someone tried to run a second instance, we should focus our window.
-        if (mainWindow) {
-            if (mainWindow.isMinimized()) mainWindow.restore();
-            mainWindow.focus();
+        // Handle --launch-app-name argument from desktop shortcuts
+        const launchAppIndex = commandLine.findIndex((arg) => arg.startsWith("--launch-app-name="));
 
-            // Handle --launch-app-name argument from desktop shortcuts
-            const launchAppIndex = commandLine.findIndex((arg) => arg.startsWith("--launch-app-name="));
-            if (launchAppIndex !== -1) {
-                const appNameArg = commandLine[launchAppIndex];
-                const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1"); // Remove quotes
-                if (appName) {
-                    console.log(`Launching app from shortcut (second-instance): ${appName}`);
-                    mainWindow.webContents.send('launch-app-from-shortcut', appName);
-                }
+        if (launchAppIndex !== -1) {
+            // Launching an app via shortcut - don't show/focus the main window
+            const appNameArg = commandLine[launchAppIndex];
+            const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1"); // Remove quotes
+            if (appName && mainWindow) {
+                console.log(`Launching app from shortcut (second-instance): ${appName}`);
+                mainWindow.webContents.send('launch-app-from-shortcut', appName);
+                // Don't restore or focus the window - let it run in background
+            }
+        } else {
+            // Normal second instance (not a shortcut) - show and focus the window
+            if (mainWindow) {
+                if (mainWindow.isMinimized()) mainWindow.restore();
+                mainWindow.focus();
             }
         }
     });
 }
 
 function createWindow() {
+    // Check if launched with --launch-app-name (from shortcut)
+    const launchAppArg = process.argv.find((arg) => arg.startsWith("--launch-app-name="));
+    const isLaunchedFromShortcut = !!launchAppArg;
+
     mainWindow = new BrowserWindow({
         minWidth: WINDOW_MIN_WIDTH,
         minHeight: WINDOW_MIN_HEIGHT,
@@ -103,14 +110,19 @@ function createWindow() {
         height: windowStore.get("dimensions.height"),
         x: windowStore.get("position.x"),
         y: windowStore.get("position.y"),
+        show: !isLaunchedFromShortcut, // Don't show window if launched from shortcut
         transparent: false,
         frame: false,
         webPreferences: {
-            // preload: join(__dirname, 'preload.js'),
             nodeIntegration: true,
             contextIsolation: false,
         },
     });
+
+    if (isLaunchedFromShortcut) {
+        console.log(`Launched from shortcut with arg: ${launchAppArg}`);
+        // Window will stay hidden - app will be launched via IPC when renderer is ready
+    }
 
     mainWindow.on("close", () => {
         const bounds = mainWindow?.getBounds();

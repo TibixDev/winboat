@@ -329,6 +329,17 @@ onMounted(async () => {
     if (pendingAppId) {
         // Wait slightly for connections to stabilize?
         setTimeout(() => launchAppByName(pendingAppId), 1000);
+    } else {
+        // Also check if launched with --launch-app-name argument (first instance from shortcut)
+        const process = require('process');
+        const launchAppArg = process.argv.find((arg: string) => arg.startsWith('--launch-app-name='));
+        if (launchAppArg) {
+            const appName = launchAppArg.split('=')[1]?.replace(/^"(.*)"$/, '$1');
+            if (appName) {
+                console.log(`First instance launched from shortcut with app: ${appName}`);
+                setTimeout(() => launchAppByName(appName), 1000);
+            }
+        }
     }
     
     // Apply or remove disable-animations class based on config
