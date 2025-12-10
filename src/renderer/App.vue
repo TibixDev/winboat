@@ -209,6 +209,89 @@ onMounted(async () => {
         $router.push("/setup");
     }
     
+    // Launcher function to handle app launching
+    const launchAppByName = async (appName: string) => {
+        console.log(`Received launch request for: ${appName}`);
+        if (!winboat) return; // Not ready yet
+
+        startLaunch(appName);
+
+        try {
+            // Check if container is running
+            updateStep("starting-container");
+            const status = await winboat.containerMgr.status();
+            
+            updateStep("launching-app");
+            
+            let targetApp: WinApp | undefined;
+
+            // 1. Check custom apps in config
+            if (wbConfig) {
+                 targetApp = wbConfig.config.customApps.find(a => a.Name === appName);
+            }
+            
+            // 2. If not custom, check Internal Apps (Hardcoded mapping)
+            if (!targetApp) {
+                const { InternalApps } = await import("./data/internalapps");
+                if (appName === "Windows Explorer" || appName === "⚙️ Windows Explorer") {
+                     targetApp = {
+                         Name: appName,
+                         Path: InternalApps.WINDOWS_EXPLORER,
+                         Args: "",
+                         Source: "internal"
+                     } as WinApp;
+                } else if (appName === "Windows Desktop" || appName === "🖥️ Windows Desktop") {
+                     targetApp = {
+                         Name: appName,
+                         Path: InternalApps.WINDOWS_DESKTOP,
+                         Args: "",
+                         Source: "internal"
+                     } as WinApp;
+                }
+            }
+
+            // 3. If still not found, try fetching from API (if applicable)
+            if (!targetApp && winboat && winboat.apiUrl) {
+                 try {
+                    const res = await fetch(`${winboat.apiUrl}/apps`);
+                    const apps = await res.json() as WinApp[];
+                    targetApp = apps.find(a => a.Name === appName);
+                 } catch {}
+            }
+            
+            if (targetApp) {
+                await winboat.startApp(targetApp);
+                completeLaunch();
+            } else {
+                // Last resort: Try force update of cache
+                if (winboat && winboat.apiUrl && winboat.appMgr) {
+                    await winboat.appMgr.updateAppCache(winboat.apiUrl, { forceRead: true });
+                    targetApp = winboat.appMgr.appCache.find(a => a.Name === appName);
+                    if (targetApp) {
+                         await winboat.startApp(targetApp);
+                         completeLaunch();
+                         return;
+                    }
+                }
+                
+                console.error(`App not found: ${appName}`);
+                cancelLaunch();
+            }
+            
+        } catch (error) {
+            console.error("Failed to launch app from shortcut:", error);
+            cancelLaunch();
+        }
+    };
+
+    window.api.onLaunchAppFromShortcut(launchAppByName);    
+    // Check pending app
+    const pendingApp = await window.api.getPendingLaunchApp();
+    if (pendingApp) {
+        // Wait slightly for connections to stabilize?
+        setTimeout(() => launchAppByName(pendingApp), 1000);
+    }
+    
     // Apply or remove disable-animations class based on config
     const updateAnimationClass = () => {
         if (wbConfig?.config.disableAnimations) {

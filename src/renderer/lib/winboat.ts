@@ -82,6 +82,7 @@ const stockArgs = [
     "/gfx:RFX", // Enable RemoteFX graphics for better UI interaction (helps with clickable notifications)
     "/rfx", // RemoteFX codec for better interactive content
     "+auto-reconnect", // Auto-reconnect for better stability
+    "-grab-keyboard", // Don't grab keyboard exclusively, allows better integration
 ];
 
 /**
@@ -632,7 +633,8 @@ export class Winboat {
             return;
         }
 
-        const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
+        const cleanAppName = app.Name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+        // const cleanAppName = app.Name.replaceAll(/[,.'"]/g, ""); // Old logic
         const { username, password } = this.getCredentials();
 
         const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
@@ -718,6 +720,10 @@ export class Winboat {
                 }
                 default: {
                     logger.warn(`FreeRDP process returned error code '${execError.code}'`);
+                    if (execError.stderr) {
+                        logger.error(`FreeRDP stderr: ${execError.stderr}`);
+                    }
+                    throw e;
                 }
             }
         }

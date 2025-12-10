@@ -27,6 +27,7 @@ declare global {
             removeDesktopShortcut: (app: WinApp) => Promise<{ success: boolean; error?: string }>;
             hasDesktopShortcut: (app: WinApp) => Promise<boolean>;
             onLaunchAppFromShortcut: (callback: (appName: string) => void) => void;
+            getPendingLaunchApp: () => Promise<string | null>;
         };
     }
 }
@@ -38,6 +39,7 @@ window.api = {
     onLaunchAppFromShortcut: (callback: (appName: string) => void) => {
         ipcRenderer.on("launch-app-from-shortcut", (_event, appName) => callback(appName));
     },
+    getPendingLaunchApp: () => ipcRenderer.invoke("get-pending-launch-app"),
 };
 
 

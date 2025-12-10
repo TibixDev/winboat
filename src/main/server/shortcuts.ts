@@ -106,19 +106,13 @@ export class DesktopShortcutsManager {
 
         const wrapperContent = `#!/bin/bash
 # Winboat development mode wrapper script
-# This script requires Winboat to already be running via 'npm run dev'
 
-if pgrep -f "build/main/main.js" > /dev/null; then
-    cd "${projectRoot}"
-    "${electronPath}" "${mainJsPath}" "$@"
-else
-    if command -v notify-send > /dev/null; then
-        notify-send "Winboat" "Please start Winboat in development mode first (npm run dev)" -u normal -t 5000
-    fi
-    echo "Error: Winboat is not running in development mode."
-    echo "Please start it first with: npm run dev"
-    exit 1
-fi
+projectRoot="${projectRoot}"
+electronPath="${electronPath}"
+mainJsPath="${mainJsPath}"
+
+cd "\${projectRoot}"
+"\${electronPath}" "\${mainJsPath}" "$@"
 `;
 
         fs.writeFileSync(wrapperPath, wrapperContent, { mode: 0o755 });
@@ -206,7 +200,7 @@ Version=1.0
 Type=Application
 Name=${displayName}
 Comment=Windows application (via Winboat)
-Exec=${winboatExecutable} --launch-app-name="${escapedAppName}"
+Exec="${winboatExecutable}" --launch-app-name="${escapedAppName}"
 Icon=${iconPath}
 Categories=Winboat;Windows;
 Terminal=false

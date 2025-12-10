@@ -56,19 +56,46 @@ const windowStore = new Store<SchemaType>({
 });
 
 let mainWindow: BrowserWindow | null = null;
+let pendingLaunchApp: string | null = null;
+
+// Parse startup arguments immediately
+const launchAppIndex = process.argv.findIndex((arg) => arg.startsWith("--launch-app-name="));
+if (launchAppIndex !== -1) {
+    const appNameArg = process.argv[launchAppIndex];
+    const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1");
+    if (appName) {
+        console.log(`Pending launch app (startup): ${appName}`);
+        pendingLaunchApp = appName;
+    }
+}
+
+// Single Instance Lock
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    app.quit();
+} else {
+    app.on("second-instance", (_event, commandLine) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+
+            // Handle --launch-app-name argument from desktop shortcuts
+            const launchAppIndex = commandLine.findIndex((arg) => arg.startsWith("--launch-app-name="));
+            if (launchAppIndex !== -1) {
+                const appNameArg = commandLine[launchAppIndex];
+                const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1"); // Remove quotes
+                if (appName) {
+                    console.log(`Launching app from shortcut (second-instance): ${appName}`);
+                    mainWindow.webContents.send("launch-app-from-shortcut", appName);
+                }
+            }
+        }
+    });
+}
 
 function createWindow() {
-    if (!app.requestSingleInstanceLock()) {
-        // @ts-ignore property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
-        dialog.showMessageBoxSync(null, {
-            type: "error",
-            buttons: ["Close"],
-            title: "WinBoat",
-            message: "An instance of WinBoat is already running.\n\tMultiple Instances are not allowed.",
-        });
-        app.exit();
-    }
-
     mainWindow = new BrowserWindow({
         minWidth: WINDOW_MIN_WIDTH,
         minHeight: WINDOW_MIN_HEIGHT,
@@ -100,6 +127,8 @@ function createWindow() {
     });
 
     enable(mainWindow.webContents);
+
+    // Removed flaky did-finish-load listener
 
     if (process.env.NODE_ENV === "development") {
         const rendererPort = process.argv[2];
@@ -141,25 +170,13 @@ app.on("window-all-closed", function () {
     if (process.platform !== "darwin") app.quit();
 });
 
-app.on("second-instance", (_event, commandLine) => {
-    if (mainWindow) {
-        mainWindow.focus();
-
-        // Handle --launch-app-name argument from desktop shortcuts
-        const launchAppIndex = commandLine.findIndex(arg => arg.startsWith("--launch-app-name="));
-        if (launchAppIndex !== -1) {
-            const appNameArg = commandLine[launchAppIndex];
-            const appName = appNameArg.split("=")[1]?.replace(/^"(.*)"$/, "$1"); // Remove quotes
-            if (appName) {
-                console.log(`Launching app from shortcut: ${appName}`);
-                mainWindow.webContents.send("launch-app-from-shortcut", appName);
-            }
-        }
-    }
+// Desktop Shortcuts IPC Handlers
+ipcMain.handle("get-pending-launch-app", async () => {
+    const app = pendingLaunchApp;
+    pendingLaunchApp = null; // Clear after fetching
+    return app;
 });
 
-// Desktop Shortcuts IPC Handlers
-// Desktop Shortcuts IPC Handlers
 ipcMain.handle("create-desktop-shortcut", async (_event, app) => {
     try {
         const { DesktopShortcutsManager } = require("./server/shortcuts.js");
