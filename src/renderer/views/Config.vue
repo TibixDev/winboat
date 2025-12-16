@@ -78,6 +78,9 @@
                     </div>
                 </x-card>
 
+                <!-- Custom Folder Mounts -->
+                <CustomVolumeMounts v-model="customVolumeMounts" />
+
                 <!-- Auto Start Container -->
                 <x-card
                     class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
@@ -658,6 +661,9 @@ import {
     GUEST_QMP_PORT,
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
+import CustomVolumeMounts from "../components/CustomVolumeMounts.vue";
+import type { CustomVolumeMount } from "../../types";
+import { applyCustomMounts } from "../lib/volumes";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const { promisify }: typeof import("node:util") = require("node:util");
 const path: typeof import("node:path") = require("node:path");
@@ -687,6 +693,8 @@ const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
 const origApplicationScale = ref(0);
 const rdpArgs = ref<RdpArg[]>([]);
+const customVolumeMounts = ref<CustomVolumeMount[]>([]);
+const origCustomVolumeMounts = ref<CustomVolumeMount[]>([]);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -769,6 +777,9 @@ async function assignValues() {
 
     rdpArgs.value = wbConfig.config.rdpArgs;
 
+    customVolumeMounts.value = [...wbConfig.config.customVolumeMounts];
+    origCustomVolumeMounts.value = [...wbConfig.config.customVolumeMounts];
+
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuCores;
@@ -795,6 +806,10 @@ async function saveCompose() {
     }
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
+
+    // Apply custom volume mounts
+    applyCustomMounts(compose.value!, customVolumeMounts.value);
+    wbConfig.config.customVolumeMounts = [...customVolumeMounts.value];
 
     portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
         protocol: "tcp",
@@ -918,7 +933,8 @@ const saveButtonDisabled = computed(() => {
         origRamGB.value !== ramGB.value ||
         shareHomeFolder.value !== origShareHomeFolder.value ||
         (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
-        autoStartContainer.value !== origAutoStartContainer.value;
+        autoStartContainer.value !== origAutoStartContainer.value ||
+        JSON.stringify(customVolumeMounts.value) !== JSON.stringify(origCustomVolumeMounts.value);
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;
 
