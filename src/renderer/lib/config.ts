@@ -1,6 +1,6 @@
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
-import { type WinApp } from "../../types";
+import { type WinApp, type CustomVolumeMount } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
 import { ContainerRuntimes } from "./containers/common";
@@ -69,6 +69,7 @@ export type WinboatConfigObj = {
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
+    customVolumeMounts: CustomVolumeMount[];
     versionData: WinboatVersionData;
     appsSortOrder: string;
 };
@@ -89,6 +90,7 @@ const defaultConfig: WinboatConfigObj = {
     disableAnimations: false,
     // TODO: Ideally should be podman once we flesh out everything
     containerRuntime: ContainerRuntimes.DOCKER,
+    customVolumeMounts: [],
     versionData: {
         previous: currentVersion, // As of 0.9.0 this won't exist on the filesystem, so we just set it to the current version
         current: currentVersion
@@ -175,25 +177,38 @@ export class WinboatConfig {
             console.log("Successfully read the config file");
 
             // Some fields might be missing after an update, so we merge them with the default config
+            let configModified = false;
             for (const key in defaultConfig) {
-                let hasMissing = false;
                 if (!(key in configObj)) {
                     // @ts-expect-error This is valid
                     configObj[key] = defaultConfig[key];
-                    hasMissing = true;
+                    configModified = true;
                     console.log(
                         `Added missing config key: ${key} with default value: ${
                             JSON.stringify(defaultConfig[key as keyof WinboatConfigObj])
                         }`,
                     );
                 }
+            }
 
-                // If we have any missing keys, we should just write the config back to disk so those new keys are saved
-                // We cannot use this.writeConfig() here since #configData is not populated yet
-                if (hasMissing) {
-                    fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(configObj, null, 4), "utf-8");
-                    console.log("Wrote updated config with missing keys to disk");
-                }
+            // Migrate old customVolumeMounts format (containerPath -> shareName)
+            if (configObj.customVolumeMounts) {
+                configObj.customVolumeMounts = configObj.customVolumeMounts.map((mount: any) => {
+                    if ('containerPath' in mount && !('shareName' in mount)) {
+                        // Extract share name from containerPath (e.g., "/gamez" -> "gamez")
+                        const shareName = mount.containerPath.replace(/^\//, '').replace(/[^a-zA-Z0-9_-]/g, '');
+                        console.log(`Migrated volume mount containerPath '${mount.containerPath}' to shareName '${shareName}'`);
+                        configModified = true;
+                        return { hostPath: mount.hostPath, shareName, enabled: mount.enabled };
+                    }
+                    return mount;
+                });
+            }
+
+            // If config was modified, write it back to disk
+            if (configModified) {
+                fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(configObj, null, 4), "utf-8");
+                console.log("Wrote updated config to disk");
             }
 
             return { ...configObj };

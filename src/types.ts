@@ -122,3 +122,9 @@ export type USBDevice = {
     productID: string;
     alias: string;
 };
+
+export type CustomVolumeMount = {
+    hostPath: string;
+    shareName: string;
+    enabled: boolean;
+};
