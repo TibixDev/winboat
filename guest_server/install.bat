@@ -5,8 +5,9 @@ set TIME_SYNC_SCRIPT_PATH=%INSTALL_DIR%\scripts\time-sync.bat
 set NSSM_PATH=%INSTALL_DIR%\nssm.exe
 set OEM_DIR=C:\OEM
 
-:: Registry tweaks
-reg import "%OEM_DIR%\RDPApps.reg"
+:: Setup RDP Applications and Tweaks
+reg import "%OEM_DIR%\RDPApps.reg" 
+reg import "%OEM_DIR%\RDPTweaks.reg"
 
 :: Create install directory if it doesn't exist
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
