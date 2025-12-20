@@ -1,5 +1,5 @@
 import { type InstallConfiguration } from "../../types";
-import { WINBOAT_DIR } from "./constants";
+import { WINBOAT_STATE_DIR, WINBOAT_CONFIG_DIR, WINBOAT_DATA_DIR } from "./constants";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
@@ -7,12 +7,12 @@ import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
 
-const fs: typeof import("fs") = require("fs");
-const path: typeof import("path") = require("path");
+const fs: typeof import("fs") = require("node:fs");
+const path: typeof import("path") = require("node:path");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const argon2: typeof import("argon2") = require("argon2");
-const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
+const logger = createLogger(path.join(WINBOAT_STATE_DIR, "install.log"));
 
 export enum InstallStates {
     IDLE = "Preparing",
@@ -68,9 +68,9 @@ export class InstallManager {
         this.changeState(InstallStates.CREATING_COMPOSE_FILE);
 
         // Ensure the .winboat directory exists
-        if (!fs.existsSync(WINBOAT_DIR)) {
-            fs.mkdirSync(WINBOAT_DIR);
-            logger.info(`Created WinBoat directory: ${WINBOAT_DIR}`);
+        if (!fs.existsSync(WINBOAT_CONFIG_DIR)) {
+            fs.mkdirSync(WINBOAT_CONFIG_DIR);
+            logger.info(`Created WinBoat directory: ${WINBOAT_CONFIG_DIR}`);
         }
 
         // Ensure the installation directory exists
@@ -124,7 +124,7 @@ export class InstallManager {
         this.changeState(InstallStates.CREATING_OEM);
         logger.info("Creating OEM assets");
 
-        const oemPath = path.join(WINBOAT_DIR, "oem"); // Fixed the path separator
+        const oemPath = path.join(WINBOAT_DATA_DIR, "oem"); // Fixed the path separator
 
         // Create OEM directory if it doesn’t exist
         if (!fs.existsSync(oemPath)) {
