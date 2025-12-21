@@ -97,6 +97,17 @@
             </footer>
         </dialog>
 
+        <!-- Shortcut Info Dialog -->
+        <dialog ref="shortcutConfirmDialog">
+            <h3 class="mb-4">{{ shortcutDialogTitle }}</h3>
+            <p class="text-neutral-300 mb-6 whitespace-pre-line">{{ shortcutDialogMessage }}</p>
+            <footer class="flex justify-end">
+                <x-button toggled id="ok-shortcut-button" @click="closeShortcutDialog">
+                    <x-label>OK</x-label>
+                </x-button>
+            </footer>
+        </dialog>
+
         <div
             class="flex justify-between items-center mb-6"
             :class="{
@@ -217,6 +228,14 @@
                     <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
                     <x-label>Remove</x-label>
                 </WBMenuItem>
+
+                <WBMenuItem @click="toggleApplicationMenuShortcut">
+                    <Icon 
+                        class="size-4" 
+                        :icon="hasShortcut(contextMenuTarget) ? 'mdi:application-remove' : 'mdi:application-export'"
+                    ></Icon>
+                    <x-label>{{ hasShortcut(contextMenuTarget) ? 'Remove from' : 'Add to' }} Application Menu</x-label>
+                </WBMenuItem>
             </WBContextMenu>
         </div>
         <div v-else class="px-2 mt-32">
@@ -261,6 +280,11 @@ const searchInput = ref("");
 const sortBy = ref("");
 const filterBy = ref("all");
 const addCustomAppDialog = useTemplateRef("addCustomAppDialog");
+const shortcutConfirmDialog = useTemplateRef("shortcutConfirmDialog");
+const shortcutDialogTitle = ref("");
+const shortcutDialogMessage = ref("");
+const shortcutPendingAction = ref<(() => Promise<void>) | null>(null);
+
 const customAppName = ref("");
 const customAppPath = ref("");
 const customAppIcon = ref(`data:image/png;base64,${AppIcons[DEFAULT_ICON]}`);
@@ -509,6 +533,235 @@ async function removeCustomApp() {
     if (!contextMenuTarget.value) return;
     await winboat.appMgr!.removeCustomApp(contextMenuTarget.value);
     await refreshApps();
+}
+
+/**
+ * Closes the shortcut info dialog
+ */
+function closeShortcutDialog() {
+    shortcutConfirmDialog.value?.close();
+}
+
+/**
+ * Checks if a shortcut exists for the given app
+ */
+function hasShortcut(app: WinApp | null): boolean {
+    if (!app) return false;
+    
+    const fs: typeof import("fs") = require("node:fs");
+    const path: typeof import("path") = require("node:path");
+    const os: typeof import("os") = require("node:os");
+    
+    const sanitizedName = app.Name
+        .replace(/[^a-zA-Z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase();
+    
+    const desktopFile = path.join(os.homedir(), ".local", "share", "applications", `winboat-${sanitizedName}.desktop`);
+    return fs.existsSync(desktopFile);
+}
+
+/**
+ * Adds the selected app to the Linux application menu
+ */
+async function addToApplicationMenu() {
+    if (!contextMenuTarget.value) return;
+    
+    const app = contextMenuTarget.value;
+    
+    // Execute the action immediately
+    await performAddShortcut(app);
+    
+    // Show success info dialog
+    shortcutDialogTitle.value = "Shortcut Added";
+    shortcutDialogMessage.value = `"${app.Name}" has been added to your application menu!\n\nYou can now launch it from your app launcher.`;
+    shortcutPendingAction.value = null;
+    shortcutConfirmDialog.value?.showModal();
+}
+
+/**
+ * Actually performs the shortcut addition
+ */
+async function performAddShortcut(app: WinApp) {
+    const fs: typeof import("fs") = require("node:fs");
+    const path: typeof import("path") = require("node:path");
+    const os: typeof import("os") = require("node:os");
+    
+    const desktopDir = path.join(os.homedir(), ".local", "share", "applications");
+    const iconsDir = path.join(os.homedir(), ".local", "share", "icons", "winboat");
+    
+    // Create directories
+    if (!fs.existsSync(desktopDir)) {
+        fs.mkdirSync(desktopDir, { recursive: true });
+    }
+    if (!fs.existsSync(iconsDir)) {
+        fs.mkdirSync(iconsDir, { recursive: true });
+    }
+    
+    // Sanitize app name for filename
+    const sanitizedName = app.Name
+        .replace(/[^a-zA-Z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase();
+    
+    const desktopFile = path.join(desktopDir, `winboat-${sanitizedName}.desktop`);
+    const iconFile = path.join(iconsDir, `${sanitizedName}.png`);
+    
+    // Save icon
+    try {
+        const iconBuffer = Buffer.from(app.Icon, "base64");
+        fs.writeFileSync(iconFile, iconBuffer);
+        console.log(`Icon saved: ${iconFile}`);
+    } catch (error) {
+        console.error("Failed to save icon:", error);
+    }
+    
+    // Get paths - need to find node, not electron
+    const { execSync }: typeof import("child_process") = require("node:child_process");
+    let nodePath: string;
+    try {
+        // Try to find node in PATH
+        nodePath = execSync("which node", { encoding: "utf-8" }).trim();
+    } catch {
+        // Fallback to common node locations
+        nodePath = "/usr/bin/node";
+    }
+    const cliScriptPath = path.join(os.homedir(), "Work", "Winboat", "scripts", "winboat-cli.ts");
+    
+    // Special case mappings for internal WinBoat apps that have display names
+    const internalAppMappings: Record<string, string> = {
+        "⚙️ Windows Explorer": "File Explorer",
+        "⚙️ Windows Desktop": "Windows Desktop",
+        "🖥️ Browser Display": "Browser Display",
+    };
+    
+    // Fetch the original app name from API (without emoji decorations)
+    // by matching the path, since display names may have been modified
+    let originalAppName = app.Name;
+    
+    // Check if it's an internal app with a mapping
+    if (internalAppMappings[app.Name]) {
+        originalAppName = internalAppMappings[app.Name];
+    } else {
+        // Try to fetch from API for regular apps
+        try {
+            const apiApps = await winboat.appMgr!.getApps(winboat.apiUrl!);
+            const matchingApp = apiApps.find(a => a.Path === app.Path);
+            if (matchingApp) {
+                originalAppName = matchingApp.Name;
+            }
+        } catch (error) {
+            console.error("Failed to fetch original app name:", error);
+        }
+    }
+    
+    // Strip any remaining emojis for safety
+    const cleanAppName = originalAppName.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '').trim();
+    
+    // Create desktop entry with explicit node path
+    const desktopEntry = `[Desktop Entry]
+Type=Application
+Name=${cleanAppName}
+Comment=Windows application via WinBoat
+Exec=${nodePath} ${cliScriptPath} -l "${cleanAppName}"
+Icon=${iconFile}
+Terminal=false
+Categories=Utility;X-Windows;
+Keywords=windows;winboat;wine;
+StartupNotify=true
+StartupWMClass=winboat-${sanitizedName}
+`;
+    
+    fs.writeFileSync(desktopFile, desktopEntry);
+    fs.chmodSync(desktopFile, 0o755);
+    
+    console.log(`Desktop entry created: ${desktopFile}`);
+    console.log(`Using: ${nodePath} ${cliScriptPath}`);
+    
+    // Update desktop database
+    try {
+        const { exec }: typeof import("child_process") = require("node:child_process");
+        exec(`update-desktop-database "${desktopDir}" 2>/dev/null || true`);
+    } catch (error) {
+        console.error("Failed to update desktop database:", error);
+    }
+    
+}
+
+/**
+ * Toggles the application menu shortcut (add if not exists, remove if exists)
+ */
+async function toggleApplicationMenuShortcut() {
+    if (!contextMenuTarget.value) return;
+    
+    if (hasShortcut(contextMenuTarget.value)) {
+        await removeFromApplicationMenu();
+    } else {
+        await addToApplicationMenu();
+    }
+}
+
+/**
+ * Removes the selected app from the Linux application menu
+ */
+async function removeFromApplicationMenu() {
+    if (!contextMenuTarget.value) return;
+    
+    const app = contextMenuTarget.value;
+    
+    // Execute the action immediately
+    await performRemoveShortcut(app);
+    
+    // Show success info dialog
+    shortcutDialogTitle.value = "Shortcut Removed";
+    shortcutDialogMessage.value = `"${app.Name}" has been removed from your application menu.`;
+    shortcutPendingAction.value = null;
+    shortcutConfirmDialog.value?.showModal();
+}
+
+/**
+ * Actually performs the shortcut removal
+ */
+async function performRemoveShortcut(app: WinApp) {
+    const fs: typeof import("fs") = require("node:fs");
+    const path: typeof import("path") = require("node:path");
+    const os: typeof import("os") = require("node:os");
+    
+    const desktopDir = path.join(os.homedir(), ".local", "share", "applications");
+    const iconsDir = path.join(os.homedir(), ".local", "share", "icons", "winboat");
+    
+    // Sanitize app name
+    const sanitizedName = app.Name
+        .replace(/[^a-zA-Z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase();
+    
+    const desktopFile = path.join(desktopDir, `winboat-${sanitizedName}.desktop`);
+    const iconFile = path.join(iconsDir, `${sanitizedName}.png`);
+    
+    // Remove desktop entry
+    if (fs.existsSync(desktopFile)) {
+        fs.unlinkSync(desktopFile);
+        console.log(`Removed desktop entry: ${desktopFile}`);
+    }
+    
+    // Remove icon
+    if (fs.existsSync(iconFile)) {
+        fs.unlinkSync(iconFile);
+        console.log(`Removed icon: ${iconFile}`);
+    }
+    
+    // Update desktop database
+    try {
+        const { exec }: typeof import("child_process") = require("node:child_process");
+        exec(`update-desktop-database "${desktopDir}" 2>/dev/null || true`);
+    } catch (error) {
+        console.error("Failed to update desktop database:", error);
+    }
+    
 }
 
 async function resetCustomAppForm() {
