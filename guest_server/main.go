@@ -270,6 +270,125 @@ func getIcon(w http.ResponseWriter, r *http.Request) {
 	w.Write(output)
 }
 
+func uploadInstaller(w http.ResponseWriter, r *http.Request) {
+	// Parse multipart form (max 100MB)
+	err := r.ParseMultipartForm(100 << 20)
+	if err != nil {
+		http.Error(w, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get the installer file
+	file, header, err := r.FormFile("installer")
+	if err != nil {
+		http.Error(w, "Failed to get installer file: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file extension
+	filename := header.Filename
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext != ".exe" && ext != ".msi" {
+		http.Error(w, "Invalid file type. Only .exe and .msi files are supported", http.StatusBadRequest)
+		return
+	}
+
+	// Create temp file with timestamp to avoid conflicts
+	tempDir := os.TempDir()
+	timestamp := time.Now().Format("20060102-150405")
+	tempFilename := strings.TrimSuffix(filename, ext) + "-" + timestamp + ext
+	tempPath := filepath.Join(tempDir, tempFilename)
+
+	// Write file to disk
+	out, err := os.Create(tempPath)
+	if err != nil {
+		http.Error(w, "Failed to create temp file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, file)
+	if err != nil {
+		http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return success with temp path
+	response := map[string]string{
+		"status":    "success",
+		"filename":  tempFilename,
+		"temp_path": tempPath,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+
+	log.Printf("Installer uploaded: %s -> %s\n", filename, tempPath)
+}
+
+func launchApp(w http.ResponseWriter, r *http.Request) {
+	// Parse form data
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Get parameters
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	path := r.FormValue("path")
+	args := r.FormValue("args")
+
+	if username == "" || password == "" || path == "" {
+		http.Error(w, "username, password, and path are required", http.StatusBadRequest)
+		return
+	}
+
+	// Verify credentials using quser to check current session
+	cmd := exec.Command("quser.exe")
+	output, err := cmd.Output()
+	if err != nil {
+		http.Error(w, "Failed to verify session: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Check if user has active session
+	if !strings.Contains(string(output), username) {
+		http.Error(w, "No active session found for user", http.StatusForbidden)
+		return
+	}
+
+	// Build command to launch app
+	// Use cmd /c to launch the app in the current session
+	var launchCmd *exec.Cmd
+	if args != "" {
+		launchCmd = exec.Command("cmd", "/C", "start", "", path, args)
+	} else {
+		launchCmd = exec.Command("cmd", "/C", "start", "", path)
+	}
+
+	// Start the app (don't wait for it to finish)
+	err = launchCmd.Start()
+	if err != nil {
+		http.Error(w, "Failed to launch app: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Success response
+	response := map[string]string{
+		"status":  "success",
+		"message": "Application launched successfully",
+		"path":    path,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+
+	log.Printf("Launched app: %s %s\n", path, args)
+}
+
 func setAuthHash(w http.ResponseWriter, r *http.Request) {
 	// If there's an existing hash, reject
 	existingHash, err := getSecureRegKey(AUTHKEY_HASH_REG)
@@ -336,6 +455,8 @@ func main() {
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
+	r.HandleFunc("/upload-installer", uploadInstaller).Methods("POST")
+	r.HandleFunc("/launch", launchApp).Methods("POST")
 	r.HandleFunc("/auth/set-hash", setAuthHash).Methods("POST")
 	handler := cors.Default().Handler(r)
 
