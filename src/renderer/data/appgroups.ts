@@ -30,7 +30,6 @@ export const appGroups: AppGroup = [
             { name: "Discord", package: "discord.install", icon: "skill-icons:discord" },
             { name: "Slack", package: "slack", icon: "devicon:slack" },
             { name: "Zoom", package: "zoom", icon: "logos:zoom-icon" },
-            { name: "Skype", package: "skype", icon: "logos:skype" },
             {
                 name: "Thunderbird",
                 package: "thunderbird",
