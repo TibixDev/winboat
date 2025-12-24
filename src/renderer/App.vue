@@ -149,6 +149,14 @@
         <div v-else class="w-full h-[calc(100vh-2rem)]">
             <RouterView />
         </div>
+
+        <!-- Shortcut Launch Loading Overlay -->
+        <ShortcutLoadingOverlay
+            :is-visible="launchState.state.value.isLoading"
+            :app-name="launchState.state.value.appName || undefined"
+            :current-step="launchState.state.value.currentStep || undefined"
+            @cancel="launchState.cancelLaunch()"
+        />
     </main>
 </template>
 
@@ -163,10 +171,14 @@ import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { setIntervalImmediately } from "./utils/interval";
+import ShortcutLoadingOverlay from "./components/ShortcutLoadingOverlay.vue";
+import { useShortcutLaunchState } from "./composables/useShortcutLaunchState";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
+
+const launchState = useShortcutLaunchState();
 
 const $router = useRouter();
 const $route = useRoute();
