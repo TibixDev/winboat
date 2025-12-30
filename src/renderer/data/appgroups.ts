@@ -360,7 +360,7 @@ export const appGroups: AppGroup = [
         ],
     },
     {
-        category: "Programming Languges & Runtimes",
+        category: "Programming Languages & Runtimes",
         apps: [
             { name: "Python 3", package: "python", icon: "devicon:python" },
             { name: "Python 2", package: "python2", icon: "devicon:python" },

@@ -208,7 +208,7 @@ export class ComposePortMapper {
     }
 
     /**
-     * **WARNING**: Could introduce dupliate entries, use carefully!
+     * **WARNING**: Could introduce duplicate entries, use carefully!
      *
      * Pushes a port entry to the internal port array.
      */
