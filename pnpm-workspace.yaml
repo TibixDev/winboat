@@ -1,7 +1,0 @@
-onlyBuiltDependencies:
-  - argon2
-  - electron
-  - electron-winstaller
-  - esbuild
-  - usb
-  - vue-demi
