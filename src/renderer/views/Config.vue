@@ -130,6 +130,29 @@
                         </x-input>
                     </div>
                 </x-card>
+
+                <!-- Open to LAN -->
+                <x-card
+                    class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div>
+                        <div class="flex flex-row items-center gap-2 mb-2">
+                            <Icon class="text-violet-400 inline-flex size-8" icon="mdi:lan" />
+                            <h1 class="text-lg my-0 font-semibold">Open to LAN</h1>
+                        </div>
+                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            If enabled, WinBoat RDP port is exposed on your local network (binds to 0.0.0.0). This is a security risk.
+                        </p>
+                    </div>
+                    <div class="flex flex-row justify-center items-center gap-2">
+                        <x-switch
+                          :toggled="openToLan"
+                          @toggle="(_: any) => { openToLan = !openToLan; wbConfig.config.openToLan = openToLan; }"
+                          size="large"
+                        />
+                    </div>
+                </x-card>
+
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="(error, k) of errors" :key="k">❗ {{ error }}</p>
                 </div>
@@ -681,6 +704,8 @@ const origAutoStartContainer = ref(false);
 const autoStartContainer = ref(false);
 const freerdpPort = ref(0);
 const origFreerdpPort = ref(0);
+const openToLan = ref(false);
+const origOpenToLan = ref(false);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
@@ -765,6 +790,9 @@ async function assignValues() {
     freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
     origFreerdpPort.value = freerdpPort.value;
 
+    openToLan.value = wbConfig.config.openToLan;
+    origOpenToLan.value = openToLan.value;
+
     origApplicationScale.value = wbConfig.config.scaleDesktop;
 
     rdpArgs.value = wbConfig.config.rdpArgs;
@@ -796,15 +824,12 @@ async function saveCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "tcp",
-        hostIP: "127.0.0.1",
-    });
+    const bindOpts = (protocol: "tcp" | "udp") =>
+        openToLan.value ? { protocol } : { protocol, hostIP: "127.0.0.1" };
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "udp",
-        hostIP: "127.0.0.1",
-    });
+    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, bindOpts("tcp"));
+    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, bindOpts("udp"));
+
 
     compose.value!.services.windows.ports = portMapper.value!.composeFormat;
 
@@ -844,10 +869,11 @@ async function addRequiredComposeFieldsUSB() {
             entry.container === GUEST_QMP_PORT;
         const QMPPort = portEntries.find(QMPPredicate)!.host;
 
-        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, QMPPort, {
-            protocol: "tcp",
-            hostIP: "127.0.0.1",
-        });
+        const qmpBindOpts = openToLan.value
+          ? { protocol: "tcp" as const }
+          : { protocol: "tcp" as const, hostIP: "127.0.0.1" };
+
+        portMapper.value!.setShortPortMapping(GUEST_QMP_PORT, QMPPort, qmpBindOpts);
     }
 
     if (!compose.value!.services.windows.environment.ARGUMENTS) {
@@ -917,6 +943,7 @@ const saveButtonDisabled = computed(() => {
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
         shareHomeFolder.value !== origShareHomeFolder.value ||
+        (openToLan.value !== origOpenToLan.value) ||
         (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 

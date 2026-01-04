@@ -22,7 +22,7 @@ export class WinboatVersion {
         const versionTags = versionToken.split("-");
         const versionNumbers = versionTags[0].split(".").map(value => {
             const parsedValue = parseInt(value);
-            
+
             if(Number.isNaN(parsedValue)) {
                 throw new Error(`Invalid winboat version format: '${versionToken}'`);
             }
@@ -61,6 +61,7 @@ export type WinboatConfigObj = {
     advancedFeatures: boolean;
     multiMonitor: number;
     rdpArgs: RdpArg[];
+    openToLan: boolean;
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
     versionData: WinboatVersionData;
@@ -79,6 +80,7 @@ const defaultConfig: WinboatConfigObj = {
     advancedFeatures: false,
     multiMonitor: 0,
     rdpArgs: [],
+    openToLan: false,
     disableAnimations: false,
     // TODO: Ideally should be podman once we flesh out everything
     containerRuntime: ContainerRuntimes.DOCKER,
