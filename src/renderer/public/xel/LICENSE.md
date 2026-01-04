@@ -61,7 +61,7 @@ The full text of each license is provided below.
 
     This Software can be used free of charge by any person with the following
     restriction: The Software must be used and distributed as part of an
-    Appliation bundle for the Apple macOS operating system. Usage of this
+    Application bundle for the Apple macOS operating system. Usage of this
     software with other operating systems is PROHIBITED.
 
     Xel authors do not claim any legal rights to the MacOS design language, also
