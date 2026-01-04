@@ -82,8 +82,7 @@ You can download the latest Linux builds under the [Releases](https://github.com
 ## Building WinBoat
 
 - For building you need to have NodeJS and Go installed on your system
-- Clone the repository (`git clone https://github.com/TibixDev/winboat`)
-- Navigate to the cloned repository folder (`cd winboat`)
+- Clone the repository (`git clone https://github.com/TibixDev/WinBoat`)
 - Install the dependencies (`npm i`)
 - Build the app and the guest server using `npm run build:linux-gs`
 - You can now find the built app under `dist` with an AppImage and an Unpacked variant
