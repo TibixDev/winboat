@@ -1,8 +1,24 @@
 const os: typeof import("os") = require("node:os");
 const path: typeof import("path") = require("node:path");
+const fs: typeof import("fs") = require("node:fs");
 
-// Should be {home}/.winboat
-export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");
+// Try to get WINBOAT_DIR from environment variable, otherwise default to {home}/.winboat
+const getWinboatDir = (): string => {
+  const envDir = process.env.WINBOAT_DIR;
+
+  if (envDir) {
+    // If environment variable is set, ensure the directory exists
+    if (!fs.existsSync(envDir)) {
+      fs.mkdirSync(envDir, { recursive: true });
+    }
+    return envDir;
+  }
+
+  // Default to home directory
+  return path.join(os.homedir(), ".winboat");
+};
+
+export const WINBOAT_DIR = getWinboatDir();
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const WINDOWS_VERSIONS = {
