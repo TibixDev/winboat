@@ -164,7 +164,7 @@ import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { setIntervalImmediately } from "./utils/interval";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
-import { performAutoMigrations } from "./lib/migrate";
+import { migrateXDGBaseDirs_Pre091, performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
 
@@ -185,6 +185,7 @@ const novncURL = ref("");
 let animationCheckInterval: NodeJS.Timeout | null = null;
 
 onMounted(async () => {
+    await migrateXDGBaseDirs_Pre091(() => $router.push("migration"));
     const winboatInstalled = await isInstalled();
 
     if (winboatInstalled) {

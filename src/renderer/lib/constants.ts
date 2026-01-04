@@ -1,8 +1,17 @@
 const os: typeof import("os") = require("node:os");
 const path: typeof import("path") = require("node:path");
+const process: typeof import("process") = require("node:process");
 
-// Should be {home}/.winboat
-export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");
+const XDG_CONFIG_HOME = process.env.XDG_CONFIG_HOME ?? path.join(process.env.HOME!, ".config");
+const XDG_DATA_HOME = process.env.XDG_DATA_HOME ?? path.join(process.env.HOME!, ".local/share");
+const XDG_STATE_HOME = process.env.XDG_STATE_HOME ?? path.join(process.env.HOME!, ".local/state");
+const XDG_CACHE_HOME = process.env.XDG_CACHE_HOME ?? path.join(process.env.HOME!, ".cache");
+
+export const WINBOAT_CONFIG_DIR = path.join(XDG_CONFIG_HOME, "winboat");
+export const WINBOAT_DATA_DIR = path.join(XDG_DATA_HOME, "winboat");
+export const WINBOAT_STATE_DIR = path.join(XDG_STATE_HOME, "winboat");
+export const WINBOAT_CACHE_DIR = path.join(XDG_CACHE_HOME, "winboat");
+
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const WINDOWS_VERSIONS = {
