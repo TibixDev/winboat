@@ -148,7 +148,7 @@
             <div class="flex flex-col gap-4">
                 <!-- USB Passthrough -->
                 <x-card
-                    class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                    class="flex relative z-30 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
                 >
                     <div class="w-full">
                         <div class="flex flex-row gap-2 items-center mb-2">
@@ -283,6 +283,130 @@
                                         <x-label>{{ usbManager.stringifyDevice(device) }}</x-label>
                                     </x-menuitem>
                                     <x-menuitem v-if="availableDevices.length === 0" disabled>
+                                        <x-label>No available devices</x-label>
+                                    </x-menuitem>
+                                </TransitionGroup>
+                            </x-button>
+                        </template>
+                    </div>
+                </x-card>
+
+                <!-- USB Port Passthrough -->
+                <x-card
+                    class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div class="w-full">
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:usb-port"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                USB Port Passthrough
+                                <span class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2"> Experimental </span>
+                            </h1>
+                        </div>
+
+                        <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
+                            <x-card
+                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                            >
+                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                <h1 class="my-0 text-base font-normal text-yellow-200">
+                                    We need to update your Compose in order to use this feature!
+                                </h1>
+
+                                <x-button
+                                    :disabled="isUpdatingUSBPrerequisites"
+                                    class="mt-1 !bg-gradient-to-tl from-yellow-200/20 to-transparent ml-auto hover:from-yellow-300/30 transition !border-0"
+                                    @click="addRequiredComposeFieldsUSB"
+                                >
+                                    <x-label
+                                        class="ext-lg font-normal text-yellow-200"
+                                        v-if="!isUpdatingUSBPrerequisites"
+                                    >
+                                        Update
+                                    </x-label>
+
+                                    <x-throbber v-else class="w-8 text-yellow-300"></x-throbber>
+                                </x-button>
+                            </x-card>
+                        </template>
+                        <template v-if="wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
+                            <x-card
+                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                            >
+                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                <h1 class="my-0 text-base font-normal text-yellow-200">
+                                    USB Port Passthrough is not yet supported while using Podman as the container runtime.
+                                </h1>
+                            </x-card>
+                        </template>
+                        <template
+                            v-if="
+                                !usbPassthroughDisabled &&
+                                !isUpdatingUSBPrerequisites &&
+                                wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER
+                            "
+                        >
+                            <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0 mb-2">
+                                Pass through USB ports instead of devices. Any device plugged into the port will be passed through, even if its ID changes (useful for firmware updates).
+                            </p>
+                            <x-label
+                                class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
+                                v-if="usbPortManager.ptPorts.value.length == 0"
+                            >
+                                Press the button below to add USB ports to your passthrough list
+                            </x-label>
+                            <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
+                                <x-card
+                                    class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
+                                    v-for="port of usbPortManager.ptPorts.value"
+                                    :key="`${port.busNumber}-${port.hostPort}`"
+                                    :class="{
+                                        'bg-white/[calc(0.05*0.75)] [&_*:not(div):not(span)]:opacity-75':
+                                            !usbPortManager.isPortDeviceConnected(port),
+                                    }"
+                                >
+                                    <div class="flex flex-row gap-2 items-center">
+                                        <span v-if="!usbPortManager.isPortDeviceConnected(port)" class="relative group">
+                                            <Icon
+                                                icon="ix:connection-fail"
+                                                class="text-red-500 size-7 cursor-pointer"
+                                            />
+                                            <span
+                                                class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                            >
+                                                No device is currently connected to this port.
+                                            </span>
+                                        </span>
+
+                                        <p class="text-base !m-0 text-gray-200">
+                                            [Bus {{ port.busNumber }} Port {{ port.hostPort }}] {{ port.label || 'No device info' }}
+                                        </p>
+                                    </div>
+                                    <x-button
+                                        @click="removePort(port)"
+                                        class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
+                                    >
+                                        <x-icon href="#remove"></x-icon>
+                                    </x-button>
+                                </x-card>
+                            </TransitionGroup>
+                            <x-button
+                                v-if="availablePortDevices.length > 0"
+                                class="!bg-gradient-to-tl from-green-400/20 shadow-md shadow-green-950/20 to-transparent hover:from-green-400/30 transition"
+                                :class="{ 'mt-4': usbPortManager.ptPorts.value.length }"
+                                @click="refreshAvailablePortDevices()"
+                            >
+                                <x-icon href="#add"></x-icon>
+                                <x-label>Add Port</x-label>
+                                <TransitionGroup name="menu" tag="x-menu" class="max-h-52">
+                                    <x-menuitem
+                                        v-for="(device, k) of availablePortDevices as Device[]"
+                                        :key="device.portNumbers.join(',')"
+                                        @click="addPort(device)"
+                                    >
+                                        <x-label>[Port {{ device.portNumbers?.join('.') }}] {{ usbManager.stringifyDevice(device) }}</x-label>
+                                    </x-menuitem>
+                                    <x-menuitem v-if="availablePortDevices.length === 0" disabled>
                                         <x-label>No available devices</x-label>
                                     </x-menuitem>
                                 </TransitionGroup>
@@ -649,6 +773,7 @@ import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
 import { RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
+import { USBPortManager, type PTPortDeviceInfo } from "../lib/usbportmanager";
 import { type Device } from "usb";
 import {
     USB_VID_BLACKLIST,
@@ -690,6 +815,7 @@ const rdpArgs = ref<RdpArg[]>([]);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
+const availablePortDevices = ref<Device[]>([]);
 const rerenderExperimental = ref(0);
 const isCreatingUdevRule = ref(false);
 
@@ -707,6 +833,7 @@ let portMapper = ref<ComposePortMapper | null>(null);
 const wbConfig = WinboatConfig.getInstance();
 const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
+const usbPortManager = USBPortManager.getInstance();
 
 // Constants
 const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v => v.startsWith("${HOME}"))!;
@@ -774,6 +901,7 @@ async function assignValues() {
     maxNumCores.value = specs.cpuCores;
 
     refreshAvailableDevices();
+    refreshAvailablePortDevices();
 }
 
 /**
@@ -941,10 +1069,23 @@ function refreshAvailableDevices() {
     availableDevices.value = usbManager.devices.value.filter(device => {
         return (
             !usbManager.isDeviceInPassthroughList(device) &&
+            !usbPortManager.isPortInPassthroughList(device) &&
             !USB_VID_BLACKLIST.some(x => usbManager.stringifyDevice(device).includes(x))
         );
     });
     console.info("[Available Devices] Debug", availableDevices.value);
+}
+
+function refreshAvailablePortDevices() {
+    availablePortDevices.value = usbPortManager.devices.value.filter(device => {
+        return (
+            usbPortManager.isExternalDevice(device) && // Only show external/removable devices
+            !usbPortManager.isPortInPassthroughList(device) &&
+            !usbManager.isDeviceInPassthroughList(device) &&
+            !USB_VID_BLACKLIST.some(x => usbManager.stringifyDevice(device).includes(x))
+        );
+    });
+    console.info("[Available Port Devices] Debug", availablePortDevices.value);
 }
 
 function addDevice(device: Device): void {
@@ -965,15 +1106,35 @@ function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
     }
 }
 
+function addPort(device: Device): void {
+    try {
+        const label = usbManager.stringifyDevice(device);
+        usbPortManager.addPortToPassthroughList(device, label);
+        refreshAvailablePortDevices();
+    } catch (error) {
+        console.error("Failed to add port to passthrough list:", error);
+    }
+}
+
+function removePort(portInfo: PTPortDeviceInfo): void {
+    try {
+        usbPortManager.removePortFromPassthroughList(portInfo);
+        refreshAvailablePortDevices();
+    } catch (error) {
+        console.error("Failed to remove port from passthrough list:", error);
+    }
+}
+
 async function toggleExperimentalFeatures() {
     wbConfig.config.experimentalFeatures = !wbConfig.config.experimentalFeatures;
     rerenderExperimental.value++;
     $emit("rerender");
 
-    // Remove all passthrough USB devices if we're disabling experimental features
+    // Remove all passthrough USB devices and ports if we're disabling experimental features
     // since USB passthrough is an experimental feature
     if (!wbConfig.config.experimentalFeatures) {
         await usbManager.removeAllPassthroughDevicesAndConfig();
+        await usbPortManager.removeAllPassthroughPortsAndConfig();
 
         // Create the QMP interval if experimental features are enabled
         // This would get created by default since we're changing the compose and re-deploying,
