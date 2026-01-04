@@ -62,6 +62,8 @@ export type WinboatConfigObj = {
     multiMonitor: number;
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
+    desktopShortcuts: string[]; // Array of app names that have desktop shortcuts
+    winboatExecutablePath?: string; // Custom path to WinBoat executable (for desktop shortcuts)
     containerRuntime: ContainerRuntimes;
     versionData: WinboatVersionData;
 };
@@ -80,6 +82,8 @@ const defaultConfig: WinboatConfigObj = {
     multiMonitor: 0,
     rdpArgs: [],
     disableAnimations: false,
+    desktopShortcuts: [],
+    winboatExecutablePath: undefined,
     // TODO: Ideally should be podman once we flesh out everything
     containerRuntime: ContainerRuntimes.DOCKER,
     versionData: {
