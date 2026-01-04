@@ -78,6 +78,12 @@ const stockArgs = [
     "/floatbar",
     "/compression",
     "/sec:tls",
+    "/gfx:RFX", // Enable RemoteFX graphics for better UI interaction
+    "/rfx", // RemoteFX codec for better interactive content
+    "+auto-reconnect", // Auto-reconnect for better stability
+    "-grab-keyboard", // Don't grab keyboard exclusively, allows better integration
+    "/kbd:layout:0x00000409", // Force US keyboard layout to ensure input mapping works
+    "/mouse:relative", // Ensure relative mouse input for gaming/3D (might help tracking)
 ];
 
 /**
