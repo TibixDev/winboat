@@ -1,4 +1,5 @@
-const { execFile }: typeof import("child_process") = require("node:child_process");
+const process: typeof import("process") = require("node:process");
+const child_process: typeof import("child_process") = require("node:child_process");
 const { promisify }: typeof import("util") = require("node:util");
 
 export type ExecFileAsyncError = {
@@ -12,7 +13,31 @@ export type ExecFileAsyncError = {
     stack: string;
 };
 
-export const execFileAsync = promisify(execFile);
+const doExecFile = promisify(child_process.execFile);
+
+function keepEnv(varName) {
+    return `--env=${varName}=${process.env[varName]}`;
+}
+
+export function execFileAsync(file, args, options) {
+    if (process.env.FLATPAK_ID) {
+        return doExecFile("flatpak-spawn", [
+            keepEnv("DISPLAY"),
+            keepEnv("WAYLAND_DISPLAY"),
+            "--host", file
+        ].concat(args || []), options);
+    } else {
+        return doExecFile(file, args, options);
+    }
+}
+
+export function execFileSync(file, args, options) {
+    if (process.env.FLATPAK_ID) {
+        return child_process.execFileSync("flatpak-spawn", ["--host", file].concat(args || []), options);
+    } else {
+        return child_process.execFileSync(file, args, options);
+    }
+}
 
 export function stringifyExecFile(file: string, args: string[]): string {
     let result = `${file}`;

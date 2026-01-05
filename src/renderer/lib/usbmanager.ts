@@ -3,10 +3,10 @@ import { type Ref, ref, watch } from "vue";
 import { logger, Winboat } from "./winboat";
 import { WinboatConfig } from "./config";
 import { assert } from "@vueuse/core";
+import { execFileSync } from "./exec-helper";
 
 const { usb, getDeviceList }: typeof import("usb") = require("usb");
 const fs: typeof import("node:fs") = require("node:fs");
-const { execFileSync }: typeof import("node:child_process") = require("node:child_process");
 const remote: typeof import("@electron/remote") = require("@electron/remote");
 const path: typeof import("node:path") = require("node:path");
 
