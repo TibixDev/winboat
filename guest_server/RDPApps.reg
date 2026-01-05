@@ -18,3 +18,31 @@ Windows Registry Editor Version 5.00
 
     ; Disable "Do you want your PC to be discoverable" prompt after each host system reboot
     [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Network\NewNetworkWindowOff]
+
+    ; Disables Telemetry
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection]
+    "AllowTelemetry"=dword:00000000
+
+    ; Disables Windows Error reporing
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting]
+    "Disabled"=dword:00000001
+
+    ; Disables Copilot (Windows 11 has no effect on Windows 10)
+    [HKEY_CURRENT_USER\Software\Policies\Microsoft\Windows\WindowsCopilot]
+    "TurnOffWindowsCopilot"=dword:00000001
+    
+    ; Disables Cortana
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search]
+    "AllowCortana"=dword:00000000
+    
+    ; Disables Windows "Suggestions"
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent]
+    "DisableSoftLanding"=dword:00000001
+    
+    ; Disables Bing Search in the search bar
+    [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Search]
+    "BingSearchEnabled"=dword:00000000
+
+    ; Disables Visual Effects
+    [HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects]
+    "VisualFXSetting"=dword:00000002
