@@ -1,0 +1,65 @@
+app-id: app.winboat.Winboat
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '25.08'
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node24
+  - org.freedesktop.Sdk.Extension.golang
+command: winboat
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --device=dri
+  - --device=kvm
+  - --socket=x11 # (not fallback-x11 because of xfreerdp)
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --share=network
+  - --talk-name=org.freedesktop.Flatpak
+  - --env=ELECTRON_OZONE_PLATFORM_HINT=auto
+build-options:
+  append-path: /usr/lib/sdk/node24/bin
+  env:
+    NPM_CONFIG_LOGLEVEL: info
+modules:
+  - name: winboat
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node24/bin
+      env:
+        XDG_CACHE_HOME: /run/build/winboat/flatpak-node/cache
+        npm_config_cache: /run/build/winboat/flatpak-node/npm-cache
+    build-commands:
+      - |
+        . /usr/lib/sdk/golang/enable.sh
+        . ../flatpak-node/electron-builder-arch-args.sh
+        for f in ../flatpak-node/cache/node-gyp/*/installVersion; do echo 11 >"$f"; done
+        ln -s $XDG_CACHE_HOME/node-gyp $HOME/.electron-gyp
+        npm install --offline
+        npm run --offline build:linux-gs -- $ELECTRON_BUILDER_ARCH_ARGS --dir
+      - cp -a dist/linux*unpacked /app/main
+      - install -Dm755 ../run.sh /app/bin/winboat
+      - install -Dm644 icons/winboat_logo.svg /app/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
+      - install -m644 -Dt /app/share/applications/ ../${FLATPAK_ID}.desktop
+    subdir: main
+    sources:
+      - type: dir
+        path: ..
+        dest: main
+      - js-sources.json
+      - go-sources.json
+      - type: script
+        dest-filename: run.sh
+        commands:
+          - zypak-wrapper.sh /app/main/winboat "$@"
+      - type: inline
+        contents: |
+          [Desktop Entry]
+          Name=WinBoat
+          Type=Application
+          Exec=winboat
+          Terminal=false
+          Icon=app.winboat.Winboat
+        dest-filename: app.winboat.Winboat.desktop
