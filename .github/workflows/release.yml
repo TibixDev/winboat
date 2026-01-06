@@ -18,12 +18,18 @@ on:
                     - all
                     - linux-only
                     - guest-server-only
+                    - flatpak-only
+            with_flatpak:
+                description: "With flatpak"
+                required: true
+                type: boolean
+                default: false
 jobs:
     build:
         runs-on: ubuntu-22.04
         if: >-
             (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) ||
-            (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'guest-server-only')
+            (github.event_name == 'workflow_dispatch' && (github.event.inputs.build_type == 'all' || github.event.inputs.build_type == 'linux-only'))
         steps:
             - name: Checkout code
               uses: actions/checkout@v5
@@ -123,6 +129,21 @@ jobs:
             #       dist/latest-linux.yml
             #       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
             #     if-no-files-found: ignore
+    build-flatpak:
+        runs-on: ubuntu-22.04
+        if: github.event_name == 'workflow_dispatch' && (github.event.inputs.with_flatpak == 'true' || github.event.inputs.build_type == 'flatpak-only')
+        container:
+            image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+            options: --privileged
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+            - name: Build flatpak bundle
+              uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+              with:
+                  bundle: winboat.flatpak
+                  manifest-path: flatpak/app.winboat.Winboat.yml
+                  cache-key: flatpak-builder-${{ github.sha }}
     guest-server-only:
         runs-on: ubuntu-22.04
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
