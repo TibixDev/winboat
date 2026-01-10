@@ -29,6 +29,8 @@ export class DockerContainer extends ContainerManager {
     composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
     executableAlias = "docker";
 
+    static isStandaloneCompose = false;
+
     cachedPortMappings: ComposePortEntry[] | null = null;
 
     constructor() {
@@ -44,7 +46,13 @@ export class DockerContainer extends ContainerManager {
     }
 
     async compose(direction: ComposeDirection, extraArgs: ComposeArguments[] = []): Promise<void> {
-        const args = ["compose", "-f", this.composeFilePath, direction, ...extraArgs];
+        let file = this.executableAlias;
+        let args = ["compose", "-f", this.composeFilePath, direction, ...extraArgs];
+
+        if (DockerContainer.isStandaloneCompose) {
+            file = "docker-compose";
+            args = ["-f", this.composeFilePath, direction, ...extraArgs];
+        }
 
         if (direction === "up") {
             // Run compose in detached mode if we are running compose up
@@ -52,12 +60,12 @@ export class DockerContainer extends ContainerManager {
         }
 
         try {
-            const { stderr } = await execFileAsync(this.executableAlias, args);
+            const { stderr } = await execFileAsync(file, args);
             if (stderr) {
                 containerLogger.error(stderr);
             }
         } catch (e) {
-            containerLogger.error(`Failed to run compose command '${stringifyExecFile(this.executableAlias, args)}'`);
+            containerLogger.error(`Failed to run compose command '${stringifyExecFile(file, args)}'`);
             containerLogger.error(e);
             throw e;
         }
@@ -175,14 +183,25 @@ export class DockerContainer extends ContainerManager {
                 if (versionMatch) {
                     const majorVersion = Number.parseInt(versionMatch[1].split(".")[0], 10);
                     specs.dockerComposeInstalled = majorVersion >= 2;
-                } else {
-                    specs.dockerComposeInstalled = false; // No valid version found
                 }
-            } else {
-                specs.dockerComposeInstalled = false; // No output, plugin not installed
             }
         } catch (e) {
-            console.error("Error checking Docker Compose version:", e);
+            // Fallback: Check for standalone docker-compose (e.g. on Arch Linux)
+            try {
+                const { stdout: dockerComposeOutput } = await execFileAsync("docker-compose", ["version"]);
+                if (dockerComposeOutput) {
+                     const versionMatch = /(\d+\.\d+\.\d+)/.exec(dockerComposeOutput);
+                     if (versionMatch) {
+                         const majorVersion = Number.parseInt(versionMatch[1].split(".")[0], 10);
+                         specs.dockerComposeInstalled = majorVersion >= 2;
+                         if (specs.dockerComposeInstalled) {
+                             DockerContainer.isStandaloneCompose = true;
+                         }
+                     }
+                }
+            } catch (e2) {
+                 console.error("Error checking Docker Compose version (plugin and standalone):", e, e2);
+            }
         }
 
         // Docker is running check
