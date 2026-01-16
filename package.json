@@ -26,7 +26,7 @@
         "autoprefixer": "^10.4.20",
         "chalk": "^4.1.2",
         "chokidar": "^3.6.0",
-        "electron": "^35.1.5",
+        "electron": "^39.2.7",
         "electron-builder": "^26.0.12",
         "postcss": "^8.5.1",
         "prettier": "3.6.2",
