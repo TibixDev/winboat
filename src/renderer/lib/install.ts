@@ -200,7 +200,7 @@ export class InstallManager {
         // Start the container
         await this.container.compose("up");
 
-        // Cahce ports
+        // Cache ports
         await this.container.port();
 
         // emit vnc port event
