@@ -322,6 +322,8 @@ const computedApps = computed(() => {
 });
 
 onMounted(async () => {
+    sortBy.value = WinboatConfig.getInstance().config.appsSortOrder;
+
     await refreshApps();
 
     watch(winboat.isOnline, async (newVal, _) => {
@@ -339,8 +341,6 @@ onMounted(async () => {
     const onScroll = () => contextMenuRef.value?.hide();
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onScroll);
-
-    sortBy.value = WinboatConfig.getInstance().config.appsSortOrder
 });
 
 async function refreshApps() {
