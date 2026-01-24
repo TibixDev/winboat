@@ -989,8 +989,8 @@ async function addRequiredComposeFieldsUSB() {
         compose.value!.services.windows.environment.HOST_PORTS = "";
     }
     if (!hasHostPort(compose)) {
-        const delimeter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? "" : ",";
-        compose.value!.services.windows.environment.HOST_PORTS += delimeter + GUEST_QMP_PORT;
+        const delimiter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? "" : ",";
+        compose.value!.services.windows.environment.HOST_PORTS += delimiter + GUEST_QMP_PORT;
     }
 
     await saveCompose();
