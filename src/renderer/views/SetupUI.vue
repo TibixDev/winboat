@@ -368,6 +368,38 @@
                                 </x-menu>
                             </x-select>
                         </div>
+                        <div>
+                            <label for="select-windows-region" class="text-sm mb-4 text-neutral-400">Select Region</label>
+                            <x-input
+                                id="select-windows-region"
+                                class="w-64 max-w-64"
+                                type="text"
+                                minlength="2"
+                                maxlength="16"
+                                size="large"
+                                :value="windowsRegion"
+                                @input="(e: any) => (windowsRegion = e.target.value)"
+                            >
+                                <x-icon href="#earth"></x-icon>
+                                <x-label>Name</x-label>
+                            </x-input>
+                        </div>
+                        <div>
+                            <label for="select-keyboard-layout" class="text-sm mb-4 text-neutral-400">Select Keyboard Layout</label>
+                            <x-input
+                                id="select-keyboard-layout"
+                                class="w-64 max-w-64"
+                                type="text"
+                                minlength="2"
+                                maxlength="16"
+                                size="large"
+                                :value="keyboardLayout"
+                                @input="(e: any) => (keyboardLayout = e.target.value)"
+                            >
+                                <x-icon href="#comment"></x-icon>
+                                <x-label>Name</x-label>
+                            </x-input>
+                        </div>
                         <div class="mt-4">
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
@@ -894,6 +926,8 @@ const currentStep = computed(() => steps[currentStepIdx.value]);
 const installFolder = ref(path.join(os.homedir(), "winboat"));
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
+const windowsRegion = ref("en-US");
+const keyboardLayout = ref("en-US");
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
 const cpuCores = ref(2);
@@ -1073,6 +1107,8 @@ function install() {
     const installConfig: InstallConfiguration = {
         windowsVersion: windowsVersion.value,
         windowsLanguage: windowsLanguage.value,
+        windowsRegion: windowsRegion.value,
+        keyboardLayout: keyboardLayout.value,
         cpuCores: cpuCores.value,
         ramGB: ramGB.value,
         installFolder: installFolder.value,
