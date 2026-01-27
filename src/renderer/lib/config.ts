@@ -4,7 +4,14 @@ import { type WinApp } from "../../types";
 import { WINBOAT_DIR } from "./constants";
 import { type PTSerializableDeviceInfo } from "./usbmanager";
 import { ContainerRuntimes } from "./containers/common";
+
 import { logger } from "./winboat";
+
+export type PTPortDeviceInfo = {
+    busNumber: number;
+    hostPort: string;
+    label: string;
+};
 
 export type RdpArg = {
     original?: string;
@@ -56,6 +63,7 @@ export type WinboatConfigObj = {
     smartcardEnabled: boolean;
     rdpMonitoringEnabled: boolean;
     passedThroughDevices: PTSerializableDeviceInfo[];
+    passedThroughPorts: PTPortDeviceInfo[];
     customApps: WinApp[];
     experimentalFeatures: boolean;
     advancedFeatures: boolean;
@@ -75,6 +83,7 @@ const defaultConfig: WinboatConfigObj = {
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,
     passedThroughDevices: [],
+    passedThroughPorts: [],
     customApps: [],
     experimentalFeatures: false,
     advancedFeatures: false,
