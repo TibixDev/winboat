@@ -531,6 +531,9 @@
                         ></x-switch>
                     </div>
                 </x-card>
+
+                <!-- LogCard -->
+                <LogsCard></LogsCard>
             </div>
         </div>
 
@@ -648,16 +651,12 @@ import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
 import { RdpArg, WinboatConfig } from "../lib/config";
-import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
+import { type PTSerializableDeviceInfo, USBManager } from "../lib/usbmanager";
 import { type Device } from "usb";
-import {
-    USB_VID_BLACKLIST,
-    RESTART_ON_FAILURE,
-    RESTART_NO,
-    GUEST_RDP_PORT,
-    GUEST_QMP_PORT,
-} from "../lib/constants";
+import { GUEST_QMP_PORT, GUEST_RDP_PORT, RESTART_NO, RESTART_ON_FAILURE, USB_VID_BLACKLIST } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
+import LogsCard from "./config/LogsCard.vue";
+
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const { promisify }: typeof import("node:util") = require("node:util");
 const path: typeof import("node:path") = require("node:path");
@@ -709,7 +708,9 @@ const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
 
 // Constants
-const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v => v.startsWith("${HOME}"))!;
+const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v =>
+    v.startsWith("${HOME}"),
+)!;
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
 const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
 
