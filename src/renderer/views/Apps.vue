@@ -135,16 +135,24 @@
                     <x-icon href="#add" class="qualifier"></x-icon>
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
-                <x-select @change="(e: any) => (sortBy = e.detail.newValue)" :disabled="!winboat.isOnline.value">
+                <x-select
+                    @change="
+                        (e: any) => {
+                            sortBy = e.detail.newValue;
+                            WinboatConfig.getInstance().config.appsSortOrder = e.detail.newValue;
+                        }
+                    "
+                    :disabled="!winboat.isOnline.value"
+                >
                     <x-menu class="">
-                        <x-menuitem value="name" toggled>
+                        <x-menuitem value="name" :toggled="sortBy === 'name'">
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
                                 <span class="qualifier"> Sort By: </span>
-                                Name</x-label
-                            >
+                                Name
+                            </x-label>
                         </x-menuitem>
-                        <x-menuitem value="usage">
+                        <x-menuitem value="usage" :toggled="sortBy === 'usage'">
                             <x-icon href="#sort" class="qualifier"></x-icon>
                             <x-label>
                                 <span class="qualifier"> Sort By: </span>
@@ -273,6 +281,7 @@ import WBMenuItem from "../components/WBMenuItem.vue";
 import { AppIcons, DEFAULT_ICON } from "../data/appicons";
 import { debounce } from "../utils/debounce";
 import { Jimp, JimpMime } from "jimp";
+import { WinboatConfig } from "../lib/config";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const FormData: typeof import("form-data") = require("form-data");
 
@@ -335,6 +344,8 @@ const computedApps = computed(() => {
 });
 
 onMounted(async () => {
+    sortBy.value = WinboatConfig.getInstance().config.appsSortOrder;
+
     await refreshApps();
 
     watch(winboat.isOnline, async (newVal, _) => {
