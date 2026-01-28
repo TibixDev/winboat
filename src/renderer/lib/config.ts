@@ -61,6 +61,7 @@ export type WinboatConfigObj = {
     advancedFeatures: boolean;
     multiMonitor: number;
     rdpArgs: RdpArg[];
+    openToLan: boolean;
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
     versionData: WinboatVersionData;
@@ -80,6 +81,7 @@ const defaultConfig: WinboatConfigObj = {
     advancedFeatures: false,
     multiMonitor: 0,
     rdpArgs: [],
+    openToLan: false,
     disableAnimations: false,
     // TODO: Ideally should be podman once we flesh out everything
     containerRuntime: ContainerRuntimes.DOCKER,
