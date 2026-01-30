@@ -321,86 +321,37 @@
                     desc="Controls how large the display scaling is."
                     type="dropdown"
                     unit="%"
-                    :options="[100, 140, 180]"
+                    :options="[Number(100), 140, 180]"
                     v-model:value="wbConfig.config.scale"
                 />
 
                 <!-- Application Scaling -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:apps"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Application Scaling</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how large the application scaling is.
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-button
-                            type="button"
-                            class="size-8 !p-0"
-                            @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)"
-                        >
-                            <Icon icon="mdi:minus" class="size-4"></Icon>
-                            <x-label class="sr-only">Subtract</x-label>
-                        </x-button>
-                        <x-input
-                            type="text"
-                            v-model="origApplicationScale"
-                            class="!max-w-16"
-                            v-on:keydown="(e: any) => ensureNumericInput(e)"
-                            v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
-                        />
-                        <x-button
-                            type="button"
-                            class="size-8 !p-0"
-                            @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)"
-                        >
-                            <Icon icon="mdi:plus" class="size-4"></Icon>
-                            <x-label class="sr-only">Add</x-label>
-                        </x-button>
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="uil:apps"
+                    title="Application Scaling"
+                    desc="Controls how large the application scaling is.."
+                    type="number"
+                    :step="10"
+                    :min="100"
+                    :max="500"
+                    v-model:value="desktopScaling"
+                />
 
                 <!-- Multi Monitor -->
-                <x-card
-                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                <ConfigCard
+                    class="relative z-10"
+                    icon="uil:monitor"
+                    title="Multi-Monitor Support"
+                    type="dropdown"
+                    :options="Object.values(MultiMonitorMode)"
+                    v-model:value="wbConfig.config.multiMonitor"
                 >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:monitor"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Multi-Monitor Support</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how multiple monitors are handled. MultiMon creates separate displays for each
-                            monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may
-                            work better depending on your setup.
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-select
-                            class="w-20"
-                            @change="(e: any) => (wbConfig.config.multiMonitor = Number(e.detail.newValue))"
-                        >
-                            <x-menu>
-                                <x-menuitem value="0" :toggled="wbConfig.config.multiMonitor === 0">
-                                    <x-label>None</x-label>
-                                </x-menuitem>
-
-                                <x-menuitem value="1" :toggled="wbConfig.config.multiMonitor === 1">
-                                    <x-label>MultiMon</x-label>
-                                </x-menuitem>
-
-                                <x-menuitem value="2" :toggled="wbConfig.config.multiMonitor === 2">
-                                    <x-label>Span</x-label>
-                                </x-menuitem>
-                            </x-menu>
-                        </x-select>
-                    </div>
-                </x-card>
+                    <template v-slot:desc>
+                        Controls how multiple monitors are handled. MultiMon creates separate displays for each
+                        monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may
+                        work better depending on your setup.
+                    </template>
+                </ConfigCard>
 
                 <!-- Smartcard Passthrough -->
                 <x-card
@@ -566,7 +517,7 @@ import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
-import { RdpArg, WinboatConfig } from "../lib/config";
+import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
@@ -604,7 +555,6 @@ const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
-const origApplicationScale = ref(0);
 const rdpArgs = ref<RdpArg[]>([]);
 
 // For USB Devices
@@ -614,7 +564,8 @@ const isCreatingUdevRule = ref(false);
 
 // For RDP Args
 const rerenderAdvanced = ref(0);
-// ^ This ref is needed because reactivity fails on wbConfig.
+const desktopScaling = ref(0);
+// ^ These refs are needed because reactivity fails on wbConfig.
 //   We manually increment this value in toggleExperimentalFeatures() to force rerender.
 
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
@@ -644,23 +595,9 @@ watch(
     { deep: 2 },
 );
 
-function ensureNumericInput(e: any) {
-    if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        return;
-    }
-
-    if (!/\d/.test(e.key)) {
-        e.preventDefault();
-    }
-}
-
-function updateApplicationScale(value: string | number) {
-    let val = typeof value === "string" ? Number.parseInt(value) : value;
-    const clamped = typeof val !== "number" || Number.isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
-    wbConfig.config.scaleDesktop = clamped;
-    origApplicationScale.value = clamped;
-}
-
+watch(desktopScaling, newScaling => {
+    wbConfig.config.scaleDesktop = newScaling;
+})
 /**
  * Assigns the initial values from the Compose file to the reactive refs
  * so we can display them and track when a change has been made
@@ -684,9 +621,8 @@ async function assignValues() {
     freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
     origFreerdpPort.value = freerdpPort.value;
 
-    origApplicationScale.value = wbConfig.config.scaleDesktop;
-
     rdpArgs.value = wbConfig.config.rdpArgs;
+    desktopScaling.value = wbConfig.config.scaleDesktop;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;

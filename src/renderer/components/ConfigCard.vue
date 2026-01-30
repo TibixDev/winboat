@@ -14,14 +14,33 @@
         <div class="flex flex-row gap-2 justify-center items-center">
             <slot v-if="props.type === 'custom'"/>
             <template v-else-if="props.type === 'number'">
+                <x-button
+                    v-if="props.step"
+                    type="button"
+                    class="size-8 !p-0"
+                    @click="() => applyStep(-props.step!)"
+                >
+                    <Icon icon="mdi:minus" class="size-4"></Icon>
+                    <x-label class="sr-only">Subtract</x-label>
+                </x-button>
                 <x-input
                     class="max-w-16 text-right text-[1.1rem]"
                     :min="props.min"
                     :max="props.max"
                     :value="value"
-                    @input="(e: any) => (value = Number(/^\d+$/.exec(e.target.value)![0] || 4))"
+                    v-on:keydown="(e: any) => ensureNumericInput(e)"
+                    @input="(e: any) => (value = Number(/^\d+$/.exec(e.target.value)![0] || props.min))"
                     required
                 />
+                <x-button
+                    v-if="props.step"
+                    type="button"
+                    class="size-8 !p-0"
+                    @click="() => applyStep(props.step!)"
+                >
+                    <Icon icon="mdi:plus" class="size-4"></Icon>
+                    <x-label class="sr-only">Add</x-label>
+                </x-button>
                 <p class="text-neutral-100">{{ props.unit }}</p>
             </template>
             <template v-else-if="props.type === 'dropdown'">
@@ -50,28 +69,43 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 
-type BaseProps = { 
+type PropsType = {
     icon: string;
     title: string;
     desc?: string;
-};
-
-// TODO: get rid of this, defineProps doesn't really support the original idea either way.
-type PropsType = BaseProps & {
-    type: "number";
+    type: "number" | "dropdown" | "switch" | "custom";
     min?: number;
     max?: number;
-    unit?: string
-} | BaseProps & {
-    type: "dropdown";
-    options?: any[];
+    step?: number;
     unit?: string;
-} | BaseProps & {
-    type: "switch"
-} | BaseProps & {
-    type: "custom"
-}; 
+    options?: any[];
+};
 
 const props = defineProps<PropsType>();
 const value = defineModel("value");
+
+function ensureNumericInput(e: any) {
+    if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        return;
+    }
+
+    if (!/\d/.test(e.key)) {
+        e.preventDefault();
+    }
+}
+
+function applyStep(step: number) {
+    let tmp = Number.parseInt(value.value as string);
+
+    if (Number.isNaN(tmp)) return;
+
+    tmp += step;
+
+    if(!props.min && !props.max) {
+        value.value = tmp;
+        return;
+    }
+
+    value.value = Math.min(Math.max(props.min ?? Number.MIN_SAFE_INTEGER, tmp), props.max ?? Number.MAX_SAFE_INTEGER);
+}
 </script>

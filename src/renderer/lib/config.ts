@@ -50,6 +50,12 @@ type WinboatVersionData = {
     current: WinboatVersion
 }
 
+export enum MultiMonitorMode {
+    None = "None",
+    MultiMon = "MultiMon",
+    Span = "Span"
+};
+
 export type WinboatConfigObj = {
     scale: number;
     scaleDesktop: number;
@@ -59,7 +65,7 @@ export type WinboatConfigObj = {
     customApps: WinApp[];
     experimentalFeatures: boolean;
     advancedFeatures: boolean;
-    multiMonitor: number;
+    multiMonitor: MultiMonitorMode;
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
@@ -78,7 +84,7 @@ const defaultConfig: WinboatConfigObj = {
     customApps: [],
     experimentalFeatures: false,
     advancedFeatures: false,
-    multiMonitor: 0,
+    multiMonitor: MultiMonitorMode.None,
     rdpArgs: [],
     disableAnimations: false,
     // TODO: Ideally should be podman once we flesh out everything
