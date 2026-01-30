@@ -4,132 +4,73 @@
             <x-label class="mb-4 text-neutral-300">Container</x-label>
             <div class="flex flex-col gap-4">
                 <!-- RAM Allocation -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="game-icons:ram"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">RAM Allocation</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            How many gigabytes of RAM are allocated to the Windows virtual machine
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-input
-                            class="max-w-16 text-right text-[1.1rem]"
-                            min="4"
-                            :max="maxRamGB"
-                            :value="ramGB"
-                            @input="(e: any) => (ramGB = Number(/^\d+$/.exec(e.target.value)![0] || 4))"
-                            required
-                        />
-                        <p class="text-neutral-100">GB</p>
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="game-icons:ram"
+                    title="RAM Allocation"
+                    desc="How many gigabytes of RAM are allocated to the Windows virtual machine"
+                    type="number"
+                    unit="GB"
+                    :min="2"
+                    :max="maxRamGB"
+                    v-model:value="ramGB"
+                />
 
                 <!-- CPU Cores -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="solar:cpu-bold"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">CPU Cores</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            How many CPU Cores are allocated to the Windows virtual machine
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-input
-                            class="max-w-16 text-right text-[1.1rem]"
-                            min="2"
-                            :max="maxNumCores"
-                            :value="numCores"
-                            @input="(e: any) => (numCores = Number(/^\d+$/.exec(e.target.value)![0] || 4))"
-                            required
-                        ></x-input>
-                        <p class="text-neutral-100">Cores</p>
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="solar:cpu-bold"
+                    title="CPU Cores"
+                    desc="How many CPU Cores are allocated to the Windows virtual machine"
+                    type="number"
+                    unit="Cores"
+                    :min="2"
+                    :max="maxNumCores"
+                    v-model:value="numCores"
+                />
 
                 <!-- Shared Home Folder -->
-                <x-card
-                    class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                <ConfigCard
+                    icon="fluent:folder-link-32-filled"
+                    title="Shared Home Folder"
+                    type="switch"
+                    v-model:value="shareHomeFolder"
                 >
-                    <div>
-                        <div class="flex flex-row items-center gap-2 mb-2">
-                            <Icon class="text-violet-400 inline-flex size-8" icon="fluent:folder-link-32-filled"></Icon>
-                            <h1 class="text-lg my-0 font-semibold">Shared Home Folder</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, you will be able to access your Linux home folder within Windows under
-                            <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
-                        </p>
-                    </div>
-                    <div class="flex flex-row justify-center items-center gap-2">
-                        <x-switch
-                            :toggled="shareHomeFolder"
-                            @toggle="(_: any) => (shareHomeFolder = !shareHomeFolder)"
-                            size="large"
-                        />
-                    </div>
-                </x-card>
+                    <template v-slot:desc>
+                        If enabled, you will be able to access your Linux home folder within Windows under
+                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
+                    </template>
+                </ConfigCard>
 
                 <!-- Auto Start Container -->
-                <x-card
-                    class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row items-center gap-2 mb-2">
-                            <Icon class="text-violet-400 inline-flex size-8" icon="clarity:power-solid"></Icon>
-                            <h1 class="text-lg my-0 font-semibold">Auto Start Container</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, the Windows container will automatically be started when the system boots up
-                        </p>
-                    </div>
-                    <div class="flex flex-row justify-center items-center gap-2">
-                        <x-switch
-                            :toggled="autoStartContainer"
-                            @toggle="(_: any) => (autoStartContainer = !autoStartContainer)"
-                            size="large"
-                        />
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="clarity:power-solid"
+                    title="Auto Start Container"
+                    desc="If enabled, the Windows container will automatically be started when the system boots up"
+                    type="switch"
+                    v-model:value="autoStartContainer"
+                />
 
                 <!-- FreeRDP Port -->
-                <x-card
-                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
+                <ConfigCard
+                    icon="lucide:ethernet-port"
+                    title="FreeRDP Port"
+                    desc="You can change what port FreeRDP uses to communicate with the VM"
+                    type="custom"
                 >
-                    <div>
-                        <div class="flex flex-row items-center gap-2 mb-2">
-                            <Icon class="text-violet-400 inline-flex size-8" icon="lucide:ethernet-port"></Icon>
-                            <h1 class="text-lg my-0 font-semibold">FreeRDP Port</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            You can change what port FreeRDP uses to communicate with the VM
-                        </p>
-                    </div>
-                    <div class="flex flex-row justify-center items-center gap-2">
-                        <x-input
-                            class="max-w-16 text-right text-[1.1rem]"
-                            :value="Number.isNaN(freerdpPort) ? '' : freerdpPort"
-                            @input="
-                                (e: any) => {
-                                    freerdpPort = Number(
-                                        /^\d+$/.exec(e.target.value)?.at(0) ||
-                                            portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
-                                    );
-                                }
-                            "
-                        >
-                            <x-label v-if="Number.isNaN(freerdpPort)">None</x-label>
-                        </x-input>
-                    </div>
-                </x-card>
+                    <x-input
+                        class="max-w-16 text-right text-[1.1rem]"
+                        :value="Number.isNaN(freerdpPort) ? '' : freerdpPort"
+                        @input="
+                            (e: any) => {
+                                freerdpPort = Number(
+                                    /^\d+$/.exec(e.target.value)?.at(0) ||
+                                        portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
+                                );
+                            }
+                        "
+                    >
+                        <x-label v-if="Number.isNaN(freerdpPort)">None</x-label>
+                    </x-input>
+                </ConfigCard>
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="(error, k) of errors" :key="k">❗ {{ error }}</p>
                 </div>
@@ -373,116 +314,44 @@
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
                 <!-- Display Scaling -->
-                <x-card
-                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:scaling-right"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Display Scaling</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how large the display scaling is.
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-select
-                            class="w-20"
-                            @change="(e: any) => (wbConfig.config.scale = Number(e.detail.newValue))"
-                        >
-                            <x-menu>
-                                <x-menuitem value="100" :toggled="wbConfig.config.scale === 100">
-                                    <x-label>100%</x-label>
-                                </x-menuitem>
-
-                                <x-menuitem value="140" :toggled="wbConfig.config.scale === 140">
-                                    <x-label>140%</x-label>
-                                </x-menuitem>
-
-                                <x-menuitem value="180" :toggled="wbConfig.config.scale === 180">
-                                    <x-label>180%</x-label>
-                                </x-menuitem>
-                            </x-menu>
-                        </x-select>
-                    </div>
-                </x-card>
+                <ConfigCard
+                    class="relative z-10"
+                    icon="uil:scaling-right"
+                    title="Display Scaling"
+                    desc="Controls how large the display scaling is."
+                    type="dropdown"
+                    unit="%"
+                    :options="[Number(100), 140, 180]"
+                    v-model:value="wbConfig.config.scale"
+                />
 
                 <!-- Application Scaling -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:apps"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Application Scaling</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how large the application scaling is.
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-button
-                            type="button"
-                            class="size-8 !p-0"
-                            @click="updateApplicationScale(wbConfig.config.scaleDesktop - 10)"
-                        >
-                            <Icon icon="mdi:minus" class="size-4"></Icon>
-                            <x-label class="sr-only">Subtract</x-label>
-                        </x-button>
-                        <x-input
-                            type="text"
-                            v-model="origApplicationScale"
-                            class="!max-w-16"
-                            v-on:keydown="(e: any) => ensureNumericInput(e)"
-                            v-on:blur="(e: any) => updateApplicationScale(e.target.value)"
-                        />
-                        <x-button
-                            type="button"
-                            class="size-8 !p-0"
-                            @click="updateApplicationScale(wbConfig.config.scaleDesktop + 10)"
-                        >
-                            <Icon icon="mdi:plus" class="size-4"></Icon>
-                            <x-label class="sr-only">Add</x-label>
-                        </x-button>
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="uil:apps"
+                    title="Application Scaling"
+                    desc="Controls how large the application scaling is.."
+                    type="number"
+                    :step="10"
+                    :min="100"
+                    :max="500"
+                    v-model:value="desktopScaling"
+                />
 
                 <!-- Multi Monitor -->
-                <x-card
-                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                <ConfigCard
+                    class="relative z-10"
+                    icon="uil:monitor"
+                    title="Multi-Monitor Support"
+                    type="dropdown"
+                    :options="Object.values(MultiMonitorMode)"
+                    v-model:value="wbConfig.config.multiMonitor"
                 >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="uil:monitor"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Multi-Monitor Support</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            Controls how multiple monitors are handled. MultiMon creates separate displays for each
-                            monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may
-                            work better depending on your setup.
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-select
-                            class="w-20"
-                            @change="(e: any) => (wbConfig.config.multiMonitor = Number(e.detail.newValue))"
-                        >
-                            <x-menu>
-                                <x-menuitem value="0" :toggled="wbConfig.config.multiMonitor === 0">
-                                    <x-label>None</x-label>
-                                </x-menuitem>
-
-                                <x-menuitem value="1" :toggled="wbConfig.config.multiMonitor === 1">
-                                    <x-label>MultiMon</x-label>
-                                </x-menuitem>
-
-                                <x-menuitem value="2" :toggled="wbConfig.config.multiMonitor === 2">
-                                    <x-label>Span</x-label>
-                                </x-menuitem>
-                            </x-menu>
-                        </x-select>
-                    </div>
-                </x-card>
+                    <template v-slot:desc>
+                        Controls how multiple monitors are handled. MultiMon creates separate displays for each
+                        monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may
+                        work better depending on your setup.
+                    </template>
+                </ConfigCard>
 
                 <!-- Smartcard Passthrough -->
                 <x-card
@@ -640,6 +509,7 @@
 </template>
 
 <script setup lang="ts">
+import ConfigCard from "../components/ConfigCard.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { computedAsync } from "@vueuse/core";
 import { Winboat } from "../lib/winboat";
@@ -647,7 +517,7 @@ import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
-import { RdpArg, WinboatConfig } from "../lib/config";
+import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
@@ -685,7 +555,6 @@ const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
-const origApplicationScale = ref(0);
 const rdpArgs = ref<RdpArg[]>([]);
 
 // For USB Devices
@@ -695,7 +564,8 @@ const isCreatingUdevRule = ref(false);
 
 // For RDP Args
 const rerenderAdvanced = ref(0);
-// ^ This ref is needed because reactivity fails on wbConfig.
+const desktopScaling = ref(0);
+// ^ These refs are needed because reactivity fails on wbConfig.
 //   We manually increment this value in toggleExperimentalFeatures() to force rerender.
 
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
@@ -725,23 +595,9 @@ watch(
     { deep: 2 },
 );
 
-function ensureNumericInput(e: any) {
-    if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        return;
-    }
-
-    if (!/\d/.test(e.key)) {
-        e.preventDefault();
-    }
-}
-
-function updateApplicationScale(value: string | number) {
-    let val = typeof value === "string" ? Number.parseInt(value) : value;
-    const clamped = typeof val !== "number" || Number.isNaN(val) ? 100 : Math.min(Math.max(100, val), 500);
-    wbConfig.config.scaleDesktop = clamped;
-    origApplicationScale.value = clamped;
-}
-
+watch(desktopScaling, newScaling => {
+    wbConfig.config.scaleDesktop = newScaling;
+})
 /**
  * Assigns the initial values from the Compose file to the reactive refs
  * so we can display them and track when a change has been made
@@ -765,9 +621,8 @@ async function assignValues() {
     freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
     origFreerdpPort.value = freerdpPort.value;
 
-    origApplicationScale.value = wbConfig.config.scaleDesktop;
-
     rdpArgs.value = wbConfig.config.rdpArgs;
+    desktopScaling.value = wbConfig.config.scaleDesktop;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
