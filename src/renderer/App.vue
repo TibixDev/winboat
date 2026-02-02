@@ -138,7 +138,7 @@
                         {{ useRoute().name }}
                     </h1>
                 </div>
-                <router-view v-slot="{ Component }" @rerender="rerenderCounter++">
+                <router-view v-slot="{ Component }" v-model:rerender="rerenderCounter">
                     <transition mode="out-in" name="fade">
                         <component :is="Component" />
                     </transition>

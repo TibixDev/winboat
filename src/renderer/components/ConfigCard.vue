@@ -58,7 +58,7 @@
             <template v-else-if="props.type === 'switch'">
                 <x-switch
                     :toggled="value"
-                    @toggle="(_: any) => (value = !value)"
+                    @toggle="(_: any) => { $emit('toggle'); (value = !value) }"
                     size="large"
                 />
             </template>
