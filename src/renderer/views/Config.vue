@@ -354,52 +354,23 @@
                 </ConfigCard>
 
                 <!-- Smartcard Passthrough -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                <ConfigCard
+                    icon="game-icons:swipe-card"
+                    title="Smartcard Passthrough"
+                    desc="If enabled, your smartcard readers will be passed to Windows when you start an app"
+                    type="switch"
+                    v-model:value="wbConfig.config.smartcardEnabled"
                 >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="game-icons:swipe-card"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Smartcard Passthrough</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, your smartcard readers will be passed to Windows when you start an app
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-switch
-                            :toggled="wbConfig.config.smartcardEnabled"
-                            @toggle="(_: any) => (wbConfig.config.smartcardEnabled = !wbConfig.config.smartcardEnabled)"
-                            size="large"
-                        ></x-switch>
-                    </div>
-                </x-card>
+                </ConfigCard>
 
                 <!-- RDP Monitoring -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:remote-16-filled"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">RDP Monitoring</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, a banner will appear when the RDP session is connected (may cause high CPU
-                            usage, disable if you notice performance issues)
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-switch
-                            :toggled="wbConfig.config.rdpMonitoringEnabled"
-                            @toggle="
-                                (_: any) =>
-                                    (wbConfig.config.rdpMonitoringEnabled = !wbConfig.config.rdpMonitoringEnabled)
-                            "
-                            size="large"
-                        ></x-switch>
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="fluent:remote-16-filled"
+                    title="RDP Monitoring"
+                    desc="If enabled, a banner will appear when the RDP session is connected (may cause high CPU usage, disable if you notice performance issues)"
+                    type="switch"
+                    v-model:value="wbConfig.config.rdpMonitoringEnabled"
+                />
             </div>
         </div>
 
@@ -408,77 +379,33 @@
 
             <div class="flex flex-col gap-4">
                 <!-- Experimental Features -->
-                <x-card
-                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
-                >
-                    <div>
-                        <div class="flex flex-row items-center gap-2 mb-2">
-                            <Icon
-                                class="text-violet-400 inline-flex size-8"
-                                icon="streamline-ultimate:lab-tube-experiment"
-                            />
-                            <h1 class="text-lg my-0 font-semibold">Experimental Features</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, you'll have access to experimental features that may not be stable or complete
-                        </p>
-                    </div>
-                    <div class="flex flex-row justify-center items-center gap-2">
-                        <x-switch
-                            :toggled="wbConfig.config.experimentalFeatures"
-                            @toggle="toggleExperimentalFeatures"
-                            size="large"
-                        />
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="streamline-ultimate:lab-tube-experiment"
+                    title="Experimental Features"
+                    desc="If enabled, you'll have access to experimental features that may not be stable or complete"
+                    type="switch"
+                    v-model:value="wbConfig.config.experimentalFeatures"
+                    @toggle="toggleExperimentalFeatures"
+                />
 
                 <!-- Advanced Settings -->
-                <x-card
-                    class="flex items-center p-2 flex-row justify-between w-full py-3 my-0 bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl"
-                >
-                    <div>
-                        <div class="flex flex-row items-center gap-2 mb-2">
-                            <Icon class="text-violet-400 inline-flex size-8" icon="mdi:administrator"> </Icon>
-                            <h1 class="text-lg my-0 font-semibold">Advanced Settings</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, you'll have access to advanced settings that may prevent WinBoat from working if
-                            misconfigured
-                        </p>
-                    </div>
-                    <div class="flex flex-row justify-center items-center gap-2">
-                        <x-switch
-                            :toggled="wbConfig.config.advancedFeatures"
-                            @toggle="toggleAdvancedFeatures"
-                            size="large"
-                        />
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="mdi:administrator"
+                    title="Advanced Settings"
+                    desc="If enabled, you'll have access to advanced settings that may prevent WinBoat from working if misconfigured"
+                    type="switch"
+                    v-model:value="wbConfig.config.advancedFeatures"
+                    @toggle="rerenderAdvanced++"
+                />
 
                 <!-- Disable Animations -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div>
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="mdi:animation-outline"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">Disable Animations</h1>
-                        </div>
-                        <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
-                            If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't
-                            working well)
-                        </p>
-                    </div>
-                    <div class="flex flex-row gap-2 justify-center items-center">
-                        <x-switch
-                            :toggled="wbConfig.config.disableAnimations"
-                            @toggle="
-                                (_: any) => (wbConfig.config.disableAnimations = !wbConfig.config.disableAnimations)
-                            "
-                            size="large"
-                        ></x-switch>
-                    </div>
-                </x-card>
+                <ConfigCard
+                    icon="mdi:animation-outline"
+                    title="Disable Animations"
+                    desc="If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't working well)"
+                    type="switch"
+                    v-model:value="wbConfig.config.disableAnimations"
+                />
             </div>
         </div>
 
@@ -529,13 +456,7 @@ import {
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
-const { promisify }: typeof import("node:util") = require("node:util");
-const path: typeof import("node:path") = require("node:path");
-const fs: typeof import("node:fs") = require("node:fs");
-const statAsync = promisify(fs.stat);
 
-// Emits
-const $emit = defineEmits(["rerender"]);
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -559,8 +480,7 @@ const rdpArgs = ref<RdpArg[]>([]);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
-const rerenderExperimental = ref(0);
-const isCreatingUdevRule = ref(false);
+const rerenderExperimental = defineModel<number>("rerender");
 
 // For RDP Args
 const rerenderAdvanced = ref(0);
@@ -821,9 +741,7 @@ function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
 }
 
 async function toggleExperimentalFeatures() {
-    wbConfig.config.experimentalFeatures = !wbConfig.config.experimentalFeatures;
-    rerenderExperimental.value++;
-    $emit("rerender");
+    rerenderExperimental.value!++;
 
     // Remove all passthrough USB devices if we're disabling experimental features
     // since USB passthrough is an experimental feature
@@ -839,11 +757,6 @@ async function toggleExperimentalFeatures() {
         console.log("Creating QMP interval because experimental features were turned on");
         winboat.createQMPInterval();
     }
-}
-
-async function toggleAdvancedFeatures() {
-    wbConfig.config.advancedFeatures = !wbConfig.config.advancedFeatures;
-    rerenderAdvanced.value++;
 }
 </script>
 
