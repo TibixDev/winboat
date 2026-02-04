@@ -50,6 +50,12 @@ type WinboatVersionData = {
     current: WinboatVersion
 }
 
+export enum MultiMonitorMode {
+    None = "None",
+    MultiMon = "MultiMon",
+    Span = "Span"
+};
+
 export type WinboatConfigObj = {
     scale: number;
     scaleDesktop: number;
@@ -59,7 +65,7 @@ export type WinboatConfigObj = {
     customApps: WinApp[];
     experimentalFeatures: boolean;
     advancedFeatures: boolean;
-    multiMonitor: number;
+    multiMonitor: MultiMonitorMode;
     rdpArgs: RdpArg[];
     disableAnimations: boolean;
     containerRuntime: ContainerRuntimes;
@@ -78,7 +84,7 @@ const defaultConfig: WinboatConfigObj = {
     customApps: [],
     experimentalFeatures: false,
     advancedFeatures: false,
-    multiMonitor: 0,
+    multiMonitor: MultiMonitorMode.None,
     rdpArgs: [],
     disableAnimations: false,
     // TODO: Ideally should be podman once we flesh out everything
@@ -93,7 +99,9 @@ const defaultConfig: WinboatConfigObj = {
 export class WinboatConfig {
     private static readonly configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     private static instance: WinboatConfig | null = null;
-    #configData: WinboatConfigObj = { ...defaultConfig };
+    
+    // Due to us wrapping WinboatConfig in reactive, this can't be private
+    configData: WinboatConfigObj = { ...defaultConfig };
 
     static getInstance() {
         WinboatConfig.instance ??= new WinboatConfig();
@@ -101,7 +109,7 @@ export class WinboatConfig {
     }
 
     private constructor() {
-        this.#configData = WinboatConfig.readConfigObject()!;
+        this.configData = WinboatConfig.readConfigObject()!;
 
         // Set correct versionData
         if(this.config.versionData.current.versionToken !== currentVersion.versionToken) {
@@ -111,12 +119,12 @@ export class WinboatConfig {
             logger.info(`Updated version data from '${this.config.versionData.previous.toString()}' to '${currentVersion.toString()}'`);
         }
 
-        console.log("Reading current config", this.#configData);
+        console.log("Reading current config", this.configData);
     }
 
     get config(): WinboatConfigObj {
         // Return a proxy to intercept property sets
-        return new Proxy(this.#configData, {
+        return new Proxy(this.configData, {
             get: (target, key) => Reflect.get(target, key),
             set: (target, key, value: WinboatConfigObj) => {
                 const result = Reflect.set(target, key, value);
@@ -130,7 +138,7 @@ export class WinboatConfig {
     }
 
     set config(newConfig: WinboatConfigObj) {
-        this.#configData = { ...newConfig };
+        this.configData = { ...newConfig };
         WinboatConfig.writeConfigObject(newConfig);
         console.info("Wrote modified config to disk");
     }

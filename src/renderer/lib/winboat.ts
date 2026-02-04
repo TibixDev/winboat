@@ -14,7 +14,7 @@ import YAML from "yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { openLink } from "../utils/openLink";
-import { WinboatConfig } from "./config";
+import { MultiMonitorMode, WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
@@ -644,9 +644,9 @@ export class Winboat {
             ]);
         } else {
             args = args.concat([
-                this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
+                this.#wbConfig?.config.multiMonitor === MultiMonitorMode.Span ? "+span" : "",
                 "-wallpaper",
-                this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
+                this.#wbConfig?.config.multiMonitor === MultiMonitorMode.MultiMon ? "/multimon" : "",
                 `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
                 `/wm-class:winboat-${cleanAppName}`,
                 `/app:program:${app.Path},name:${cleanAppName},cmd:"${app.Args}"`,
