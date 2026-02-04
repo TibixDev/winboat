@@ -70,14 +70,56 @@
 import { Icon } from "@iconify/vue";
 
 type PropsType = {
+    /**
+     * The icon displayed in the top-left corner of the card. Only accepts Iconify icon name format.
+     * @example "fluent:folder-link-32-filled"
+     */
     icon: string;
+
+    /**
+     * The title text displayed next to the icon.
+     */
     title: string;
+
+    /**
+     * The description of the card. It will be displayed as a <p> tag.
+     * In case you need more control over how the description is displayed, use the `desc` slot instead.
+     */
     desc?: string;
+
+    /**
+     * Specifies the nature of the input value.
+     * - `number`: Shows a numeric input with optional Add/Subtract buttons in case `step` is specified.
+     * - `dropdown`: Shows a dropdown menu with values defined by the `options` prop.
+     * - `switch`: Shows a toggle switch.
+     * - `custom`: Shows the default slot content.
+     */
     type: "number" | "dropdown" | "switch" | "custom";
+    
+    /**
+     * The minimum accepted value in case the `number` type is specified.
+     */
     min?: number;
+
+    /**
+     * The maximum accepted value in case the `number` type is specified.
+     */
     max?: number;
+
+    /**
+     * Specifies how much the Add/Subtract buttons change the input value.
+     * Can be omitted, in which case the buttons won't be shown.
+     */
     step?: number;
+
+    /**
+     * Can be used to append some text after dropdown selections or a number input.
+     */
     unit?: string;
+
+    /**
+     * Defines dropdown entries in case the `dropdown` type is specified.
+     */
     options?: any[];
 };
 

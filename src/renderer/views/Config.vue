@@ -84,7 +84,7 @@
                 </x-button>
             </div>
         </div>
-        <div v-show="wbConfig.config.experimentalFeatures" :key="rerenderExperimental">
+        <div v-show="wbConfig.config.experimentalFeatures">
             <x-label class="mb-4 text-neutral-300">Devices</x-label>
             <div class="flex flex-col gap-4">
                 <!-- USB Passthrough -->
@@ -233,7 +233,7 @@
                 </x-card>
             </div>
         </div>
-        <div v-show="wbConfig.config.advancedFeatures" :key="rerenderAdvanced">
+        <div v-show="wbConfig.config.advancedFeatures">
             <x-label class="mb-4 text-neutral-300">FreeRDP</x-label>
             <div class="flex flex-col gap-4">
                 <!-- RDP args -->
@@ -259,7 +259,7 @@
                         <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
                             <x-card
                                 class="flex justify-between items-center gap-2 px-2 py-0 m-0 bg-white/5"
-                                v-for="(arg, index) in rdpArgs"
+                                v-for="(arg, index) in wbConfig.config.rdpArgs"
                                 :key="index"
                             >
                                 <div class="grid grid-cols-2 gap-2 items-center w-full">
@@ -284,23 +284,23 @@
                                 </div>
                                 <x-button
                                     class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
-                                    @click="rdpArgs.splice(index, 1)"
+                                    @click="wbConfig.config.rdpArgs.splice(index, 1)"
                                 >
                                     <x-icon href="#remove"></x-icon>
                                 </x-button>
                             </x-card>
                         </TransitionGroup>
-                        <div class="flex flex-row gap-2" :class="{ 'mt-4': rdpArgs.length }">
+                        <div class="flex flex-row gap-2" :class="{ 'mt-4': wbConfig.config.rdpArgs.length }">
                             <x-button
                                 class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
-                                @click="rdpArgs.push({ newArg: '', isReplacement: false })"
+                                @click="wbConfig.config.rdpArgs.push({ newArg: '', isReplacement: false })"
                             >
                                 <x-icon href="#add"></x-icon>
                                 <x-label>Add Argument</x-label>
                             </x-button>
                             <x-button
                                 class="!bg-gradient-to-tl from-yellow-400/20 shadow-md shadow-yellow-950/20 to-transparent hover:from-yellow-400/30 transition"
-                                @click="rdpArgs.push({ newArg: '', original: '', isReplacement: true })"
+                                @click="wbConfig.config.rdpArgs.push({ newArg: '', original: '', isReplacement: true })"
                             >
                                 <Icon class="inline-flex size-6" icon="codex:replace" />
                                 <x-label>Replace Argument</x-label>
@@ -334,7 +334,7 @@
                     :step="10"
                     :min="100"
                     :max="500"
-                    v-model:value="desktopScaling"
+                    v-model:value="wbConfig.config.scaleDesktop"
                 />
 
                 <!-- Multi Monitor -->
@@ -395,7 +395,6 @@
                     desc="If enabled, you'll have access to advanced settings that may prevent WinBoat from working if misconfigured"
                     type="switch"
                     v-model:value="wbConfig.config.advancedFeatures"
-                    @toggle="rerenderAdvanced++"
                 />
 
                 <!-- Disable Animations -->
@@ -437,7 +436,7 @@
 
 <script setup lang="ts">
 import ConfigCard from "../components/ConfigCard.vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, reactive } from "vue";
 import { computedAsync } from "@vueuse/core";
 import { Winboat } from "../lib/winboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
@@ -476,17 +475,9 @@ const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
-const rdpArgs = ref<RdpArg[]>([]);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
-const rerenderExperimental = defineModel<number>("rerender");
-
-// For RDP Args
-const rerenderAdvanced = ref(0);
-const desktopScaling = ref(0);
-// ^ These refs are needed because reactivity fails on wbConfig.
-//   We manually increment this value in toggleExperimentalFeatures() to force rerender.
 
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
 // A great example is when the container is offline. In that case, winboat's portManager isn't instantiated.
@@ -494,7 +485,7 @@ let portMapper = ref<ComposePortMapper | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
-const wbConfig = WinboatConfig.getInstance();
+const wbConfig = reactive(WinboatConfig.getInstance());
 const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
 
@@ -507,17 +498,6 @@ onMounted(async () => {
     await assignValues();
 });
 
-watch(
-    rdpArgs,
-    newArgs => {
-        wbConfig.config.rdpArgs = newArgs;
-    },
-    { deep: 2 },
-);
-
-watch(desktopScaling, newScaling => {
-    wbConfig.config.scaleDesktop = newScaling;
-})
 /**
  * Assigns the initial values from the Compose file to the reactive refs
  * so we can display them and track when a change has been made
@@ -540,9 +520,6 @@ async function assignValues() {
 
     freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
     origFreerdpPort.value = freerdpPort.value;
-
-    rdpArgs.value = wbConfig.config.rdpArgs;
-    desktopScaling.value = wbConfig.config.scaleDesktop;
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
@@ -741,8 +718,6 @@ function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
 }
 
 async function toggleExperimentalFeatures() {
-    rerenderExperimental.value!++;
-
     // Remove all passthrough USB devices if we're disabling experimental features
     // since USB passthrough is an experimental feature
     if (!wbConfig.config.experimentalFeatures) {
