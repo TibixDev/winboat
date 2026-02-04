@@ -1,5 +1,8 @@
 <template>
-    <main class="overflow-hidden relative w-screen h-screen">
+    <main 
+        class="overflow-hidden relative w-screen h-screen"
+        :class="{ animationsDisabled: 'disable-animations' }"
+    >
         <!-- Decoration -->
         <div
             class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15 blob-anim"
@@ -11,7 +14,6 @@
         <!-- Stripes for experimental -->
         <div
             v-show="wbConfig?.config.experimentalFeatures"
-            :key="rerenderCounter"
             class="experimental-stripes absolute top-0 left-0 w-full h-[3rem] pointer-events-none z-[10] opacity-15 grayscale"
         ></div>
 
@@ -138,7 +140,7 @@
                         {{ useRoute().name }}
                     </h1>
                 </div>
-                <router-view v-slot="{ Component }" v-model:rerender="rerenderCounter">
+                <router-view v-slot="{ Component }">
                     <transition mode="out-in" name="fade">
                         <component :is="Component" />
                     </transition>
@@ -156,13 +158,12 @@
 import { RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
 import { routes } from "./router";
 import { Icon } from "@iconify/vue";
-import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
+import { onMounted, ref, useTemplateRef, watch, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
 import { Winboat } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
-import { setIntervalImmediately } from "./utils/interval";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
@@ -179,16 +180,15 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
-// TODO: Hack for non-reactive data
-const rerenderCounter = ref(0);
 const novncURL = ref("");
-let animationCheckInterval: NodeJS.Timeout | null = null;
+
+const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
 
     if (winboatInstalled) {
-        wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
+        wbConfig = reactive(WinboatConfig.getInstance()); // Instantiate singleton class
         winboat = Winboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
 
@@ -202,30 +202,6 @@ onMounted(async () => {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
     }
-    
-    // Apply or remove disable-animations class based on config
-    const updateAnimationClass = () => {
-        if (wbConfig?.config.disableAnimations) {
-            document.body.classList.add("disable-animations");
-            console.log("Animations disabled");
-        } else {
-            document.body.classList.remove("disable-animations");
-            console.log("Animations enabled");
-        }
-    };
-
-    // Poll for config changes since the Proxy doesn't trigger Vue reactivity
-    // This is similar to how rerenderCounter is used elsewhere in the codebase
-    // Start with undefined so that the first call will always apply the current state
-    let lastAnimationState: boolean | undefined = undefined;
-    animationCheckInterval = setIntervalImmediately(() => {
-        const currentState = wbConfig?.config.disableAnimations;
-        if (currentState !== lastAnimationState) {
-            lastAnimationState = currentState;
-            updateAnimationClass();
-            rerenderCounter.value++; // Force re-render to update transitions
-        }
-    }, 1000); // Check every 1000ms
 
     // Watch for guest server updates and show dialog
     watch(
@@ -248,13 +224,6 @@ onMounted(async () => {
             }
         },
     );
-});
-
-onUnmounted(() => {
-    // Clean up the interval when component unmounts
-    if (animationCheckInterval) {
-        clearInterval(animationCheckInterval);
-    }
 });
 
 function handleMinimize() {
