@@ -115,15 +115,13 @@
                     </div>
                 </div>
                 <RouterLink
-                    v-for="route of routes.filter(
-                        (r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)),
-                    )"
+                    v-for="route of routes.filter((r: RouteRecordRaw) => r.meta?.nav)"
                     :to="route.path"
                     :key="route.path"
                 >
                     <x-navitem>
                         <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
-                        <x-label>{{ route.name }}</x-label>
+                        <x-label>{{ splitRoute(route.path)?.at(-1)?.token }}</x-label>
                     </x-navitem>
                 </RouterLink>
                 <div class="flex flex-col justify-end items-center p-4 h-full">
@@ -134,11 +132,16 @@
                 <div class="flex flex-row gap-2 items-center my-6">
                     <Icon class="w-6 h-6 opacity-60" icon="icon-park-solid:toolkit"></Icon>
                     <h1 class="my-0 text-2xl font-semibold opacity-60">WinBoat</h1>
-                    <Icon class="w-6 h-6" icon="bitcoin-icons:caret-right-filled"></Icon>
-                    <Icon class="w-6 h-6" :icon="useRoute().meta.icon as string"></Icon>
-                    <h1 class="my-0 text-2xl font-semibold">
-                        {{ useRoute().name }}
-                    </h1>
+                    <template
+                        v-for="(token, key) in routerTokens"
+                        :key="key"
+                    >
+                        <Icon class="w-6 h-6" icon="bitcoin-icons:caret-right-filled"></Icon>
+                        <Icon class="w-6 h-6" :icon="token.icon!"></Icon>
+                        <h1 class="my-0 text-2xl font-semibold">
+                            {{ token.token }}
+                        </h1>
+                    </template>
                 </div>
                 <router-view v-slot="{ Component }">
                     <transition mode="out-in" name="fade">
@@ -155,8 +158,8 @@
 </template>
 
 <script setup lang="ts">
-import { RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
-import { routes } from "./router";
+import { NavigationGuardNext, RouteLocationNormalized, RouteLocationNormalizedLoaded, RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
+import { routes, RouteToken, splitRoute } from "./router";
 import { Icon } from "@iconify/vue";
 import { onMounted, ref, useTemplateRef, watch, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
@@ -180,6 +183,7 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
+const routerTokens = ref<RouteToken[]>();
 const novncURL = ref("");
 
 const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
@@ -193,14 +197,14 @@ onMounted(async () => {
         USBManager.getInstance(); // Instantiate singleton class
 
         // Migrations
-        $router.push("/migration");
+        $router.push("/Migration");
         await performAutoMigrations();
 
         // After migrations, go to home
-        $router.push("/home");
+        $router.push("/Home");
     } else {
         console.log("Not installed, redirecting to setup...");
-        $router.push("/setup");
+        $router.push("/Setup");
     }
 
     // Watch for guest server updates and show dialog
@@ -225,6 +229,11 @@ onMounted(async () => {
         },
     );
 });
+
+$router.beforeResolve((to: RouteLocationNormalized, from: RouteLocationNormalizedLoaded, next: NavigationGuardNext) => {
+    routerTokens.value = splitRoute(to.fullPath);
+    next();
+})
 
 function handleMinimize() {
     console.log("Minimize");
