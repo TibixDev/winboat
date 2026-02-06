@@ -14,7 +14,7 @@
                         <h1 class="text-3xl">
                             {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
                         </h1>
-                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold">
+                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold !m-0">
                             {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
                         </p>
                     </div>
