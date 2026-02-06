@@ -18,12 +18,21 @@ on:
                     - all
                     - linux-only
                     - guest-server-only
+            with_flatpak:
+                description: "With flatpak"
+                required: true
+                type: boolean
+                default: false
 jobs:
     build:
         runs-on: ubuntu-22.04
         if: >-
             (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) ||
-            (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'guest-server-only')
+            (github.event_name == 'workflow_dispatch' && (github.event.inputs.build_type == 'all' || github.event.inputs.build_type == 'linux-only'))
+        outputs:
+            name: ${{ steps.meta.outputs.NAME }}
+            version: ${{ steps.meta.outputs.VERSION }}
+            arch: ${{ steps.meta.outputs.ARCH }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v5
@@ -121,6 +130,27 @@ jobs:
             #       dist/latest-linux.yml
             #       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
             #     if-no-files-found: ignore
+    build-flatpak:
+        runs-on: ubuntu-22.04
+        if: github.event_name == 'workflow_dispatch' && (github.event.inputs.with_flatpak == 'true')
+        env:
+            DOCKER_BUILD_SUMMARY: false
+        needs: build
+        steps:
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+              with:
+                  buildkitd-flags: "--allow-insecure-entitlement=security.insecure"
+            - name: Build flatpak
+              uses: docker/bake-action@v6
+              with:
+                  targets: flatpak
+                  allow: security.insecure
+            - name: Upload flatpak bundle
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{needs.build.outputs.name}}-${{needs.build.outputs.version}}-${{needs.build.outputs.arch}}.flatpak
+                  path: build/winboat.flatpak
     guest-server-only:
         runs-on: ubuntu-22.04
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'

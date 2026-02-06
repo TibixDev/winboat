@@ -814,7 +814,7 @@ import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
+import { DEFAULT_VM_DATA_DIR, WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
@@ -917,7 +917,7 @@ const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
-const installFolder = ref(path.join(os.homedir(), "winboat"));
+const installFolder = ref(DEFAULT_VM_DATA_DIR);
 const windowsVersion = ref<WindowsVersionKey>("11");
 const windowsLanguage = ref("English");
 const customIsoPath = ref("");
@@ -1071,6 +1071,16 @@ const installFolderErrors = computedAsync(async () => {
     if (!installFolder.value) {
         errors.push("Please select an install location");
         return errors; // <- The rest shouldn't be ran if no path is selected
+    }
+
+    if (installFolder.value.match(/^\/run\/user\/\d+\/doc\//)) {
+        errors.push("Document portal paths are not supported, share this location with WinBoat first (e.g using Flatseal)");
+        // The reason for this is docker not being able to mount
+        // paths inside of the FUSE filesystem created by the
+        // document portal. This is because docker containers are
+        // created by the root user, and the root user does not
+        // have access to FUSE mounts of other users by default.
+        return errors;
     }
 
     // Path without /winboat
