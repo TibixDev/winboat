@@ -65,7 +65,7 @@ jobs:
               run: |
                   bun -e "const p=require('./package.json'); console.log('NAME='+p.name)" >> "$GITHUB_OUTPUT"
                   bun -e "const p=require('./package.json'); console.log('VERSION='+p.version)" >> "$GITHUB_OUTPUT"
-                  ARCH_FROM_FILE=$(ls dist/*.{AppImage,deb,rpm,tar.gz} 2>/dev/null | head -n1 | xargs -I{} basename {} | sed -E 's/.*-([A-Za-z0-9_]+)\.[^.]+$/\1/')
+                  ARCH_FROM_FILE=$(ls dist/*.{AppImage,deb,rpm,tar.bz2} 2>/dev/null | head -n1 | xargs -I{} basename {} | sed -E 's/.*-([A-Za-z0-9_]+)\.[^.]+$/\1/')
                   if [ -n "$ARCH_FROM_FILE" ]; then
                     echo "ARCH=$ARCH_FROM_FILE" >> "$GITHUB_OUTPUT"
                   else
@@ -95,11 +95,11 @@ jobs:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.rpm
                   path: dist/*.rpm
                   if-no-files-found: ignore
-            - name: Upload TAR.GZ
+            - name: Upload TAR.BZ2
               uses: actions/upload-artifact@v4
               with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.tar.gz
-                  path: dist/*.tar.gz
+                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.tar.bz2
+                  path: dist/*.tar.bz2
                   if-no-files-found: ignore
             - name: Upload unpacked directory
               uses: actions/upload-artifact@v4
@@ -191,7 +191,7 @@ jobs:
                       dist/*.AppImage
                       dist/*.deb
                       dist/*.rpm
-                      dist/*.tar.gz
+                      dist/*.tar.bz2
                       dist/winboat-linux-unpacked.zip
                       dist/latest-linux.yml
                       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
