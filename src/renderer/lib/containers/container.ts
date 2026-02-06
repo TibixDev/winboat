@@ -9,7 +9,7 @@ export const containerLogger = createLogger(path.join(WINBOAT_DIR, "container.lo
 
 export type ComposeDirection = "up" | "down";
 export type ComposeArguments = "--no-start";
-export type ContainerAction = "start" | "stop" | "pause" | "unpause";
+export type ContainerAction = "start" | "stop" | "pause" | "unpause" | "restart";
 
 export abstract class ContainerManager {
     abstract readonly defaultCompose: ComposeConfig;
