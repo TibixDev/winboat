@@ -1,5 +1,6 @@
 {
     "appId": "com.teabox.winboat",
+    "productName": "WinBoat",
     "directories": {
         "output": "dist"
     },
