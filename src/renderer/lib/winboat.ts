@@ -504,6 +504,20 @@ export class Winboat {
         this.containerActionLoading.value = false;
     }
 
+    async restartContainer() {
+        logger.info("Restarting WinBoat container...");
+        this.containerActionLoading.value = true;
+        try {
+            await this.containerMgr!.container("restart");
+        } catch (e) {
+            logger.error("There was an error restarting the container.");
+            logger.error(e);
+            throw e;
+        }
+        logger.info("Successfully restarted WinBoat container");
+        this.containerActionLoading.value = false;
+    }
+
     async pauseContainer() {
         logger.info("Pausing WinBoat container...");
         this.containerActionLoading.value = true;
