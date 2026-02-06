@@ -7,7 +7,7 @@ echo "Building guest server..."
 export GOOS=windows
 export GOARCH=amd64
 export PACKAGE=winboat-server
-export VERSION="$(node -p "require('./package.json').version")"
+export VERSION="$(bun -p "require('./package.json').version")"
 export COMMIT_HASH="$(git rev-parse --short HEAD)"
 export BUILD_TIMESTAMP=$(date '+%Y-%m-%dT%H:%M:%S')
 export LDFLAGS=(

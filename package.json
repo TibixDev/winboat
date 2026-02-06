@@ -5,12 +5,13 @@
     "type": "module",
     "main": "main/main.js",
     "engines": {
-        "node": ">=23.6.0"
+        "node": ">=23.6.0",
+        "bun": ">=1.3.0"
     },
     "scripts": {
-        "dev": "node scripts/dev-server.ts",
+        "dev": "bun scripts/dev-server.ts",
         "build:gs": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && node scripts/build.ts && electron-builder --linux"
+        "build:linux-gs": "bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
