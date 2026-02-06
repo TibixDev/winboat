@@ -79,6 +79,14 @@
                 >
                     <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
                 </button>
+                <button
+                    title="Restart"
+                    class="generic-hover"
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
+                    @click="winboat.restartContainer()"
+                >
+                    <Icon class="w-20 h-20 text-orange-300" icon="mingcute:refresh-3-line"></Icon>
+                </button>
 
                 <button
                     title="Pause / Unpause"
