@@ -12,6 +12,8 @@ export type Specs = {
 export type InstallConfiguration = {
     windowsVersion: WindowsVersionKey;
     windowsLanguage: string;
+    windowsRegion: string;
+    keyboardLayout: string;
     cpuCores: number;
     ramGB: number;
     installFolder: string;
@@ -72,6 +74,8 @@ export type ComposeConfig = {
                 PASSWORD: string;
                 HOME: string;
                 LANGUAGE: string;
+                REGION: string;
+                KEYBOARD: string;
                 ARGUMENTS: string;
                 HOST_PORTS: string;
                 [key: string]: string; // Allow additional env vars
