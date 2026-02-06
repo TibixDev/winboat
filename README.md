@@ -88,20 +88,20 @@ You can download the latest Linux builds under the [Releases](https://github.com
 
 ## Building WinBoat
 
-- For building you need to have NodeJS and Go installed on your system
+- For building you need to have Bun and Go installed on your system
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
-- Install the dependencies (`npm i`)
-- Build the app and the guest server using `npm run build:linux-gs`
+- Install the dependencies (`bun i`)
+- Build the app and the guest server using `bun run build:linux-gs`
 - You can now find the built app under `dist` with an AppImage and an Unpacked variant
 
 ## Running WinBoat in development mode
 
 - Make sure you meet the [prerequisites](#prerequisites)
-- Additionally, for development you need to have NodeJS and Go installed on your system
+- Additionally, for development you need to have Bun and Go installed on your system
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
-- Install the dependencies (`npm i`)
-- Build the guest server (`npm run build:gs`)
-- Run the app (`npm run dev`)
+- Install the dependencies (`bun i`)
+- Build the guest server (`bun run build:gs`)
+- Run the app (`bun run dev`)
 
 ## Contributing
 
