@@ -27,17 +27,37 @@
                     v-model:value="numCores"
                 />
 
-                <!-- Shared Home Folder -->
+                <!-- Shared Folder -->
                 <ConfigCard
                     icon="fluent:folder-link-32-filled"
-                    title="Shared Home Folder"
+                    title="Shared Folder"
                     type="switch"
-                    v-model:value="shareHomeFolder"
+                    v-model:value="shareFolder"
                 >
                     <template v-slot:desc>
-                        If enabled, you will be able to access your Linux home folder within Windows under
+                        If enabled, you will be able to access your selected folder within Windows under
                         <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
                     </template>
+                </ConfigCard>
+
+                <!-- Shared Folder Location -->
+                <ConfigCard
+                    v-if="shareFolder"
+                    icon="mdi:folder-cog"
+                    title="Shared Folder Location"
+                    type="custom"
+                >
+                    <template v-slot:desc>
+                        <span v-if="sharedFolderPath">
+                            Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
+                        </span>
+                        <span v-else>
+                            Select a folder to share with Windows
+                        </span>
+                    </template>
+                    <x-button @click="selectSharedFolder">
+                        Browse
+                    </x-button>
                 </ConfigCard>
 
                 <!-- Auto Start Container -->
@@ -455,7 +475,8 @@ import {
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
-
+const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
+const os: typeof import("os") = require("node:os");
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -465,8 +486,10 @@ const maxNumCores = ref(0);
 const ramGB = ref(0);
 const origRamGB = ref(0);
 const maxRamGB = ref(0);
-const origShareHomeFolder = ref(false);
-const shareHomeFolder = ref(false);
+const shareFolder = ref(false);
+const origShareFolder = ref(false);
+const sharedFolderPath = ref("");
+const origSharedFolderPath = ref("");
 const origAutoStartContainer = ref(false);
 const autoStartContainer = ref(false);
 const freerdpPort = ref(0);
@@ -490,7 +513,6 @@ const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
 
 // Constants
-const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v => v.startsWith("${HOME}"))!;
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
 const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
 
@@ -512,8 +534,19 @@ async function assignValues() {
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
 
-    shareHomeFolder.value = compose.value.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
-    origShareHomeFolder.value = shareHomeFolder.value;
+    // Find any volume that ends with /shared
+    const sharedVolume = compose.value.services.windows.volumes.find(v => v.includes("/shared"));
+    if (sharedVolume) {
+        shareFolder.value = true;
+        // Extract the path before :/shared
+        const [hostPath] = sharedVolume.split(":");
+        sharedFolderPath.value = hostPath.replace("${HOME}", os.homedir());
+    } else {
+        shareFolder.value = false;
+        sharedFolderPath.value = "";
+    }
+    origShareFolder.value = shareFolder.value;
+    origSharedFolderPath.value = sharedFolderPath.value;
 
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
@@ -536,14 +569,18 @@ async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
 
-    const composeHasHomefolderShare = compose.value!.services.windows.volumes.includes(HOMEFOLDER_SHARE_STR);
-
-    if (shareHomeFolder.value && !composeHasHomefolderShare) {
-        compose.value!.services.windows.volumes.push(HOMEFOLDER_SHARE_STR);
-    } else if (!shareHomeFolder.value && composeHasHomefolderShare) {
+    // Remove any existing shared volume
+    const existingSharedVolume = compose.value!.services.windows.volumes.find(v => v.includes("/shared"));
+    if (existingSharedVolume) {
         compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(
-            v => v !== HOMEFOLDER_SHARE_STR,
+            v => !v.includes("/shared"),
         );
+    }
+
+    // Add the new shared volume if enabled
+    if (shareFolder.value && sharedFolderPath.value) {
+        const volumeStr = `${sharedFolderPath.value}:/shared`;
+        compose.value!.services.windows.volumes.push(volumeStr);
     }
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
@@ -570,6 +607,23 @@ async function saveCompose() {
     } finally {
         isApplyingChanges.value = false;
     }
+}
+
+/**
+ * Opens a dialog to select a folder to share with Windows
+ */
+function selectSharedFolder() {
+    electron.dialog
+        .showOpenDialog({
+            title: "Select Folder to Share",
+            properties: ["openDirectory"],
+            defaultPath: sharedFolderPath.value || os.homedir(),
+        })
+        .then(result => {
+            if (!result.canceled && result.filePaths.length > 0) {
+                sharedFolderPath.value = result.filePaths[0];
+            }
+        });
 }
 
 /**
@@ -668,7 +722,8 @@ const saveButtonDisabled = computed(() => {
     const hasResourceChanges =
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
-        shareHomeFolder.value !== origShareHomeFolder.value ||
+        shareFolder.value !== origShareFolder.value ||
+        sharedFolderPath.value !== origSharedFolderPath.value ||
         (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
@@ -733,6 +788,13 @@ async function toggleExperimentalFeatures() {
         winboat.createQMPInterval();
     }
 }
+
+// Watch for when shared folder is enabled and set default path
+watch(shareFolder, (newValue) => {
+    if (newValue && !sharedFolderPath.value) {
+        sharedFolderPath.value = os.homedir();
+    }
+});
 </script>
 
 <style scoped>

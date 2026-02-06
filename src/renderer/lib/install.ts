@@ -105,14 +105,25 @@ export class InstallManager {
             composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
         }
 
-        // Home folder mapping
-        if (!this.conf.shareHomeFolder) {
-            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
-            if (sharedFolderIdx === -1) {
-                logger.info("No home folder sharing volume found, nothing to remove");
-            } else {
+        // Shared folder mapping
+        const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
+        
+        if (!this.conf.sharedFolderPath) {
+            // Remove shared folder if not enabled
+            if (sharedFolderIdx !== -1) {
                 composeContent.services.windows.volumes.splice(sharedFolderIdx, 1);
-                logger.info("Removed home folder sharing as per user configuration");
+                logger.info("Removed shared folder as per user configuration");
+            }
+        } else {
+            // Add or update shared folder
+            const volumeStr = `${this.conf.sharedFolderPath}:/shared`;
+            
+            if (sharedFolderIdx === -1) {
+                composeContent.services.windows.volumes.push(volumeStr);
+                logger.info(`Added shared folder: ${this.conf.sharedFolderPath}`);
+            } else {
+                composeContent.services.windows.volumes[sharedFolderIdx] = volumeStr;
+                logger.info(`Updated shared folder to: ${this.conf.sharedFolderPath}`);
             }
         }
 
