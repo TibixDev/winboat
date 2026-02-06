@@ -58,6 +58,7 @@ jobs:
               run: bun run build:linux-gs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
             - name: Derive artifact naming
               id: meta
               shell: bash
@@ -180,6 +181,7 @@ jobs:
               run: bun run build:linux-gs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
             - name: Zip unpacked variant
               run: cd dist && zip -r winboat-linux-unpacked.zip linux-unpacked/
             - name: Create GitHub Release
