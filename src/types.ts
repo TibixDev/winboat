@@ -19,7 +19,7 @@ export type InstallConfiguration = {
     username: string;
     password: string;
     customIsoPath?: string;
-    shareHomeFolder: boolean;
+    sharedFolderPath?: string;
     container: ContainerRuntimes;
 };
 
