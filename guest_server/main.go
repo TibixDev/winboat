@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -154,6 +155,37 @@ func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
+}
+
+type ProcessStatusResponse struct {
+	Running bool `json:"running"`
+}
+
+func getProcessStatus(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		http.Error(w, "path query param required", http.StatusBadRequest)
+		return
+	}
+
+	// Use PowerShell to check if process with matching path is running
+	// - Expand environment variables in the input path
+	// - Use case-insensitive comparison (-ieq)
+	escapedPath := strings.ReplaceAll(path, "'", "''")
+	psCommand := fmt.Sprintf(
+		"$p=[Environment]::ExpandEnvironmentVariables('%s') -replace '/','\\'; if(Get-Process | Where-Object {$_.Path -ieq $p} | Select-Object -First 1){'1'}else{'0'}",
+		escapedPath,
+	)
+	cmd := exec.Command("powershell", "-NoProfile", "-NoLogo", "-Command", psCommand)
+	output, _ := cmd.Output()
+
+	response := ProcessStatusResponse{
+		Running: strings.TrimSpace(string(output)) == "1",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 func applyUpdate(w http.ResponseWriter, r *http.Request) {
@@ -334,6 +366,7 @@ func main() {
 	r.HandleFunc("/version", getVersion).Methods("GET")
 	r.HandleFunc("/metrics", getMetrics).Methods("GET")
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
+	r.HandleFunc("/process/status", getProcessStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
 	r.HandleFunc("/auth/set-hash", setAuthHash).Methods("POST")

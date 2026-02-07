@@ -428,6 +428,25 @@ export class Winboat {
         return status.rdpConnected;
     }
 
+    /**
+     * Checks if a process with the given executable path is running in the Windows guest
+     * @param path The executable path to check
+     * @returns true if the process is running, false otherwise
+     */
+    async isProcessRunning(path: string): Promise<boolean> {
+        try {
+            const res = await nodeFetch(`${this.apiUrl}/process/status?path=${encodeURIComponent(path)}`, {
+                signal: AbortSignal.timeout(FETCH_TIMEOUT),
+            });
+            const data = (await res.json()) as { running: boolean };
+            logger.info(`Process ${path} is running: ${data.running}`);
+            return data.running;
+        } catch (err) {
+            logger.warn(`isProcessRunning failed for ${path}: ${err}`);
+            return false;
+        }
+    }
+
     static readCompose(composePath: string): ComposeConfig {
         const composeFile = fs.readFileSync(composePath, "utf-8");
         const composeContents = YAML.parse(composeFile) as ComposeConfig;

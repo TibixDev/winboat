@@ -1,5 +1,23 @@
 <template>
     <div>
+        <!-- Loading Overlay -->
+        <Transition name="fade">
+            <div
+                v-if="launchingApp"
+                class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
+            >
+                <div class="relative mb-4">
+                    <img
+                        class="size-20 rounded-xl"
+                        :src="`data:image/png;charset=utf-8;base64,${launchingApp.Icon}`"
+                        alt="App Icon"
+                    />
+                    <x-throbber class="absolute inset-0 m-auto size-10"></x-throbber>
+                </div>
+                <p class="mt-4 text-lg font-semibold text-white">Opening {{ launchingApp.Name }}...</p>
+            </div>
+        </Transition>
+
         <dialog ref="addCustomAppDialog">
             <h3 class="mb-2">{{ currentAppForm.Source === "custom" ? "Edit App" : "Add App" }}</h3>
             <div class="flex flex-row gap-5 mt-4 w-[35vw]">
@@ -192,8 +210,11 @@
                     v-for="app of computedApps"
                     :key="app.id"
                     class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
-                    :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
-                    @click="winboat.launchApp(app)"
+                    :class="{
+                        'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom',
+                        'pointer-events-none opacity-50': launchingApp,
+                    }"
+                    @click="handleAppLaunch(app)"
                     @contextmenu="openContextMenu($event, app)"
                 >
                     <div class="flex flex-row items-center gap-2 w-[85%]">
@@ -266,6 +287,7 @@ const FormData: typeof import("form-data") = require("form-data");
 
 const winboat = Winboat.getInstance();
 const apps = ref<WinApp[]>([]);
+const launchingApp = ref<WinApp | null>(null);
 const searchInput = ref("");
 const sortBy = ref("");
 const filterBy = ref("all");
@@ -473,8 +495,54 @@ function onContextMenuHide() {
 
 function launchApp() {
     if (contextMenuTarget.value) {
-        winboat.launchApp(contextMenuTarget.value);
+        handleAppLaunch(contextMenuTarget.value);
     }
+}
+
+/**
+ * Handles app launch with loading state management and spam-click prevention.
+ * Polls the guest server to detect when the process is actually running.
+ */
+async function handleAppLaunch(app: WinApp) {
+    console.log("Handle app launch: ", app.Name);
+    if (launchingApp.value) return; // Prevent double-clicks
+    launchingApp.value = app;
+
+    // Fire and forget - don't await since launchApp blocks until app closes
+    winboat.launchApp(app).catch(err => {
+        console.error("Error launching app:", err);
+    });
+
+    // For UWP apps (launched via explorer.exe), we can't detect the actual process
+    // For non-.exe files (.msc, etc.), they're opened by other host processes
+    // In both cases, fall back to a timeout
+    const isUwpApp = app.Source === "uwp";
+    const isExecutable = app.Path.toLowerCase().endsWith(".exe");
+
+    if (isUwpApp || !isExecutable) {
+        // Can't track these by process path, use timeout
+        setTimeout(() => {
+            launchingApp.value = null;
+        }, 2000);
+        return;
+    }
+
+    // Poll for process status (max 10 seconds, check every 500ms)
+    const maxAttempts = 20;
+    for (let i = 0; i < maxAttempts; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        try {
+            const running = await winboat.isProcessRunning(app.Path);
+            console.log("Process running: ", running);
+            if (running) {
+                break;
+            }
+        } catch {
+            // Ignore errors and continue polling
+        }
+    }
+
+    launchingApp.value = null;
 }
 
 /**
