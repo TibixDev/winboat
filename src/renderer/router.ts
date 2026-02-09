@@ -18,7 +18,7 @@ export const routes: RouteRecordRaw[] = [
     { path: "/Setup", component: SetupUI, meta: { icon: "fluent-mdl2:install-to-drive", } },
     { path: "/Apps", component: Apps, meta: { icon: "fluent:apps-32-filled", nav: true } },
     { path: "/Configuration", component: Config, meta: { icon: "icon-park-outline:config", nav: true }, },
-    { path: "/Configuration/WinBoat", component: Winboat, meta: { icon: "game-icons:ram"} }, 
+    { path: "/Configuration/WinBoat", component: Winboat, meta: { icon: "winboat:config-logo"} }, 
     { path: "/Configuration/General", component: General, meta: { icon: "icon-park-outline:config" } },
     { path: "/About", component: About, meta: { icon: "fluent:info-32-filled", nav: true } },
 ];

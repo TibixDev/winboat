@@ -6,11 +6,11 @@
             :icon="props.icon"
         />
         <Icon
-            class="size-[100%] text-violet-400/60 brightness-75 z-20 absolute top-[56%] translate-y-[-50%] translate-x-[1.5%]"
+            class="size-[100%] text-violet-400/60 brightness-75 z-20 absolute top-[51%] translate-y-[-50%] translate-x-[1.5%]"
             :icon="props.icon"
         />
         <Icon
-            class="size-[100%] text-violet-400/40 brightness-50 z-10 absolute top-[62%] translate-y-[-50%] translate-x-[3%]"
+            class="size-[100%] text-violet-400/40 brightness-50 z-10 absolute top-[52%] translate-y-[-50%] translate-x-[3%]"
             :icon="props.icon"
         />
     </div>
@@ -21,5 +21,7 @@ import { Icon } from "@iconify/vue";
 
 const props = defineProps<{
     icon: string;
+    yStep: number;
+    xStep: number;
 }>();
 </script>

@@ -1,5 +1,6 @@
 const os: typeof import("os") = require("node:os");
 const path: typeof import("path") = require("node:path");
+const remote: typeof import("@electron/remote") = require("@electron/remote");
 
 // Should be {home}/.winboat
 export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");
@@ -71,3 +72,7 @@ export const RESTART_UNLESS_STOPPED = "unless-stopped";
 export const RESTART_ON_FAILURE = "on-failure";
 export const RESTART_ALWAYS = "always";
 export const RESTART_NO = "no";
+
+export const ICONS_PATH = remote.app.isPackaged
+            ? path.join(process.resourcesPath, "icons")
+            : path.join(remote.app.getAppPath(), "..", "..", "icons");

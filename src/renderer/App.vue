@@ -169,8 +169,13 @@ import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
+import { addWinBoatIconCollection } from "./utils/icons";
+import { promises } from "fs";
+import { ICONS_PATH } from "./lib/constants";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
+const path: typeof import("path") = require("node:path");
+const { readFile }: typeof import("node:fs/promises") = require("node:fs/promises");
 
 const $router = useRouter();
 const $route = useRoute();
@@ -190,6 +195,12 @@ const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
+
+    addWinBoatIconCollection({
+        "config-logo": {
+            body: (await readFile(path.join(ICONS_PATH, "winboat_iconify.svg"))).toString()
+        }
+    })
 
     if (winboatInstalled) {
         wbConfig = reactive(WinboatConfig.getInstance()); // Instantiate singleton class

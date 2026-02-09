@@ -1,6 +1,5 @@
 <template>
-    <div class="grid grid-cols-3">
-
+    <div class="grid grid-cols-3 2xl:grid-cols-1 gap-2">
         <ConfigButton
             v-for="(token, key) in routes.filter(x => x.path.startsWith('/Configuration/'))!.map(x => splitRoute(x.path).at(-1)!)"
             :icon="token.icon!"
