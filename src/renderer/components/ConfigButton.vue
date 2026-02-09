@@ -1,7 +1,7 @@
 <template>
-    <div class="m-auto group 2xl:w-full 2xl: px-20 transition-all duration-500 ease-in-out">
+    <div class="m-auto group 2xl:w-full 2xl:px-20 transition-all duration-500 ease-in-out">
         <x-card
-            class="flex relative 2xl:flex-row flex-col 2xl:justify-between justify-center items-center gap-4 xl:w-72 2xl:w-full my-0 backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+            class="flex relative 2xl:flex-row flex-col 2xl:justify-between justify-center items-center gap-4 xl:w-72 2xl:w-full my-0 backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20 generic-hover"
         >
             <div class="flex flex-col 2xl:flex-row items-center gap-4">
                 <FancyIcon 

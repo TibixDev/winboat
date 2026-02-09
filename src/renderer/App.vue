@@ -172,6 +172,7 @@ import { performAutoMigrations } from "./lib/migrate";
 import { addWinBoatIconCollection } from "./utils/icons";
 import { promises } from "fs";
 import { ICONS_PATH } from "./lib/constants";
+import { addNavigationEvents, removeNavigationEvents } from "./utils/navigation";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
 const path: typeof import("path") = require("node:path");
@@ -244,6 +245,16 @@ onMounted(async () => {
 $router.beforeResolve((to: RouteLocationNormalized, from: RouteLocationNormalizedLoaded, next: NavigationGuardNext) => {
     routerTokens.value = splitRoute(to.fullPath);
     next();
+})
+
+$router.afterEach((to, from, _) => {
+    const toSplit = splitRoute(to.fullPath);
+    const fromSplit = splitRoute(from.fullPath);
+
+    const isConfigSubroute = (tokens: RouteToken[]) => tokens.length >= 2 && tokens[0].token === "Configuration";
+
+    if(isConfigSubroute(toSplit)) addNavigationEvents();
+    if(isConfigSubroute(fromSplit)) removeNavigationEvents();
 })
 
 function handleMinimize() {

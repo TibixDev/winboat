@@ -38,6 +38,10 @@ export function splitRoute(url: string): RouteToken[] {
     return url.substring(1).split("/").map(token => ({ token, icon: iconLookup[token] as string | undefined }));
 }
 
+export function joinRouteTokens(tokens: RouteToken[]): string {
+    return `/${tokens.map(x => x.token).join('/')}`;
+}
+
 export const router = createRouter({
     history: createMemoryHistory(),
     routes,
