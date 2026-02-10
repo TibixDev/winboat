@@ -1,6 +1,6 @@
 <template>
-    <div class="flex flex-col overflow-x-hidden" :class="{ hidden: !maxNumCores }">
-        <div class="flex flex-col gap-4">
+    <div class="flex flex-col overflow-x-hidden mt-12 2xl:translate-y-[3rem]" :class="{ hidden: !maxNumCores }">
+        <div class="flex flex-col gap-4 opening-transition self-center w-full 2xl:w-[74rem] ease-in">
             <!-- RAM Allocation -->
             <ConfigCard
                 icon="game-icons:ram"
@@ -250,3 +250,12 @@ const saveButtonDisabled = computed(() => {
 }
 
 </script>
+
+<style scoped>
+.opening-transition {
+    transition: width 200ms, scale 200ms;
+    @starting-style {
+        width: 40%;
+    }
+}
+</style>
