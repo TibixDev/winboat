@@ -1,5 +1,5 @@
 <template>
-    <div class="flex items-center justify-center relative h-full">
+    <div class="flex items-center justify-center relative h-full *:h-min">
         <Icon class="size-[100%] text-violet-400/90 z-30 relative" :icon="icon" />
         <Icon
             class="size-[100%] text-violet-400/80 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"

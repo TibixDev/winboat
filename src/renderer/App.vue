@@ -128,7 +128,7 @@
                     <p class="text-xs text-neutral-500">WinBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
                 </div>
             </x-nav>
-            <div class="px-5 flex-grow max-h-[calc(100vh-2rem)] overflow-y-auto py-4">
+            <div class="px-5 flex-grow flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto py-4">
                 <div class="flex flex-row gap-2 items-center my-6">
                     <Icon class="w-6 h-6 opacity-60" icon="icon-park-solid:toolkit"></Icon>
                     <h1 class="my-0 text-2xl font-semibold opacity-60">WinBoat</h1>

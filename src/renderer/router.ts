@@ -8,8 +8,10 @@ import Blank from "./views/Blank.vue";
 import Config from "./views/Config.vue";
 import Migration from "./views/Migration.vue";
 
-import General from "./views/Config/General.vue";
 import Winboat from "./views/Config/Winboat.vue";
+import General from "./views/Config/General.vue";
+import Display from "./views/Config/Display.vue";
+import Devices from "./views/Config/Devices.vue";
 
 export const routes: RouteRecordRaw[] = [
     { path: "/", component: Blank, meta: { icon: "line-md:loading-loop" } },
@@ -19,7 +21,9 @@ export const routes: RouteRecordRaw[] = [
     { path: "/Apps", component: Apps, meta: { icon: "fluent:apps-32-filled", nav: true } },
     { path: "/Configuration", component: Config, meta: { icon: "icon-park-outline:config", nav: true }, },
     { path: "/Configuration/WinBoat", component: Winboat, meta: { icon: "winboat:config-logo"} }, 
-    { path: "/Configuration/General", component: General, meta: { icon: "icon-park-outline:config" } },
+    { path: "/Configuration/General", component: General, meta: { icon: "fluent:wrench-screwdriver-32-regular" } },
+    { path: "/Configuration/Display", component: Display, meta: { icon: "ci:monitor" } },
+    { path: "/Configuration/Devices", component: Devices, meta: { icon: "tabler:device-usb" } },
     { path: "/About", component: About, meta: { icon: "fluent:info-32-filled", nav: true } },
 ];
 
