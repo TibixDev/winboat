@@ -462,7 +462,7 @@ export class Winboat {
 
         for (const cmd of commands) {
             try {
-                await execAsync(`docker exec WinBoat ${cmd}`);
+                await execAsync(`${this.containerMgr!.executableAlias} exec WinBoat ${cmd}`);
                 logger.info(`Created symlink: ${cmd}`);
             } catch (e) {
                 logger.error(`Failed to create symlink: ${cmd}`);

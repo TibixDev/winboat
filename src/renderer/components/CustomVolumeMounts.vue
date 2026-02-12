@@ -121,9 +121,12 @@ const newMount = ref<CustomVolumeMount>({
 // Validate existing mounts (host path may have been deleted)
 const mountErrors = computed(() => {
     return props.modelValue.map(mount => {
-        const hostValidation = validateHostPath(mount.hostPath);
-        if (!hostValidation.valid) return hostValidation.error;
-        return null;
+        try {
+            validateHostPath(mount.hostPath);
+            return null;
+        } catch (e) {
+            return (e as Error).message;
+        }
     });
 });
 
@@ -132,13 +135,19 @@ const newMountError = computed(() => {
     if (!newMount.value.hostPath && !newMount.value.shareName) return null;
 
     if (newMount.value.hostPath) {
-        const hostValidation = validateHostPath(newMount.value.hostPath);
-        if (!hostValidation.valid) return `Host: ${hostValidation.error}`;
+        try {
+            validateHostPath(newMount.value.hostPath);
+        } catch (e) {
+            return `Host: ${(e as Error).message}`;
+        }
     }
 
     if (newMount.value.shareName) {
-        const shareValidation = validateShareName(newMount.value.shareName);
-        if (!shareValidation.valid) return `Share: ${shareValidation.error}`;
+        try {
+            validateShareName(newMount.value.shareName);
+        } catch (e) {
+            return `Share: ${(e as Error).message}`;
+        }
 
         // Check for duplicates
         const isDuplicate = props.modelValue.some(

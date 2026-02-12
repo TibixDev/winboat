@@ -4,44 +4,32 @@ const path: typeof import("path") = require("node:path");
 import type { CustomVolumeMount, ComposeConfig } from "../../types";
 
 /**
- * Validates a host path exists and is accessible
+ * Validates a host path exists and is accessible.
+ * Throws an Error if the path is invalid.
  */
-export function validateHostPath(hostPath: string): { valid: boolean; error?: string } {
+export function validateHostPath(hostPath: string): void {
+    if (!hostPath) throw new Error("Path is required");
+    if (!path.isAbsolute(hostPath)) throw new Error(`Path must be absolute: '${hostPath}'`);
+    if (!fs.existsSync(hostPath)) throw new Error(`Path does not exist: '${hostPath}'`);
+
+    const stats = fs.statSync(hostPath);
+    if (!stats.isDirectory()) throw new Error(`Path is not a directory: '${hostPath}'`);
+
     try {
-        if (!hostPath) {
-            return { valid: false, error: "Path is required" };
-        }
-        if (!path.isAbsolute(hostPath)) {
-            return { valid: false, error: "Path must be absolute" };
-        }
-        if (!fs.existsSync(hostPath)) {
-            return { valid: false, error: "Path does not exist" };
-        }
-        const stats = fs.statSync(hostPath);
-        if (!stats.isDirectory()) {
-            return { valid: false, error: "Path is not a directory" };
-        }
         fs.accessSync(hostPath, fs.constants.R_OK);
-        return { valid: true };
     } catch {
-        return { valid: false, error: "Path is not accessible" };
+        throw new Error(`Path is not accessible: '${hostPath}'`);
     }
 }
 
 /**
- * Validates a share name (folder name visible in Windows)
+ * Validates a share name (folder name visible in Windows).
+ * Throws an Error if the name is invalid.
  */
-export function validateShareName(name: string): { valid: boolean; error?: string } {
-    if (!name) {
-        return { valid: false, error: "Name is required" };
-    }
-    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-        return { valid: false, error: "Only letters, numbers, underscores, hyphens" };
-    }
-    if (name.length > 32) {
-        return { valid: false, error: "Max 32 characters" };
-    }
-    return { valid: true };
+export function validateShareName(name: string): void {
+    if (!name) throw new Error("Name is required");
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) throw new Error(`Name '${name}' contains invalid characters, only letters, numbers, underscores, and hyphens are allowed`);
+    if (name.length > 32) throw new Error(`Name '${name}' exceeds maximum length of 32 characters`);
 }
 
 // Base path for custom mounts (avoids /tmp/smb which gets cleaned on container start)
