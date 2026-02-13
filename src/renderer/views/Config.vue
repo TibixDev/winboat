@@ -18,7 +18,7 @@ import ConfigButton from "../components/ConfigButton.vue";
 import { useRouter } from "vue-router";
 import { joinRouteTokens, routes, splitRoute } from "../router";
 const router = useRouter();
-const navWidth = document.querySelector("[role='navigation']")!.clientWidth;
+const navWidth = document.querySelector("[role='navigation']")?.clientWidth ?? 288;
 </script>
 
 <style>

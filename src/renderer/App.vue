@@ -1,7 +1,7 @@
 <template>
     <main 
         class="overflow-hidden relative w-screen h-screen"
-        :class="{ animationsDisabled: 'disable-animations' }"
+        :class="{ 'disable-animations': (transitionControl === 'none') }"
     >
         <!-- Decoration -->
         <div
@@ -192,7 +192,7 @@ const updateDialog = useTemplateRef("updateDialog");
 const routerTokens = ref<RouteToken[]>();
 const novncURL = ref("");
 
-const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
+const transitionControl = ref<"all" | "none">("all");
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
@@ -240,6 +240,10 @@ onMounted(async () => {
             }
         },
     );
+
+    setInterval(() => {
+        transitionControl.value = wbConfig?.config.disableAnimations ? "none" : "all";
+    }, 1000);
 });
 
 $router.beforeResolve((to: RouteLocationNormalized, from: RouteLocationNormalizedLoaded, next: NavigationGuardNext) => {
@@ -377,5 +381,14 @@ body.disable-animations .bouncedown-in {
 /* Disable keyframe animations */
 body.disable-animations .blob-anim {
     animation: none !important;
+}
+
+main {
+    --transitionControl: v-bind(transitionControl);
+}
+
+
+.transition, .transition-all, .transition-transform, .transition-opacity, .opening-transition, x-input::before {
+    transition-property: var(--transitionControl) !important;
 }
 </style>
