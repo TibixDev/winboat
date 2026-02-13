@@ -21,7 +21,7 @@
                 icon="mdi:chevron-right" 
                 class="text-neutral-500 size-8 flex-shrink-0 hidden xl:inline-block"
             />
-            <div class="absolute opacity-0 group-hover:opacity-100 inset-0 max-xl:border-l-4 xl:border-b-4 border-violet-400 max-xl:scale-y-0 max-xl:scale-x-100 group-hover:scale-y-100 xl:group-hover:scale-x-100 rounded-sm xl:rounded-md transition-transform duration-300 ease-out"></div>
+            <div class="absolute inset-0 max-xl:border-l-4 xl:border-b-4 border-violet-400 max-xl:scale-y-0 xl:scale-x-0 group-hover:scale-y-100 xl:group-hover:scale-x-100 rounded-sm xl:rounded-md transition-all duration-200 ease-out"></div>
         </x-card>
     </div>
 </template>

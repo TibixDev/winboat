@@ -1,6 +1,6 @@
 <template>
-    <div class="flex flex-col overflow-x-hidden mt-12 2xl:translate-y-[3rem]" :class="{ hidden: !maxNumCores }">
-        <div class="flex flex-col gap-4 opening-transition self-center w-full 2xl:w-[74rem] ease-in">
+    <div class="flex flex-col mt-12" :class="{ hidden: !maxNumCores }">
+        <div class="flex flex-col gap-4 opening-transition self-center max-w-full w-[84rem] ease-in">
             <!-- RAM Allocation -->
             <ConfigCard
                 icon="game-icons:ram"
@@ -90,11 +90,9 @@ import { computed, onMounted, ref, watch, reactive, onUnmounted } from "vue";
 import { computedAsync } from "@vueuse/core";
 import { Winboat } from "../../lib/winboat";
 import type { ComposeConfig } from "../../../types";
-import { WinboatConfig } from "../../lib/config";
 import { ComposePortMapper } from "../../utils/port";
 import { GUEST_RDP_PORT, RESTART_NO, RESTART_ON_FAILURE } from "../../lib/constants";
 import { getSpecs } from "../../lib/specs";
-import { useRouter } from "vue-router";
 
 const compose = ref<ComposeConfig | null>(null);
 const numCores = ref(0);
@@ -115,7 +113,6 @@ const origFreerdpPort = ref(0);
 let portMapper = ref<ComposePortMapper | null>(null);
 
 // Singleton classes
-const wbConfig = reactive(WinboatConfig.getInstance());
 const winboat = Winboat.getInstance();
 
 // For Resources
@@ -208,7 +205,7 @@ const saveButtonDisabled = computed(() => {
  * Saves the currently specified values to the Compose file
  * and then re-assigns the initial values to the reactive refs
  */
- async function saveCompose() {
+async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
 
@@ -248,14 +245,4 @@ const saveButtonDisabled = computed(() => {
         isApplyingChanges.value = false;
     }
 }
-
 </script>
-
-<style scoped>
-.opening-transition {
-    transition: width 200ms, scale 200ms;
-    @starting-style {
-        width: 40%;
-    }
-}
-</style>

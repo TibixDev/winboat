@@ -21,7 +21,7 @@ const router = useRouter();
 const navWidth = document.querySelector("[role='navigation']")!.clientWidth;
 </script>
 
-<style scoped>
+<style>
 @media (min-width: 1280px) {
     .centered {
         --offset: calc(v-bind(navWidth) * 1px);
@@ -31,5 +31,31 @@ const navWidth = document.querySelector("[role='navigation']")!.clientWidth;
         transform: translateY(-50%);
         width: calc(100vw - var(--offset));
     }
+}
+
+.devices-move,
+.devices-enter-active,
+.devices-leave-active,
+.menu-move,
+.menu-enter-active,
+.menu-leave-active {
+    transition: all 0.5s ease;
+}
+
+.devices-enter-from,
+.devices-leave-to {
+    opacity: 0;
+    transform: translateX(30px);
+}
+
+.devices-leave-active,
+.menu-leave-active {
+    position: absolute;
+}
+
+.menu-enter-from,
+.menu-leave-to {
+    opacity: 0;
+    transform: translateX(20px) scale(0.9);
 }
 </style>

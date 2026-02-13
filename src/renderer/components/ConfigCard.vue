@@ -24,7 +24,7 @@
                     <x-label class="sr-only">Subtract</x-label>
                 </x-button>
                 <x-input
-                    class="max-w-16 text-right text-[1.1rem]"
+                    class="max-w-16 text-right text-[1.1rem] input-animation"
                     :min="props.min"
                     :max="props.max"
                     :value="value"
@@ -41,7 +41,7 @@
                     <Icon icon="mdi:plus" class="size-4"></Icon>
                     <x-label class="sr-only">Add</x-label>
                 </x-button>
-                <p class="text-neutral-100">{{ props.unit }}</p>
+                <p class="text-neutral-100 m-0">{{ props.unit }}</p>
             </template>
             <template v-else-if="props.type === 'dropdown'">
                 <x-select
@@ -125,6 +125,7 @@ type PropsType = {
 
 const props = defineProps<PropsType>();
 const value = defineModel("value");
+const emits = defineEmits(["toggle"]);
 
 function ensureNumericInput(e: any) {
     if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === "ArrowRight" || e.key === "ArrowLeft") {
@@ -151,3 +152,6 @@ function applyStep(step: number) {
     value.value = Math.min(Math.max(props.min ?? Number.MIN_SAFE_INTEGER, tmp), props.max ?? Number.MAX_SAFE_INTEGER);
 }
 </script>
+
+<style scoped>
+</style>

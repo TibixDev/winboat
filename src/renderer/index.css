@@ -29,3 +29,14 @@ body img {
 .generic-hover {
     @apply hover:brightness-90 transition duration-200;
 }
+
+.input-animation {
+    @apply before:transition-transform before:duration-200 before:ease-in-out before:scale-x-0 focus:before:scale-x-100;
+}
+
+.opening-transition {
+    transition: width 300ms, scale 300ms;
+    @starting-style {
+        width: 40%;
+    }
+}
