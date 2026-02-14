@@ -1,0 +1,60 @@
+name: Build
+
+on:
+    push:
+        branches:
+            - develop
+            - "**"
+    pull_request:
+        branches:
+            - develop
+
+jobs:
+    build:
+        runs-on: ubuntu-22.04
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+
+            - name: Update USB IDs database
+              run: |
+                  echo "Removing old usb.ids file..."
+                  rm -f data/usb.ids
+                  echo "Downloading latest usb.ids from linux-usb.org..."
+                  curl -o data/usb.ids http://www.linux-usb.org/usb.ids
+                  echo "USB IDs database updated successfully"
+
+            - name: Install system dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v2
+
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "stable"
+                  cache-dependency-path: "guest_server/go.sum"
+
+            - name: Install dependencies
+              run: bun ci
+
+            - name: Build guest server
+              run: bun run build:gs
+
+            - name: Build application
+              run: bun scripts/build.ts
+
+            - name: Verify build artifacts
+              run: |
+                  echo "Checking for build artifacts..."
+                  if [ ! -d "build" ]; then
+                    echo "Error: build directory not found"
+                    exit 1
+                  fi
+                  ls -lh build/
+                  echo "Build completed successfully!"
