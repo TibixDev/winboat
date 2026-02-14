@@ -42,7 +42,7 @@
                     <div v-if="currentStep.id === StepID.WELCOME" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is a full-fledged app that helps you natively run Windows applications on your Linux
+                            DOSBoat is a full-fledged app that helps you natively run DOS applications on your Linux
                             machine with ease.
                         </p>
                         <p class="text-lg text-gray-400">
@@ -57,7 +57,7 @@
                     <div v-if="currentStep.id === StepID.LICENSE" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat is open-source software licensed under the MIT License. Please review the license
+                            DOSBoat is open-source software licensed under the MIT License. Please review the license
                             agreement below.
                         </p>
                         <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">
@@ -73,7 +73,7 @@
                     <div v-if="currentStep.id === StepID.PREREQUISITES" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            In order to run WinBoat, your computer must meet the following requirements.
+                            In order to run DOSBoat, your computer must meet the following requirements.
                         </p>
                         <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 rounded-lg">
                             <li class="flex items-center gap-2">
@@ -256,7 +256,7 @@
                     <div v-if="currentStep.id === StepID.INSTALL_LOCATION" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            Choose where you want to install WinBoat. Files related to the Windows virtual machine will
+                            Choose where you want to install DOSBoat. Files related to the FreeDOS virtual machine will
                             be stored in this location.
                         </p>
                         <p class="text-lg text-gray-400">
@@ -308,11 +308,11 @@
                         </div>
                     </div>
 
-                    <!-- Windows Configuration -->
-                    <div v-if="currentStep.id === StepID.WINDOWS_CONFIG" class="step-block">
+                    <!-- FreeDOS Configuration -->
+                    <div v-if="currentStep.id === StepID.FREEDOS_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            Pick the version of Windows you want to install, and the language you'd like to use.
+                            Pick the version of FreeDOS you want to install.
                         </p>
                         <p class="text-lg text-gray-400">
                             You can only change these settings now. Once the installation is complete, you will not be
@@ -322,48 +322,19 @@
                             <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
                             <x-select
                                 id="select-edition"
-                                @change="(e: any) => (windowsVersion = e.detail.newValue)"
+                                @change="(e: any) => (freedosVersion = e.detail.newValue)"
                                 class="w-64"
                                 :disabled="!!customIsoPath"
                             >
                                 <x-menu>
                                     <x-menuitem
-                                        v-for="(version, key) in WINDOWS_VERSIONS"
+                                        v-for="(version, key) in FREEDOS_VERSIONS"
                                         :key="key"
                                         :value="key"
-                                        :toggled="windowsVersion === key"
+                                        :toggled="freedosVersion === key"
                                         v-show="key !== 'custom'"
                                     >
                                         <x-label>{{ version }}</x-label>
-                                    </x-menuitem>
-                                </x-menu>
-                            </x-select>
-                        </div>
-                        <div>
-                            <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
-                            <x-select
-                                id="select-language"
-                                @change="(e: any) => (windowsLanguage = e.detail.newValue)"
-                                class="w-64"
-                                :disabled="!!customIsoPath"
-                            >
-                                <x-menu @change="(e: any) => (windowsLanguage = e.detail.newValue)">
-                                    <x-menuitem
-                                        v-for="(language, languageWithBanner) in WINDOWS_LANGUAGES"
-                                        :key="language"
-                                        :value="language"
-                                        :toggled="windowsLanguage === language"
-                                        :disabled="['German', 'Hungarian'].includes(language)"
-                                    >
-                                        <x-label>
-                                            {{ languageWithBanner }}
-                                            <span
-                                                v-if="['German', 'Hungarian'].includes(language)"
-                                                class="text-red-400"
-                                            >
-                                                (Broken, use Language Pack)
-                                            </span>
-                                        </x-label>
                                     </x-menuitem>
                                 </x-menu>
                             </x-select>
@@ -380,9 +351,9 @@
                                         <span
                                             class="absolute bottom-5 left-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            We offer you the possibility of using a custom Windows ISO for your
+                                            We offer you the possibility of using a custom FreeDOS ISO for your
                                             convenience, however we can't provide any support if your custom ISO breaks
-                                            or certain features within WinBoat stop working.
+                                            or certain features within DOSBoat stop working.
                                         </span>
                                     </span>
                                 </div>
@@ -506,12 +477,12 @@
                     <div v-if="currentStep.id === StepID.HARDWARE_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat utilizes a containerized KVM virtual machine to run Windows applications. Please
+                            DOSBoat utilizes a containerized KVM virtual machine to run FreeDOS applications. Please
                             configure the hardware settings for the virtual machine.
                         </p>
 
                         <p class="text-lg text-gray-400">
-                            It is not recommended to allocate more than half of your system resources to Windows. You
+                            It is not recommended to allocate more than half of your system resources to FreeDOS. You
                             will be able to change these settings later on if needed.
                         </p>
 
@@ -611,14 +582,14 @@
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
                         <h1 class="text-3xl font-semibold">Folder Sharing</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat allows you to share a folder from your Linux system with the Windows virtual machine.
+                            DOSBoat allows you to share a folder from your Linux system with the FreeDOS virtual machine.
                             You can choose whether to enable this feature and select which folder to share.
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
-                            Sharing a folder exposes your Linux files to Windows-specific malware and viruses.
+                            Sharing a folder exposes your Linux files to DOS-specific malware and viruses.
                             Only enable this feature if you understand the risks involved. Always be careful with the
-                            files you download and open in Windows.
+                            files you download and open in FreeDOS.
                         </p>
 
                         <x-checkbox
@@ -668,7 +639,7 @@
                     <div v-if="currentStep.id === StepID.REVIEW" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
-                            Please review the settings you've chosen for your WinBoat installation. If everything looks
+                            Please review the settings you've chosen for your DOSBoat installation. If everything looks
                             correct, click "Install" to begin.
                         </p>
 
@@ -681,12 +652,8 @@
                                     <span class="text-base text-white">{{ containerRuntime }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Language</span>
-                                    <span class="text-base text-white">{{ windowsLanguage }}</span>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Windows Version</span>
-                                    <span class="text-base text-white">{{ WINDOWS_VERSIONS[windowsVersion] }}</span>
+                                    <span class="text-sm text-gray-400">FreeDOS Version</span>
+                                    <span class="text-base text-white">{{ FREEDOS_VERSIONS[freedosVersion] }}</span>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">CPU Cores</span>
@@ -730,7 +697,7 @@
                     <div v-if="currentStep.id === StepID.INSTALL" class="step-block">
                         <h1 class="text-3xl font-semibold">Installation</h1>
                         <p class="text-lg text-gray-400 text-justify">
-                            WinBoat is now installing Windows. Please be patient as this may take up to an hour. In the
+                            DOSBoat is now installing FreeDOS. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
                             <span v-if="linkableInstallSteps.includes(installState)">
                                 <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
@@ -773,11 +740,11 @@
                         >
                             <Icon icon="line-md:alert" class="size-16 text-red-500"></Icon>
                             <x-label class="text-lg text-gray-400 text-center">
-                                An error occurred while installing Windows. Please check the logs in
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
+                                An error occurred while installing FreeDOS. Please check the logs in
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.dosboat</span>
                                 and verify
                                 <span class="font-mono bg-neutral-700 rounded-md px-0.5"
-                                    >{{ installManager!.container.executableAlias }} logs WinBoat</span
+                                    >{{ installManager!.container.executableAlias }} logs DOSBoat</span
                                 >
                                 in your terminal for more information.
                             </x-label>
@@ -795,7 +762,7 @@
                         >
                             <Icon icon="line-md:confirm-circle" class="size-16 text-green-500"></Icon>
                             <x-label class="text-lg text-gray-400 text-center">
-                                Windows has been installed successfully!
+                                FreeDOS has been installed successfully!
                             </x-label>
                             <x-button @click="$router.push('/home')">Finish</x-button>
                         </div>
@@ -814,7 +781,7 @@ import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
+import { FREEDOS_VERSIONS, type FreeDOSVersionKey } from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
@@ -824,7 +791,7 @@ import {
     PodmanSpecs,
     getContainerSpecs,
 } from "../lib/containers/common";
-import { WinboatConfig } from "../lib/config";
+import { DosboatConfig } from "../lib/config";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -843,9 +810,8 @@ enum StepID {
     PREREQUISITES = "STEP_PREREQUISITES",
     LICENSE = "STEP_LICENSE",
     INSTALL_LOCATION = "STEP_INSTALL_LOCATION",
-    WINDOWS_CONFIG = "STEP_WINDOWS_CONFIG",
+    FREEDOS_CONFIG = "STEP_FREEDOS_CONFIG",
     HARDWARE_CONFIG = "STEP_HARDWARE_CONFIG",
-    USER_CONFIG = "STEP_USER_CONFIG",
     SHOULD_SHARE_HOME_FOLDER = "STEP_SHOULD_SHARE_HOME_FOLDER",
     REVIEW = "STEP_OVERVIEW",
     INSTALL = "STEP_INSTALL",
@@ -855,7 +821,7 @@ enum StepID {
 const steps: Step[] = [
     {
         id: StepID.WELCOME,
-        title: "Welcome to WinBoat",
+        title: "Welcome to DOSBoat",
         icon: "tdesign:wave-bye-filled",
     },
     {
@@ -874,14 +840,9 @@ const steps: Step[] = [
         icon: "line-md:folder-arrow-down-filled",
     },
     {
-        id: StepID.WINDOWS_CONFIG,
-        title: "Configure Windows",
-        icon: "mage:microsoft-windows",
-    },
-    {
-        id: StepID.USER_CONFIG,
-        title: "User Configuration",
-        icon: "line-md:account",
+        id: StepID.FREEDOS_CONFIG,
+        title: "Configure FreeDOS",
+        icon: "simple-icons:freedos",
     },
     {
         id: StepID.HARDWARE_CONFIG,
@@ -911,15 +872,15 @@ const steps: Step[] = [
 ];
 
 const MIN_CPU_CORES = 1;
-const MIN_RAM_GB = 2;
-const MIN_DISK_GB = 32;
+const MIN_RAM_GB = 0.5;
+const MIN_DISK_GB = 2;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
-const installFolder = ref(path.join(os.homedir(), "winboat"));
-const windowsVersion = ref<WindowsVersionKey>("11");
-const windowsLanguage = ref("English");
+const installFolder = ref(path.join(os.homedir(), "dosboat"));
+const freedosVersion = ref<FreeDOSVersionKey>("1.3");
+// const windowsLanguage = ref("English"); // Not used for FreeDOS
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
 const cpuCores = ref(2);
@@ -927,7 +888,7 @@ const ramGB = ref(4);
 const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
-const username = ref("winboat");
+const username = ref("dosboat");
 const password = ref("");
 const confirmPassword = ref("");
 const folderSharing = ref(false);
@@ -1035,8 +996,8 @@ function selectIsoFile() {
             if (!result.canceled && result.filePaths.length > 0) {
                 customIsoPath.value = result.filePaths[0];
                 customIsoFileName.value = path.basename(result.filePaths[0]);
-                windowsLanguage.value = "English"; // Language can't be custom
-                windowsVersion.value = "custom";
+                // windowsLanguage.value = "English"; // Language can't be custom
+                freedosVersion.value = "custom";
                 console.log("ISO path updated:", customIsoPath.value);
             }
         });
@@ -1045,8 +1006,8 @@ function selectIsoFile() {
 function deselectIsoFile() {
     customIsoPath.value = "";
     customIsoFileName.value = "";
-    windowsLanguage.value = "English";
-    windowsVersion.value = "11";
+    // windowsLanguage.value = "English";
+    freedosVersion.value = "1.3";
 }
 
 function selectInstallFolder() {
@@ -1058,7 +1019,7 @@ function selectInstallFolder() {
         .then(result => {
             if (!result.canceled && result.filePaths.length > 0) {
                 const selectedPath = result.filePaths[0];
-                const finalPath = path.join(selectedPath, "winboat");
+                const finalPath = path.join(selectedPath, "dosboat");
                 console.log("Install path selected:", finalPath);
                 installFolder.value = finalPath;
             }
@@ -1122,20 +1083,19 @@ function selectSharedFolder() {
 
 function install() {
     const installConfig: InstallConfiguration = {
-        windowsVersion: windowsVersion.value,
-        windowsLanguage: windowsLanguage.value,
+        freedosVersion: freedosVersion.value,
+        // windowsLanguage: windowsLanguage.value, // Not used for FreeDOS
         cpuCores: cpuCores.value,
         ramGB: ramGB.value,
         installFolder: installFolder.value,
         diskSpaceGB: diskSpaceGB.value,
-        username: username.value,
-        password: password.value,
+        // username and password are not part of FreeDOS installation
         sharedFolderPath: folderSharing.value ? sharedFolderPath.value : undefined,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
         container: containerRuntime.value, // Hardcdde for now
     };
 
-    const wbConfig = WinboatConfig.getInstance(); // Create winboat config.
+    const wbConfig = DosboatConfig.getInstance(); // Create dosboat config.
     wbConfig.config.containerRuntime = containerRuntime.value; // Save which runtime to use.
 
     installManager = new InstallManager(installConfig);

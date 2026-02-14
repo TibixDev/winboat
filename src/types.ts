@@ -1,26 +1,23 @@
-import { type WindowsVersionKey } from "./renderer/lib/constants";
+import { type FreeDOSVersionKey } from "./renderer/lib/constants";
 import { ContainerRuntimes } from "./renderer/lib/containers/common";
-import { type Winboat } from "./renderer/lib/winboat";
+import { type Dosboat } from "./renderer/lib/winboat";
 
 export type Specs = {
     cpuCores: number;
     ramGB: number;
     kvmEnabled: boolean;
-    freeRDP3Installed: boolean;
 };
 
 export type InstallConfiguration = {
-    windowsVersion: WindowsVersionKey;
-    windowsLanguage: string;
+    freedosVersion: FreeDOSVersionKey;
     cpuCores: number;
     ramGB: number;
     installFolder: string;
     diskSpaceGB: number;
-    username: string;
-    password: string;
     customIsoPath?: string;
     sharedFolderPath?: string;
     container: ContainerRuntimes;
+    serialPorts?: string[];
 };
 
 export type WinApp = {
@@ -34,7 +31,7 @@ export type WinApp = {
 };
 
 export type CustomAppCallbacks = {
-    [key: string]: null | ((context: Winboat) => void);
+    [key: string]: null | ((context: Dosboat) => void);
 };
 
 export type PortEntryProtocol = "tcp" | "udp";
@@ -60,21 +57,20 @@ export type ComposeConfig = {
         };
     };
     services: {
-        windows: {
+        freedos: {
             image: string;
             container_name: string;
             environment: {
-                VERSION: WindowsVersionKey;
+                VERSION: FreeDOSVersionKey;
                 RAM_SIZE: string;
                 CPU_CORES: string;
                 DISK_SIZE: string;
-                USERNAME: string;
-                PASSWORD: string;
                 HOME: string;
-                LANGUAGE: string;
+                BOOT_MODE: string;
                 ARGUMENTS: string;
                 HOST_PORTS: string;
-                [key: string]: string; // Allow additional env vars
+                USER_PORTS?: string;
+                [key: string]: string | undefined; // Allow additional env vars
             };
             privileged?: boolean;
             ports: Array<string | LongPortMapping>;

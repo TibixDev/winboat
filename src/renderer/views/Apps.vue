@@ -121,7 +121,7 @@
                     @change="
                         (e: any) => {
                             sortBy = e.detail.newValue;
-                            WinboatConfig.getInstance().config.appsSortOrder = e.detail.newValue;
+                            DosboatConfig.getInstance().config.appsSortOrder = e.detail.newValue;
                         }
                     "
                     :disabled="!winboat.isOnline.value"
@@ -252,7 +252,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from "vue";
-import { Winboat } from "../lib/winboat";
+import { Dosboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
 import { type WinApp } from "../../types";
 import WBContextMenu from "../components/WBContextMenu.vue";
@@ -260,11 +260,11 @@ import WBMenuItem from "../components/WBMenuItem.vue";
 import { AppIcons, DEFAULT_ICON } from "../data/appicons";
 import { debounce } from "../utils/debounce";
 import { Jimp, JimpMime } from "jimp";
-import { WinboatConfig } from "../lib/config";
+import { DosboatConfig } from "../lib/config";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const FormData: typeof import("form-data") = require("form-data");
 
-const winboat = Winboat.getInstance();
+const winboat = Dosboat.getInstance();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
 const sortBy = ref("");
@@ -322,7 +322,7 @@ const computedApps = computed(() => {
 });
 
 onMounted(async () => {
-    sortBy.value = WinboatConfig.getInstance().config.appsSortOrder;
+    sortBy.value = DosboatConfig.getInstance().config.appsSortOrder;
 
     await refreshApps();
 

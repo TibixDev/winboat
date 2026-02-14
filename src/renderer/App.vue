@@ -160,9 +160,9 @@ import { routes } from "./router";
 import { Icon } from "@iconify/vue";
 import { onMounted, ref, useTemplateRef, watch, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
-import { Winboat } from "./lib/winboat";
+import { Dosboat } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
-import { WinboatConfig } from "./lib/config";
+import { DosboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
@@ -173,8 +173,8 @@ const $router = useRouter();
 const $route = useRoute();
 const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
-let winboat: Winboat | null;
-let wbConfig: WinboatConfig | null;
+let winboat: Dosboat | null;
+let wbConfig: DosboatConfig | null;
 
 let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
@@ -188,8 +188,8 @@ onMounted(async () => {
     const winboatInstalled = await isInstalled();
 
     if (winboatInstalled) {
-        wbConfig = reactive(WinboatConfig.getInstance()); // Instantiate singleton class
-        winboat = Winboat.getInstance(); // Instantiate singleton class
+        wbConfig = reactive(DosboatConfig.getInstance()); // Instantiate singleton class
+        winboat = Dosboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
 
         // Migrations

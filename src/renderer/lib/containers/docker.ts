@@ -2,7 +2,7 @@ import { ComposeConfig } from "../../../types";
 import { DOCKER_DEFAULT_COMPOSE } from "../../data/docker";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { ComposePortEntry } from "../../utils/port";
-import { WINBOAT_DIR } from "../constants";
+import { DOSBOAT_DIR } from "../constants";
 import {
     ComposeArguments,
     ComposeDirection,
@@ -26,7 +26,7 @@ export type DockerSpecs = {
 
 export class DockerContainer extends ContainerManager {
     defaultCompose = DOCKER_DEFAULT_COMPOSE;
-    composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
+    composeFilePath = path.join(DOSBOAT_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
     executableAlias = "docker";
 
     cachedPortMappings: ComposePortEntry[] | null = null;
@@ -136,7 +136,7 @@ export class DockerContainer extends ContainerManager {
         const args = ["ps", "-a", "--filter", `name=${this.containerName}`, "--format", "{{.Names}}"];
         try {
             const { stdout: exists } = await execFileAsync(this.executableAlias, args);
-            return exists.includes("WinBoat");
+            return exists.includes("DOSBoat");
         } catch (e) {
             containerLogger.error(
                 `Failed to get container status, is ${capitalizeFirstLetter(this.executableAlias)} installed?`,
@@ -147,7 +147,7 @@ export class DockerContainer extends ContainerManager {
     }
 
     get containerName(): string {
-        return this.defaultCompose.services.windows.container_name; // TODO: investigate whether we should use the compose on disk
+        return this.defaultCompose.services.freedos.container_name; // TODO: investigate whether we should use the compose on disk
     }
 
     static override async _getSpecs(): Promise<DockerSpecs> {

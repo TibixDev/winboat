@@ -1,6 +1,6 @@
 import { ComposeConfig } from "../../../types";
 import { PODMAN_DEFAULT_COMPOSE } from "../../data/podman";
-import { WINBOAT_DIR } from "../constants";
+import { DOSBOAT_DIR } from "../constants";
 import {
     ComposeArguments,
     ComposeDirection,
@@ -48,7 +48,7 @@ const COMPOSE_ENV_VARS = { PODMAN_COMPOSE_PROVIDER: "podman-compose", PODMAN_COM
 
 export class PodmanContainer extends ContainerManager {
     defaultCompose = PODMAN_DEFAULT_COMPOSE;
-    composeFilePath = path.join(WINBOAT_DIR, "podman-compose.yml");
+    composeFilePath = path.join(DOSBOAT_DIR, "podman-compose.yml");
     executableAlias = "podman";
 
     cachedPortMappings: ComposePortEntry[] | null = null;
@@ -175,7 +175,7 @@ export class PodmanContainer extends ContainerManager {
     }
 
     get containerName(): string {
-        return this.defaultCompose.services.windows.container_name; // TODO: investigate whether we should use the compose on disk
+        return this.defaultCompose.services.freedos.container_name; // TODO: investigate whether we should use the compose on disk
     }
 
     static override async _getSpecs(): Promise<PodmanSpecs> {

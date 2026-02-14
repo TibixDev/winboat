@@ -4,38 +4,18 @@
             class="bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl flex flex-row items-center justify-between"
         >
             <div class="flex flex-row gap-4 items-center">
-                <div class="border-[0.4rem] border-gray-900/30 rounded-md">
-                    <img class="h-32 rounded-sm" :src="wallpaper" alt="Windows Wallpaper" />
+                <div class="border-[0.4rem] border-gray-900/30 rounded-md p-6 bg-neutral-900/50">
+                    <Icon class="size-20 text-blue-400" icon="mdi:dos"></Icon>
                 </div>
 
                 <!-- Status Text -->
                 <div>
                     <div class="flex flex-row gap-2 items-center justify-center mb-6 *:m-0">
                         <h1 class="text-3xl">
-                            {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
+                            {{ FREEDOS_VERSIONS[compose?.services.freedos.environment.VERSION ?? "1.3"] ?? "Unknown" }}
                         </h1>
                         <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold !m-0">
                             {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
-                        </p>
-                    </div>
-
-                    <div
-                        class="flex flex-row items-center gap-1.5 mb-1"
-                        :class="{ 'text-green-500': winboat.isOnline.value, 'text-red-500': !winboat.isOnline.value }"
-                    >
-                        <Icon class="size-7" icon="material-symbols:api"></Icon>
-                        <p class="!my-0 font-semibold text-lg">
-                            WinBoat Guest API -
-                            {{ winboat.isOnline.value ? "Online" : "Offline" }}
-                            <a
-                                v-if="!winboat.isOnline.value"
-                                title="Get Help"
-                                href="https://rentry.org/winboat_guest_server_borked"
-                                @click="openAnchorLink"
-                                class="text-red-400 hover:text-red-500 hover:underline inline-flex translate-y-1 transition"
-                            >
-                                <Icon icon="mingcute:question-fill" class="size-6 pointer-events-none"></Icon>
-                            </a>
                         </p>
                     </div>
 
@@ -111,10 +91,7 @@
         </x-card>
 
         <!-- Metrics -->
-        <div
-            class="grid grid-cols-3 w-full gap-8 transition-all duration-200"
-            :class="{ 'blur-sm opacity-50': !winboat.isOnline.value }"
-        >
+        <div class="grid grid-cols-3 w-full gap-8 transition-all duration-200">
             <x-card class="bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl flex flex-row gap-2 pl-0 my-0">
                 <apexchart
                     class="translate-y-2"
@@ -130,7 +107,7 @@
                         <h2 class="my-0 text-2xl">CPU</h2>
                     </div>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
-                        {{ compose?.services.windows.environment.CPU_CORES }} Virtual Cores
+                        {{ compose?.services.freedos.environment.CPU_CORES }} Virtual Cores
                     </p>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
                         Frequency: {{ (winboat.metrics.value.cpu.frequency / 1000).toFixed(2) }} GHz
@@ -187,23 +164,18 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { Winboat } from "../lib/winboat";
+import { Dosboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
 import { type ComposeConfig } from "../../types";
-import { WINDOWS_VERSIONS } from "../lib/constants";
+import { FREEDOS_VERSIONS } from "../lib/constants";
 import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
-import { openAnchorLink } from "../utils/openLink";
 
-const winboat = Winboat.getInstance();
+const winboat = Dosboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
-const wallpaper = ref("");
 
 onMounted(async () => {
-    compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
-    wallpaper.value = compose.value?.services.windows.environment.VERSION.includes("11")
-        ? "./img/wallpaper/win11.webp"
-        : "./img/wallpaper/win10.webp";
+    compose.value = Dosboat.readCompose(winboat.containerMgr!.composeFilePath);
 
     // Highlight the navitem for the home page, since by default no
     // navitem is highlighted and we can't use `toggled`

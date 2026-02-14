@@ -1,11 +1,11 @@
-import { WINBOAT_DIR } from "./constants";
+import { DOSBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
 const path: typeof import("path") = require("node:path");
 import { type Socket } from "net";
 import { assert } from "@vueuse/core";
 const { createConnection }: typeof import("net") = require("node:net");
 
-const logger = createLogger(path.join(WINBOAT_DIR, "qmp.log"));
+const logger = createLogger(path.join(DOSBOAT_DIR, "qmp.log"));
 
 type QMPStatus = "Connected" | "Closed";
 
