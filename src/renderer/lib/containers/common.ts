@@ -15,9 +15,7 @@ export enum ContainerRuntimes {
 
 // NOTE: These are container port values, and should be used as such
 export enum CommonPorts {
-    RDP = 3389,
     NOVNC = 8006,
-    API = 7148,
     QMP = 7149,
 }
 

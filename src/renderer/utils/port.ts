@@ -202,7 +202,7 @@ export class ComposePortMapper {
         this.shortPorts = [];
         this.longPorts = [];
 
-        for (const composeMapping of compose.services.windows.ports) {
+        for (const composeMapping of compose.services.freedos.ports) {
             this.pushPortEntry(composeMapping);
         }
     }

@@ -1,7 +1,7 @@
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
-import { logger, Winboat } from "./winboat";
-import { WinboatConfig } from "./config";
+import { logger, Dosboat } from "./winboat";
+import { DosboatConfig } from "./config";
 import { assert } from "@vueuse/core";
 
 const { usb, getDeviceList }: typeof import("usb") = require("usb");
@@ -39,13 +39,13 @@ export class USBManager {
     devices: Ref<Device[]> = ref([]);
     // Current list of passed-through USB devices
     ptDevices: Ref<PTSerializableDeviceInfo[]> = ref([]);
-    // ^^ To be kept in sync with WinboatConfig.config.passedThroughDevices
+    // ^^ To be kept in sync with DosboatConfig.config.passedThroughDevices
 
     readonly #linuxDeviceDatabase: LinuxDeviceDatabase = {};
     readonly #deviceStringCache: Map<string, DeviceStrings> = new Map<string, DeviceStrings>();
     readonly #mtpDeviceCache: Map<string, boolean> = new Map<string, boolean>();
-    readonly #winboat: Winboat = Winboat.getInstance();
-    readonly #wbConfig: WinboatConfig = WinboatConfig.getInstance();
+    readonly #winboat: Dosboat = Dosboat.getInstance();
+    readonly #wbConfig: DosboatConfig = DosboatConfig.getInstance();
 
     static getInstance() {
         USBManager.instance ??= new USBManager();

@@ -445,10 +445,10 @@
                 <Icon v-if="resetQuestionCounter < 3" icon="mdi:bomb" class="size-8"></Icon>
                 <x-throbber v-else class="size-8"></x-throbber>
 
-                <span v-if="resetQuestionCounter === 0">Reset Winboat & Remove VM</span>
+                <span v-if="resetQuestionCounter === 0">Reset Dosboat & Remove VM</span>
                 <span v-else-if="resetQuestionCounter === 1">Are you sure? This action cannot be undone.</span>
                 <span v-else-if="resetQuestionCounter === 2">One final check, are you ABSOLUTELY sure?</span>
-                <span v-else-if="resetQuestionCounter === 3">Resetting Winboat...</span>
+                <span v-else-if="resetQuestionCounter === 3">Resetting Dosboat...</span>
             </x-button>
         </div>
     </div>
@@ -458,12 +458,12 @@
 import ConfigCard from "../components/ConfigCard.vue";
 import { computed, onMounted, ref, watch, reactive } from "vue";
 import { computedAsync } from "@vueuse/core";
-import { Winboat } from "../lib/winboat";
+import { Dosboat } from "../lib/winboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
-import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
+import { MultiMonitorMode, RdpArg, DosboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
@@ -508,8 +508,8 @@ let portMapper = ref<ComposePortMapper | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // For General
-const wbConfig = reactive(WinboatConfig.getInstance());
-const winboat = Winboat.getInstance();
+const wbConfig = reactive(DosboatConfig.getInstance());
+const winboat = Dosboat.getInstance();
 const usbManager = USBManager.getInstance();
 
 // Constants
@@ -525,17 +525,17 @@ onMounted(async () => {
  * so we can display them and track when a change has been made
  */
 async function assignValues() {
-    compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
+    compose.value = Dosboat.readCompose(winboat.containerMgr!.composeFilePath);
     portMapper.value = new ComposePortMapper(compose.value);
 
-    numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
+    numCores.value = Number(compose.value.services.freedos.environment.CPU_CORES);
     origNumCores.value = numCores.value;
 
-    ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
+    ramGB.value = Number(compose.value.services.freedos.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
 
     // Find any volume that ends with /shared
-    const sharedVolume = compose.value.services.windows.volumes.find(v => v.includes("/shared"));
+    const sharedVolume = compose.value.services.freedos.volumes.find(v => v.includes("/shared"));
     if (sharedVolume) {
         shareFolder.value = true;
         // Extract the path before :/shared
@@ -548,7 +548,7 @@ async function assignValues() {
     origShareFolder.value = shareFolder.value;
     origSharedFolderPath.value = sharedFolderPath.value;
 
-    autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
+    autoStartContainer.value = compose.value.services.freedos.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
     freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
@@ -566,13 +566,13 @@ async function assignValues() {
  * and then re-assigns the initial values to the reactive refs
  */
 async function saveCompose() {
-    compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
-    compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
+    compose.value!.services.freedos.environment.RAM_SIZE = `${ramGB.value}G`;
+    compose.value!.services.freedos.environment.CPU_CORES = `${numCores.value}`;
 
     // Remove any existing shared volume
-    const existingSharedVolume = compose.value!.services.windows.volumes.find(v => v.includes("/shared"));
+    const existingSharedVolume = compose.value!.services.freedos.volumes.find(v => v.includes("/shared"));
     if (existingSharedVolume) {
-        compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(
+        compose.value!.services.freedos.volumes = compose.value!.services.freedos.volumes.filter(
             v => !v.includes("/shared"),
         );
     }
@@ -580,10 +580,10 @@ async function saveCompose() {
     // Add the new shared volume if enabled
     if (shareFolder.value && sharedFolderPath.value) {
         const volumeStr = `${sharedFolderPath.value}:/shared`;
-        compose.value!.services.windows.volumes.push(volumeStr);
+        compose.value!.services.freedos.volumes.push(volumeStr);
     }
 
-    compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
+    compose.value!.services.freedos.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
     portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
         protocol: "tcp",
@@ -595,7 +595,7 @@ async function saveCompose() {
         hostIP: "127.0.0.1",
     });
 
-    compose.value!.services.windows.ports = portMapper.value!.composeFormat;
+    compose.value!.services.freedos.ports = portMapper.value!.composeFormat;
 
     isApplyingChanges.value = true;
     try {
@@ -639,10 +639,10 @@ async function addRequiredComposeFieldsUSB() {
     await winboat.stopContainer();
 
     if (!hasUsbVolume(compose)) {
-        compose.value!.services.windows.volumes.push(USB_BUS_PATH);
+        compose.value!.services.freedos.volumes.push(USB_BUS_PATH);
     }
     if (!hasQmpPort()) {
-        const composePorts = winboat.containerMgr!.defaultCompose.services.windows.ports;
+        const composePorts = winboat.containerMgr!.defaultCompose.services.freedos.ports;
         const portEntries = composePorts.filter(x => typeof x === "string").map(x => new ComposePortEntry(x));
         const QMPPredicate = (entry: ComposePortEntry) =>
             (entry.host instanceof Range || Number.isNaN(entry.host)) && // We allow NaN in case the QMP port entry isn't already there on podman for whatever reason
@@ -656,19 +656,19 @@ async function addRequiredComposeFieldsUSB() {
         });
     }
 
-    if (!compose.value!.services.windows.environment.ARGUMENTS) {
-        compose.value!.services.windows.environment.ARGUMENTS = "";
+    if (!compose.value!.services.freedos.environment.ARGUMENTS) {
+        compose.value!.services.freedos.environment.ARGUMENTS = "";
     }
     if (!hasQmpArgument(compose)) {
-        compose.value!.services.windows.environment.ARGUMENTS += `\n${QMP_ARGUMENT}`;
+        compose.value!.services.freedos.environment.ARGUMENTS += `\n${QMP_ARGUMENT}`;
     }
 
-    if (!compose.value!.services.windows.environment.HOST_PORTS) {
-        compose.value!.services.windows.environment.HOST_PORTS = "";
+    if (!compose.value!.services.freedos.environment.HOST_PORTS) {
+        compose.value!.services.freedos.environment.HOST_PORTS = "";
     }
     if (!hasHostPort(compose)) {
-        const delimiter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? "" : ",";
-        compose.value!.services.windows.environment.HOST_PORTS += delimiter + GUEST_QMP_PORT;
+        const delimiter = compose.value!.services.freedos.environment.HOST_PORTS.length == 0 ? "" : ",";
+        compose.value!.services.freedos.environment.HOST_PORTS += delimiter + GUEST_QMP_PORT;
     }
 
     await saveCompose();
@@ -707,12 +707,12 @@ const errors = computedAsync(async () => {
 });
 
 const hasUsbVolume = (_compose: typeof compose) =>
-    _compose.value?.services.windows.volumes?.some(x => x.includes(USB_BUS_PATH));
+    _compose.value?.services.freedos.volumes?.some(x => x.includes(USB_BUS_PATH));
 const hasQmpArgument = (_compose: typeof compose) =>
-    _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
+    _compose.value?.services.freedos.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) =>
-    _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT.toString());
+    _compose.value?.services.freedos.environment.HOST_PORTS?.includes(GUEST_QMP_PORT.toString());
 
 const usbPassthroughDisabled = computed(() => {
     return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);

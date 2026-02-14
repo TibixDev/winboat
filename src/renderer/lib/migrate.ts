@@ -1,13 +1,13 @@
 import { createLogger } from "../utils/log";
 import { ComposePortMapper, Range } from "../utils/port";
-import { WinboatConfig } from "./config";
-import { WINBOAT_DIR } from "./constants";
+import { DosboatConfig } from "./config";
+import { DOSBOAT_DIR } from "./constants";
 import { CommonPorts, createContainer } from "./containers/common";
 import { ContainerManager } from "./containers/container";
-import { Winboat } from "./winboat";
+import { Dosboat } from "./winboat";
 
 const path: typeof import("path") = require("path");
-const logger = createLogger(path.join(WINBOAT_DIR, "migrations.log"));
+const logger = createLogger(path.join(DOSBOAT_DIR, "migrations.log"));
 
 /**
  * This function performs the necessary automatic migrations
@@ -16,9 +16,9 @@ const logger = createLogger(path.join(WINBOAT_DIR, "migrations.log"));
 export async function performAutoMigrations(): Promise<void> {
     logger.info("[performAutoMigrations]: Starting automatic migrations");
 
-    const wbConfig = WinboatConfig.getInstance(); // Get WinboatConfig instance
+    const wbConfig = DosboatConfig.getInstance(); // Get DosboatConfig instance
     const containerManager = createContainer(wbConfig.config.containerRuntime);
-    const composeMapper = new ComposePortMapper(Winboat.readCompose(containerManager.composeFilePath))
+    const composeMapper = new ComposePortMapper(Dosboat.readCompose(containerManager.composeFilePath))
     
     try {
         // In case of a version prior to 0.9.0, the NoVNC port will be set to the default 8006
@@ -51,12 +51,12 @@ async function migrateComposePorts_Pre090(containerManager: ContainerManager): P
         await containerManager.compose("down");
     }
 
-    const currentCompose = Winboat.readCompose(containerManager.composeFilePath);
+    const currentCompose = Dosboat.readCompose(containerManager.composeFilePath);
     const defaultCompose = containerManager.defaultCompose;
 
-    currentCompose.services.windows.ports = defaultCompose.services.windows.ports;
-    currentCompose.services.windows.image = defaultCompose.services.windows.image;
-    currentCompose.services.windows.environment["USER_PORTS"] = defaultCompose.services.windows.environment["USER_PORTS"];
+    currentCompose.services.freedos.ports = defaultCompose.services.freedos.ports;
+    currentCompose.services.freedos.image = defaultCompose.services.freedos.image;
+    currentCompose.services.freedos.environment["USER_PORTS"] = defaultCompose.services.freedos.environment["USER_PORTS"];
 
     containerManager.writeCompose(currentCompose);
 

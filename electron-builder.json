@@ -1,6 +1,6 @@
 {
-    "appId": "com.teabox.winboat",
-    "productName": "WinBoat",
+    "appId": "app.dosboat.dosboat",
+    "productName": "DOSBoat",
     "directories": {
         "output": "dist"
     },
@@ -9,7 +9,7 @@
         "oneClick": false,
         "perMachine": false,
         "allowToChangeInstallationDirectory": true,
-        "shortcutName": "WinBoat"
+        "shortcutName": "DOSBoat"
     },
     "win": {
         "target": "nsis"
@@ -40,16 +40,5 @@
         "!dist",
         "!scripts"
     ],
-    "extraResources": [
-        {
-            "from": "./guest_server",
-            "to": "guest_server",
-            "filter": ["**/*"]
-        },
-        {
-            "from": "./data",
-            "to": "data",
-            "filter": ["**/*"]
-        }
-    ]
+    "extraResources": []
 }

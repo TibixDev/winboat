@@ -1,153 +1,186 @@
-<div align="left">
-  <table>
-    <tr>
-      <td>
-        <img src="icons/winboat_logo.svg" alt="WinBoat Logo" width="150">
-      </td>
-      <td>
-        <h1 style="color: #7C86FF; margin: 0; font-size: 32px;">WinBoat</h1>
-        <p style="color: oklch(90% 0 0); font-size: 14px; margin: 5px 0;">Windows for Penguins.<br>
-        Run Windows apps on 🐧 Linux with ✨ seamless integration</p>
-      </td>
-    </tr>
-  </table>
-</div>
+# DOSBoat
 
-## Screenshots
+**Run FreeDOS on Linux with seamless serial port integration**
 
-<div align="center">
-  <img src="gh-assets/features/feat_dash.png" alt="WinBoat Dashboard" width="45%">
-  <img src="gh-assets/features/feat_apps.png" alt="WinBoat Apps" width="45%">
-  <img src="gh-assets/features/feat_native.png" alt="Native Windows" width="45%">
-</div>
-
-## ⚠️ Work in Progress ⚠️
-
-WinBoat is currently in beta, so expect to occasionally run into hiccups and bugs. You should be comfortable with some level of troubleshooting if you decide to try it, however we encourage you to give it a shot anyway.
+DOSBoat is an Electron app that allows you to run FreeDOS in a Docker/Podman container on Linux, with the primary feature being **host serial port passthrough** to the FreeDOS VM. This enables you to use DOS applications that require serial port access (RS-232, USB-to-serial adapters, etc.) on modern Linux systems.
 
 ## Features
 
-- **🎨 Elegant Interface**: Sleek and intuitive interface that seamlessly integrates Windows into your Linux desktop environment, making it feel like a native experience
-- **📦 Automated Installs**: Simple installation process through our interface - pick your preferences & specs and let us handle the rest
-- **🚀 Run Any App**: If it runs on Windows, it can run on WinBoat. Enjoy the full range of Windows applications as native OS-level windows in your Linux environment
-- **🖥️ Full Windows Desktop**: Access the complete Windows desktop experience when you need it, or run individual apps seamlessly integrated into your Linux workflow
-- **📁 Filesystem Integration**: Your home directory is mounted in Windows, allowing easy file sharing between the two systems without any hassle
-- **✨ And many more**: Smartcard passthrough, resource monitoring, and more features being added regularly
+- **FreeDOS in a Container**: Run FreeDOS 1.3 or 1.2 in an isolated Docker/Podman environment
+- **Serial Port Passthrough**: Pass native serial ports (`/dev/ttyS*`) and USB-to-serial adapters (`/dev/ttyUSB*`, `/dev/ttyACM*`) directly to the FreeDOS VM
+- **VNC Access**: Access the FreeDOS desktop through a web-based VNC interface
+- **Simple Setup**: Automated installation process with minimal configuration required
+- **Resource Efficient**: FreeDOS requires very little RAM (256MB default) and disk space (2GB default)
+- **Legacy BIOS Support**: Configured for legacy boot mode as required by FreeDOS
 
-## How Does It Work?
+## What is it for?
 
-WinBoat is an Electron app which allows you to run Windows apps on Linux using a containerized approach. Windows runs as a VM inside a Docker/Podman container, we communicate with it using the [WinBoat Guest Server](https://github.com/TibixDev/winboat/tree/main/guest_server) to retrieve data we need from Windows. For compositing applications as native OS-level windows, we use FreeRDP together with Windows's RemoteApp protocol.
+DOSBoat is perfect for:
+- Running legacy DOS applications that require serial port communication
+- Testing serial port software in a DOS environment
+- Using DOS-based industrial control software
+- Interfacing with serial hardware (modems, data acquisition devices, programmable controllers)
+- Retro computing and hobbyist projects involving serial communications
 
 ## Prerequisites
 
-Before running WinBoat, ensure your system meets the following requirements:
+Before running DOSBoat, ensure your system meets the following requirements:
 
-- **RAM**: At least 4 GB of RAM
-- **CPU**: At least 2 CPU threads
-- **Storage**: At least 32 GB free space on the drive your selected install folder corresponds to
+- **RAM**: At least 512 MB of RAM (FreeDOS is very lightweight)
+- **CPU**: At least 1 CPU thread
+- **Storage**: At least 2 GB free space
 - **Virtualization**: KVM enabled in BIOS/UEFI
     - [How to enable virtualization](https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web)
-- **In case of Docker:**
+
+### Container Runtime (choose one):
+
+**Docker:**
   - **Docker**: Required for containerization
       - [Installation Guide](https://docs.docker.com/engine/install/)
-      - **⚠️ NOTE:** Docker Desktop is **not** supported, you will run into issues if you use it
+      - **⚠️ NOTE:** Docker Desktop is **not** supported
   - **Docker Compose v2**: Required for compatibility with docker-compose.yml files
       - [Installation Guide](https://docs.docker.com/compose/install/#plugin-linux-only)
   - **Docker User Group**: Add your user to the `docker` group
       - [Setup Instructions](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
-- **In case of Podman:**
+
+**Podman:**
   - **Podman**: Required for containerization
       - [Installation Guide](https://podman.io/docs/installation#installing-on-linux)
   - **Podman Compose**: Required for compatibility with podman-compose.yml files
       - [Installation Guide](https://github.com/containers/podman-compose?tab=readme-ov-file#installation)
-- **FreeRDP**: Required for remote desktop connection (Please make sure you have **Version 3.x.x** with sound support included)
-    - [Installation Guide](https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds)
-- [OPTIONAL] **Kernel Modules**: The `iptables` / `nftables` and `iptable_nat` kernel modules can be loaded for network autodiscovery and better shared filesystem performance, but this is not obligatory in newer versions of WinBoat
-    - [Module loading instructions](https://rentry.org/rmfq2e5e)
 
-## Downloading
+## Serial Port Setup
 
-You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer four variants:
+### Native RS-232 Ports
+If your system has native serial ports (rare on modern systems), they will appear as `/dev/ttyS0`, `/dev/ttyS1`, etc. DOSBoat will automatically detect ports with active hardware.
 
-- **AppImage:** A popular & portable app format which should run fine on most distributions
-- **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
-- **.deb:** The intended format for Debian based distributions
-- **.rpm:** The intended format for Fedora based distributions
-- **Nix (Nixpkgs)**
-    1. Add the winboat package to your config (ensure using nixpkgs-unstable)
-    using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.
-    2. Add the following lines to your nix configuration
-    ```nix
-    virtualisation.docker.enable = true;
-    users.users.{yourUser}.extraGroups = ["docker"];
-    ```
-## Known Issues About Container Runtimes
+### USB-to-Serial Adapters
+Most modern systems use USB-to-serial adapters. These appear as:
+- `/dev/ttyUSB0`, `/dev/ttyUSB1`, etc. (FTDI, Prolific, CH340 adapters)
+- `/dev/ttyACM0`, `/dev/ttyACM1`, etc. (CDC ACM devices)
 
-- Docker Desktop is **unsupported** for now
-- USB passthrough via Podman is currently **unsupported**
+**Permissions**: Ensure your user has access to serial ports:
+```bash
+sudo usermod -a -G dialout $USER
+# Log out and back in for the group change to take effect
+```
 
-## Building WinBoat
+DOSBoat handles both USB bus access (for the adapter itself) and device mapping (for the serial port) automatically. Selected ports will be mapped into the container and configured as COM ports inside FreeDOS.
 
-- For building you need to have Bun and Go installed on your system
-- Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
-- Install the dependencies (`bun i`)
-- Build the app and the guest server using `bun run build:linux-gs`
-- You can now find the built app under `dist` with an AppImage and an Unpacked variant
+## How It Works
 
-## Running WinBoat in development mode
+DOSBoat uses:
+1. **dockur/freedos** - A FreeDOS container image that runs QEMU inside Docker/Podman
+2. **Serial Device Passthrough** - Maps host `/dev/tty*` devices into the container
+3. **USB Bus Access** - Mounts `/dev/bus/usb` for USB-to-serial adapter support
+4. **QEMU Serial Chardev** - Configures QEMU with `-chardev serial` arguments to expose host ports as COM ports inside FreeDOS
+5. **noVNC** - Provides web-based access to the FreeDOS desktop
+
+## Building DOSBoat
+
+### Installing Bun
+
+DOSBoat uses [Bun](https://bun.sh) as its JavaScript runtime and package manager. If you don't have Bun installed, follow these steps:
+
+**Quick Install (Linux, macOS, WSL):**
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+**Alternative Installation Methods:**
+
+- **Using npm:**
+  ```bash
+  npm install -g bun
+  ```
+
+- **Using Homebrew (macOS/Linux):**
+  ```bash
+  brew install oven-sh/bun/bun
+  ```
+
+- **Manual Installation:**
+  Download the appropriate binary from the [Bun releases page](https://github.com/oven-sh/bun/releases)
+
+**Verify Installation:**
+```bash
+bun --version
+```
+
+After installation, you may need to restart your terminal or run:
+```bash
+source ~/.bashrc  # or ~/.zshrc, depending on your shell
+```
+
+### Building the Application
+
+Once Bun is installed:
+
+- Clone the repo: `git clone https://github.com/chevybowtie/dosboat`
+- Navigate to the directory: `cd dosboat`
+- Install dependencies: `bun i`
+- Build the app: `bun run build:linux`
+- Find the built app under `dist` with AppImage and unpacked variants
+
+### Linux build dependencies
+
+Building the Electron app compiles native modules (like `usb`) and requires system headers.
+
+**Debian/Ubuntu:**
+```bash
+sudo apt-get update && sudo apt-get install -y libudev-dev rpm
+```
+
+**Fedora/RHEL (dnf):**
+```bash
+sudo dnf install -y systemd-devel rpm-build
+```
+
+**Arch/Manjaro:**
+```bash
+sudo pacman -S --needed systemd rpm-tools
+```
+
+**openSUSE:**
+```bash
+sudo zypper install -y libudev-devel rpm-build
+```
+
+If you are on another distro, install the equivalent `libudev` development package via your package manager.
+
+## Running DOSBoat in Development Mode
 
 - Make sure you meet the [prerequisites](#prerequisites)
-- Additionally, for development you need to have Bun and Go installed on your system
-- Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
-- Install the dependencies (`bun i`)
-- Build the guest server (`bun run build:gs`)
-- Run the app (`bun run dev`)
+- Additionally, for development you need to have Bun installed (see [Installing Bun](#installing-bun))
+- Clone the repo: `git clone https://github.com/chevybowtie/dosboat`
+- Navigate to the directory: `cd dosboat`
+- Install dependencies: `bun i`
+- Run the app: `bun run dev`
 
 ## Contributing
 
-Contributions are welcome! Whether it's bug fixes, feature improvements, or documentation updates, we appreciate your help making WinBoat better.
+Contributions are welcome! Whether it's bug fixes, feature improvements, or documentation updates, we appreciate your help making DOSBoat better.
 
-**Please note**: We maintain a focus on technical contributions only. Pull requests containing political/sexual content, or other sensitive/controversial topics will not be accepted. Let's keep things focused on making great software! 🚀
+**Please note**: We maintain a focus on technical contributions only. Let's keep things focused on making great software! 🚀
 
 Feel free to:
-
 - Report bugs and issues
 - Submit feature requests
 - Contribute code improvements
 - Help with documentation
 - Share feedback and suggestions
 
-Check out our issues page to get started, or feel free to open a new issue if you've found something that needs attention.
-
 ## License
 
-WinBoat is licensed under the [MIT](https://github.com/TibixDev/winboat/blob/main/LICENSE) license
+DOSBoat is licensed under the [MIT](LICENSE) license
 
-## Inspiration / Alternatives
+## Credits
 
-These past few years some cool projects have surfaced with similar concepts, some of which we've also taken inspirations from.\
-They're awesome and you should check them out:
+DOSBoat is a fork of [WinBoat](https://github.com/TibixDev/winboat) by TibixDev, adapted for FreeDOS and serial port passthrough use cases.
 
-- [WinApps](https://github.com/winapps-org/winapps)
-- [Cassowary](https://github.com/casualsnek/cassowary)
-- [dockur/windows](https://github.com/dockur/windows) (🌟 Also used in WinBoat)
-
-## Socials & Contact
-
-- [![Website](https://img.shields.io/badge/Website-winboat.app-blue?style=flat&logo=googlechrome&logoColor=white)](https://www.winboat.app/)
-- [![Twitter](https://img.shields.io/badge/Twitter-@winboat__app-1DA1F2?style=flat&logo=x&logoColor=white)](https://x.com/winboat_app)
-- [![Mastodon](https://img.shields.io/badge/Mastodon-@winboat-6364FF?style=flat&logo=mastodon&logoColor=white)](https://fosstodon.org/@winboat)
-- [![Bluesky](https://img.shields.io/badge/Bluesky-winboat.app-00A8E8?style=flat&logo=bluesky&logoColor=white)](http://bsky.app/profile/winboat.app)
-- [![Discord](https://img.shields.io/badge/Discord-Join_Community-5865F2?style=flat&logo=discord&logoColor=white)](http://discord.gg/MEwmpWm4tN)
-- [![Email](https://img.shields.io/badge/Email-staff@winboat.app-D14836?style=flat&logo=gmail&logoColor=white)](mailto:staff@winboat.app)
-- [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TibixDev/winboat)
-
-## Star History
-
-<a href="https://www.star-history.com/#tibixdev/winboat&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
- </picture>
-</a>
+### Key Technologies
+- [dockur/freedos](https://github.com/dockur/freedos) - FreeDOS container image
+- [Electron](https://www.electronjs.org/) - Cross-platform desktop framework
+- [Vue.js](https://vuejs.org/) - UI framework
+- [QEMU](https://www.qemu.org/) - VM emulation (runs inside the container)
+- [noVNC](https://novnc.com/) - Browser-based VNC client
