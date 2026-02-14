@@ -8,7 +8,10 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
     },
     services: {
         freedos: {
-            image: "ghcr.io/dockur/freedos:latest",
+            build: {
+                context: "./build/freedos-image",
+                dockerfile: "Dockerfile"
+            },
             container_name: "DOSBoat",
             environment: {
                 VERSION: "1.3",
@@ -33,7 +36,7 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
                 "data:/storage",
                 "${HOME}:/shared",
                 "/dev/bus/usb:/dev/bus/usb", // USB bus access for USB-to-serial adapters
-                "./oem:/oem",
+                "./images/FD14-base.qcow2:/oem/base.qcow2:ro",
             ],
             devices: [
                 "/dev/kvm",

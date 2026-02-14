@@ -58,7 +58,11 @@ export type ComposeConfig = {
     };
     services: {
         freedos: {
-            image: string;
+            image?: string;
+            build?: {
+                context: string;
+                dockerfile: string;
+            };
             container_name: string;
             environment: {
                 VERSION: FreeDOSVersionKey;
@@ -70,6 +74,7 @@ export type ComposeConfig = {
                 ARGUMENTS: string;
                 HOST_PORTS: string;
                 USER_PORTS?: string;
+                CUSTOM_ISO?: string;
                 [key: string]: string | undefined; // Allow additional env vars
             };
             privileged?: boolean;
