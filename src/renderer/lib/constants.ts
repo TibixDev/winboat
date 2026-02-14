@@ -16,6 +16,7 @@ export type FreeDOSVersionKey = keyof typeof FREEDOS_VERSIONS;
 // Ports
 export const GUEST_QMP_PORT = 7149;
 export const DEFAULT_HOST_QMP_PORT = 8149;
+export const GUEST_RDP_PORT = 3389;
 
 // Serial Port Prefixes
 export const SERIAL_PORT_PREFIXES = ["ttyS", "ttyUSB", "ttyACM"];

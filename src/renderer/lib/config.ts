@@ -3,6 +3,19 @@ const path: typeof import("path") = require("node:path");
 import { DOSBOAT_DIR } from "./constants";
 import { ContainerRuntimes } from "./containers/common";
 import { logger } from "./winboat";
+import type { PTSerializableDeviceInfo } from "./usbmanager";
+
+export const MultiMonitorMode = {
+    MULTIMON: "MultiMon",
+    SPAN: "Span",
+    SINGLE: "Single",
+} as const;
+
+export type RdpArg = {
+    newArg: string;
+    isReplacement: boolean;
+    original?: string;
+};
 
 export class DosboatVersion {
     public readonly generation: number;
@@ -44,9 +57,17 @@ type DosboatVersionData = {
 
 export type DosboatConfigObj = {
     serialPorts: string[];
+    passedThroughDevices: PTSerializableDeviceInfo[];
     experimentalFeatures: boolean;
     advancedFeatures: boolean;
     disableAnimations: boolean;
+    scale: number;
+    scaleDesktop: number;
+    multiMonitor: (typeof MultiMonitorMode)[keyof typeof MultiMonitorMode];
+    smartcardEnabled: boolean;
+    rdpMonitoringEnabled: boolean;
+    rdpArgs: RdpArg[];
+    appsSortOrder: "name" | "usage";
     containerRuntime: ContainerRuntimes;
     versionData: DosboatVersionData;
 };
@@ -55,9 +76,17 @@ const currentVersion = new DosboatVersion(import.meta.env.VITE_APP_VERSION);
 
 const defaultConfig: DosboatConfigObj = {
     serialPorts: [],
+    passedThroughDevices: [],
     experimentalFeatures: false,
     advancedFeatures: false,
     disableAnimations: false,
+    scale: 100,
+    scaleDesktop: 100,
+    multiMonitor: MultiMonitorMode.MULTIMON,
+    smartcardEnabled: false,
+    rdpMonitoringEnabled: false,
+    rdpArgs: [],
+    appsSortOrder: "name",
     containerRuntime: ContainerRuntimes.DOCKER,
     versionData: {
         previous: currentVersion,
