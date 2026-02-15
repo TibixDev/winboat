@@ -866,7 +866,7 @@ const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
 const currentStep = computed(() => steps[currentStepIdx.value]);
 const installFolder = ref(path.join(os.homedir(), "dosboat"));
-const freedosVersion = ref<FreeDOSVersionKey>("1.3");
+const freedosVersion = ref<FreeDOSVersionKey>("1.4");
 // const windowsLanguage = ref("English"); // Not used for FreeDOS
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
@@ -994,7 +994,7 @@ function deselectIsoFile() {
     customIsoPath.value = "";
     customIsoFileName.value = "";
     // windowsLanguage.value = "English";
-    freedosVersion.value = "1.3";
+    freedosVersion.value = "1.4";
 }
 
 function selectInstallFolder() {

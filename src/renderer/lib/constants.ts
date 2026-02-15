@@ -6,8 +6,7 @@ export const DOSBOAT_DIR = path.join(os.homedir(), ".dosboat");
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const FREEDOS_VERSIONS = {
-    "1.3": "FreeDOS 1.3",
-    "1.2": "FreeDOS 1.2",
+    "1.4": "FreeDOS 1.4",
     custom: "Custom ISO",
 };
 

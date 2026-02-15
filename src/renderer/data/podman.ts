@@ -14,7 +14,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             },
             container_name: "DOSBoat",
             environment: {
-                VERSION: "1.3",
+                VERSION: "1.4",
                 RAM_SIZE: "256M",
                 CPU_CORES: "1",
                 DISK_SIZE: "2G",

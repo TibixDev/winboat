@@ -6,7 +6,7 @@ DOSBoat is an Electron app that allows you to run FreeDOS in a Docker/Podman con
 
 ## Features
 
-- **FreeDOS in a Container**: Run FreeDOS 1.3 or 1.2 in an isolated Docker/Podman environment
+- **FreeDOS in a Container**: Run FreeDOS 1.4 in an isolated Docker/Podman environment
 - **Serial Port Passthrough**: Pass native serial ports (`/dev/ttyS*`) and USB-to-serial adapters (`/dev/ttyUSB*`, `/dev/ttyACM*`) directly to the FreeDOS VM
 - **VNC Access**: Access the FreeDOS desktop through a web-based VNC interface
 - **Simple Setup**: Automated installation process with minimal configuration required
