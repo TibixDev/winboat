@@ -307,24 +307,24 @@
                     @toggle="toggleExperimentalFeatures"
                 />
 
-                <!-- Advanced Settings -->
+                <!-- Advanced Settings 
                 <ConfigCard
                     icon="mdi:administrator"
                     title="Advanced Settings"
                     desc="If enabled, you'll have access to advanced settings that may prevent DOSBoat from working if misconfigured"
                     type="switch"
                     v-model:value="wbConfig.config.advancedFeatures"
-                />
+                />-->
 
                 <!-- Disable Animations -->
                 <ConfigCard
                     icon="mdi:animation-outline"
                     title="Disable Animations"
-                    desc="If enabled, all animations in the UI will be disabled (useful when GPU acceleration isn't working well)"
+                    desc="Disables all animations in DOSBoat. Useful if the UI feels sluggish or your system lacks dedicated GPU acceleration."
                     type="switch"
                     v-model:value="wbConfig.config.disableAnimations"
                 />
-            </div>
+                </div>
         </div>
 
         <div>
