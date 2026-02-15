@@ -23,7 +23,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 NETWORK: "user",
                 USER_PORTS: "",
                 HOST_PORTS: "7149",
-                ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
+                ARGUMENTS: "",
             },
             cap_add: ["NET_ADMIN"],
             ports: [
