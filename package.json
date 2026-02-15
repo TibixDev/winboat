@@ -10,6 +10,7 @@
     },
     "scripts": {
         "dev": "bun scripts/dev-server.ts",
+        "build:gs": "./build-guest-server.sh",
         "build:linux": "bun scripts/build.ts && electron-builder --linux"
     },
     "repository": "https://github.com/TibixDev/winboat",
