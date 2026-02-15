@@ -494,34 +494,23 @@
                             <div>
                                 <label for="select-ram" class="text-sm text-neutral-400">
                                     Select RAM
-                                    <span
-                                        v-if="memoryInfo.availableGB < ramGB"
-                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
-                                    >
-                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5" />
-                                        Warning
-                                        <span
-                                            class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
-                                        >
-                                            You don't have enough unused memory available to allocate the requested
-                                            amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of unused
-                                            memory available. If you continue with this amount of RAM, the container
-                                            will likely crash.
-                                        </span>
-                                    </span>
                                 </label>
-                                <div class="flex flex-row gap-4 items-center">
-                                    <x-slider
-                                        id="select-ram"
-                                        @change="(e: any) => (ramGB = Number(e.target.value))"
-                                        class="w-[50%]"
-                                        :value="ramGB"
-                                        :min="MIN_RAM_GB"
-                                        :max="specs.ramGB"
-                                        step="1"
-                                    />
-                                    <x-label>{{ ramGB }} GB</x-label>
-                                </div>
+                                <x-select
+                                    id="select-ram"
+                                    @change="(e: any) => (dosMemory = e.detail.newValue)"
+                                    class="w-64"
+                                >
+                                    <x-menu @change="(e: any) => (dosMemory = e.detail.newValue)">
+                                        <x-menuitem
+                                            v-for="(mb, label) in DOS_MEMORY_OPTIONS"
+                                            :key="label"
+                                            :value="label"
+                                            :toggled="dosMemory === label"
+                                        >
+                                            <x-label>{{ label }}</x-label>
+                                        </x-menuitem>
+                                    </x-menu>
+                                </x-select>
                             </div>
 
                             <div>
@@ -659,7 +648,7 @@
                                     <span class="text-base text-white">{{ username }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Install Location</span>
+                                    <span class="text-sm text-gray-400">IndosMemory }}ion</span>
                                     <span class="text-base text-white">{{ installFolder }}</span>
                                 </div>
                             </div>
@@ -768,7 +757,12 @@ import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { FREEDOS_VERSIONS, type FreeDOSVersionKey } from "../lib/constants";
+import {
+    FREEDOS_VERSIONS,
+    type FreeDOSVersionKey,
+    DOS_MEMORY_OPTIONS,
+    type DOSMemoryKey,
+} from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
@@ -859,7 +853,6 @@ const steps: Step[] = [
 ];
 
 const MIN_CPU_CORES = 1;
-const MIN_RAM_GB = 0.5;
 const MIN_DISK_GB = 2;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
@@ -871,7 +864,7 @@ const freedosVersion = ref<FreeDOSVersionKey>("1.4");
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
 const cpuCores = ref(1);
-const ramGB = ref(1);
+const dosMemory = ref<DOSMemoryKey>("1M");
 const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(2);
@@ -1073,7 +1066,7 @@ function install() {
         freedosVersion: freedosVersion.value,
         // windowsLanguage: windowsLanguage.value, // Not used for FreeDOS
         cpuCores: cpuCores.value,
-        ramGB: ramGB.value,
+        ramGB: DOS_MEMORY_OPTIONS[dosMemory.value],
         installFolder: installFolder.value,
         diskSpaceGB: diskSpaceGB.value,
         // username and password are not part of FreeDOS installation

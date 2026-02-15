@@ -1,5 +1,5 @@
 import { type InstallConfiguration } from "../../types";
-import { DOSBOAT_DIR, SHARED_DRIVE_INDEX_BY_LETTER } from "./constants";
+import { DOSBOAT_DIR, SHARED_DRIVE_INDEX_BY_LETTER, FREEDOS_BASE_IMAGE_FILES } from "./constants";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Dosboat } from "./winboat";
@@ -110,10 +110,14 @@ export class InstallManager {
 
         // Update base image volume to use absolute path
         const baseImageIdx = composeContent.services.freedos.volumes.findIndex(vol => 
-            vol.includes("FD14-base.qcow2") || vol.includes("/oem/base.qcow2")
+            vol.includes("-base.qcow2") || vol.includes("/oem/base.qcow2")
         );
         if (baseImageIdx !== -1) {
-            const baseImagePath = path.join(appRoot, "images", "FD14-base.qcow2");
+            // Get the version-specific base image filename
+            const baseImageFile = this.conf.freedosVersion !== "custom" 
+                ? FREEDOS_BASE_IMAGE_FILES[this.conf.freedosVersion]
+                : "FD14-base.qcow2"; // Fallback for custom ISOs
+            const baseImagePath = path.join(appRoot, "images", baseImageFile);
             composeContent.services.freedos.volumes[baseImageIdx] = `${baseImagePath}:/oem/base.qcow2:ro`;
             logger.info(`Base image path set to: ${baseImagePath}`);
         }

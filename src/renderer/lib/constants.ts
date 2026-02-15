@@ -12,6 +12,30 @@ export const FREEDOS_VERSIONS = {
 
 export type FreeDOSVersionKey = keyof typeof FREEDOS_VERSIONS;
 
+// Map version keys to base image filenames
+export const FREEDOS_BASE_IMAGE_FILES: Record<Exclude<FreeDOSVersionKey, "custom">, string> = {
+    "1.4": "FD14-base.qcow2",
+};
+
+// DOS-era memory options (label -> MB)
+export const DOS_MEMORY_OPTIONS = {
+    "128K": 0.125,
+    "256K": 0.25,
+    "512K": 0.5,
+    "640K": 0.625,
+    "704K": 0.6875,
+    "736K": 0.71875,
+    "992K": 0.96875,
+    "1M": 1,
+    "2M": 2,
+    "4M": 4,
+    "8M": 8,
+    "16M": 16,
+    "32M": 32,
+} as const;
+
+export type DOSMemoryKey = keyof typeof DOS_MEMORY_OPTIONS;
+
 export const SHARED_DRIVE_LETTERS = ["D"] as const;
 export type SharedDriveLetter = (typeof SHARED_DRIVE_LETTERS)[number];
 export const SHARED_DRIVE_INDEX_BY_LETTER: Record<SharedDriveLetter, number> = {
