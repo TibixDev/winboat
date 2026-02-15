@@ -63,6 +63,7 @@ export type DosboatConfigObj = {
     disableAnimations: boolean;
     scale: number;
     scaleDesktop: number;
+    vncScale: number;
     multiMonitor: (typeof MultiMonitorMode)[keyof typeof MultiMonitorMode];
     smartcardEnabled: boolean;
     rdpMonitoringEnabled: boolean;
@@ -82,6 +83,7 @@ const defaultConfig: DosboatConfigObj = {
     disableAnimations: false,
     scale: 100,
     scaleDesktop: 100,
+    vncScale: 2,
     multiMonitor: MultiMonitorMode.MULTIMON,
     smartcardEnabled: false,
     rdpMonitoringEnabled: false,

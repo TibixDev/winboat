@@ -160,8 +160,12 @@ export class Dosboat {
      */
     launchVNC() {
         const novncHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.NOVNC);
-        openLink(`http://127.0.0.1:${novncHostPort}/vnc.html`);
-        logger.info(`Launched VNC browser display at http://127.0.0.1:${novncHostPort}/vnc.html`);
+        const vncScale = DosboatConfig.getInstance().config.vncScale;
+        // Use resize=scale for automatic viewport scaling, or resize=off for native resolution
+        const resizeMode = vncScale > 1 ? 'scale' : 'off';
+        const url = `http://127.0.0.1:${novncHostPort}/vnc.html?autoconnect=true&resize=${resizeMode}`;
+        openLink(url);
+        logger.info(`Launched VNC browser display at ${url}`);
     }
 
     async #connectQMPManager() {
