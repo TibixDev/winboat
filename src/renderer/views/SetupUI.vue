@@ -673,21 +673,7 @@
                     <div v-if="currentStep.id === StepID.INSTALL" class="step-block">
                         <h1 class="text-3xl font-semibold">Installation</h1>
                         <p class="text-lg text-gray-400 text-justify">
-                            DOSBoat is now installing FreeDOS. Please be patient as this may take up to an hour. In the
-                            meantime, you can grab a coffee and check the installation status
-                            <span v-if="linkableInstallSteps.includes(installState)">
-                                <a :href="`http://127.0.0.1:${vncPort}/vnc.html?autoconnect=true&resize=scale`" @click="openAnchorLink">in your browser</a>.
-                            </span>
-                            <span v-else>
-                                over at
-                                <div
-                                    style="animation-duration: 3s!important;"
-                                    class="ml-1 inline-block relative text-transparent rounded-md bg-neutral-700 animate-pulse select-none"
-                                >
-                                    in your browser
-                                    <Icon icon="eos-icons:three-dots-loading" class="pointer-events-none absolute top-0 left-[50%] size-16 text-violet-400 -translate-x-[50%] -translate-y-[27.5%]"></Icon>
-                                </div>
-                            </span>
+                            DOSBoat is now installing FreeDOS. This typically takes just a few moments. 
                         </p>
 
                         <!-- Installing -->
