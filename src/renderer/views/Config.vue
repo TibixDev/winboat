@@ -314,7 +314,7 @@
             <div></div>
             <x-button
                 class="!bg-red-800/20 px-4 py-1 !border-red-500/10 generic-hover flex flex-row items-center gap-2 !text-red-300"
-                @click="resetWinboat()"
+                @click="resetDosboat()"
                 :disabled="isResettingWinboat"
             >
                 <Icon v-if="resetQuestionCounter < 3" icon="mdi:bomb" class="size-8"></Icon>
@@ -651,13 +651,13 @@ const saveButtonDisabled = computed(() => {
     return shouldBeDisabled;
 });
 
-async function resetWinboat() {
+async function resetDosboat() {
     if (++resetQuestionCounter.value < 3) {
         return;
     }
 
     isResettingWinboat.value = true;
-    await winboat.resetWinboat();
+    await winboat.resetDosboat();
     app.exit();
 }
 
