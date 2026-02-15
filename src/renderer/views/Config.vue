@@ -7,13 +7,13 @@
                 <ConfigCard
                     icon="game-icons:ram"
                     title="RAM Allocation"
-                    desc="How many gigabytes of RAM are allocated to the FreeDOS virtual machine"
+                    desc="Memory available to the FreeDOS virtual machine"
                     type="number"
-                    unit="GB"
-                    :min="0.5"
-                    :max="maxRamGB"
-                    :step="0.5"
-                    v-model:value="ramGB"
+                    :min="memoryOptionsMB[0]"
+                    :max="memoryOptionsMB[memoryOptionsMB.length - 1]"
+                    :step="memoryOptionsMB"
+                    :value-map="ramMBToLabel"
+                    v-model:value="ramMB"
                 />
 
                 <!-- CPU Cores -->
@@ -348,6 +348,7 @@ import {
     GUEST_QMP_PORT,
     SHARED_DRIVE_LETTERS,
     SHARED_DRIVE_INDEX_BY_LETTER,
+    DOS_MEMORY_OPTIONS,
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
@@ -359,9 +360,8 @@ const compose = ref<ComposeConfig | null>(null);
 const numCores = ref(0);
 const origNumCores = ref(0);
 const maxNumCores = ref(0);
-const ramGB = ref(0);
-const origRamGB = ref(0);
-const maxRamGB = ref(0);
+const ramMB = ref(1024);
+const origRamMB = ref(1024);
 const shareFolder = ref(false);
 const origShareFolder = ref(false);
 const sharedFolderPath = ref("");
@@ -414,8 +414,41 @@ async function assignValues() {
     numCores.value = Number(compose.value.services.freedos.environment.CPU_CORES);
     origNumCores.value = numCores.value;
 
-    ramGB.value = Number(compose.value.services.freedos.environment.RAM_SIZE.split("G")[0]);
-    origRamGB.value = ramGB.value;
+    // Parse RAM from environment (e.g., "1G" -> 1024, "512M" -> 512)
+    const ramSize = compose.value.services.freedos.environment.RAM_SIZE || "1G";
+    let ramMBValue = 1024; // Default to 1M (1024 MB)
+    
+    if (ramSize.endsWith("G")) {
+        const gbValue = Number(ramSize.slice(0, -1));
+        if (!Number.isNaN(gbValue)) {
+            ramMBValue = Math.round(gbValue * 1024);
+        }
+    } else if (ramSize.endsWith("M")) {
+        const mbValue = Number(ramSize.slice(0, -1));
+        if (!Number.isNaN(mbValue)) {
+            // Handle legacy values like "0.5M" which came from old buggy GB-based constants
+            // If value is very small (< 100), it's likely a GB value stored as M, so multiply by 1024
+            if (mbValue < 100) {
+                ramMBValue = Math.round(mbValue * 1024);
+            } else {
+                ramMBValue = mbValue;
+            }
+        }
+    }
+    
+    console.log("[Config] Loaded RAM_SIZE from compose:", ramSize, "-> parsed to", ramMBValue, "MB");
+    
+    // Snap to nearest valid memory option
+    const validOptions = Object.values(DOS_MEMORY_OPTIONS).sort((a, b) => a - b);
+    const nearestOption = validOptions.reduce((prev, curr) => 
+        Math.abs(curr - ramMBValue) < Math.abs(prev - ramMBValue) ? curr : prev
+    );
+    
+    console.log("[Config] Valid memory options:", validOptions);
+    console.log("[Config] Snapping", ramMBValue, "MB to nearest option:", nearestOption, "MB");
+    
+    ramMB.value = nearestOption;
+    origRamMB.value = nearestOption;
 
     // Find any volume that ends with /shared
     const sharedVolume = compose.value.services.freedos.volumes.find(v => v.includes("/shared"));
@@ -436,7 +469,6 @@ async function assignValues() {
     origAutoStartContainer.value = autoStartContainer.value;
 
     const specs = await getSpecs();
-    maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuCores;
 
     refreshAvailableDevices();
@@ -444,10 +476,20 @@ async function assignValues() {
 
 /**
  * Saves the currently specified values to the Compose file
- * and then re-assigns the initial values to the reactive refs
+ * and then re-assigns the initial values to the reactive refsDOS_MEMORY_OPTIONS[dosMemoryLabel.value]
  */
 async function saveCompose() {
-    compose.value!.services.freedos.environment.RAM_SIZE = `${ramGB.value}G`;
+    // Convert MB to storage format (e.g., 1024 MB -> "1G", 256 MB -> "256M")
+    // Store as "M" for values less than 1024, "G" for 1024+
+    let ramSizeStr: string;
+    if (ramMB.value < 1024) {
+        ramSizeStr = `${ramMB.value}M`;
+    } else {
+        const ramGB = Math.round(ramMB.value / 1024);
+        ramSizeStr = `${ramGB}G`;
+    }
+    console.log("[Config] Saving RAM as:", ramSizeStr, "(from", ramMB.value, "MB)");
+    compose.value!.services.freedos.environment.RAM_SIZE = ramSizeStr;
     compose.value!.services.freedos.environment.CPU_CORES = `${numCores.value}`;
 
     // Remove any existing shared volume
@@ -567,14 +609,6 @@ const errors = computedAsync(async () => {
     }
 
     if (numCores.value > maxNumCores.value) {
-        errCollection.push("You cannot allocate more CPU cores to FreeDOS than you have available");
-    }
-
-    if (!ramGB.value || ramGB.value < 0.5) {
-        errCollection.push("You must allocate at least 512MB (0.5 GB) of RAM for FreeDOS to run properly");
-    }
-
-    if (ramGB.value > maxRamGB.value) {
         errCollection.push("You cannot allocate more RAM to FreeDOS than you have available");
     }
 
@@ -587,6 +621,18 @@ const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?
 const hasHostPort = (_compose: typeof compose) =>
     _compose.value?.services.freedos.environment.HOST_PORTS?.includes(GUEST_QMP_PORT.toString());
 
+const memoryOptionsMB = computed(() => {
+    return Object.values(DOS_MEMORY_OPTIONS).sort((a, b) => a - b);
+});
+
+const ramMBToLabel = computed(() => {
+    const map: { [key: number]: string } = {};
+    Object.entries(DOS_MEMORY_OPTIONS).forEach(([label, mb]) => {
+        map[mb] = label;
+    });
+    return map;
+});
+
 const usbPassthroughDisabled = computed(() => {
     return !hasUsbVolume(compose) || !hasQmpPort() || !hasHostPort(compose);
 });
@@ -594,7 +640,7 @@ const usbPassthroughDisabled = computed(() => {
 const saveButtonDisabled = computed(() => {
     const hasResourceChanges =
         origNumCores.value !== numCores.value ||
-        origRamGB.value !== ramGB.value ||
+        origRamMB.value !== ramMB.value ||
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
         origSharedDriveLetter.value !== wbConfig.config.sharedDriveLetter ||

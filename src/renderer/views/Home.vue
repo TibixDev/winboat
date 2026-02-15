@@ -137,7 +137,7 @@
                         <h2 class="my-0 text-2xl">RAM</h2>
                     </div>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
-                        {{ Math.round(winboat.metrics.value.ram.total / 1024).toFixed(2) }} GB Total RAM
+                        {{ allocatedRAM }} Allocated
                     </p>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
                         {{ (winboat.metrics.value.ram.used / 1024).toFixed(2) }} GB Used RAM
@@ -174,17 +174,56 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 import { Dosboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
 import { type ComposeConfig } from "../../types";
-import { FREEDOS_VERSIONS } from "../lib/constants";
+import { FREEDOS_VERSIONS, DOS_MEMORY_OPTIONS } from "../lib/constants";
 import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
 
 const winboat = Dosboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
 const isVolumeStorage = ref(false);
+
+/**
+ * Parse RAM size string (e.g., "512M" or "1G") to MB
+ */
+function parseRAMToMB(ramSizeStr: string): number {
+    if (!ramSizeStr) return 1024;
+    
+    const match = /^\s*([0-9.]+)\s*([KMG]?)(?:i?B)?\s*$/i.exec(ramSizeStr);
+    if (!match) return 1024;
+    
+    const value = Number.parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    
+    if (unit === "G") {
+        return Math.round(value * 1024);
+    } else if (unit === "K") {
+        return Math.round(value / 1024);
+    } else {
+        return Math.round(value);
+    }
+}
+
+/**
+ * Get the memory option label for an MB value
+ */
+function getMBLabel(mb: number): string {
+    // Find the exact match or closest option
+    const validOptions = Object.entries(DOS_MEMORY_OPTIONS).sort(([,a], [,b]) => a - b);
+    const matched = validOptions.find(([_, optMB]) => Math.abs(optMB - mb) < 1);
+    return matched ? matched[0] : `${(mb / 1024).toFixed(2)} GB`;
+}
+
+const allocatedRAM = computed(() => {
+    if (!compose.value?.services.freedos.environment.RAM_SIZE) {
+        return "1M";
+    }
+    const mb = parseRAMToMB(compose.value.services.freedos.environment.RAM_SIZE);
+    return getMBLabel(mb);
+});
 
 onMounted(async () => {
     compose.value = Dosboat.readCompose(winboat.containerMgr!.composeFilePath);

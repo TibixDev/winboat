@@ -19,19 +19,19 @@ export const FREEDOS_BASE_IMAGE_FILES: Record<Exclude<FreeDOSVersionKey, "custom
 
 // DOS-era memory options (label -> MB)
 export const DOS_MEMORY_OPTIONS = {
-    "128K": 0.125,
-    "256K": 0.25,
-    "512K": 0.5,
-    "640K": 0.625,
-    "704K": 0.6875,
-    "736K": 0.71875,
-    "992K": 0.96875,
-    "1M": 1,
-    "2M": 2,
-    "4M": 4,
-    "8M": 8,
-    "16M": 16,
-    "32M": 32,
+    "128K": 128,
+    "256K": 256,
+    "512K": 512,
+    "640K": 640,
+    "704K": 704,
+    "736K": 736,
+    "992K": 992,
+    "1M": 1024,
+    "2M": 2048,
+    "4M": 4096,
+    "8M": 8192,
+    "16M": 16384,
+    "32M": 32768,
 } as const;
 
 export type DOSMemoryKey = keyof typeof DOS_MEMORY_OPTIONS;

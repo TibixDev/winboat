@@ -1066,7 +1066,7 @@ function install() {
         freedosVersion: freedosVersion.value,
         // windowsLanguage: windowsLanguage.value, // Not used for FreeDOS
         cpuCores: cpuCores.value,
-        ramGB: DOS_MEMORY_OPTIONS[dosMemory.value],
+        ramGB: DOS_MEMORY_OPTIONS[dosMemory.value] / 1024, // Convert MB to GB
         installFolder: installFolder.value,
         diskSpaceGB: diskSpaceGB.value,
         // username and password are not part of FreeDOS installation
