@@ -5,18 +5,6 @@ import { ContainerRuntimes } from "./containers/common";
 import { logger } from "./winboat";
 import type { PTSerializableDeviceInfo } from "./usbmanager";
 
-export const MultiMonitorMode = {
-    MULTIMON: "MultiMon",
-    SPAN: "Span",
-    SINGLE: "Single",
-} as const;
-
-export type RdpArg = {
-    newArg: string;
-    isReplacement: boolean;
-    original?: string;
-};
-
 export class DosboatVersion {
     public readonly generation: number;
     public readonly major: number;
@@ -61,13 +49,7 @@ export type DosboatConfigObj = {
     experimentalFeatures: boolean;
     advancedFeatures: boolean;
     disableAnimations: boolean;
-    scale: number;
-    scaleDesktop: number;
     vncScale: number;
-    multiMonitor: (typeof MultiMonitorMode)[keyof typeof MultiMonitorMode];
-    smartcardEnabled: boolean;
-    rdpMonitoringEnabled: boolean;
-    rdpArgs: RdpArg[];
     appsSortOrder: "name" | "usage";
     containerRuntime: ContainerRuntimes;
     versionData: DosboatVersionData;
@@ -81,13 +63,7 @@ const defaultConfig: DosboatConfigObj = {
     experimentalFeatures: false,
     advancedFeatures: false,
     disableAnimations: false,
-    scale: 100,
-    scaleDesktop: 100,
     vncScale: 2,
-    multiMonitor: MultiMonitorMode.MULTIMON,
-    smartcardEnabled: false,
-    rdpMonitoringEnabled: false,
-    rdpArgs: [],
     appsSortOrder: "name",
     containerRuntime: ContainerRuntimes.DOCKER,
     versionData: {

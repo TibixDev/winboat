@@ -69,29 +69,6 @@
                     type="switch"
                     v-model:value="autoStartContainer"
                 />
-
-                <!-- FreeRDP Port -->
-                <ConfigCard
-                    icon="lucide:ethernet-port"
-                    title="FreeRDP Port"
-                    desc="You can change what port FreeRDP uses to communicate with the VM"
-                    type="custom"
-                >
-                    <x-input
-                        class="max-w-16 text-right text-[1.1rem]"
-                        :value="Number.isNaN(freerdpPort) ? '' : freerdpPort"
-                        @input="
-                            (e: any) => {
-                                freerdpPort = Number(
-                                    /^\d+$/.exec(e.target.value)?.at(0) ||
-                                        portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
-                                );
-                            }
-                        "
-                    >
-                        <x-label v-if="Number.isNaN(freerdpPort)">None</x-label>
-                    </x-input>
-                </ConfigCard>
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="(error, k) of errors" :key="k">❗ {{ error }}</p>
                 </div>
@@ -263,9 +240,9 @@
                     class="relative z-10"
                     icon="mdi:monitor-screenshot"
                     title="VNC Display Scaling"
-                    desc="Enable scaling of the FreeDOS display. When enabled (2), resize your browser window to control size. Set to 1 for native resolution."
+                    desc="Standard shows native resolution. Automatic scales to fit your browser window."
                     type="dropdown"
-                    :options="[Number(1), 2]"
+                    :options="[{ label: 'Standard', value: 1 }, { label: 'Automatic', value: 2 }]"
                     v-model:value="wbConfig.config.vncScale"
                 />
             </div>
@@ -347,7 +324,6 @@ import {
     USB_VID_BLACKLIST,
     RESTART_ON_FAILURE,
     RESTART_NO,
-    GUEST_RDP_PORT,
     GUEST_QMP_PORT,
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
@@ -369,8 +345,6 @@ const sharedFolderPath = ref("");
 const origSharedFolderPath = ref("");
 const origAutoStartContainer = ref(false);
 const autoStartContainer = ref(false);
-const freerdpPort = ref(0);
-const origFreerdpPort = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
@@ -428,9 +402,6 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.freedos.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
-    origFreerdpPort.value = freerdpPort.value;
-
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuCores;
@@ -461,16 +432,6 @@ async function saveCompose() {
     }
 
     compose.value!.services.freedos.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
-
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "tcp",
-        hostIP: "127.0.0.1",
-    });
-
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "udp",
-        hostIP: "127.0.0.1",
-    });
 
     compose.value!.services.freedos.ports = portMapper.value!.composeFormat;
 
@@ -572,14 +533,6 @@ const errors = computedAsync(async () => {
         errCollection.push("You cannot allocate more RAM to FreeDOS than you have available");
     }
 
-    if (
-        freerdpPort.value !== origFreerdpPort.value &&
-        !Number.isNaN(freerdpPort.value) &&
-        !(await ComposePortMapper.isPortOpen(freerdpPort.value))
-    ) {
-        errCollection.push("You must choose an open port for your FreeRDP port!");
-    }
-
     return errCollection;
 });
 
@@ -601,7 +554,6 @@ const saveButtonDisabled = computed(() => {
         origRamGB.value !== ramGB.value ||
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
-        (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;

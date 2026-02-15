@@ -49,8 +49,13 @@
                     @change="(e: any) => (value = e.detail.newValue)"
                 >
                     <x-menu>
-                        <x-menuitem v-for="(opt, key) in props.options" :value="opt" :key="key" :toggled="value === opt">
-                            <x-label>{{ opt }}{{ props.unit ?? '' }}</x-label>
+                        <x-menuitem 
+                            v-for="(opt, key) in props.options" 
+                            :value="getOptionValue(opt)" 
+                            :key="key" 
+                            :toggled="value === getOptionValue(opt)"
+                        >
+                            <x-label>{{ getOptionLabel(opt) }}{{ props.unit ?? '' }}</x-label>
                         </x-menuitem>
                     </x-menu>
                 </x-select>
@@ -149,5 +154,13 @@ function applyStep(step: number) {
     }
 
     value.value = Math.min(Math.max(props.min ?? Number.MIN_SAFE_INTEGER, tmp), props.max ?? Number.MAX_SAFE_INTEGER);
+}
+
+function getOptionValue(opt: any) {
+    return typeof opt === 'object' && opt !== null && 'value' in opt ? opt.value : opt;
+}
+
+function getOptionLabel(opt: any) {
+    return typeof opt === 'object' && opt !== null && 'label' in opt ? opt.label : opt;
 }
 </script>

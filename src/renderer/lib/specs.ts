@@ -1,4 +1,3 @@
-import { getFreeRDP } from "../utils/getFreeRDP";
 import { ContainerSpecs } from "./containers/common";
 const fs: typeof import("fs") = require("node:fs");
 const { exec }: typeof import("child_process") = require("node:child_process");
@@ -9,7 +8,6 @@ export function satisfiesPrequisites(specs: Specs, containerSpecs?: ContainerSpe
     return (
         containerSpecs &&
         Object.values(containerSpecs).every(x => x) &&
-        specs.freeRDP3Installed &&
         specs.kvmEnabled &&
         specs.ramGB >= 4 &&
         specs.cpuCores >= 2
@@ -20,7 +18,6 @@ export const defaultSpecs: Specs = {
     cpuCores: 0,
     ramGB: 0,
     kvmEnabled: false,
-    freeRDP3Installed: false,
 };
 
 export async function getSpecs() {
@@ -51,14 +48,6 @@ export async function getSpecs() {
         }
     } catch (e) {
         console.error("Error reading /proc/cpuinfo or checking /dev/kvm:", e);
-    }
-
-    // FreeRDP 3.x.x check (including Flatpak)
-    try {
-        const freeRDPBin = await getFreeRDP();
-        specs.freeRDP3Installed = !!freeRDPBin;
-    } catch (e) {
-        console.error("Error checking FreeRDP 3.x.x installation (most likely not installed):", e);
     }
 
     console.log("Specs:", specs);
