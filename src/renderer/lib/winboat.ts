@@ -160,8 +160,8 @@ export class Dosboat {
      */
     launchVNC() {
         const novncHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.NOVNC);
-        openLink(`http://127.0.0.1:${novncHostPort}`);
-        logger.info(`Launched VNC browser display at http://127.0.0.1:${novncHostPort}`);
+        openLink(`http://127.0.0.1:${novncHostPort}/vnc.html`);
+        logger.info(`Launched VNC browser display at http://127.0.0.1:${novncHostPort}/vnc.html`);
     }
 
     async #connectQMPManager() {

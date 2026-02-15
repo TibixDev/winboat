@@ -40,6 +40,14 @@
             <!-- Buttons -->
             <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
                 <button
+                    title="View Desktop"
+                    class="generic-hover"
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
+                    @click="winboat.launchVNC()"
+                >
+                    <Icon class="w-20 h-20 text-blue-300" icon="mdi:monitor"></Icon>
+                </button>
+                <button
                     title="Start"
                     class="generic-hover"
                     v-if="

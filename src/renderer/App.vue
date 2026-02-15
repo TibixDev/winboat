@@ -219,7 +219,7 @@ onMounted(async () => {
         () => winboat?.isUpdatingGuestServer.value,
         isUpdating => {
             if (isUpdating === true) {
-                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}`;
+                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}/vnc.html`;
                 updateDialog.value!.showModal();
                 // Prepare the timeout to show manual update required after 45 seconds
                 updateTimeout = setTimeout(() => {

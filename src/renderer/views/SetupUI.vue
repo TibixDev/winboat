@@ -700,7 +700,7 @@
                             DOSBoat is now installing FreeDOS. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
                             <span v-if="linkableInstallSteps.includes(installState)">
-                                <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
+                                <a :href="`http://127.0.0.1:${vncPort}/vnc.html`" @click="openAnchorLink">in your browser</a>.
                             </span>
                             <span v-else>
                                 over at
