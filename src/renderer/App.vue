@@ -23,10 +23,12 @@
             @buttonclick="handleTitleBarEvent"
             class="backdrop-blur-xl bg-neutral-900/50"
         >
-            <x-label>WinBoat</x-label>
+            <x-label>DOSBoat</x-label>
         </x-titlebar>
 
         <!-- Updater -->
+        <!-- Note: Guest Server updates are not applicable to FreeDOS - this dialog is disabled -->
+        <!--
         <dialog ref="updateDialog">
             <Icon class="text-indigo-400 size-12" icon="mdi:cloud-upload"></Icon>
             <template v-if="manualUpdateRequired">
@@ -89,6 +91,7 @@
                 </x-button>
             </footer>
         </dialog>
+        -->
 
         <!-- UI / SetupUI -->
         <div
@@ -96,6 +99,8 @@
             class="flex flex-row h-[calc(100vh-2rem)]"
         >
             <x-nav class="flex flex-col flex-none gap-0.5 w-72 backdrop-blur-xl bg-gray-500/10 backdrop-contrast-90">
+                <!-- Note: RDP session indicator not applicable to FreeDOS (uses VNC) -->
+                <!--
                 <div
                     v-if="winboat?.rdpConnected.value"
                     class="w-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-blue-500 text-white !mt-0 py-1 shadow-md shadow-indigo-500/50 transition-all duration-300 hover:brightness-105 flex flex-row items-center justify-center gap-2"
@@ -103,6 +108,7 @@
                     <Icon class="size-5" icon="mdi:remote-desktop"></Icon>
                     <span class="font-semibold text-center"> RDP Session Active </span>
                 </div>
+                -->
                 <div class="flex flex-row gap-4 items-center p-4">
                     <img
                         class="w-16 rounded-full"
@@ -127,13 +133,13 @@
                     </x-navitem>
                 </RouterLink>
                 <div class="flex flex-col justify-end items-center p-4 h-full">
-                    <p class="text-xs text-neutral-500">WinBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
+                    <p class="text-xs text-neutral-500">DOSBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
                 </div>
             </x-nav>
             <div class="px-5 flex-grow max-h-[calc(100vh-2rem)] overflow-y-auto py-4">
                 <div class="flex flex-row gap-2 items-center my-6">
                     <Icon class="w-6 h-6 opacity-60" icon="icon-park-solid:toolkit"></Icon>
-                    <h1 class="my-0 text-2xl font-semibold opacity-60">WinBoat</h1>
+                    <h1 class="my-0 text-2xl font-semibold opacity-60">DOSBoat</h1>
                     <Icon class="w-6 h-6" icon="bitcoin-icons:caret-right-filled"></Icon>
                     <Icon class="w-6 h-6" :icon="useRoute().meta.icon as string"></Icon>
                     <h1 class="my-0 text-2xl font-semibold">
@@ -158,13 +164,15 @@
 import { RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
 import { routes } from "./router";
 import { Icon } from "@iconify/vue";
-import { onMounted, ref, useTemplateRef, watch, reactive, computed } from "vue";
+import { onMounted, ref, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
 import { Dosboat } from "./lib/winboat";
-import { openAnchorLink } from "./utils/openLink";
+// Note: openAnchorLink only needed for guest server update dialog (WinBoat feature)
+// import { openAnchorLink } from "./utils/openLink";
 import { DosboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
-import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
+// Note: CommonPorts and getActiveHostPort are only needed for guest server updates (WinBoat feature)
+// import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
@@ -176,11 +184,12 @@ const isDev = import.meta.env.DEV;
 let winboat: Dosboat | null;
 let wbConfig: DosboatConfig | null;
 
-let updateTimeout: NodeJS.Timeout | null = null;
-const manualUpdateRequired = ref(false);
-const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
-const updateDialog = useTemplateRef("updateDialog");
-const novncURL = ref("");
+// Note: Guest server update variables not needed for FreeDOS
+// let updateTimeout: NodeJS.Timeout | null = null;
+// const manualUpdateRequired = ref(false);
+// const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
+// const updateDialog = useTemplateRef("updateDialog");
+// const novncURL = ref("");
 
 const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
 
@@ -203,6 +212,8 @@ onMounted(async () => {
         $router.push("/setup");
     }
 
+    // Note: Guest server update watching is not applicable to FreeDOS
+    /*
     // Watch for guest server updates and show dialog
     watch(
         () => winboat?.isUpdatingGuestServer.value,
@@ -224,6 +235,7 @@ onMounted(async () => {
             }
         },
     );
+    */
 });
 
 function handleMinimize() {
