@@ -1,4 +1,28 @@
 <template>
+    <teleport to="body">
+        <div
+            v-if="resetOptionsVisible"
+            class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        >
+            <div class="w-[min(520px,90vw)] rounded-2xl border border-white/10 bg-neutral-900/90 p-6 shadow-2xl">
+                <div class="flex items-center gap-3">
+                    <Icon class="text-red-400 size-8" icon="mdi:alert-circle"></Icon>
+                    <h2 class="my-0 text-lg font-semibold text-neutral-100">Reset complete</h2>
+                </div>
+                <p class="mt-3 text-sm text-neutral-300">
+                    DOSBoat was reset and the VM was removed. Choose what you want to do next.
+                </p>
+                <div class="mt-6 flex items-center justify-end gap-3">
+                    <x-button class="!bg-blue-500/20 hover:!bg-blue-500/30 !border-0" @click="startSetupAfterReset">
+                        <x-label>Start new setup</x-label>
+                    </x-button>
+                    <x-button class="!bg-red-600/20 hover:!bg-red-600/30 !border-0" @click="closeAfterReset">
+                        <x-label>Close</x-label>
+                    </x-button>
+                </div>
+            </div>
+        </div>
+    </teleport>
     <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ hidden: !maxNumCores }">
         <div>
             <x-label class="mb-4 text-neutral-300">Container</x-label>
@@ -332,6 +356,7 @@
 <script setup lang="ts">
 import ConfigCard from "../components/ConfigCard.vue";
 import { computed, onMounted, ref, watch, reactive } from "vue";
+import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { Dosboat } from "../lib/winboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
@@ -354,6 +379,7 @@ import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
 const os: typeof import("os") = require("node:os");
+const $router = useRouter();
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -372,6 +398,7 @@ const autoStartContainer = ref(false);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
+const resetOptionsVisible = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
 
 // For USB Devices
@@ -657,7 +684,22 @@ async function resetDosboat() {
     }
 
     isResettingWinboat.value = true;
-    await winboat.resetDosboat();
+    try {
+        await winboat.resetDosboat();
+        resetOptionsVisible.value = true;
+    } catch (error) {
+        console.error("Failed to reset DOSBoat:", error);
+        isResettingWinboat.value = false;
+    }
+}
+
+function startSetupAfterReset() {
+    resetOptionsVisible.value = false;
+    isResettingWinboat.value = false;
+    $router.push("/setup");
+}
+
+function closeAfterReset() {
     app.exit();
 }
 
