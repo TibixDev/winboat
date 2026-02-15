@@ -10,7 +10,8 @@
     },
     "scripts": {
         "dev": "bun scripts/dev-server.ts",
-        "build:linux": "bun scripts/build.ts && electron-builder --linux"
+        "build:linux": "bun scripts/build.ts && electron-builder --linux",
+        "test": "vitest run"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
@@ -32,6 +33,7 @@
         "tailwindcss": "^3.4.17",
         "typescript": "~5.9.3",
         "vite": "^7.3.1",
+        "vitest": "^2.1.9",
         "vue-tsc": "^3.2.4"
     },
     "dependencies": {
