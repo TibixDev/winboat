@@ -648,7 +648,7 @@
                                     <span class="text-base text-white">{{ username }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">IndosMemory }}ion</span>
+                                    <span class="text-sm text-gray-400">Install Location</span>
                                     <span class="text-base text-white">{{ installFolder }}</span>
                                 </div>
                             </div>
