@@ -685,7 +685,7 @@
                         >
                             <x-throbber class="size-16"></x-throbber>
                             <x-label
-                                v-if="installState !== InstallStates.MONITORING_PREINSTALL"
+                                v-if="installState !== InstallStates.MONITORING_PREINSTALL && installState !== InstallStates.INSTALLING_FREEDOS"
                                 class="text-lg text-gray-400 text-center"
                             >
                                 {{ installState }}...

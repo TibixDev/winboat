@@ -259,9 +259,26 @@ export class InstallManager {
         logger.info("FreeDOS is installing...");
 
         // FreeDOS installation is much faster than Windows (typically completes in under 10 seconds)
-        // We wait a bit to ensure the VNC interface is stable before declaring completion
-        const FREEDOS_INSTALL_WAIT_MS = 10000;
-        await this.sleep(FREEDOS_INSTALL_WAIT_MS);
+        // Show progress messages as the seedfile is copied
+        const TOTAL_INSTALL_TIME_MS = 10000;
+        const stages = [
+            { delay: 0, message: "Setting up FreeDOS..." },
+            { delay: 3000, message: "Copying system files..." },
+            { delay: 6500, message: "Finalizing installation..." },
+        ];
+
+        for (const stage of stages) {
+            await this.sleep(stage.delay);
+            this.setPreinstallMsg(stage.message);
+            logger.info(stage.message);
+        }
+
+        // Complete the remaining wait time
+        const elapsedTime = stages[stages.length - 1].delay;
+        const remainingTime = TOTAL_INSTALL_TIME_MS - elapsedTime;
+        if (remainingTime > 0) {
+            await this.sleep(remainingTime);
+        }
 
         logger.info("FreeDOS installation completed!");
         this.changeState(InstallStates.COMPLETED);
