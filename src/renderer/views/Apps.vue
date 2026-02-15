@@ -237,11 +237,11 @@
                             winboat.containerStatus.value === ContainerStatus.UNKNOWN
                         "
                     >
-                        The WinBoat Container is not running, please start it to view your apps list.
+                        The DOSBoat Container is not running, please start it to view your apps list.
                     </span>
                     <span v-else>
-                        The WinBoat Guest API is not running, please restart the container. If this problem persists,
-                        contact customer support.
+                        The DOSBoat App Manager is not available. This feature requires Windows-specific components
+                        that are not present in FreeDOS.
                     </span>
                 </h1>
             </div>

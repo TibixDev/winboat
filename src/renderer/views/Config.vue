@@ -7,11 +7,12 @@
                 <ConfigCard
                     icon="game-icons:ram"
                     title="RAM Allocation"
-                    desc="How many gigabytes of RAM are allocated to the Windows virtual machine"
+                    desc="How many gigabytes of RAM are allocated to the FreeDOS virtual machine"
                     type="number"
                     unit="GB"
-                    :min="2"
+                    :min="0.5"
                     :max="maxRamGB"
+                    :step="0.5"
                     v-model:value="ramGB"
                 />
 
@@ -19,10 +20,10 @@
                 <ConfigCard
                     icon="solar:cpu-bold"
                     title="CPU Cores"
-                    desc="How many CPU Cores are allocated to the Windows virtual machine"
+                    desc="How many CPU Cores are allocated to the FreeDOS virtual machine"
                     type="number"
                     unit="Cores"
-                    :min="2"
+                    :min="1"
                     :max="maxNumCores"
                     v-model:value="numCores"
                 />
@@ -35,8 +36,8 @@
                     v-model:value="shareFolder"
                 >
                     <template v-slot:desc>
-                        If enabled, you will be able to access your selected folder within Windows under
-                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
+                        If enabled, your selected folder will be mounted in the FreeDOS container at
+                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">/shared</span>
                     </template>
                 </ConfigCard>
 
@@ -52,7 +53,7 @@
                             Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
                         </span>
                         <span v-else>
-                            Select a folder to share with Windows
+                            Select a folder to share with FreeDOS
                         </span>
                     </template>
                     <x-button @click="selectSharedFolder">
@@ -64,7 +65,7 @@
                 <ConfigCard
                     icon="clarity:power-solid"
                     title="Auto Start Container"
-                    desc="If enabled, the Windows container will automatically be started when the system boots up"
+                    desc="If enabled, the FreeDOS container will automatically be started when the system boots up"
                     type="switch"
                     v-model:value="autoStartContainer"
                 />
@@ -198,7 +199,7 @@
                                             >
                                                 This device appears to be using the MTP protocol, which is known for
                                                 being problematic. Some Desktop Environments automatically mount MTP
-                                                devices, which in turn causes WinBoat to not be able to pass the device
+                                                devices, which in turn causes DOSBoat to not be able to pass the device
                                                 through.
                                             </span>
                                         </span>
@@ -395,7 +396,7 @@
         </div>
 
         <div>
-            <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
+            <x-label class="mb-4 text-neutral-300">DOSBoat</x-label>
 
             <div class="flex flex-col gap-4">
                 <!-- Experimental Features -->
@@ -412,7 +413,7 @@
                 <ConfigCard
                     icon="mdi:administrator"
                     title="Advanced Settings"
-                    desc="If enabled, you'll have access to advanced settings that may prevent WinBoat from working if misconfigured"
+                    desc="If enabled, you'll have access to advanced settings that may prevent DOSBoat from working if misconfigured"
                     type="switch"
                     v-model:value="wbConfig.config.advancedFeatures"
                 />
@@ -445,10 +446,10 @@
                 <Icon v-if="resetQuestionCounter < 3" icon="mdi:bomb" class="size-8"></Icon>
                 <x-throbber v-else class="size-8"></x-throbber>
 
-                <span v-if="resetQuestionCounter === 0">Reset Dosboat & Remove VM</span>
+                <span v-if="resetQuestionCounter === 0">Reset DOSBoat & Remove VM</span>
                 <span v-else-if="resetQuestionCounter === 1">Are you sure? This action cannot be undone.</span>
                 <span v-else-if="resetQuestionCounter === 2">One final check, are you ABSOLUTELY sure?</span>
-                <span v-else-if="resetQuestionCounter === 3">Resetting Dosboat...</span>
+                <span v-else-if="resetQuestionCounter === 3">Resetting DOSBoat...</span>
             </x-button>
         </div>
     </div>
@@ -610,12 +611,12 @@ async function saveCompose() {
 }
 
 /**
- * Opens a dialog to select a folder to share with Windows
+ * Opens a dialog to select a folder to share with FreeDOS
  */
 function selectSharedFolder() {
     electron.dialog
         .showOpenDialog({
-            title: "Select Folder to Share",
+            title: "Select Folder to Share with FreeDOS",
             properties: ["openDirectory"],
             defaultPath: sharedFolderPath.value || os.homedir(),
         })
@@ -679,20 +680,20 @@ async function addRequiredComposeFieldsUSB() {
 const errors = computedAsync(async () => {
     let errCollection: string[] = [];
 
-    if (!numCores.value || numCores.value < 2) {
-        errCollection.push("You must allocate at least two CPU cores for Windows to run properly");
+    if (!numCores.value || numCores.value < 1) {
+        errCollection.push("You must allocate at least one CPU core for FreeDOS to run properly");
     }
 
     if (numCores.value > maxNumCores.value) {
-        errCollection.push("You cannot allocate more CPU cores to Windows than you have available");
+        errCollection.push("You cannot allocate more CPU cores to FreeDOS than you have available");
     }
 
-    if (!ramGB.value || ramGB.value < 4) {
-        errCollection.push("You must allocate at least 4 GB of RAM for Windows to run properly");
+    if (!ramGB.value || ramGB.value < 0.5) {
+        errCollection.push("You must allocate at least 512MB (0.5 GB) of RAM for FreeDOS to run properly");
     }
 
     if (ramGB.value > maxRamGB.value) {
-        errCollection.push("You cannot allocate more RAM to Windows than you have available");
+        errCollection.push("You cannot allocate more RAM to FreeDOS than you have available");
     }
 
     if (
