@@ -80,14 +80,38 @@ export class InstallManager {
         // Configure the compose file
         const composeContent = this.container.defaultCompose;
 
+        // Get app root path for resolving build context and image paths
+        const appPath = remote.app.getAppPath();
+        const isDev = !remote.app.isPackaged;
+        const appRoot = isDev 
+            ? path.join(appPath, "..", "..") // In dev: getAppPath() returns .../src/renderer, go up to project root
+            : path.dirname(remote.process.resourcesPath); // In production: go to app root
+
         composeContent.services.freedos.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.freedos.environment.CPU_CORES = `${this.conf.cpuCores}`;
         composeContent.services.freedos.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
         composeContent.services.freedos.environment.VERSION = this.conf.freedosVersion;
 
+        // Update build context to use absolute path
+        if (composeContent.services.freedos.build) {
+            composeContent.services.freedos.build.context = path.join(appRoot, "build", "freedos-image");
+            logger.info(`Build context set to: ${composeContent.services.freedos.build.context}`);
+        }
+
+        // Update base image volume to use absolute path
+        const baseImageIdx = composeContent.services.freedos.volumes.findIndex(vol => 
+            vol.includes("FD14-base.qcow2") || vol.includes("/oem/base.qcow2")
+        );
+        if (baseImageIdx !== -1) {
+            const baseImagePath = path.join(appRoot, "images", "FD14-base.qcow2");
+            composeContent.services.freedos.volumes[baseImageIdx] = `${baseImagePath}:/oem/base.qcow2:ro`;
+            logger.info(`Base image path set to: ${baseImagePath}`);
+        }
+
         // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.freedos.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
+            composeContent.services.freedos.environment.CUSTOM_ISO = "/boot.iso";
         }
 
         // Storage folder mapping

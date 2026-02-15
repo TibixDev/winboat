@@ -225,19 +225,6 @@
                                     >
                                 </li>
                             </template>
-                            <li class="flex items-center gap-2">
-                                <span v-if="specs.freeRDP3Installed" class="text-green-500">✔</span>
-                                <span v-else class="text-red-500">✘</span>
-                                FreeRDP 3.x.x installed
-                                <a
-                                    href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds"
-                                    @click="openAnchorLink"
-                                    target="_blank"
-                                    class="text-violet-400 hover:underline ml-1"
-                                >
-                                    How?
-                                </a>
-                            </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
@@ -700,7 +687,7 @@
                             DOSBoat is now installing FreeDOS. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
                             <span v-if="linkableInstallSteps.includes(installState)">
-                                <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
+                                <a :href="`http://127.0.0.1:${vncPort}/vnc.html?autoconnect=true&resize=scale`" @click="openAnchorLink">in your browser</a>.
                             </span>
                             <span v-else>
                                 over at
@@ -883,11 +870,11 @@ const freedosVersion = ref<FreeDOSVersionKey>("1.3");
 // const windowsLanguage = ref("English"); // Not used for FreeDOS
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
-const cpuCores = ref(2);
-const ramGB = ref(4);
+const cpuCores = ref(1);
+const ramGB = ref(1);
 const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
-const diskSpaceGB = ref(32);
+const diskSpaceGB = ref(2);
 const username = ref("dosboat");
 const password = ref("");
 const confirmPassword = ref("");

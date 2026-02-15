@@ -7,11 +7,12 @@
                 <ConfigCard
                     icon="game-icons:ram"
                     title="RAM Allocation"
-                    desc="How many gigabytes of RAM are allocated to the Windows virtual machine"
+                    desc="How many gigabytes of RAM are allocated to the FreeDOS virtual machine"
                     type="number"
                     unit="GB"
-                    :min="2"
+                    :min="0.5"
                     :max="maxRamGB"
+                    :step="0.5"
                     v-model:value="ramGB"
                 />
 
@@ -19,10 +20,10 @@
                 <ConfigCard
                     icon="solar:cpu-bold"
                     title="CPU Cores"
-                    desc="How many CPU Cores are allocated to the Windows virtual machine"
+                    desc="How many CPU Cores are allocated to the FreeDOS virtual machine"
                     type="number"
                     unit="Cores"
-                    :min="2"
+                    :min="1"
                     :max="maxNumCores"
                     v-model:value="numCores"
                 />
@@ -35,8 +36,8 @@
                     v-model:value="shareFolder"
                 >
                     <template v-slot:desc>
-                        If enabled, you will be able to access your selected folder within Windows under
-                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
+                        If enabled, your selected folder will be mounted in the FreeDOS container at
+                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">/shared</span>
                     </template>
                 </ConfigCard>
 
@@ -52,7 +53,7 @@
                             Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
                         </span>
                         <span v-else>
-                            Select a folder to share with Windows
+                            Select a folder to share with FreeDOS
                         </span>
                     </template>
                     <x-button @click="selectSharedFolder">
@@ -64,33 +65,10 @@
                 <ConfigCard
                     icon="clarity:power-solid"
                     title="Auto Start Container"
-                    desc="If enabled, the Windows container will automatically be started when the system boots up"
+                    desc="If enabled, the FreeDOS container will automatically be started when the system boots up"
                     type="switch"
                     v-model:value="autoStartContainer"
                 />
-
-                <!-- FreeRDP Port -->
-                <ConfigCard
-                    icon="lucide:ethernet-port"
-                    title="FreeRDP Port"
-                    desc="You can change what port FreeRDP uses to communicate with the VM"
-                    type="custom"
-                >
-                    <x-input
-                        class="max-w-16 text-right text-[1.1rem]"
-                        :value="Number.isNaN(freerdpPort) ? '' : freerdpPort"
-                        @input="
-                            (e: any) => {
-                                freerdpPort = Number(
-                                    /^\d+$/.exec(e.target.value)?.at(0) ||
-                                        portMapper?.getShortPortMapping(GUEST_RDP_PORT)?.host,
-                                );
-                            }
-                        "
-                    >
-                        <x-label v-if="Number.isNaN(freerdpPort)">None</x-label>
-                    </x-input>
-                </ConfigCard>
                 <div class="flex flex-col">
                     <p class="my-0 text-red-500" v-for="(error, k) of errors" :key="k">❗ {{ error }}</p>
                 </div>
@@ -198,7 +176,7 @@
                                             >
                                                 This device appears to be using the MTP protocol, which is known for
                                                 being problematic. Some Desktop Environments automatically mount MTP
-                                                devices, which in turn causes WinBoat to not be able to pass the device
+                                                devices, which in turn causes DOSBoat to not be able to pass the device
                                                 through.
                                             </span>
                                         </span>
@@ -253,149 +231,25 @@
                 </x-card>
             </div>
         </div>
-        <div v-show="wbConfig.config.advancedFeatures">
-            <x-label class="mb-4 text-neutral-300">FreeRDP</x-label>
-            <div class="flex flex-col gap-4">
-                <!-- RDP args -->
-                <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div class="w-full">
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-24-filled"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">
-                                FreeRDP Arguments
-                                <span class="bg-blue-500 rounded-full px-3 py-0.5 text-sm ml-2"> Advanced </span>
-                            </h1>
-                        </div>
 
-                        <x-label
-                            v-if="wbConfig.config.rdpArgs.length == 0"
-                            class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
-                        >
-                            Press the buttons below to add arguments to FreeRDP, you can choose to either add a new
-                            argument or modify an existing one to your liking via replacement
-                        </x-label>
-                        <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
-                            <x-card
-                                class="flex justify-between items-center gap-2 px-2 py-0 m-0 bg-white/5"
-                                v-for="(arg, index) in wbConfig.config.rdpArgs"
-                                :key="index"
-                            >
-                                <div class="grid grid-cols-2 gap-2 items-center w-full">
-                                    <x-input
-                                        type="text"
-                                        class="!max-w-full"
-                                        v-if="arg.isReplacement"
-                                        :value="arg.original"
-                                        @input="(e: any) => (arg.original = e.target.value)"
-                                    >
-                                        <x-label>Original Argument</x-label>
-                                    </x-input>
-                                    <x-input
-                                        type="text"
-                                        class="!max-w-full !mt-0"
-                                        :class="{ 'col-span-2': !arg.isReplacement }"
-                                        :value="arg.newArg"
-                                        @input="(e: any) => (arg.newArg = e.target.value)"
-                                    >
-                                        <x-label>New Argument</x-label>
-                                    </x-input>
-                                </div>
-                                <x-button
-                                    class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
-                                    @click="wbConfig.config.rdpArgs.splice(index, 1)"
-                                >
-                                    <x-icon href="#remove"></x-icon>
-                                </x-button>
-                            </x-card>
-                        </TransitionGroup>
-                        <div class="flex flex-row gap-2" :class="{ 'mt-4': wbConfig.config.rdpArgs.length }">
-                            <x-button
-                                class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
-                                @click="wbConfig.config.rdpArgs.push({ newArg: '', isReplacement: false })"
-                            >
-                                <x-icon href="#add"></x-icon>
-                                <x-label>Add Argument</x-label>
-                            </x-button>
-                            <x-button
-                                class="!bg-gradient-to-tl from-yellow-400/20 shadow-md shadow-yellow-950/20 to-transparent hover:from-yellow-400/30 transition"
-                                @click="wbConfig.config.rdpArgs.push({ newArg: '', original: '', isReplacement: true })"
-                            >
-                                <Icon class="inline-flex size-6" icon="codex:replace" />
-                                <x-label>Replace Argument</x-label>
-                            </x-button>
-                        </div>
-                    </div>
-                </x-card>
-            </div>
-        </div>
         <div>
-            <x-label class="mb-4 text-neutral-300">General</x-label>
+            <x-label class="mb-4 text-neutral-300">Display</x-label>
             <div class="flex flex-col gap-4">
-                <!-- Display Scaling -->
+                <!-- VNC Display Scaling -->
                 <ConfigCard
                     class="relative z-10"
-                    icon="uil:scaling-right"
-                    title="Display Scaling"
-                    desc="Controls how large the display scaling is."
+                    icon="mdi:monitor-screenshot"
+                    title="VNC Display Scaling"
+                    desc="Standard shows native resolution. Automatic scales to fit your browser window."
                     type="dropdown"
-                    unit="%"
-                    :options="[Number(100), 140, 180]"
-                    v-model:value="wbConfig.config.scale"
-                />
-
-                <!-- Application Scaling -->
-                <ConfigCard
-                    icon="uil:apps"
-                    title="Application Scaling"
-                    desc="Controls how large the application scaling is.."
-                    type="number"
-                    :step="10"
-                    :min="100"
-                    :max="500"
-                    v-model:value="wbConfig.config.scaleDesktop"
-                />
-
-                <!-- Multi Monitor -->
-                <ConfigCard
-                    class="relative z-10"
-                    icon="uil:monitor"
-                    title="Multi-Monitor Support"
-                    type="dropdown"
-                    :options="Object.values(MultiMonitorMode)"
-                    v-model:value="wbConfig.config.multiMonitor"
-                >
-                    <template v-slot:desc>
-                        Controls how multiple monitors are handled. MultiMon creates separate displays for each
-                        monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may
-                        work better depending on your setup.
-                    </template>
-                </ConfigCard>
-
-                <!-- Smartcard Passthrough -->
-                <ConfigCard
-                    icon="game-icons:swipe-card"
-                    title="Smartcard Passthrough"
-                    desc="If enabled, your smartcard readers will be passed to Windows when you start an app"
-                    type="switch"
-                    v-model:value="wbConfig.config.smartcardEnabled"
-                >
-                </ConfigCard>
-
-                <!-- RDP Monitoring -->
-                <ConfigCard
-                    icon="fluent:remote-16-filled"
-                    title="RDP Monitoring"
-                    desc="If enabled, a banner will appear when the RDP session is connected (may cause high CPU usage, disable if you notice performance issues)"
-                    type="switch"
-                    v-model:value="wbConfig.config.rdpMonitoringEnabled"
+                    :options="[{ label: 'Standard', value: 1 }, { label: 'Automatic', value: 2 }]"
+                    v-model:value="wbConfig.config.vncScale"
                 />
             </div>
         </div>
 
         <div>
-            <x-label class="mb-4 text-neutral-300">WinBoat</x-label>
+            <x-label class="mb-4 text-neutral-300">DOSBoat</x-label>
 
             <div class="flex flex-col gap-4">
                 <!-- Experimental Features -->
@@ -412,7 +266,7 @@
                 <ConfigCard
                     icon="mdi:administrator"
                     title="Advanced Settings"
-                    desc="If enabled, you'll have access to advanced settings that may prevent WinBoat from working if misconfigured"
+                    desc="If enabled, you'll have access to advanced settings that may prevent DOSBoat from working if misconfigured"
                     type="switch"
                     v-model:value="wbConfig.config.advancedFeatures"
                 />
@@ -445,10 +299,10 @@
                 <Icon v-if="resetQuestionCounter < 3" icon="mdi:bomb" class="size-8"></Icon>
                 <x-throbber v-else class="size-8"></x-throbber>
 
-                <span v-if="resetQuestionCounter === 0">Reset Dosboat & Remove VM</span>
+                <span v-if="resetQuestionCounter === 0">Reset DOSBoat & Remove VM</span>
                 <span v-else-if="resetQuestionCounter === 1">Are you sure? This action cannot be undone.</span>
                 <span v-else-if="resetQuestionCounter === 2">One final check, are you ABSOLUTELY sure?</span>
-                <span v-else-if="resetQuestionCounter === 3">Resetting Dosboat...</span>
+                <span v-else-if="resetQuestionCounter === 3">Resetting DOSBoat...</span>
             </x-button>
         </div>
     </div>
@@ -463,14 +317,13 @@ import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
-import { MultiMonitorMode, RdpArg, DosboatConfig } from "../lib/config";
+import { DosboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
     USB_VID_BLACKLIST,
     RESTART_ON_FAILURE,
     RESTART_NO,
-    GUEST_RDP_PORT,
     GUEST_QMP_PORT,
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
@@ -492,8 +345,6 @@ const sharedFolderPath = ref("");
 const origSharedFolderPath = ref("");
 const origAutoStartContainer = ref(false);
 const autoStartContainer = ref(false);
-const freerdpPort = ref(0);
-const origFreerdpPort = ref(0);
 const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
@@ -551,9 +402,6 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.freedos.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
-    origFreerdpPort.value = freerdpPort.value;
-
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
     maxNumCores.value = specs.cpuCores;
@@ -585,16 +433,6 @@ async function saveCompose() {
 
     compose.value!.services.freedos.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "tcp",
-        hostIP: "127.0.0.1",
-    });
-
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "udp",
-        hostIP: "127.0.0.1",
-    });
-
     compose.value!.services.freedos.ports = portMapper.value!.composeFormat;
 
     isApplyingChanges.value = true;
@@ -610,12 +448,12 @@ async function saveCompose() {
 }
 
 /**
- * Opens a dialog to select a folder to share with Windows
+ * Opens a dialog to select a folder to share with FreeDOS
  */
 function selectSharedFolder() {
     electron.dialog
         .showOpenDialog({
-            title: "Select Folder to Share",
+            title: "Select Folder to Share with FreeDOS",
             properties: ["openDirectory"],
             defaultPath: sharedFolderPath.value || os.homedir(),
         })
@@ -679,28 +517,20 @@ async function addRequiredComposeFieldsUSB() {
 const errors = computedAsync(async () => {
     let errCollection: string[] = [];
 
-    if (!numCores.value || numCores.value < 2) {
-        errCollection.push("You must allocate at least two CPU cores for Windows to run properly");
+    if (!numCores.value || numCores.value < 1) {
+        errCollection.push("You must allocate at least one CPU core for FreeDOS to run properly");
     }
 
     if (numCores.value > maxNumCores.value) {
-        errCollection.push("You cannot allocate more CPU cores to Windows than you have available");
+        errCollection.push("You cannot allocate more CPU cores to FreeDOS than you have available");
     }
 
-    if (!ramGB.value || ramGB.value < 4) {
-        errCollection.push("You must allocate at least 4 GB of RAM for Windows to run properly");
+    if (!ramGB.value || ramGB.value < 0.5) {
+        errCollection.push("You must allocate at least 512MB (0.5 GB) of RAM for FreeDOS to run properly");
     }
 
     if (ramGB.value > maxRamGB.value) {
-        errCollection.push("You cannot allocate more RAM to Windows than you have available");
-    }
-
-    if (
-        freerdpPort.value !== origFreerdpPort.value &&
-        !Number.isNaN(freerdpPort.value) &&
-        !(await ComposePortMapper.isPortOpen(freerdpPort.value))
-    ) {
-        errCollection.push("You must choose an open port for your FreeRDP port!");
+        errCollection.push("You cannot allocate more RAM to FreeDOS than you have available");
     }
 
     return errCollection;
@@ -724,7 +554,6 @@ const saveButtonDisabled = computed(() => {
         origRamGB.value !== ramGB.value ||
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
-        (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;

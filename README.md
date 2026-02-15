@@ -69,14 +69,49 @@ DOSBoat handles both USB bus access (for the adapter itself) and device mapping 
 
 ## How It Works
 
-DOSBoat uses:
-1. **dockur/freedos** - A FreeDOS container image that runs QEMU inside Docker/Podman
-2. **Serial Device Passthrough** - Maps host `/dev/tty*` devices into the container
-3. **USB Bus Access** - Mounts `/dev/bus/usb` for USB-to-serial adapter support
-4. **QEMU Serial Chardev** - Configures QEMU with `-chardev serial` arguments to expose host ports as COM ports inside FreeDOS
-5. **noVNC** - Provides web-based access to the FreeDOS desktop
+DOSBoat uses a custom FreeDOS container image with an efficient two-layer disk strategy:
+
+1. **Base Image** - A committed 1GB QCOW2 image with FreeDOS pre-installed (created once)
+2. **Overlay Image** - Per-installation QCOW2 overlay that uses the base as a backing file
+3. **Serial Device Passthrough** - Maps host `/dev/tty*` devices into the container
+4. **USB Bus Access** - Mounts `/dev/bus/usb` for USB-to-serial adapter support
+5. **QEMU Serial Chardev** - Configures QEMU with `-chardev serial` arguments to expose host ports as COM ports inside FreeDOS
+6. **noVNC** - Provides web-based access to the FreeDOS desktop
+
+This overlay approach saves disk space and allows the base image to be shared across installations while protecting it from corruption.
+
+## First-Time Setup: Creating the Base Image
+
+Before you can use DOSBoat, you need to create the FreeDOS base image **once**. We provide a helper script:
+
+```bash
+./scripts/create-base-image.sh
+```
+
+The script will:
+1. Create a blank 1GB QCOW2 disk
+2. Launch QEMU with the FreeDOS 1.4 LiveCD
+3. Guide you through the FreeDOS installation
+4. Save the installed image as the base
+
+**During the installation:**
+- Choose "Install to harddisk"
+- Select your language
+- When prompted about Drive C not being partitioned, answer "Yes" to partition
+- System will reboot automatically
+- After reboot, choose "Yes" to format the drive
+- Select installation options (full installation recommended)
+- After installation completes, type: `fdapm /poweroff`
+
+**Manual creation** (if you prefer):
+See detailed instructions in [build/freedos-image/README.md](build/freedos-image/README.md).
 
 ## Building DOSBoat
+
+### Prerequisites
+
+1. **Create the base image first** - See [First-Time Setup](#first-time-setup-creating-the-base-image) above
+2. **Install Bun** - See instructions below
 
 ### Installing Bun
 
@@ -151,6 +186,7 @@ If you are on another distro, install the equivalent `libudev` development packa
 ## Running DOSBoat in Development Mode
 
 - Make sure you meet the [prerequisites](#prerequisites)
+- Create the base image (see [First-Time Setup](#first-time-setup-creating-the-base-image))
 - Additionally, for development you need to have Bun installed (see [Installing Bun](#installing-bun))
 - Clone the repo: `git clone https://github.com/chevybowtie/dosboat`
 - Navigate to the directory: `cd dosboat`
@@ -179,8 +215,9 @@ DOSBoat is licensed under the [MIT](LICENSE) license
 DOSBoat is a fork of [WinBoat](https://github.com/TibixDev/winboat) by TibixDev, adapted for FreeDOS and serial port passthrough use cases.
 
 ### Key Technologies
-- [dockur/freedos](https://github.com/dockur/freedos) - FreeDOS container image
+- [FreeDOS](https://www.freedos.org/) - The DOS operating system
+- [QEMU](https://www.qemu.org/) - VM emulation
 - [Electron](https://www.electronjs.org/) - Cross-platform desktop framework
 - [Vue.js](https://vuejs.org/) - UI framework
-- [QEMU](https://www.qemu.org/) - VM emulation (runs inside the container)
 - [noVNC](https://novnc.com/) - Browser-based VNC client
+- Original [dockur/freedos](https://github.com/dockur/freedos) work inspired our container approach

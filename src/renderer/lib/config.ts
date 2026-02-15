@@ -3,6 +3,7 @@ const path: typeof import("path") = require("node:path");
 import { DOSBOAT_DIR } from "./constants";
 import { ContainerRuntimes } from "./containers/common";
 import { logger } from "./winboat";
+import type { PTSerializableDeviceInfo } from "./usbmanager";
 
 export class DosboatVersion {
     public readonly generation: number;
@@ -44,9 +45,12 @@ type DosboatVersionData = {
 
 export type DosboatConfigObj = {
     serialPorts: string[];
+    passedThroughDevices: PTSerializableDeviceInfo[];
     experimentalFeatures: boolean;
     advancedFeatures: boolean;
     disableAnimations: boolean;
+    vncScale: number;
+    appsSortOrder: "name" | "usage";
     containerRuntime: ContainerRuntimes;
     versionData: DosboatVersionData;
 };
@@ -55,9 +59,12 @@ const currentVersion = new DosboatVersion(import.meta.env.VITE_APP_VERSION);
 
 const defaultConfig: DosboatConfigObj = {
     serialPorts: [],
+    passedThroughDevices: [],
     experimentalFeatures: false,
     advancedFeatures: false,
     disableAnimations: false,
+    vncScale: 2,
+    appsSortOrder: "name",
     containerRuntime: ContainerRuntimes.DOCKER,
     versionData: {
         previous: currentVersion,
