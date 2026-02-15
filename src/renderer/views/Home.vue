@@ -164,6 +164,9 @@
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
                         {{ (winboat.metrics.value.disk.used / 1024).toFixed(2) }} GB Used Space
                     </p>
+                    <p v-if="isVolumeStorage" class="!my-0 text-xs text-gray-500">
+                        Disk usage not available for volume-backed storage.
+                    </p>
                 </div>
             </x-card>
         </div>
@@ -181,9 +184,12 @@ import { capitalizeFirstLetter } from "../utils/capitalize";
 
 const winboat = Dosboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
+const isVolumeStorage = ref(false);
 
 onMounted(async () => {
     compose.value = Dosboat.readCompose(winboat.containerMgr!.composeFilePath);
+    const storageVolume = compose.value.services.freedos.volumes.find(vol => vol.includes("/storage"));
+    isVolumeStorage.value = !!storageVolume?.startsWith("data:");
 
     // Highlight the navitem for the home page, since by default no
     // navitem is highlighted and we can't use `toggled`

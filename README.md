@@ -22,9 +22,11 @@ DOSBoat is perfect for:
 - Interfacing with serial hardware (modems, data acquisition devices, programmable controllers)
 - Retro computing and hobbyist projects involving serial communications
 
+This project was born out of the need for Amatuer Radio Operators (Ham Radio) to use legacy software to program radios where the manufacturer never had the programming software updated to run on Windows, much less Win11. Also, the lack of serial ports on modern PCs requires a translation layer to expose USB to serial adapters to DOS.
+
 ## Prerequisites
 
-Before running DOSBoat, ensure your system meets the following requirements:
+Before running DOSBoat, ensure your system meets the following modist requirements:
 
 - **RAM**: At least 512 MB of RAM (FreeDOS is very lightweight)
 - **CPU**: At least 1 CPU thread

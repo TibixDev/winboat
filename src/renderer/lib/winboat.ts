@@ -13,16 +13,46 @@ import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { execFileAsync, stringifyExecFile } from "./exec-helper";
 
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
 const { promisify }: typeof import("util") = require("node:util");
+const os: typeof import("os") = require("node:os");
 const { exec }: typeof import("child_process") = require("node:child_process");
 
 const execAsync = promisify(exec);
 export const logger = createLogger(path.join(DOSBOAT_DIR, "dosboat.log"));
 
 const QMP_WAIT_MS = 2000;
+
+function parseSizeToMB(raw: string): number {
+    const match = /^\s*([0-9.]+)\s*([KMG]?)(?:i?B)?\s*$/i.exec(raw);
+    if (!match) return 0;
+    const value = Number.parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    const multiplier = unit === "G" ? 1024 : unit === "K" ? 1 / 1024 : 1;
+    return Number.isNaN(value) ? 0 : value * multiplier;
+}
+
+function parseHumanSizeToMB(raw: string): number {
+    const match = /([0-9.]+)\s*([KMGTP]?i?B)/i.exec(raw);
+    if (!match) return 0;
+    const value = Number.parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+    const multipliers: Record<string, number> = {
+        B: 1 / 1024 / 1024,
+        KB: 1 / 1024,
+        KIB: 1 / 1024,
+        MB: 1,
+        MIB: 1,
+        GB: 1024,
+        GIB: 1024,
+        TB: 1024 * 1024,
+        TIB: 1024 * 1024,
+    };
+    return Number.isNaN(value) ? 0 : value * (multipliers[unit] ?? 1);
+}
 
 export class Dosboat {
     private static instance: Dosboat | null = null;
@@ -72,9 +102,11 @@ export class Dosboat {
                 logger.info(`Dosboat Container state changed to ${_containerStatus}`);
 
                 if (_containerStatus === ContainerStatus.RUNNING) {
+                    this.isOnline.value = true;
                     await this.containerMgr!.port(); // Cache active port mappings
                     await this.createAPIIntervals();
                 } else {
+                    this.isOnline.value = false;
                     await this.destroyAPIIntervals();
                 }
             }
@@ -145,8 +177,73 @@ export class Dosboat {
     }
 
     async getMetrics() {
-        // TODO: Implement metrics collection via QMP for FreeDOS
-        return this.metrics.value;
+        const compose = this.containerMgr ? Dosboat.readCompose(this.containerMgr.composeFilePath) : null;
+        const ramTotalMB = compose ? parseSizeToMB(compose.services.freedos.environment.RAM_SIZE) : 0;
+        const diskTotalMB = compose ? parseSizeToMB(compose.services.freedos.environment.DISK_SIZE) : 0;
+        const { cpuPercent, memUsedMB, memTotalMB } = await this.getContainerStats();
+        const hostCpuSpeed = os.cpus()?.[0]?.speed ?? 0;
+
+        let diskUsedMB = 0;
+        if (compose) {
+            const storageVolume = compose.services.freedos.volumes.find(vol => vol.includes("/storage"));
+            const storageHost = storageVolume?.split(":").at(0) ?? null;
+            if (storageHost && !storageHost.startsWith("data")) {
+                const diskPath = path.join(storageHost, "disk.qcow2");
+                if (fs.existsSync(diskPath)) {
+                    diskUsedMB = Math.round(fs.statSync(diskPath).size / 1024 / 1024);
+                }
+            }
+        }
+
+        const finalRamTotal = ramTotalMB > 0 ? ramTotalMB : memTotalMB;
+        const ramPercent = finalRamTotal > 0 ? (memUsedMB / finalRamTotal) * 100 : 0;
+        const diskPercent = diskTotalMB > 0 ? (diskUsedMB / diskTotalMB) * 100 : 0;
+
+        return {
+            cpu: {
+                usage: Math.min(cpuPercent, 100),
+                frequency: hostCpuSpeed,
+            },
+            ram: {
+                used: memUsedMB,
+                total: finalRamTotal,
+                percentage: ramPercent,
+            },
+            disk: {
+                used: diskUsedMB,
+                total: diskTotalMB,
+                percentage: diskPercent,
+            },
+        };
+    }
+
+    async getContainerStats() {
+        if (!this.containerMgr) {
+            return { cpuPercent: 0, memUsedMB: 0, memTotalMB: 0 };
+        }
+
+        const args = [
+            "stats",
+            "--no-stream",
+            "--format",
+            "{{.CPUPerc}}|{{.MemUsage}}",
+            this.containerMgr.containerName,
+        ];
+
+        try {
+            const { stdout } = await execFileAsync(this.containerMgr.executableAlias, args);
+            const line = stdout.trim().split("\n")[0] ?? "";
+            const [cpuStr = "0", memStr = "0 / 0"] = line.split("|");
+            const cpuPercent = Number.parseFloat(cpuStr.replace("%", "")) || 0;
+            const [memUsedStr, memTotalStr] = memStr.split("/").map(part => part.trim());
+            const memUsedMB = parseHumanSizeToMB(memUsedStr || "0");
+            const memTotalMB = parseHumanSizeToMB(memTotalStr || "0");
+            return { cpuPercent, memUsedMB, memTotalMB };
+        } catch (e) {
+            logger.error(`Failed to read container stats via '${stringifyExecFile(this.containerMgr.executableAlias, args)}'`);
+            logger.error(e);
+            return { cpuPercent: 0, memUsedMB: 0, memTotalMB: 0 };
+        }
     }
 
     static readCompose(composePath: string): ComposeConfig {

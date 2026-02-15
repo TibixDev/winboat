@@ -36,8 +36,8 @@
                     v-model:value="shareFolder"
                 >
                     <template v-slot:desc>
-                        If enabled, your selected folder will be mounted in the FreeDOS container at
-                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">/shared</span>
+                        If enabled, your selected folder will appear in FreeDOS as a shared drive
+                        (<span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">D:</span>). The CD-ROM will move to the next letter.
                     </template>
                 </ConfigCard>
 
@@ -61,6 +61,17 @@
                     </x-button>
                 </ConfigCard>
 
+                <!-- Shared Folder Drive Letter -->
+                <ConfigCard
+                    v-if="shareFolder"
+                    icon="mdi:drive-harddisk"
+                    title="Shared Folder Drive Letter"
+                    desc="Drive letter is fixed to avoid FreeDOS letter gaps."
+                    type="dropdown"
+                    :options="SHARED_DRIVE_LETTERS"
+                    v-model:value="wbConfig.config.sharedDriveLetter"
+                />
+
                 <!-- Auto Start Container -->
                 <ConfigCard
                     icon="clarity:power-solid"
@@ -76,10 +87,20 @@
                     :disabled="saveButtonDisabled || isUpdatingUSBPrerequisites"
                     @click="saveCompose()"
                     class="w-24"
+                    :class="{
+                        '!bg-violet-500/30 hover:!bg-violet-500/40 !border-violet-500/30 !text-violet-100':
+                            !saveButtonDisabled && !isUpdatingUSBPrerequisites,
+                    }"
                 >
                     <span v-if="!isApplyingChanges || isUpdatingUSBPrerequisites">Save</span>
                     <x-throbber v-else class="w-10"></x-throbber>
                 </x-button>
+                <x-label
+                    v-if="!saveButtonDisabled && !isUpdatingUSBPrerequisites"
+                    class="text-xs text-violet-300"
+                >
+                    Unsaved changes
+                </x-label>
             </div>
         </div>
         <div v-show="wbConfig.config.experimentalFeatures">
@@ -325,6 +346,8 @@ import {
     RESTART_ON_FAILURE,
     RESTART_NO,
     GUEST_QMP_PORT,
+    SHARED_DRIVE_LETTERS,
+    SHARED_DRIVE_INDEX_BY_LETTER,
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
@@ -343,6 +366,7 @@ const shareFolder = ref(false);
 const origShareFolder = ref(false);
 const sharedFolderPath = ref("");
 const origSharedFolderPath = ref("");
+const origSharedDriveLetter = ref("D");
 const origAutoStartContainer = ref(false);
 const autoStartContainer = ref(false);
 const isApplyingChanges = ref(false);
@@ -365,7 +389,15 @@ const usbManager = USBManager.getInstance();
 
 // Constants
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
-const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
+
+function buildSharedDriveArg() {
+    const index = SHARED_DRIVE_INDEX_BY_LETTER[wbConfig.config.sharedDriveLetter];
+    return `-drive file=fat:rw:/shared,format=raw,if=ide,index=${index}`;
+}
+
+function stripSharedDriveArg(args: string) {
+    return args.replace(/\s*-drive file=fat:rw:\/shared,format=raw,if=ide,index=\d+/g, "").trim();
+}
 
 onMounted(async () => {
     await assignValues();
@@ -398,6 +430,7 @@ async function assignValues() {
     }
     origShareFolder.value = shareFolder.value;
     origSharedFolderPath.value = sharedFolderPath.value;
+    origSharedDriveLetter.value = wbConfig.config.sharedDriveLetter;
 
     autoStartContainer.value = compose.value.services.freedos.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
@@ -429,6 +462,20 @@ async function saveCompose() {
     if (shareFolder.value && sharedFolderPath.value) {
         const volumeStr = `${sharedFolderPath.value}:/shared`;
         compose.value!.services.freedos.volumes.push(volumeStr);
+    }
+
+    if (!compose.value!.services.freedos.environment.ARGUMENTS) {
+        compose.value!.services.freedos.environment.ARGUMENTS = "";
+    }
+
+    // Strip both QMP and shared drive arguments (QMP is now in entrypoint.sh)
+    compose.value!.services.freedos.environment.ARGUMENTS = stripSharedDriveArg(
+        compose.value!.services.freedos.environment.ARGUMENTS,
+    ).replace(/\s*-qmp\s+tcp:0\.0\.0\.0:7149,server,wait=off/g, "").trim();
+
+    if (shareFolder.value && sharedFolderPath.value) {
+        compose.value!.services.freedos.environment.ARGUMENTS =
+            `${compose.value!.services.freedos.environment.ARGUMENTS} ${buildSharedDriveArg()}`.trim();
     }
 
     compose.value!.services.freedos.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
@@ -497,9 +544,7 @@ async function addRequiredComposeFieldsUSB() {
     if (!compose.value!.services.freedos.environment.ARGUMENTS) {
         compose.value!.services.freedos.environment.ARGUMENTS = "";
     }
-    if (!hasQmpArgument(compose)) {
-        compose.value!.services.freedos.environment.ARGUMENTS += `\n${QMP_ARGUMENT}`;
-    }
+    // QMP argument is now in entrypoint.sh, no longer needed in ARGUMENTS
 
     if (!compose.value!.services.freedos.environment.HOST_PORTS) {
         compose.value!.services.freedos.environment.HOST_PORTS = "";
@@ -538,14 +583,12 @@ const errors = computedAsync(async () => {
 
 const hasUsbVolume = (_compose: typeof compose) =>
     _compose.value?.services.freedos.volumes?.some(x => x.includes(USB_BUS_PATH));
-const hasQmpArgument = (_compose: typeof compose) =>
-    _compose.value?.services.freedos.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = () => portMapper.value!.hasShortPortMapping(GUEST_QMP_PORT) ?? false;
 const hasHostPort = (_compose: typeof compose) =>
     _compose.value?.services.freedos.environment.HOST_PORTS?.includes(GUEST_QMP_PORT.toString());
 
 const usbPassthroughDisabled = computed(() => {
-    return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
+    return !hasUsbVolume(compose) || !hasQmpPort() || !hasHostPort(compose);
 });
 
 const saveButtonDisabled = computed(() => {
@@ -554,6 +597,7 @@ const saveButtonDisabled = computed(() => {
         origRamGB.value !== ramGB.value ||
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
+        origSharedDriveLetter.value !== wbConfig.config.sharedDriveLetter ||
         autoStartContainer.value !== origAutoStartContainer.value;
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;

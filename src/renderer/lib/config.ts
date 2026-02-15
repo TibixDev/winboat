@@ -1,6 +1,6 @@
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
-import { DOSBOAT_DIR } from "./constants";
+import { DOSBOAT_DIR, SHARED_DRIVE_LETTERS, type SharedDriveLetter } from "./constants";
 import { ContainerRuntimes } from "./containers/common";
 import { logger } from "./winboat";
 import type { PTSerializableDeviceInfo } from "./usbmanager";
@@ -50,6 +50,7 @@ export type DosboatConfigObj = {
     advancedFeatures: boolean;
     disableAnimations: boolean;
     vncScale: number;
+    sharedDriveLetter: SharedDriveLetter;
     appsSortOrder: "name" | "usage";
     containerRuntime: ContainerRuntimes;
     versionData: DosboatVersionData;
@@ -64,6 +65,7 @@ const defaultConfig: DosboatConfigObj = {
     advancedFeatures: false,
     disableAnimations: false,
     vncScale: 2,
+    sharedDriveLetter: "D",
     appsSortOrder: "name",
     containerRuntime: ContainerRuntimes.DOCKER,
     versionData: {
@@ -147,6 +149,10 @@ export class DosboatConfig {
             }
 
             const configObj = configObjRaw as DosboatConfigObj;
+
+            if (!SHARED_DRIVE_LETTERS.includes(configObj.sharedDriveLetter)) {
+                configObj.sharedDriveLetter = "D";
+            }
 
             console.log("Successfully read the config file");
 

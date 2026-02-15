@@ -1,5 +1,5 @@
 import { type InstallConfiguration } from "../../types";
-import { DOSBOAT_DIR } from "./constants";
+import { DOSBOAT_DIR, SHARED_DRIVE_INDEX_BY_LETTER } from "./constants";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Dosboat } from "./winboat";
@@ -60,6 +60,16 @@ export class InstallManager {
 
     sleep(ms: number) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    buildSharedDriveArg() {
+        const letter = DosboatConfig.getInstance().config.sharedDriveLetter;
+        const index = SHARED_DRIVE_INDEX_BY_LETTER[letter];
+        return `-drive file=fat:rw:/shared,format=raw,if=ide,index=${index}`;
+    }
+
+    stripSharedDriveArg(args: string) {
+        return args.replace(/\s*-drive file=fat:rw:\/shared,format=raw,if=ide,index=\d+/g, "").trim();
     }
 
     async createComposeFile() {
@@ -144,6 +154,19 @@ export class InstallManager {
                 composeContent.services.freedos.volumes[sharedFolderIdx] = volumeStr;
                 logger.info(`Updated shared folder to: ${this.conf.sharedFolderPath}`);
             }
+        }
+
+        if (!composeContent.services.freedos.environment.ARGUMENTS) {
+            composeContent.services.freedos.environment.ARGUMENTS = "";
+        }
+
+        composeContent.services.freedos.environment.ARGUMENTS = this.stripSharedDriveArg(
+            composeContent.services.freedos.environment.ARGUMENTS,
+        );
+
+        if (this.conf.sharedFolderPath) {
+            composeContent.services.freedos.environment.ARGUMENTS =
+                `${composeContent.services.freedos.environment.ARGUMENTS} ${this.buildSharedDriveArg()}`.trim();
         }
 
         // Add serial port device mappings if configured
