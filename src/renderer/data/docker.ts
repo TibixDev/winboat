@@ -27,8 +27,8 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
             cap_add: ["NET_ADMIN"],
             privileged: true,
             ports: [
-                "127.0.0.1:47270-47279:8006", // VNC Web Interface
-                "127.0.0.1:47290-47299:7149", // QEMU QMP Port
+                "127.0.0.1:8006:8006", // VNC Web Interface
+                "127.0.0.1:7149:7149", // QEMU QMP Port
             ],
             stop_grace_period: "120s",
             restart: RESTART_ON_FAILURE,
