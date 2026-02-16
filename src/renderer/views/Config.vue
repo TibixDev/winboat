@@ -756,6 +756,11 @@ watch(shareFolder, (newValue) => {
         sharedFolderPath.value = os.homedir();
     }
 });
+
+// Watch for USB device changes and refresh available devices list
+watch(usbManager.devices, () => {
+    refreshAvailableDevices();
+});
 </script>
 
 <style scoped>

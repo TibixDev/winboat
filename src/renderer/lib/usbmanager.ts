@@ -359,9 +359,15 @@ export class USBManager {
     }
 
     async #QMPCheckIfDeviceExists(vendorId: number, productId: number): Promise<boolean> {
+        // Check if QMP is available
+        if (!this.#winboat.qmpMgr) {
+            logger.info(`QMP not available yet, skipping device existence check for ${vendorId}:${productId}`);
+            return false;
+        }
+
         let response = null;
         try {
-            response = await this.#winboat.qmpMgr!.executeCommand("human-monitor-command", {
+            response = await this.#winboat.qmpMgr.executeCommand("human-monitor-command", {
                 "command-line": "info qtree",
             });
             assert("result" in response);
@@ -378,6 +384,12 @@ export class USBManager {
 
     // TODO: handle hostaddr/hostbus in case of duplicate VID/PID
     async #QMPAddDevice(device: Device) {
+        // Check if QMP is available
+        if (!this.#winboat.qmpMgr) {
+            logger.info(`QMP not available yet, will retry adding device ${device.deviceDescriptor.idVendor}:${device.deviceDescriptor.idProduct}`);
+            return;
+        }
+
         let response = null;
         const vendorid = device.deviceDescriptor.idVendor;
         const productid = device.deviceDescriptor.idProduct;
@@ -390,7 +402,7 @@ export class USBManager {
         }
 
         try {
-            response = await this.#winboat.qmpMgr!.executeCommand("device_add", {
+            response = await this.#winboat.qmpMgr.executeCommand("device_add", {
                 driver: "usb-host",
                 id: `${vendorid}:${productid}`, // TODO: get rid of this when we support multiple devices of the same kind
                 vendorid,
@@ -408,9 +420,15 @@ export class USBManager {
     }
 
     async #QMPRemoveDevice(vendorId: number, productId: number) {
+        // Check if QMP is available
+        if (!this.#winboat.qmpMgr) {
+            logger.info(`QMP not available yet, skipping device removal for ${vendorId}:${productId}`);
+            return;
+        }
+
         let response = null;
         try {
-            response = await this.#winboat.qmpMgr!.executeCommand("device_del", { id: `${vendorId}:${productId}` });
+            response = await this.#winboat.qmpMgr.executeCommand("device_del", { id: `${vendorId}:${productId}` });
             assert("result" in response);
         } catch (e) {
             logger.error(`There was an error removing USB device '${vendorId}:${productId}'`);
