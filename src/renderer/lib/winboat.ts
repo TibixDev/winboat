@@ -278,8 +278,13 @@ export class Dosboat {
             assert("return" in capabilities);
 
             const commands = await this.qmpMgr.executeCommand("query-commands");
+            // Guard against unexpected/malformed replies — log and throw so caller can handle it
+            if (!("return" in commands) || !Array.isArray((commands as any).return)) {
+                logger.error("Invalid response to 'query-commands' — unexpected shape:", commands);
+                throw new Error("Invalid QMP response for query-commands");
+            }
             // @ts-ignore property "result" already exists due to assert
-            assert(commands.return.every(x => "name" in x));
+            assert((commands as any).return.every((x: any) => "name" in x));
         } catch (e) {
             logger.error("There was an error connecting to QMP");
             logger.error(e);

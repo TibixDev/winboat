@@ -22,6 +22,50 @@
                 </div>
             </div>
         </teleport>
+
+        <!-- USB device details modal -->
+        <teleport to="body">
+            <div v-if="deviceDetailsVisible"
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div class="w-[min(820px,96vw)] rounded-2xl border border-white/10 bg-neutral-900/90 p-6 shadow-2xl max-h-[80vh] overflow-auto">
+                    <div class="flex items-center gap-3">
+                        <Icon class="text-violet-400 size-8" icon="mdi:usb"></Icon>
+                        <h2 class="my-0 text-lg font-semibold text-neutral-100">USB device details</h2>
+                    </div>
+
+                    <p class="mt-3 text-sm text-neutral-300">
+                        <span v-if="deviceDetailsData">{{ deviceDetailsData.device ? usbManager.stringifyPTSerializableDevice(deviceDetailsData.device) : '' }}</span>
+                        <span v-else>Loading...</span>
+                    </p>
+
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h3 class="text-xs text-neutral-400 mb-2">QEMU qtree (matching lines)</h3>
+                            <pre class="bg-neutral-800/60 p-3 rounded text-xs text-gray-300 overflow-auto max-h-40">{{ (deviceDetailsData?.qtreeDeviceLines || []).join('\n') || deviceDetailsData?.qtreeFull || '—' }}</pre>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xs text-neutral-400 mb-2">Recent qmp.log</h3>
+                            <pre class="bg-neutral-800/60 p-3 rounded text-xs text-gray-300 overflow-auto max-h-40">{{ deviceDetailsData?.qmpLogTail || '—' }}</pre>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <h3 class="text-xs text-neutral-400 mb-2">Recent dosboat.log</h3>
+                            <pre class="bg-neutral-800/60 p-3 rounded text-xs text-gray-300 overflow-auto max-h-48">{{ deviceDetailsData?.dosboatLogTail || '—' }}</pre>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex items-center justify-end gap-3">
+                        <x-button :disabled="deviceDetailsLoading" @click="verifyDeviceInGuest(deviceDetailsData?.device)">
+                            <x-label>Verify in VM</x-label>
+                        </x-button>
+                        <x-button class="!bg-red-600/20 hover:!bg-red-600/30 !border-0" @click="deviceDetailsVisible=false">
+                            <x-label>Close</x-label>
+                        </x-button>
+                    </div>
+                </div>
+            </div>
+        </teleport>
         <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ hidden: !maxNumCores }">
             <div>
                 <x-label class="mb-4 text-neutral-300">Container</x-label>
@@ -184,11 +228,36 @@
                                             <p class="text-base !m-0 text-gray-200">
                                                 {{ usbManager.stringifyPTSerializableDevice(device) }}
                                             </p>
+
+                                            <!-- VM attachment status -->
+                                            <span class="ml-2">
+                                                <template v-if="guestStatus[`${device.vendorId}-${device.productId}`] === 'attached'">
+                                                    <Icon icon="mdi:check-circle" class="text-emerald-400 size-6" />
+                                                </template>
+                                                <template v-else-if="guestStatus[`${device.vendorId}-${device.productId}`] === 'checking'">
+                                                    <x-throbber class="w-4 h-4 inline-block ml-1"></x-throbber>
+                                                </template>
+                                                <template v-else-if="guestStatus[`${device.vendorId}-${device.productId}`] === 'not-attached'">
+                                                    <Icon icon="mdi:close-circle" class="text-red-400 size-6" />
+                                                </template>
+                                                <template v-else>
+                                                    <Icon icon="mdi:help-circle" class="text-neutral-400 size-6" />
+                                                </template>
+                                            </span>
                                         </div>
-                                        <x-button @click="removeDevice(device)"
-                                            class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0">
-                                            <x-icon href="#remove"></x-icon>
-                                        </x-button>
+
+                                        <div class="flex items-center gap-2">
+                                            <x-button @click="verifyDeviceInGuest(device)" :disabled="!canVerify" :title="canVerify ? 'Verify passthrough status' : (winboat.isOnline ? 'Waiting for QMP...' : 'VM not running')" class="mt-1 !bg-gradient-to-tl from-blue-400/10 to-transparent hover:from-blue-400/20 transition !border-0 text-xs">
+                                                <x-label v-if="!canVerify">Verify</x-label>
+                                                <x-label v-else>Verify</x-label>
+                                            </x-button>
+                                            <x-button @click="showDeviceDetails(device)" :disabled="!canVerify" :title="canVerify ? 'Show QMP/log details' : 'Waiting for QMP...'" class="mt-1 !bg-gradient-to-tl from-neutral-700/10 to-transparent hover:from-neutral-700/20 transition !border-0 text-xs">
+                                                <x-icon href="#info"></x-icon>
+                                            </x-button>
+                                            <x-button @click="removeDevice(device)" class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0">
+                                                <x-icon href="#remove"></x-icon>
+                                            </x-button>
+                                        </div>
                                     </x-card>
                                 </TransitionGroup>
                                 <x-button v-if="availableDevices.length > 0"
@@ -208,6 +277,51 @@
                                     </TransitionGroup>
                                 </x-button>
                             </template>
+                        </div>
+                    </x-card>
+                    <x-card
+                        class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20">
+                        <div class="w-full">
+                            <div class="flex flex-row gap-2 items-center mb-2">
+                                <Icon class="inline-flex text-emerald-400 size-8" icon="mdi:serial-port"></Icon>
+                                <h1 class="my-0 text-lg font-semibold">
+                                    Serial Ports (COM)
+                                </h1>
+                                <x-button class="ml-auto !bg-gradient-to-tl from-emerald-400/10 to-transparent hover:from-emerald-400/20 transition !border-0 text-xs"
+                                    @click="serialManager.refreshPorts()">
+                                    <x-label>Refresh</x-label>
+                                </x-button>
+                            </div>
+
+                            <x-label class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                                Pass-through host serial devices (e.g. /dev/ttyUSB0) as COM ports in FreeDOS.
+                            </x-label>
+
+                            <div v-if="serialManager.availablePorts.value.length === 0"
+                                class="mt-3 text-sm text-neutral-400">
+                                No serial ports detected.
+                            </div>
+
+                            <div v-else class="mt-3 flex flex-col gap-2">
+                                <div v-for="port in serialManager.availablePorts.value as SerialPortInfo[]"
+                                    :key="port.path"
+                                    class="flex items-center gap-3 rounded bg-white/5 px-3 py-2">
+                                    <x-switch
+                                        size="large"
+                                        :toggled="serialManager.isPortPassedThrough(port.path)"
+                                        @toggle="() => toggleSerialPort(port.path)"
+                                    />
+                                    <div class="flex flex-col">
+                                        <span class="text-neutral-100 text-sm">{{ port.path }}</span>
+                                        <span class="text-neutral-400 text-xs">
+                                            {{ port.description }}
+                                            <span v-if="port.vendorId && port.productId">
+                                                ({{ port.vendorId }}:{{ port.productId }})
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </x-card>
                 </div>
@@ -288,7 +402,8 @@ import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
 import { DosboatConfig } from "../lib/config";
-import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
+import { USBManager, type PTSerializableDeviceInfo, type PTDeviceDiagnostics } from "../lib/usbmanager";
+import { SerialManager, type SerialPortInfo } from "../lib/serialmanager";
 import { type Device } from "usb";
 import {
     USB_VID_BLACKLIST,
@@ -298,11 +413,15 @@ import {
     SHARED_DRIVE_LETTERS,
     SHARED_DRIVE_INDEX_BY_LETTER,
     DOS_MEMORY_OPTIONS,
+    SERIAL_PORT_PREFIXES,
 } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
 const os: typeof import("os") = require("node:os");
+const fs: typeof import("fs") = require("fs");
+const path: typeof import("path") = require("path");
+import { DOSBOAT_DIR } from "../lib/constants";
 const $router = useRouter();
 
 // For Resources
@@ -324,6 +443,7 @@ const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const resetOptionsVisible = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
+const origSerialPorts = ref<string[]>([]);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -337,6 +457,53 @@ let portMapper = ref<ComposePortMapper | null>(null);
 const wbConfig = reactive(DosboatConfig.getInstance());
 const winboat = Dosboat.getInstance();
 const usbManager = USBManager.getInstance();
+const serialManager = SerialManager.getInstance();
+
+// Per-device guest attach verification status (lazy / on-demand)
+const guestStatus = reactive<Record<string, "unknown" | "checking" | "attached" | "not-attached">>({});
+
+// Device details modal state
+const deviceDetailsVisible = ref(false);
+const deviceDetailsLoading = ref(false);
+const deviceDetailsData = ref<PTDeviceDiagnostics & { device?: PTSerializableDeviceInfo } | null>(null);
+
+// QMP readiness helper (reactive)
+const qmpReady = ref(false);
+
+// Poll QMP readiness when VM goes online or when QMP manager appears
+watch(winboat.isOnline, async (isOnline) => {
+    qmpReady.value = false;
+    console.debug("qmpReady -> false (watch triggered)");
+    if (!isOnline) return;
+
+    // Wait for QMP Manager to appear and be alive (up to 30s)
+    let attempts = 0;
+    while (attempts < 30) {
+        if (winboat.qmpMgr) {
+            try {
+                if (await winboat.qmpMgr.isAlive()) {
+                    qmpReady.value = true;
+                    console.debug("qmpReady -> true");
+                    break;
+                }
+            } catch {
+                // ignore and retry
+            }
+        }
+        attempts++;
+        await new Promise(r => setTimeout(r, 1000));
+    }
+    if (!qmpReady.value) console.debug("qmpReady still false after polling");
+}, { immediate: true });
+
+const canVerify = computed(() => {
+    return (
+        typeof usbManager.isDeviceInGuest === "function" ||
+        typeof usbManager.getDeviceDiagnostics === "function" ||
+        qmpReady.value === true ||
+        Boolean(winboat.qmpMgr)
+    );
+});
 
 // Constants
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
@@ -350,6 +517,13 @@ function stripSharedDriveArg(args: string) {
     return args.replace(/\s*-drive file=fat:rw:\/shared,format=raw,if=ide,index=\d+/g, "").trim();
 }
 
+function stripSerialArgs(args: string) {
+    let cleaned = args;
+    cleaned = cleaned.replace(/\s*-chardev\s+serial,id=hostserial\d+,path=\/dev\/tty\w+/g, "");
+    cleaned = cleaned.replace(/\s*-device\s+isa-serial,chardev=hostserial\d+/g, "");
+    return cleaned.trim();
+}
+
 onMounted(async () => {
     await assignValues();
 });
@@ -361,6 +535,9 @@ onMounted(async () => {
 async function assignValues() {
     compose.value = Dosboat.readCompose(winboat.containerMgr!.composeFilePath);
     portMapper.value = new ComposePortMapper(compose.value);
+
+    serialManager.refreshPorts();
+    origSerialPorts.value = [...serialManager.passedThroughPorts.value];
 
     numCores.value = Number(compose.value.services.freedos.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -466,9 +643,34 @@ async function saveCompose() {
         compose.value!.services.freedos.environment.ARGUMENTS,
     ).replace(/\s*-qmp\s+tcp:0\.0\.0\.0:7149,server,wait=off/g, "").trim();
 
+    compose.value!.services.freedos.environment.ARGUMENTS = stripSerialArgs(
+        compose.value!.services.freedos.environment.ARGUMENTS,
+    );
+
     if (shareFolder.value && sharedFolderPath.value) {
         compose.value!.services.freedos.environment.ARGUMENTS =
             `${compose.value!.services.freedos.environment.ARGUMENTS} ${buildSharedDriveArg()}`.trim();
+    }
+
+    const serialPorts = [...serialManager.passedThroughPorts.value];
+    const portPrefixes = SERIAL_PORT_PREFIXES.map(prefix => `/dev/${prefix}`);
+    compose.value!.services.freedos.devices = (compose.value!.services.freedos.devices ?? []).filter(
+        device => !portPrefixes.some(prefix => device.includes(prefix)),
+    );
+
+    if (serialPorts.length > 0) {
+        for (const port of serialPorts) {
+            const mapping = `${port}:${port}`;
+            if (!compose.value!.services.freedos.devices.includes(mapping)) {
+                compose.value!.services.freedos.devices.push(mapping);
+            }
+        }
+
+        const serialArgs = serialManager.generateQemuSerialArgs();
+        if (serialArgs) {
+            compose.value!.services.freedos.environment.ARGUMENTS =
+                `${compose.value!.services.freedos.environment.ARGUMENTS} ${serialArgs}`.trim();
+        }
     }
 
     compose.value!.services.freedos.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
@@ -595,7 +797,9 @@ const saveButtonDisabled = computed(() => {
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
         origSharedDriveLetter.value !== wbConfig.config.sharedDriveLetter ||
-        autoStartContainer.value !== origAutoStartContainer.value;
+        autoStartContainer.value !== origAutoStartContainer.value ||
+        JSON.stringify([...origSerialPorts.value].sort()) !==
+            JSON.stringify([...serialManager.passedThroughPorts.value].sort());
 
     const shouldBeDisabled = errors.value?.length || !hasResourceChanges || isApplyingChanges.value;
 
@@ -657,6 +861,14 @@ function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
     }
 }
 
+function toggleSerialPort(portPath: string) {
+    if (serialManager.isPortPassedThrough(portPath)) {
+        serialManager.removePort(portPath);
+    } else {
+        serialManager.addPort(portPath);
+    }
+}
+
 async function toggleExperimentalFeatures() {
     // Remove all passthrough USB devices if we're disabling experimental features
     // since USB passthrough is an experimental feature
@@ -682,8 +894,247 @@ watch(shareFolder, (newValue) => {
 });
 
 // Watch for USB device changes and refresh available devices list
-watch(usbManager.devices, () => {
+watch(usbManager.devices, async () => {
     refreshAvailableDevices();
+
+    // Auto-verify any passthrough devices that are now connected on the host
+    // (helps when user unplugs/re-plugs a device)
+    if (!usbManager.ptDevices.value.length) return;
+
+    for (const pt of usbManager.ptDevices.value) {
+        if (usbManager.isPTDeviceConnected(pt)) {
+            // Run verification but don't block the watcher
+            void verifyDeviceInGuest(pt).catch(e => console.error("auto-verify failed:", e));
+        }
+    }
+});
+
+// Helper: device key for maps
+function _deviceKey(device: PTSerializableDeviceInfo) {
+    return `${device.vendorId}-${device.productId}`;
+}
+
+// Verify whether PT device exists in the guest (updates guestStatus)
+async function verifyDeviceInGuest(device?: PTSerializableDeviceInfo | null) {
+    if (!device) return false;
+    const key = _deviceKey(device);
+    guestStatus[key] = "checking";
+
+    // Wait briefly for verification APIs or QMP to become available (helps with timing races)
+    const waitUntil = Date.now() + 8000; // 8s max
+    while (Date.now() < waitUntil) {
+        if (
+            typeof usbManager.isDeviceInGuest === "function" ||
+            typeof usbManager.getDeviceDiagnostics === "function" ||
+            qmpReady.value === true ||
+            (winboat.qmpMgr && (await winboat.qmpMgr.isAlive()))
+        ) {
+            break;
+        }
+        // small backoff
+        await new Promise(r => setTimeout(r, 250));
+    }
+
+    // Preferred API (if available)
+    if (typeof usbManager.isDeviceInGuest === "function") {
+        try {
+            const inGuest = await usbManager.isDeviceInGuest(device.vendorId, device.productId);
+            guestStatus[key] = inGuest ? "attached" : "not-attached";
+            return inGuest;
+        } catch (e) {
+            console.error("verifyDeviceInGuest (isDeviceInGuest):", e);
+            // fallthrough to other checks
+        }
+    }
+
+    // Fallback: diagnostics API
+    if (typeof usbManager.getDeviceDiagnostics === "function") {
+        try {
+            const diag = await usbManager.getDeviceDiagnostics(device.vendorId, device.productId);
+            guestStatus[key] = diag.inGuest ? "attached" : "not-attached";
+            return diag.inGuest;
+        } catch (e) {
+            console.error("verifyDeviceInGuest (getDeviceDiagnostics):", e);
+            // fallthrough
+        }
+    }
+
+    // QMP fallback: poll qtree a few times (tolerate small timing races after device_add)
+    if (winboat.qmpMgr && (await winboat.qmpMgr.isAlive())) {
+        try {
+            const vendorIdHex = device.vendorId.toString(16).padStart(4, "0");
+            const productIdHex = device.productId.toString(16).padStart(4, "0");
+            let inGuest = false;
+            const attempts = 6;
+            for (let attempt = 0; attempt < attempts; attempt++) {
+                try {
+                    const response = await winboat.qmpMgr.executeCommand("human-monitor-command", {
+                        "command-line": "info qtree",
+                    });
+                    // @ts-ignore
+                    const raw = response && ("return" in response ? response.return : response);
+                    let qtreeOutput: string;
+                    if (typeof raw === "string") qtreeOutput = raw;
+                    else if (Array.isArray(raw)) qtreeOutput = raw.join("\n");
+                    else qtreeOutput = JSON.stringify(raw);
+
+                    const deviceLines = qtreeOutput
+                        .split("\n")
+                        .filter((l: string) => l.includes("usb-host") || l.includes(vendorIdHex) || l.includes(productIdHex));
+                    inGuest = deviceLines.some(l => /usb-host/.test(l));
+
+                    if (inGuest) {
+                        guestStatus[key] = "attached";
+                        console.debug(`verifyDeviceInGuest: device ${key} found in qtree (attempt ${attempt + 1})`);
+                        return true;
+                    }
+                } catch (e) {
+                    // ignore and retry
+                    console.debug(`verifyDeviceInGuest: qtree attempt ${attempt + 1} failed:`, e);
+                }
+
+                // Wait before retrying
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            guestStatus[key] = "not-attached";
+            console.debug(`verifyDeviceInGuest: device ${key} not found after ${attempts} qtree attempts`);
+            return false;
+        } catch (e) {
+            console.error("verifyDeviceInGuest (QMP fallback):", e);
+            guestStatus[key] = "not-attached";
+            return false;
+        }
+    }
+
+    // Last resort: helpful debug info
+    console.error(
+        "USBManager.isDeviceInGuest and getDeviceDiagnostics are not available",
+        Object.keys(usbManager || {}).sort(),
+        { ctor: usbManager?.constructor?.name, proto: Object.getPrototypeOf(usbManager) },
+    );
+    guestStatus[key] = "not-attached";
+    return false;
+}
+
+// Show details modal for a device (qtree + recent logs)
+async function showDeviceDetails(device: PTSerializableDeviceInfo) {
+    deviceDetailsVisible.value = true;
+    deviceDetailsLoading.value = true;
+    deviceDetailsData.value = { device, inGuest: undefined, qtreeFull: "", qtreeDeviceLines: [], qmpLogTail: "", dosboatLogTail: "" } as any;
+
+    // Prefer USBManager.getDeviceDiagnostics when available
+    if (typeof usbManager.getDeviceDiagnostics === "function") {
+        try {
+            const diag = await usbManager.getDeviceDiagnostics(device.vendorId, device.productId);
+            deviceDetailsData.value = { device, ...diag } as any;
+            const key = _deviceKey(device);
+            guestStatus[key] = diag.inGuest ? "attached" : "not-attached";
+            deviceDetailsLoading.value = false;
+            return;
+        } catch (e) {
+            console.warn("getDeviceDiagnostics failed, falling back to local QMP/log read", e);
+            // fall-through to fallback logic
+        }
+    }
+
+    // Fallback: query QMP directly and read recent logs from disk
+    try {
+        let qtreeFull = "QMP not available";
+        let qtreeDeviceLines: string[] = [];
+        let inGuest = false;
+
+        if (winboat.qmpMgr && (await winboat.qmpMgr.isAlive())) {
+            try {
+                const response = await winboat.qmpMgr.executeCommand("human-monitor-command", {
+                    "command-line": "info qtree",
+                });
+                // Normalize qtree response into a string
+                // @ts-ignore
+                const qraw = response && ("return" in response ? response.return : response);
+                if (typeof qraw === "string") {
+                    qtreeFull = qraw;
+                } else if (Array.isArray(qraw)) {
+                    qtreeFull = qraw.join("\n");
+                } else {
+                    qtreeFull = JSON.stringify(qraw);
+                }
+
+                const vendorIdHex = device.vendorId.toString(16).padStart(4, "0");
+                const productIdHex = device.productId.toString(16).padStart(4, "0");
+                qtreeDeviceLines = qtreeFull
+                    .split("\n")
+                    .filter((l: string) => l.includes("usb-host") || l.includes(vendorIdHex) || l.includes(productIdHex));
+                inGuest = qtreeDeviceLines.some(l => /usb-host/.test(l));
+            } catch (e) {
+                qtreeFull = `Error getting qtree: ${String(e)}`;
+            }
+        }
+
+        let qmpLogTail = "qmp.log not found";
+        let dosboatLogTail = "dosboat.log not found";
+        try {
+            const qmpLogPath = path.join(DOSBOAT_DIR, "qmp.log");
+            if (fs.existsSync(qmpLogPath)) qmpLogTail = fs.readFileSync(qmpLogPath, "utf8").split("\n").slice(-120).join("\n");
+        } catch (e) {
+            qmpLogTail = `Error reading qmp.log: ${String(e)}`;
+        }
+
+        try {
+            const dosboatLogPath = path.join(DOSBOAT_DIR, "dosboat.log");
+            if (fs.existsSync(dosboatLogPath)) dosboatLogTail = fs.readFileSync(dosboatLogPath, "utf8").split("\n").slice(-120).join("\n");
+        } catch (e) {
+            dosboatLogTail = `Error reading dosboat.log: ${String(e)}`;
+        }
+
+        deviceDetailsData.value = { device, inGuest, qtreeFull, qtreeDeviceLines, qmpLogTail, dosboatLogTail } as any;
+        const key = _deviceKey(device);
+        guestStatus[key] = inGuest ? "attached" : "not-attached";
+        console.debug(`showDeviceDetails: used QMP/log fallback for ${key} (inGuest=${inGuest})`);
+    } catch (e) {
+        deviceDetailsData.value = { device, inGuest: false, qtreeFull: `Error: ${String(e)}`, qtreeDeviceLines: [], qmpLogTail: "", dosboatLogTail: "" } as any;
+    } finally {
+        deviceDetailsLoading.value = false;
+    }
+}
+
+// Keep guestStatus map cleaned up when passthrough list changes
+watch(usbManager.ptDevices, async () => {
+    const present = new Set(usbManager.ptDevices.value.map(d => `${d.vendorId}-${d.productId}`));
+    for (const k of Object.keys(guestStatus)) {
+        if (!present.has(k)) delete guestStatus[k];
+    }
+
+    // If the VM is online, auto-verify the currently configured passthrough devices
+    if (winboat.isOnline.value && usbManager.ptDevices.value.length) {
+        // Wait briefly for QMP to become available (USBManager also does retries on its side)
+        let attempts = 0;
+        while (attempts < 30) {
+            if (winboat.qmpMgr && (await winboat.qmpMgr.isAlive())) break;
+            await new Promise(r => setTimeout(r, 1000));
+            attempts++;
+        }
+
+        // Run verifications in parallel (fire-and-forget is fine because verifyDeviceInGuest updates UI state)
+        await Promise.all(usbManager.ptDevices.value.map(d => verifyDeviceInGuest(d)));
+    }
+}, { deep: true });
+
+// Auto-verify devices when the VM becomes online
+watch(winboat.isOnline, async (isOnline) => {
+    if (!isOnline) return;
+
+    // Wait for QMP Manager to be ready (tries for up to 30s)
+    let attempts = 0;
+    while (attempts < 30) {
+        if (winboat.qmpMgr && (await winboat.qmpMgr.isAlive())) break;
+        await new Promise(r => setTimeout(r, 1000));
+        attempts++;
+    }
+
+    if (usbManager.ptDevices.value.length) {
+        await Promise.all(usbManager.ptDevices.value.map(d => verifyDeviceInGuest(d)));
+    }
 });
 </script>
 
