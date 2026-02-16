@@ -809,7 +809,7 @@ const steps: Step[] = [
     {
         id: StepID.FREEDOS_CONFIG,
         title: "Configure FreeDOS",
-        icon: "simple-icons:freedos",
+        icon: "solar:settings-bold",
     },
     {
         id: StepID.HARDWARE_CONFIG,
