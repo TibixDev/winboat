@@ -16,21 +16,21 @@
                 </div>
                 <Transition name="bounce" mode="out-in">
                     <div :key="currentStepIdx" id="stepIcon" class="flex items-center justify-center relative h-full">
-                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.icon" />
+                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon" />
                         <Icon
                             key="icon-gradient"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"
-                            :icon="currentStep.icon"
+                            :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon"
                         />
                         <Icon
                             key="icon2"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]"
-                            :icon="currentStep.icon"
+                            :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon"
                         />
                         <Icon
                             key="icon3"
                             class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]"
-                            :icon="currentStep.icon"
+                            :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon"
                         />
                     </div>
                 </Transition>
