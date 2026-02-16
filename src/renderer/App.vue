@@ -120,7 +120,9 @@
                     :key="route.path"
                 >
                     <x-navitem>
-                        <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
+                        <Icon 
+                            class="mr-4 w-5 h-5"
+                            :icon="(route.meta!.icon as string)" />
                         <x-label>{{ splitRoute(route.path)?.at(-1)?.token }}</x-label>
                     </x-navitem>
                 </RouterLink>
@@ -129,7 +131,7 @@
                 </div>
             </x-nav>
             <div class="px-5 flex-grow flex flex-col max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-hidden py-4">
-                <div class="flex flex-row gap-2 items-center my-6">
+                <div class="flex flex-row gap-2 items-center my-6 select-none">
                     <Icon class="w-6 h-6 opacity-60" icon="icon-park-solid:toolkit"></Icon>
                     <h1 class="my-0 text-2xl font-semibold opacity-60">WinBoat</h1>
                     <template
@@ -137,8 +139,16 @@
                         :key="key"
                     >
                         <Icon class="w-6 h-6" icon="bitcoin-icons:caret-right-filled"></Icon>
-                        <Icon class="w-6 h-6" :icon="token.icon!"></Icon>
-                        <h1 class="my-0 text-2xl font-semibold">
+                        <Icon 
+                            class="w-6 h-6"
+                            :class="{ 'opacity-75': routerTokens?.lastIndexOf(token)! < routerTokens?.length! - 1 }"
+                            :icon="token.icon!"
+                        />
+                        <h1 
+                            class="my-0 text-2xl font-semibold"
+                            :class="{ 'opacity-75 hover:underline': routerTokens?.lastIndexOf(token)! < routerTokens?.length! - 1 }"
+                            @click="navbarClick(token)"
+                        >
                             {{ token.token }}
                         </h1>
                     </template>
@@ -159,7 +169,7 @@
 
 <script setup lang="ts">
 import { NavigationGuardNext, RouteLocationNormalized, RouteLocationNormalizedLoaded, RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
-import { routes, RouteToken, splitRoute } from "./router";
+import { joinRouteTokens, routes, RouteToken, splitRoute } from "./router";
 import { Icon } from "@iconify/vue";
 import { onMounted, ref, useTemplateRef, watch, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
@@ -170,7 +180,6 @@ import { USBManager } from "./lib/usbmanager";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
 import { addWinBoatIconCollection } from "./utils/icons";
-import { promises } from "fs";
 import { ICONS_PATH } from "./lib/constants";
 import { addNavigationEvents, removeNavigationEvents } from "./utils/navigation";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
@@ -261,8 +270,15 @@ $router.afterEach((to, from, _) => {
     if(isConfigSubroute(fromSplit)) removeNavigationEvents();
 })
 
+function navbarClick(token: RouteToken) {
+    const idx = routerTokens.value?.lastIndexOf(token)!;
+
+    if(idx >= routerTokens.value?.length! - 1) return;
+    
+    $router.push(joinRouteTokens(routerTokens.value!.slice(0, idx + 1)))
+}
+
 function handleMinimize() {
-    console.log("Minimize");
     window.electronAPI.minimizeWindow();
 }
 
@@ -386,7 +402,6 @@ body.disable-animations .blob-anim {
 main {
     --transitionControl: v-bind(transitionControl);
 }
-
 
 .transition, .transition-all, .transition-transform, .transition-opacity, .opening-transition, x-input::before {
     transition-property: var(--transitionControl) !important;

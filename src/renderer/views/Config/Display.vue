@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col mt-12">
+    <div class="flex flex-col mt-12" :class="{ 'hidden': !loadedDom }">
         <div class="flex flex-col gap-4 opening-transition self-center max-w-full w-[84rem] ease-in">
             <ConfigCard
                 class="relative z-10"
@@ -122,9 +122,14 @@
 import { Icon } from "@iconify/vue";
 import ConfigCard from "../../components/ConfigCard.vue";
 import { MultiMonitorMode, WinboatConfig } from "../../lib/config";
-import { reactive } from "vue";
+import { onMounted, reactive, ref } from "vue";
 
 const wbConfig = reactive(WinboatConfig.getInstance());
+const loadedDom = ref(false);
 
-
+onMounted(() => {
+    setTimeout(() => {
+        loadedDom.value = true;
+    }, 100);
+});
 </script>

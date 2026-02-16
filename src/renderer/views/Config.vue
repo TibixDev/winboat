@@ -5,10 +5,9 @@
             
             :icon="tokens.at(-1)!.icon!"
             :title="tokens.at(-1)!.token"
+            :desc="tokens.at(-1)!.desc!"
+            :nav="joinRouteTokens(tokens)"
             :key="key"
-            desc="lorem ipsum"
-
-            @click="router.push(joinRouteTokens(tokens))"
         />
     </div>
 </template>

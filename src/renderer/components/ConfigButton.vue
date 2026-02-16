@@ -1,7 +1,8 @@
 <template>
-    <div class="m-auto group w-full max-h-full xl:px-20 transition-all duration-500 ease-in-out max-xl:aspect-square">
+    <div class="m-auto w-full max-h-full xl:px-20 transition-all duration-500 ease-in-out max-xl:aspect-square">
         <x-card
-            class="flex relative max-xl:flex-col xl:justify-between justify-center items-center h-full my-0 backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20 generic-hover"
+            class="flex relative max-xl:flex-col xl:justify-between justify-center items-center h-full my-0 backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20 group generic-hover"
+            @click="router.push(props.nav)"
         >
             <div class="flex md:max-xl:flex-col h-full w-full items-center md:max-xl:justify-center gap-8">
                 <FancyIcon 
@@ -29,10 +30,14 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import FancyIcon from "./FancyIcon.vue";
+import { useRouter } from "vue-router";
 
 const props = defineProps<{
     icon: string;
     title: string;
     desc: string;
+    nav: string;
 }>();
+
+const router = useRouter();
 </script>

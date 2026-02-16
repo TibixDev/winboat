@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col mt-12">
+    <div class="flex flex-col mt-12" :class="{ 'hidden': !loadedDom }">
         <div class="flex flex-col gap-4 opening-transition self-center max-w-full w-[84rem] ease-in">
             <ConfigCard
                 icon="streamline-ultimate:lab-tube-experiment"
@@ -44,11 +44,19 @@ import { ContainerStatus } from "../../lib/containers/container";
 import { USBManager } from "../../lib/usbmanager";
 import { WinboatConfig } from "../../lib/config";
 import { Winboat } from "../../lib/winboat";
-import { reactive } from "vue";
+import { reactive, onMounted, ref } from "vue";
 
 const wbConfig = reactive(WinboatConfig.getInstance());
 const winboat = Winboat.getInstance();
 const usbManager = USBManager.getInstance();
+
+const loadedDom = ref(false);
+
+onMounted(() => {
+    setTimeout(() => {
+        loadedDom.value = true;
+    }, 100);
+})
 
 async function toggleExperimentalFeatures() {
     // Remove all passthrough USB devices if we're disabling experimental features

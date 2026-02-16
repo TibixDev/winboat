@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col mt-12">
+    <div class="flex flex-col mt-12" :class="{ 'hidden': !loadedDom }">
         <div class="flex flex-col gap-4 opening-transition self-center max-w-full w-[84rem] ease-in">
             <ConfigCard
                 icon="game-icons:swipe-card"
@@ -173,7 +173,6 @@ import {
     GUEST_QMP_PORT,
 } from "../../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../../utils/port";
-const { app }: typeof import("@electron/remote") = require("@electron/remote");
 
 // For General
 const wbConfig = reactive(WinboatConfig.getInstance());
@@ -183,6 +182,7 @@ const usbManager = USBManager.getInstance();
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
 const isUpdatingUSBPrerequisites = ref(false);
+const loadedDom = ref(false);
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -193,7 +193,6 @@ let portMapper = ref<ComposePortMapper | null>(null);
 // ^ Has to be reactive for usbPassthroughDisabled computed to trigger.
 
 // Constants
-const HOMEFOLDER_SHARE_STR = winboat.containerMgr!.defaultCompose.services.windows.volumes.find(v => v.startsWith("${HOME}"))!;
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
 const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain hardcoded as it refers to a guest port
 
@@ -213,6 +212,10 @@ onMounted(() => {
     compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
     portMapper.value = new ComposePortMapper(compose.value);
     refreshAvailableDevices();
+
+    setTimeout(() => {
+        loadedDom.value = true;
+    }, 100);
 })
 
 /**

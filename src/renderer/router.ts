@@ -20,26 +20,59 @@ export const routes: RouteRecordRaw[] = [
     { path: "/Setup", component: SetupUI, meta: { icon: "fluent-mdl2:install-to-drive", } },
     { path: "/Apps", component: Apps, meta: { icon: "fluent:apps-32-filled", nav: true } },
     { path: "/Configuration", component: Config, meta: { icon: "icon-park-outline:config", nav: true }, },
-    { path: "/Configuration/WinBoat", component: Winboat, meta: { icon: "winboat:config-logo"} }, 
-    { path: "/Configuration/General", component: General, meta: { icon: "fluent:wrench-screwdriver-32-regular" } },
-    { path: "/Configuration/Display", component: Display, meta: { icon: "ci:monitor" } },
-    { path: "/Configuration/Devices", component: Devices, meta: { icon: "tabler:device-usb" } },
+    { 
+        path: "/Configuration/WinBoat", 
+        component: Winboat, 
+        meta: { 
+            icon: "winboat:config-logo",
+            desc: "Lorem Ipsum WinBoat"
+        } 
+    }, 
+    { 
+        path: "/Configuration/General", 
+        component: General, 
+        meta: { 
+            icon: "fluent:wrench-screwdriver-32-regular" ,
+            desc: "Lorem Ipsum General"
+        } 
+    },
+    { 
+        path: "/Configuration/Display", 
+        component: 
+        Display, 
+        meta: { 
+            icon: "ci:monitor",
+            desc: "Lorem Ipsum Display"
+        } 
+    },
+    { 
+        path: "/Configuration/Devices", 
+        component: Devices, 
+        meta: { 
+            icon: "tabler:device-usb",
+            desc: "Lorem Ipsum Devices"
+        } 
+    },
     { path: "/About", component: About, meta: { icon: "fluent:info-32-filled", nav: true } },
 ];
 
 export type RouteToken = {
     token: string;
     icon?: string;
+    desc?: string;
 };
 
-const iconLookup = Object.fromEntries(routes.map(route => {
+const routeMetaLookup = Object.fromEntries(routes.map(route => {
     const lastSlashIdx = route.path.lastIndexOf("/");
     const lastToken = route.path.substring(lastSlashIdx + 1);
-    return [lastToken, route.meta?.icon];
+    return [lastToken, [route.meta?.icon, route.meta?.desc]];
 }));
 
 export function splitRoute(url: string): RouteToken[] {
-    return url.substring(1).split("/").map(token => ({ token, icon: iconLookup[token] as string | undefined }));
+    return url.substring(1).split("/").map(token => {
+        const currMeta = routeMetaLookup[token] as string[];
+        return { token, icon: currMeta[0], desc: currMeta[1] };
+    });
 }
 
 export function joinRouteTokens(tokens: RouteToken[]): string {
