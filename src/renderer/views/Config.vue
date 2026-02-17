@@ -12,6 +12,7 @@
                     unit="GB"
                     :min="2"
                     :max="maxRamGB"
+                    :disabled="isContainerRunning"
                     v-model:value="ramGB"
                 />
 
@@ -24,6 +25,7 @@
                     unit="Cores"
                     :min="2"
                     :max="maxNumCores"
+                    :disabled="isContainerRunning"
                     v-model:value="numCores"
                 />
 
@@ -32,6 +34,7 @@
                     icon="fluent:folder-link-32-filled"
                     title="Shared Folder"
                     type="switch"
+                    :disabled="isContainerRunning"
                     v-model:value="shareFolder"
                 >
                     <template v-slot:desc>
@@ -46,6 +49,7 @@
                     icon="mdi:folder-cog"
                     title="Shared Folder Location"
                     type="custom"
+                    :disabled="isContainerRunning"
                 >
                     <template v-slot:desc>
                         <span v-if="sharedFolderPath">
@@ -75,6 +79,7 @@
                     title="FreeRDP Port"
                     desc="You can change what port FreeRDP uses to communicate with the VM"
                     type="custom"
+                    :disabled="isContainerRunning"
                 >
                     <x-input
                         class="max-w-16 text-right text-[1.1rem]"
@@ -716,6 +721,10 @@ const hasHostPort = (_compose: typeof compose) =>
 
 const usbPassthroughDisabled = computed(() => {
     return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
+});
+
+const isContainerRunning = computed(() => {
+    return winboat.containerStatus.value === ContainerStatus.RUNNING;
 });
 
 const saveButtonDisabled = computed(() => {

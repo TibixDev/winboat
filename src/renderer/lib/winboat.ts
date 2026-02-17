@@ -617,7 +617,28 @@ export class Winboat {
     }
 
     async launchApp(app: WinApp) {
-        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
+        if (!this.isOnline.value) throw new Error("Cannot launch app, Winboat is offline");
+
+        // Track recent app
+        const config = this.#wbConfig!.config;
+        const recentApps = config.recentApps;
+        const existingIndex = recentApps.findIndex(r => r.name === app.Name);
+
+        if (existingIndex > -1) {
+            recentApps.splice(existingIndex, 1);
+        }
+
+        recentApps.unshift({
+            name: app.Name,
+            timestamp: Date.now()
+        });
+
+        // Keep only last 15 apps
+        if (recentApps.length > 15) {
+            recentApps.length = 15;
+        }
+
+        this.#wbConfig!.config = config;
 
         if (customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
