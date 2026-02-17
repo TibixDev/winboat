@@ -1,0 +1,4 @@
+origin	https://github.com/IrksomeHighlndr/winboat.git (fetch)
+origin	https://github.com/IrksomeHighlndr/winboat.git (push)
+upstream	https://github.com/TibixDev/winboat.git (fetch)
+upstream	https://github.com/TibixDev/winboat.git (push)
