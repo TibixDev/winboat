@@ -157,6 +157,15 @@
                             </x-label>
                         </x-menuitem>
 
+
+
+                        <x-menuitem value="recent">
+                            <x-label>
+                                <span class="qualifier"> Filter: </span>
+                                Recent
+                            </x-label>
+                        </x-menuitem>
+
                         <x-menuitem v-for="(label, value) in AllSources" :value="value">
                             <x-label>
                                 <span class="qualifier"> Filter: </span>
@@ -182,8 +191,79 @@
             </div>
         </div>
         <div v-if="winboat.isOnline.value" class="px-2">
+            <!-- Default View with Sections -->
+            <div v-if="isDefaultView" class="flex flex-col gap-8">
+
+                <!-- Recent Section -->
+                <section v-if="recentApps.length > 0">
+                    <div class="flex items-center gap-2 mb-4 px-1">
+                        <h2 class="text-base font-bold text-white tracking-wide">Recent</h2>
+                    </div>
+                    <TransitionGroup
+                        name="apps"
+                        tag="x-card"
+                        class="grid gap-4 bg-transparent border-none app-grid"
+                    >
+                        <x-card
+                            v-for="app of recentApps"
+                            :key="app.id"
+                            class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
+                            :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
+                            @click="winboat.launchApp(app)"
+                            @contextmenu="openContextMenu($event, app)"
+                        >
+                            <div class="flex flex-row items-center gap-2 flex-1 min-w-0">
+                                <img
+                                    class="rounded-md size-10 shrink-0"
+                                    :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
+                                    alt="App Icon"
+                                />
+                                <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <Icon icon="cuida:caret-right-outline" class="text-white/30"></Icon>
+                            </div>
+                        </x-card>
+                    </TransitionGroup>
+                </section>
+
+                <!-- All Apps Section -->
+                <section>
+                    <div class="flex items-center gap-2 mb-4 px-1" v-if="recentApps.length > 0">
+                        <h2 class="text-base font-bold text-white tracking-wide">All Apps</h2>
+                    </div>
+                    <TransitionGroup
+                        name="apps"
+                        tag="x-card"
+                        class="grid gap-4 bg-transparent border-none app-grid"
+                    >
+                        <x-card
+                            v-for="app of sortedApps"
+                            :key="app.id"
+                            class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
+                            :class="{ 'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom' }"
+                            @click="winboat.launchApp(app)"
+                            @contextmenu="openContextMenu($event, app)"
+                        >
+                            <div class="flex flex-row items-center gap-2 flex-1 min-w-0">
+                                <img
+                                    class="rounded-md size-10 shrink-0"
+                                    :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
+                                    alt="App Icon"
+                                />
+                                <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <Icon icon="cuida:caret-right-outline" class="text-white/30"></Icon>
+                            </div>
+                        </x-card>
+                    </TransitionGroup>
+                </section>
+            </div>
+
+            <!-- Filtered/Search View -->
             <TransitionGroup
-                v-if="apps.length"
+                v-else-if="apps.length"
                 name="apps"
                 tag="x-card"
                 class="grid gap-4 bg-transparent border-none app-grid"
@@ -196,15 +276,17 @@
                     @click="winboat.launchApp(app)"
                     @contextmenu="openContextMenu($event, app)"
                 >
-                    <div class="flex flex-row items-center gap-2 w-[85%]">
+                    <div class="flex flex-row items-center gap-2 flex-1 min-w-0">
                         <img
-                            class="rounded-md size-10"
+                            class="rounded-md size-10 shrink-0"
                             :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
                             alt="App Icon"
                         />
                         <x-label class="truncate text-ellipsis">{{ app.Name }}</x-label>
                     </div>
-                    <Icon icon="cuida:caret-right-outline"></Icon>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <Icon icon="cuida:caret-right-outline" class="text-white/30"></Icon>
+                    </div>
                 </x-card>
             </TransitionGroup>
             <div v-else class="flex justify-center items-center mt-40">
@@ -220,6 +302,8 @@
                     <Icon class="size-4" icon="mdi:pencil-outline"></Icon>
                     <x-label>Edit</x-label>
                 </WBMenuItem>
+
+
 
                 <WBMenuItem v-if="contextMenuTarget?.Source === 'custom'" @click="removeCustomApp">
                     <Icon class="size-4" icon="mdi:trash-can-outline"></Icon>
@@ -300,13 +384,46 @@ const AllSources = computed(() => {
     return sourceList;
 });
 
+const isDefaultView = computed(() => {
+    return filterBy.value === "all" && !searchInput.value;
+});
+
+const recentApps = computed(() => {
+    return apps.value
+        .filter(app => app.lastLaunched)
+        .sort((a, b) => (b.lastLaunched ?? 0) - (a.lastLaunched ?? 0))
+        .slice(0, 10);
+});
+
+const sortedApps = computed(() => {
+    let list = [...apps.value];
+    
+    if (sortBy.value === "usage") {
+        list.sort((a, b) => (b.Usage ?? 0) - (a.Usage ?? 0));
+    } else {
+        list.sort((a, b) => a.Name.localeCompare(b.Name));
+    }
+    
+    return list;
+});
+
 const computedApps = computed(() => {
     // Make copy, otherwise UI might glitch, creating "ghost" app
     let appsCache = [...apps.value];
 
-    if (filterBy.value !== "all") {
+    if (filterBy.value === "recent") {
+        appsCache = appsCache.filter(app => app.lastLaunched);
+        // Sort by most recent first for recent filter
+        appsCache.sort((a, b) => (b.lastLaunched ?? 0) - (a.lastLaunched ?? 0));
+        // Limit to 15 most recent
+        appsCache = appsCache.slice(0, 15);
+        return appsCache; // Return early to skip other sorting
+    } else if (filterBy.value !== "all") {
         appsCache = appsCache.filter(app => app.Source === filterBy.value);
     }
+    
+    // ... rest of computedApps logic
+
 
     if (searchInput.value) {
         appsCache = appsCache.filter(app => app.Name.toLowerCase().includes(searchInput.value.toLowerCase()));
@@ -345,11 +462,19 @@ onMounted(async () => {
 
 async function refreshApps() {
     if (winboat.isOnline.value) {
+        const config = WinboatConfig.getInstance().config;
         const loadedApps = await winboat.appMgr!.getApps(winboat.apiUrl!);
-        apps.value = loadedApps.map(app => ({
-            ...app,
-            id: crypto.randomUUID(),
-        }));
+        apps.value = loadedApps.map(app => {
+            // Find last launched timestamp
+            const recentApp = config.recentApps.find(r => r.name === app.Name);
+            const lastLaunched = recentApp?.timestamp;
+            
+            return {
+                ...app,
+                id: crypto.randomUUID(),
+                lastLaunched,
+            };
+        });
         // Run in background, won't impact UX
         await winboat.appMgr!.updateAppCache(winboat.apiUrl!);
     }
@@ -521,6 +646,8 @@ async function removeCustomApp() {
     await winboat.appMgr!.removeCustomApp(contextMenuTarget.value);
     await refreshApps();
 }
+
+
 
 async function resetCustomAppForm() {
     // So there is no visual flicker while the dialog is closing
