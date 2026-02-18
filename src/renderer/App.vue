@@ -173,7 +173,7 @@ import { DosboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 // Note: CommonPorts and getActiveHostPort are only needed for guest server updates (WinBoat feature)
 // import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
-import { performAutoMigrations } from "./lib/migrate";
+import { performAutoMigrations, detectMigrationNeeded } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
 
@@ -194,18 +194,24 @@ let wbConfig: DosboatConfig | null;
 const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
 
 onMounted(async () => {
+    console.log("onMounted started");
     const winboatInstalled = await isInstalled();
+    console.log("isInstalled:", winboatInstalled);
 
     if (winboatInstalled) {
+        console.log("Winboat is installed, proceeding");
         wbConfig = reactive(DosboatConfig.getInstance()); // Instantiate singleton class
+        console.log("Config instance created");
         winboat = Dosboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
 
         // Migrations
-        $router.push("/migration");
-        await performAutoMigrations();
+        if (detectMigrationNeeded()) {
+            $router.push("/migration");
+            await performAutoMigrations();
+        }
 
-        // After migrations, go to home
+        // Go to home
         $router.push("/home");
     } else {
         console.log("Not installed, redirecting to setup...");
@@ -324,6 +330,7 @@ dialog::backdrop {
         rgb(129 140 248) 50px
     );
     -webkit-mask-image: -webkit-gradient(linear, left 0%, left bottom, from(rgba(0, 0, 0, 1)), to(rgba(0, 0, 0, 0)));
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
 }
 
 /* Disable all animations when the setting is enabled */

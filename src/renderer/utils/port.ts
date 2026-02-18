@@ -64,7 +64,7 @@ export class Range {
 export class ComposePortEntry {
     static readonly defaultOptions = {
         hostIP: "0.0.0.0",
-        protocol: "tcp",
+        protocol: "tcp" as const,
     };
 
     hostIP: string;
@@ -81,10 +81,10 @@ export class ComposePortEntry {
     constructor(hostPort: number, guestPort: number, options?: PortEntryOptions);
     constructor(_entryOrHostPort: string | number, _guestPort?: number, _options?: PortEntryOptions) {
         if (typeof _entryOrHostPort === "number") {
-            if (!_guestPort || !_options) throw new Error("Invalid constructor call");
+            if (!_guestPort) throw new Error("Invalid constructor call");
 
-            this.hostIP = _options.hostIP ?? ComposePortEntry.defaultOptions.hostIP;
-            this.protocol = _options.protocol ?? ComposePortEntry.defaultOptions.protocol;
+            this.hostIP = _options?.hostIP ?? ComposePortEntry.defaultOptions.hostIP;
+            this.protocol = _options?.protocol ?? ComposePortEntry.defaultOptions.protocol;
             this.host = _entryOrHostPort;
             this.container = _guestPort;
             return;
@@ -163,28 +163,13 @@ export class ComposePortEntry {
     static parseIP(entry: string): string {
         const parts = entry.split(":");
 
-        // As per the compose spec, there must be at least 2 colons in the entry for an IP to be specified
         if (parts.length < 3) return "0.0.0.0";
 
-        // Extra logic for allowing empty host port, needed for supporting podman's publish syntax
-        let lastPort = parts.at(-2)!;
-        let colonNum = 1;
+        // For entries like "127.0.0.1:8006:8006", IP is the first (length-2) parts joined by "."
+        const ipParts = parts.slice(0, parts.length - 2);
+        const rawIP = ipParts.join(".");
 
-        if (lastPort.length === 0) {
-            lastPort = parts.at(-1)!;
-            colonNum = 2;
-        }
-
-        // Here we find the index where the host ip ends (removing one makes sure we remove the colon as well)
-        const hostPortLocation = entry.indexOf(lastPort) - colonNum;
-        const rawIP = entry.substring(0, hostPortLocation);
-
-        // In case the IP isn't enclosed with square brackets, we don't need any further processing
-        if (!rawIP[0].startsWith("[")) return ComposePortEntry.checkValidIP(rawIP, entry);
-
-        const IP = rawIP.substring(1, rawIP.length - 1);
-
-        return ComposePortEntry.checkValidIP(IP, entry);
+        return ComposePortEntry.checkValidIP(rawIP, entry);
     }
 }
 

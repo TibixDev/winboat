@@ -36,6 +36,12 @@ export class DosboatVersion {
     toJSON(): string {
         return this.toString();
     }
+
+    lessThan(other: DosboatVersion): boolean {
+        if (this.generation !== other.generation) return this.generation < other.generation;
+        if (this.major !== other.major) return this.major < other.major;
+        return this.minor < other.minor;
+    }
 }
 
 type DosboatVersionData = {
