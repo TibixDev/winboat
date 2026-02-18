@@ -437,6 +437,79 @@ export class USBManager {
         }
         logger.info("QMPRemoveDevice", vendorId, productId);
     }
+
+    /**
+     * Checks if a device is attached in the guest VM
+     * @param vendorId The vendor ID of the device
+     * @param productId The product ID of the device
+     * @returns A boolean indicating if the device is attached in the guest
+     */
+    async isDeviceInGuest(vendorId: number, productId: number): Promise<boolean> {
+        const diag = await this.getDeviceDiagnostics(vendorId, productId);
+        return diag.inGuest;
+    }
+
+    /**
+     * Gets diagnostic information for a USB device
+     * @param vendorId The vendor ID of the device
+     * @param productId The product ID of the device
+     * @returns An object containing diagnostic information
+     */
+    async getDeviceDiagnostics(vendorId: number, productId: number): Promise<{
+        inGuest: boolean;
+        qtreeFull: string;
+        qtreeDeviceLines: string[];
+        qmpLogTail: string;
+        dosboatLogTail: string;
+    }> {
+        let qtreeFull = "QMP not available";
+        let qtreeDeviceLines: string[] = [];
+        let inGuest = false;
+
+        if (this.#winboat.qmpMgr && (await this.#winboat.qmpMgr.isAlive())) {
+            try {
+                const response = await this.#winboat.qmpMgr.executeCommand("human-monitor-command", {
+                    "command-line": "info qtree",
+                });
+                // @ts-ignore
+                const qraw = response && ("return" in response ? response.return : response);
+                if (typeof qraw === "string") {
+                    qtreeFull = qraw;
+                } else if (Array.isArray(qraw)) {
+                    qtreeFull = qraw.join("\n");
+                } else {
+                    qtreeFull = JSON.stringify(qraw);
+                }
+
+                const vendorIdHex = vendorId.toString(16).padStart(4, "0");
+                const productIdHex = productId.toString(16).padStart(4, "0");
+                qtreeDeviceLines = qtreeFull
+                    .split("\n")
+                    .filter((l: string) => l.includes("usb-host") || l.includes(vendorIdHex) || l.includes(productIdHex));
+                inGuest = qtreeDeviceLines.some(l => /usb-host/.test(l));
+            } catch (e) {
+                qtreeFull = `Error getting qtree: ${String(e)}`;
+            }
+        }
+
+        let qmpLogTail = "qmp.log not found";
+        let dosboatLogTail = "dosboat.log not found";
+        try {
+            const qmpLogPath = path.join(DOSBOAT_DIR, "qmp.log");
+            if (fs.existsSync(qmpLogPath)) qmpLogTail = fs.readFileSync(qmpLogPath, "utf8").split("\n").slice(-120).join("\n");
+        } catch (e) {
+            qmpLogTail = `Error reading qmp.log: ${String(e)}`;
+        }
+
+        try {
+            const dosboatLogPath = path.join(DOSBOAT_DIR, "dosboat.log");
+            if (fs.existsSync(dosboatLogPath)) dosboatLogTail = fs.readFileSync(dosboatLogPath, "utf8").split("\n").slice(-120).join("\n");
+        } catch (e) {
+            dosboatLogTail = `Error reading dosboat.log: ${String(e)}`;
+        }
+
+        return { inGuest, qtreeFull, qtreeDeviceLines, qmpLogTail, dosboatLogTail };
+    }
 }
 
 /**
