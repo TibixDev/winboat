@@ -19,3 +19,4 @@ guest_server/winboat_guest_server.zip
 # FreeDOS images (downloaded locally or by installer)
 images/FD14-LiveCD/
 images/FD14-base.qcow2
+coverage/
