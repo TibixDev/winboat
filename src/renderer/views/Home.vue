@@ -14,7 +14,7 @@
                         <h1 class="text-3xl">
                             {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
                         </h1>
-                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold">
+                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold !m-0">
                             {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
                         </p>
                     </div>
@@ -78,6 +78,14 @@
                     @click="winboat.stopContainer()"
                 >
                     <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
+                </button>
+                <button
+                    title="Restart"
+                    class="generic-hover"
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
+                    @click="winboat.restartContainer()"
+                >
+                    <Icon class="w-20 h-20 text-orange-300" icon="mingcute:refresh-3-line"></Icon>
                 </button>
 
                 <button

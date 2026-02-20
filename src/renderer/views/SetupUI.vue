@@ -607,34 +607,60 @@
                         </div>
                     </div>
 
-                    <!-- Home Folder Sharing -->
+                    <!-- Folder Sharing -->
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
-                        <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
+                        <h1 class="text-3xl font-semibold">Folder Sharing</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat allows you to share your Linux home folder with the Windows virtual machine, here
-                            you can choose whether to enable this feature or not.
+                            WinBoat allows you to share a folder from your Linux system with the Windows virtual machine.
+                            You can choose whether to enable this feature and select which folder to share.
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
-                            Sharing your home folder exposes your Linux files to Windows-specific malware and viruses.
+                            Sharing a folder exposes your Linux files to Windows-specific malware and viruses.
                             Only enable this feature if you understand the risks involved. Always be careful with the
                             files you download and open in Windows.
                         </p>
 
                         <x-checkbox
                             class="my-4"
-                            @toggle="homeFolderSharing = !homeFolderSharing"
-                            :toggled="homeFolderSharing"
+                            @toggle="folderSharing = !folderSharing"
+                            :toggled="folderSharing"
                         >
-                            <x-label><strong>Enable home folder sharing</strong></x-label>
+                            <x-label><strong>Enable folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
                                 By checking this box, you acknowledge the risks mentioned above
                             </x-label>
                         </x-checkbox>
 
+                        <div v-if="folderSharing" class="flex flex-col gap-2 my-4">
+                            <label class="text-sm text-neutral-400">Shared Folder Location</label>
+                            <div class="flex flex-row items-center">
+                                <x-input
+                                    type="text"
+                                    placeholder="Select Folder to Share"
+                                    readonly
+                                    :value="sharedFolderPath"
+                                    class="!max-w-full w-[300px] rounded-r-none"
+                                >
+                                    <x-icon href="#folder"></x-icon>
+                                    <x-label>/your/shared/folder</x-label>
+                                </x-input>
+                                <x-button class="!rounded-l-none" toggled @click="selectSharedFolder">
+                                    {{ sharedFolderPath ? "Change" : "Select" }}
+                                </x-button>
+                            </div>
+                        </div>
+
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button
+                                toggled
+                                class="px-6"
+                                @click="currentStepIdx++"
+                                :disabled="folderSharing && !sharedFolderPath"
+                            >
+                                Next
+                            </x-button>
                         </div>
                     </div>
 
@@ -783,7 +809,7 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
@@ -864,7 +890,7 @@ const steps: Step[] = [
     },
     {
         id: StepID.SHOULD_SHARE_HOME_FOLDER,
-        title: "Home Folder Sharing",
+        title: "Folder Sharing",
         icon: "line-md:link",
     },
     {
@@ -904,7 +930,8 @@ const diskSpaceGB = ref(32);
 const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");
-const homeFolderSharing = ref(false);
+const folderSharing = ref(false);
+const sharedFolderPath = ref("");
 const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
@@ -926,11 +953,21 @@ onMounted(async () => {
 
     username.value = os.userInfo().username;
     console.log("Username", username.value);
+
+    // Set default shared folder path to home directory
+    sharedFolderPath.value = os.homedir();
 });
 
 onUnmounted(() => {
     if (memoryInterval.value) {
         clearInterval(memoryInterval.value);
+    }
+});
+
+// Watch for when folder sharing is enabled and set default path
+watch(folderSharing, (newValue) => {
+    if (newValue && !sharedFolderPath.value) {
+        sharedFolderPath.value = os.homedir();
     }
 });
 
@@ -1069,6 +1106,20 @@ const installFolderDiskSpaceGB = computedAsync(async () => {
     return freeGB;
 });
 
+function selectSharedFolder() {
+    electron.dialog
+        .showOpenDialog({
+            title: "Select Folder to Share",
+            properties: ["openDirectory"],
+            defaultPath: sharedFolderPath.value || os.homedir(),
+        })
+        .then(result => {
+            if (!result.canceled && result.filePaths.length > 0) {
+                sharedFolderPath.value = result.filePaths[0];
+            }
+        });
+}
+
 function install() {
     const installConfig: InstallConfiguration = {
         windowsVersion: windowsVersion.value,
@@ -1079,7 +1130,7 @@ function install() {
         diskSpaceGB: diskSpaceGB.value,
         username: username.value,
         password: password.value,
-        shareHomeFolder: homeFolderSharing.value,
+        sharedFolderPath: folderSharing.value ? sharedFolderPath.value : undefined,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
         container: containerRuntime.value, // Hardcdde for now
     };

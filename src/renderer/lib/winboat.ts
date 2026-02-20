@@ -14,7 +14,7 @@ import YAML from "yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { openLink } from "../utils/openLink";
-import { WinboatConfig } from "./config";
+import { MultiMonitorMode, WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
@@ -504,6 +504,20 @@ export class Winboat {
         this.containerActionLoading.value = false;
     }
 
+    async restartContainer() {
+        logger.info("Restarting WinBoat container...");
+        this.containerActionLoading.value = true;
+        try {
+            await this.containerMgr!.container("restart");
+        } catch (e) {
+            logger.error("There was an error restarting the container.");
+            logger.error(e);
+            throw e;
+        }
+        logger.info("Successfully restarted WinBoat container");
+        this.containerActionLoading.value = false;
+    }
+
     async pauseContainer() {
         logger.info("Pausing WinBoat container...");
         this.containerActionLoading.value = true;
@@ -645,9 +659,9 @@ export class Winboat {
             ]);
         } else {
             args = args.concat([
-                this.#wbConfig?.config.multiMonitor == 2 ? "+span" : "",
+                this.#wbConfig?.config.multiMonitor === MultiMonitorMode.Span ? "+span" : "",
                 "-wallpaper",
-                this.#wbConfig?.config.multiMonitor == 1 ? "/multimon" : "",
+                this.#wbConfig?.config.multiMonitor === MultiMonitorMode.MultiMon ? "/multimon" : "",
                 `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
                 `/wm-class:winboat-${cleanAppName}`,
                 `/app:program:${app.Path},name:${cleanAppName},cmd:"${app.Args}"`,
