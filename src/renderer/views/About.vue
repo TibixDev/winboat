@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-col items-center justify-center h-[calc(100vh-9rem)]">
-        <img class="w-48" src="/img/winboat_logo.svg" alt="The DOSBoat Logo" />
-        <h2 class="mb-0">DOSBoat</h2>
+        <img class="w-48" src="/img/dosboat.svg" alt="The DOSBoat Logo" />
+        <!-- <h2 class="mb-0">DOSBoat</h2> -->
         <p class="text-sm text-gray-500">FreeDOS for 🐧 penguins</p>
         <p class="text-gray-400 !mt-4">DOSBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
         <div></div>
