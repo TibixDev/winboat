@@ -12,32 +12,34 @@
             </p>
         </div>
         <div class="flex flex-row gap-2 justify-center items-center">
-            <slot v-if="props.type === 'custom'"/>
+            <slot v-if="props.type === 'custom'" />
             <template v-else-if="props.type === 'number'">
                 <x-button
                     v-if="props.step"
                     type="button"
                     class="size-8 !p-0"
-                    @click="() => { 
-                        const step = props.step;
-                        if (!step) return;
-                        if (Array.isArray(step)) {
-                            const sorted = [...step].sort((a, b) => a - b);
-                            const current = Number.parseFloat(value as string);
-                            const currentIndex = sorted.findIndex(v => Math.abs(v - current) < 0.01);
-                            if (currentIndex === -1) {
-                                // Value not found, snap to nearest
-                                const nearest = sorted.reduce((prev, curr) => 
-                                    Math.abs(curr - current) < Math.abs(prev - current) ? curr : prev
-                                );
-                                value = nearest;
+                    @click="
+                        () => {
+                            const step = props.step;
+                            if (!step) return;
+                            if (Array.isArray(step)) {
+                                const sorted = [...step].sort((a, b) => a - b);
+                                const current = Number.parseFloat(value as string);
+                                const currentIndex = sorted.findIndex(v => Math.abs(v - current) < 0.01);
+                                if (currentIndex === -1) {
+                                    // Value not found, snap to nearest
+                                    const nearest = sorted.reduce((prev, curr) =>
+                                        Math.abs(curr - current) < Math.abs(prev - current) ? curr : prev,
+                                    );
+                                    value = nearest;
+                                } else {
+                                    value = currentIndex > 0 ? sorted[currentIndex - 1] : current;
+                                }
                             } else {
-                                value = currentIndex > 0 ? sorted[currentIndex - 1] : current;
+                                applyStep(-step);
                             }
-                        } else {
-                            applyStep(-step);
                         }
-                    }"
+                    "
                 >
                     <Icon icon="mdi:minus" class="size-4"></Icon>
                     <x-label class="sr-only">Subtract</x-label>
@@ -48,18 +50,22 @@
                     :max="props.max"
                     :value="props.valueMap ? props.valueMap[value] || value : value"
                     v-on:keydown="(e: any) => ensureNumericInput(e)"
-                    @input="(e: any) => {
-                        if (props.valueMap) {
-                            // Try to match a label to a value
-                            const input = e.target.value.toUpperCase();
-                            const matchedValue = Object.entries(props.valueMap).find(([_, label]) => label.toUpperCase() === input)?.[0];
-                            if (matchedValue) {
-                                value = Number(matchedValue);
+                    @input="
+                        (e: any) => {
+                            if (props.valueMap) {
+                                // Try to match a label to a value
+                                const input = e.target.value.toUpperCase();
+                                const matchedValue = Object.entries(props.valueMap).find(
+                                    ([_, label]) => label.toUpperCase() === input,
+                                )?.[0];
+                                if (matchedValue) {
+                                    value = Number(matchedValue);
+                                }
+                            } else {
+                                value = Number(/^\d+$/.exec(e.target.value)![0] || props.min);
                             }
-                        } else {
-                            value = Number(/^\d+$/.exec(e.target.value)![0] || props.min);
                         }
-                    }"
+                    "
                     :disabled="!!props.valueMap"
                     required
                 />
@@ -67,26 +73,28 @@
                     v-if="props.step"
                     type="button"
                     class="size-8 !p-0"
-                    @click="() => { 
-                        const step = props.step;
-                        if (!step) return;
-                        if (Array.isArray(step)) {
-                            const sorted = [...step].sort((a, b) => a - b);
-                            const current = Number.parseFloat(value as string);
-                            const currentIndex = sorted.findIndex(v => Math.abs(v - current) < 0.01);
-                            if (currentIndex === -1) {
-                                // Value not found, snap to nearest
-                                const nearest = sorted.reduce((prev, curr) => 
-                                    Math.abs(curr - current) < Math.abs(prev - current) ? curr : prev
-                                );
-                                value = nearest;
+                    @click="
+                        () => {
+                            const step = props.step;
+                            if (!step) return;
+                            if (Array.isArray(step)) {
+                                const sorted = [...step].sort((a, b) => a - b);
+                                const current = Number.parseFloat(value as string);
+                                const currentIndex = sorted.findIndex(v => Math.abs(v - current) < 0.01);
+                                if (currentIndex === -1) {
+                                    // Value not found, snap to nearest
+                                    const nearest = sorted.reduce((prev, curr) =>
+                                        Math.abs(curr - current) < Math.abs(prev - current) ? curr : prev,
+                                    );
+                                    value = nearest;
+                                } else {
+                                    value = currentIndex < sorted.length - 1 ? sorted[currentIndex + 1] : current;
+                                }
                             } else {
-                                value = currentIndex < sorted.length - 1 ? sorted[currentIndex + 1] : current;
+                                applyStep(step);
                             }
-                        } else {
-                            applyStep(step);
                         }
-                    }"
+                    "
                 >
                     <Icon icon="mdi:plus" class="size-4"></Icon>
                     <x-label class="sr-only">Add</x-label>
@@ -94,18 +102,15 @@
                 <p class="text-neutral-100" v-if="props.unit && !props.valueMap">{{ props.unit }}</p>
             </template>
             <template v-else-if="props.type === 'dropdown'">
-                <x-select
-                    class="w-20"
-                    @change="(e: any) => (value = e.detail.newValue)"
-                >
+                <x-select class="w-20" @change="(e: any) => (value = e.detail.newValue)">
                     <x-menu>
-                        <x-menuitem 
-                            v-for="(opt, key) in props.options" 
-                            :value="getOptionValue(opt)" 
-                            :key="key" 
+                        <x-menuitem
+                            v-for="(opt, key) in props.options"
+                            :value="getOptionValue(opt)"
+                            :key="key"
                             :toggled="value === getOptionValue(opt)"
                         >
-                            <x-label>{{ getOptionLabel(opt) }}{{ props.unit ?? '' }}</x-label>
+                            <x-label>{{ getOptionLabel(opt) }}{{ props.unit ?? "" }}</x-label>
                         </x-menuitem>
                     </x-menu>
                 </x-select>
@@ -113,15 +118,18 @@
             <template v-else-if="props.type === 'switch'">
                 <x-switch
                     :toggled="value"
-                    @toggle="(_: any) => { $emit('toggle'); (value = !value) }"
+                    @toggle="
+                        (_: any) => {
+                            $emit('toggle');
+                            value = !value;
+                        }
+                    "
                     size="large"
                 />
             </template>
         </div>
     </x-card>
 </template>
-
-
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
@@ -152,7 +160,7 @@ type PropsType = {
      * - `custom`: Shows the default slot content.
      */
     type: "number" | "dropdown" | "switch" | "custom";
-    
+
     /**
      * The minimum accepted value in case the `number` type is specified.
      */
@@ -212,7 +220,7 @@ function applyStep(step: number | number[]) {
     if (Array.isArray(step)) {
         const sorted = [...step].sort((a, b) => a - b);
         const currentIndex = sorted.findIndex(v => Math.abs(v - current) < 0.01);
-        
+
         if (arguments[1] === "next") {
             // Moving forward (+)
             newValue = currentIndex < sorted.length - 1 ? sorted[currentIndex + 1] : current;
@@ -225,19 +233,22 @@ function applyStep(step: number | number[]) {
         newValue = current + step;
     }
 
-    if(!props.min && !props.max) {
+    if (!props.min && !props.max) {
         value.value = newValue;
         return;
     }
 
-    value.value = Math.min(Math.max(props.min ?? Number.MIN_SAFE_INTEGER, newValue), props.max ?? Number.MAX_SAFE_INTEGER);
+    value.value = Math.min(
+        Math.max(props.min ?? Number.MIN_SAFE_INTEGER, newValue),
+        props.max ?? Number.MAX_SAFE_INTEGER,
+    );
 }
 
 function getOptionValue(opt: any) {
-    return typeof opt === 'object' && opt !== null && 'value' in opt ? opt.value : opt;
+    return typeof opt === "object" && opt !== null && "value" in opt ? opt.value : opt;
 }
 
 function getOptionLabel(opt: any) {
-    return typeof opt === 'object' && opt !== null && 'label' in opt ? opt.label : opt;
+    return typeof opt === "object" && opt !== null && "label" in opt ? opt.label : opt;
 }
 </script>

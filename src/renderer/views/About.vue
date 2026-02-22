@@ -9,10 +9,12 @@
             DOSBoat is
             <a @click="openAnchorLink" href="https://github.com/chevybowtie/dosboat">open-source software</a>
         </p>
-        <p class="text-gray-400 !mt-0">Forked from <a @click="openAnchorLink" href="https://github.com/TibixDev/WinBoat">WinBoat</a> by TibixDev</p>
+        <p class="text-gray-400 !mt-0">
+            Forked from <a @click="openAnchorLink" href="https://github.com/TibixDev/WinBoat">WinBoat</a> by TibixDev
+        </p>
         <p class="text-sm text-gray-500 text-center !mt-16 w-[40vw]">
-            DOSBoat uses FreeDOS, which is free and open-source software. FreeDOS and DOS are not trademarks of
-            any corporation. This project is provided as-is for legacy DOS application support.
+            DOSBoat uses FreeDOS, which is free and open-source software. FreeDOS and DOS are not trademarks of any
+            corporation. This project is provided as-is for legacy DOS application support.
         </p>
     </div>
 </template>

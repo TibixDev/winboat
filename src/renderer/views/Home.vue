@@ -136,9 +136,7 @@
                         <Icon class="size-8 text-violet-400" icon="game-icons:ram"></Icon>
                         <h2 class="my-0 text-2xl">RAM</h2>
                     </div>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">
-                        {{ allocatedRAM }} Allocated
-                    </p>
+                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">{{ allocatedRAM }} Allocated</p>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
                         {{ (winboat.metrics.value.ram.used / 1024).toFixed(2) }} GB Used RAM
                     </p>
@@ -191,13 +189,13 @@ const isVolumeStorage = ref(false);
  */
 function parseRAMToMB(ramSizeStr: string): number {
     if (!ramSizeStr) return 1024;
-    
+
     const match = /^\s*([0-9.]+)\s*([KMG]?)(?:i?B)?\s*$/i.exec(ramSizeStr);
     if (!match) return 1024;
-    
+
     const value = Number.parseFloat(match[1]);
     const unit = match[2].toUpperCase();
-    
+
     if (unit === "G") {
         return Math.round(value * 1024);
     } else if (unit === "K") {
@@ -212,7 +210,7 @@ function parseRAMToMB(ramSizeStr: string): number {
  */
 function getMBLabel(mb: number): string {
     // Find the exact match or closest option
-    const validOptions = Object.entries(DOS_MEMORY_OPTIONS).sort(([,a], [,b]) => a - b);
+    const validOptions = Object.entries(DOS_MEMORY_OPTIONS).sort(([, a], [, b]) => a - b);
     const matched = validOptions.find(([_, optMB]) => Math.abs(optMB - mb) < 1);
     return matched ? matched[0] : `${(mb / 1024).toFixed(2)} GB`;
 }

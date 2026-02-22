@@ -16,21 +16,41 @@
                 </div>
                 <Transition name="bounce" mode="out-in">
                     <div :key="currentStepIdx" id="stepIcon" class="flex items-center justify-center relative h-full">
-                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon" />
+                        <Icon
+                            key="icon1"
+                            class="size-[60%] text-violet-400 z-30 relative"
+                            :icon="
+                                currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED
+                                    ? 'line-md:check-all'
+                                    : currentStep.icon
+                            "
+                        />
                         <Icon
                             key="icon-gradient"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"
-                            :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon"
+                            :icon="
+                                currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED
+                                    ? 'line-md:check-all'
+                                    : currentStep.icon
+                            "
                         />
                         <Icon
                             key="icon2"
                             class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]"
-                            :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon"
+                            :icon="
+                                currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED
+                                    ? 'line-md:check-all'
+                                    : currentStep.icon
+                            "
                         />
                         <Icon
                             key="icon3"
                             class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]"
-                            :icon="currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED ? 'line-md:check-all' : currentStep.icon"
+                            :icon="
+                                currentStep.id === StepID.INSTALL && installState === InstallStates.COMPLETED
+                                    ? 'line-md:check-all'
+                                    : currentStep.icon
+                            "
                         />
                     </div>
                 </Transition>
@@ -298,9 +318,7 @@
                     <!-- FreeDOS Configuration -->
                     <div v-if="currentStep.id === StepID.FREEDOS_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
-                        <p class="text-lg text-gray-400">
-                            Pick the version of FreeDOS you want to install.
-                        </p>
+                        <p class="text-lg text-gray-400">Pick the version of FreeDOS you want to install.</p>
                         <p class="text-lg text-gray-400">
                             You can only change these settings now. Once the installation is complete, you will not be
                             able to change them unless you reinstall.
@@ -492,9 +510,7 @@
                             </div>
 
                             <div>
-                                <label for="select-ram" class="text-sm text-neutral-400">
-                                    Select RAM
-                                </label>
+                                <label for="select-ram" class="text-sm text-neutral-400"> Select RAM </label>
                                 <x-select
                                     id="select-ram"
                                     @change="(e: any) => (dosMemory = e.detail.newValue)"
@@ -558,21 +574,17 @@
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
                         <h1 class="text-3xl font-semibold">Folder Sharing</h1>
                         <p class="text-lg text-gray-400">
-                            DOSBoat allows you to share a folder from your Linux system with the FreeDOS virtual machine.
-                            You can choose whether to enable this feature and select which folder to share.
+                            DOSBoat allows you to share a folder from your Linux system with the FreeDOS virtual
+                            machine. You can choose whether to enable this feature and select which folder to share.
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
-                            Sharing a folder exposes your Linux files to DOS-specific malware and viruses.
-                            Only enable this feature if you understand the risks involved. Always be careful with the
-                            files you download and open in FreeDOS.
+                            Sharing a folder exposes your Linux files to DOS-specific malware and viruses. Only enable
+                            this feature if you understand the risks involved. Always be careful with the files you
+                            download and open in FreeDOS.
                         </p>
 
-                        <x-checkbox
-                            class="my-4"
-                            @toggle="folderSharing = !folderSharing"
-                            :toggled="folderSharing"
-                        >
+                        <x-checkbox class="my-4" @toggle="folderSharing = !folderSharing" :toggled="folderSharing">
                             <x-label><strong>Enable folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
                                 By checking this box, you acknowledge the risks mentioned above
@@ -673,7 +685,7 @@
                     <div v-if="currentStep.id === StepID.INSTALL" class="step-block">
                         <h1 class="text-3xl font-semibold">Installation</h1>
                         <p class="text-lg text-gray-400 text-justify">
-                            DOSBoat is now installing FreeDOS. This typically takes just a few moments. 
+                            DOSBoat is now installing FreeDOS. This typically takes just a few moments.
                         </p>
 
                         <!-- Installing -->
@@ -685,7 +697,10 @@
                         >
                             <x-throbber class="size-16"></x-throbber>
                             <x-label
-                                v-if="installState !== InstallStates.MONITORING_PREINSTALL && installState !== InstallStates.INSTALLING_FREEDOS"
+                                v-if="
+                                    installState !== InstallStates.MONITORING_PREINSTALL &&
+                                    installState !== InstallStates.INSTALLING_FREEDOS
+                                "
                                 class="text-lg text-gray-400 text-center"
                             >
                                 {{ installState }}...
@@ -743,21 +758,11 @@ import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import {
-    FREEDOS_VERSIONS,
-    type FreeDOSVersionKey,
-    DOS_MEMORY_OPTIONS,
-    type DOSMemoryKey,
-} from "../lib/constants";
+import { FREEDOS_VERSIONS, type FreeDOSVersionKey, DOS_MEMORY_OPTIONS, type DOSMemoryKey } from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
-import {
-    ContainerRuntimes,
-    DockerSpecs,
-    PodmanSpecs,
-    getContainerSpecs,
-} from "../lib/containers/common";
+import { ContainerRuntimes, DockerSpecs, PodmanSpecs, getContainerSpecs } from "../lib/containers/common";
 import { DosboatConfig } from "../lib/config";
 
 const path: typeof import("path") = require("node:path");
@@ -864,7 +869,11 @@ const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
 // These are the install steps where the container is actually up and running
-const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
+const linkableInstallSteps = [
+    InstallStates.MONITORING_PREINSTALL,
+    InstallStates.INSTALLING_WINDOWS,
+    InstallStates.COMPLETED,
+];
 
 let installManager: InstallManager | null;
 
@@ -892,7 +901,7 @@ onUnmounted(() => {
 });
 
 // Watch for when folder sharing is enabled and set default path
-watch(folderSharing, (newValue) => {
+watch(folderSharing, newValue => {
     if (newValue && !sharedFolderPath.value) {
         sharedFolderPath.value = os.homedir();
     }
