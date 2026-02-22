@@ -55,7 +55,7 @@
                         winboat.containerStatus.value === ContainerStatus.CREATED ||
                         winboat.containerStatus.value === ContainerStatus.UNKNOWN
                     "
-                    @click="winboat.startContainer()"
+                    @click="handleStartContainer"
                 >
                     <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
                 </button>
@@ -173,14 +173,18 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
-import { Dosboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
 import { type ComposeConfig } from "../../types";
-import { FREEDOS_VERSIONS, DOS_MEMORY_OPTIONS } from "../lib/constants";
+import { FREEDOS_VERSIONS, DOS_MEMORY_OPTIONS, SERIAL_PORT_PREFIXES } from "../lib/constants";
 import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
+import { SerialManager } from "../lib/serialmanager";
+import { Dosboat } from "../lib/winboat";
+
+const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
 
 const winboat = Dosboat.getInstance();
+const serialManager = SerialManager.getInstance();
 const compose = ref<ComposeConfig | null>(null);
 const isVolumeStorage = ref(false);
 
@@ -232,6 +236,82 @@ onMounted(async () => {
     // navitem is highlighted and we can't use `toggled`
     document.querySelector<HTMLButtonElement>("x-navitem")?.click();
 });
+
+function stripSerialArgs(args: string): string {
+    let cleaned = args;
+    cleaned = cleaned.replace(/\s*-chardev\s+serial,id=hostserial\d+,path=\/dev\/tty\w+/g, "");
+    cleaned = cleaned.replace(/\s*-device\s+isa-serial,chardev=hostserial\d+/g, "");
+    return cleaned.trim();
+}
+
+async function applySerialPortsForStart(ports: string[]): Promise<void> {
+    const nextCompose = Dosboat.readCompose(winboat.containerMgr!.composeFilePath);
+    const portPrefixes = SERIAL_PORT_PREFIXES.map(prefix => `/dev/${prefix}`);
+
+    nextCompose.services.freedos.devices = (nextCompose.services.freedos.devices ?? []).filter(
+        device => !portPrefixes.some(prefix => device.includes(prefix)),
+    );
+
+    if (!nextCompose.services.freedos.environment.ARGUMENTS) {
+        nextCompose.services.freedos.environment.ARGUMENTS = "";
+    }
+
+    nextCompose.services.freedos.environment.ARGUMENTS = stripSerialArgs(
+        nextCompose.services.freedos.environment.ARGUMENTS,
+    );
+
+    if (ports.length > 0) {
+        for (const mapping of serialManager.getDeviceMappingsFor(ports)) {
+            if (!nextCompose.services.freedos.devices.includes(mapping)) {
+                nextCompose.services.freedos.devices.push(mapping);
+            }
+        }
+
+        const serialArgs = serialManager.generateQemuSerialArgsFor(ports);
+        if (serialArgs) {
+            nextCompose.services.freedos.environment.ARGUMENTS =
+                `${nextCompose.services.freedos.environment.ARGUMENTS} ${serialArgs}`.trim();
+        }
+    }
+
+    await winboat.replaceCompose(nextCompose);
+}
+
+async function handleStartContainer(): Promise<void> {
+    let missingPorts = serialManager.getMissingPorts();
+
+    while (missingPorts.length > 0) {
+        const message =
+            "One or more mapped serial devices were not detected and FreeDOS will not be able to use them:\n" +
+            `${missingPorts.join("\n")}\n\n` +
+            "Reconnect and click Retry, or start without them.";
+
+        const { response } = await electron.dialog.showMessageBox({
+            type: "warning",
+            buttons: ["Start without", "Retry", "Cancel"],
+            defaultId: 0,
+            cancelId: 2,
+            message,
+        });
+
+        if (response === 1) {
+            missingPorts = serialManager.getMissingPorts();
+            continue;
+        }
+
+        if (response === 2) {
+            return;
+        }
+
+        const allowedPorts = serialManager.passedThroughPorts.value.filter(
+            port => !missingPorts.includes(port),
+        );
+        await applySerialPortsForStart(allowedPorts);
+        return;
+    }
+
+    await winboat.startContainer();
+}
 
 const chartOptions = ref({
     chart: {

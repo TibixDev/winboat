@@ -132,6 +132,15 @@ export class SerialManager {
     }
 
     /**
+     * Returns any selected ports that are missing from the host right now.
+     */
+    getMissingPorts(): string[] {
+        this.refreshPorts();
+        const available = new Set(this.availablePorts.value.map(port => port.path));
+        return this.passedThroughPorts.value.filter(port => !available.has(port));
+    }
+
+    /**
      * Removes ports that are no longer present on the host and persists config.
      */
     pruneMissingPorts(): string[] {
@@ -161,12 +170,25 @@ export class SerialManager {
             .join(" ");
     }
 
+    generateQemuSerialArgsFor(ports: string[]): string {
+        return ports
+            .map((portPath, index) => {
+                const id = `hostserial${index}`;
+                return `-chardev serial,id=${id},path=${portPath} -device isa-serial,chardev=${id}`;
+            })
+            .join(" ");
+    }
+
     /**
      * Returns Docker device mappings for all passed-through serial ports.
      * e.g., ["/dev/ttyS0:/dev/ttyS0", "/dev/ttyUSB0:/dev/ttyUSB0"]
      */
     getDeviceMappings(): string[] {
         return this.passedThroughPorts.value.map(p => `${p}:${p}`);
+    }
+
+    getDeviceMappingsFor(ports: string[]): string[] {
+        return ports.map(p => `${p}:${p}`);
     }
 
     private persistConfig(): void {
