@@ -1,6 +1,6 @@
 {
     "name": "dosboat",
-    "version": "0.9.0",
+    "version": "0.1.0",
     "description": "Run DOS apps on Linux with seamless integration",
     "type": "module",
     "main": "main/main.js",
@@ -12,7 +12,9 @@
         "dev": "bun scripts/dev-server.ts",
         "build:linux": "bun scripts/build.ts && electron-builder --linux",
         "test": "vitest run",
-        "build:gs": "./build-guest-server.sh"
+        "test:bun": "vitest run",
+        "build:gs": "./build-guest-server.sh",
+        "lint": "eslint src --ext .ts,.tsx,.vue"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
@@ -21,20 +23,30 @@
         "email": "staff@winboat.app"
     },
     "devDependencies": {
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/vue": "^8.1.0",
         "@types/node-fetch": "^2.6.13",
         "@types/turndown": "^5.0.6",
+        "@typescript-eslint/eslint-plugin": "^8.56.0",
+        "@typescript-eslint/parser": "^8.56.0",
         "@vitejs/plugin-vue": "^6.0.4",
+        "@vitest/coverage-c8": "^0.33.0",
+        "@vitest/coverage-v8": "^4.0.18",
         "autoprefixer": "^10.4.24",
+        "c8": "^8.0.0",
         "chalk": "^5.6.2",
         "chokidar": "^5.0.0",
         "electron": "^40.2.1",
         "electron-builder": "^26.7.0",
+        "jsdom": "^28.1.0",
         "postcss": "^8.5.6",
         "prettier": "3.8.1",
         "tailwindcss": "^3.4.17",
+        "ts-node": "^10.9.2",
         "typescript": "~5.9.3",
         "vite": "^7.3.1",
-        "vitest": "^2.1.9",
+        "vitest": "^4.0.18",
+        "vue-eslint-parser": "^10.4.0",
         "vue-tsc": "^3.2.4"
     },
     "dependencies": {
