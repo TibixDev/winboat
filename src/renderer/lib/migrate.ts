@@ -14,8 +14,13 @@ const logger = createLogger(path.join(DOSBOAT_DIR, "migrations.log"));
  */
 export function detectMigrationNeeded(): boolean {
     const wbConfig = DosboatConfig.getInstance();
-    const previous = wbConfig.config.versionData.previous;
-    const threshold = new DosboatVersion("0.9.0");
+    const versionData = wbConfig.config.versionData;
+    
+    // No migration needed if this is not a version update
+    if (!versionData.previous.lessThan(versionData.current)) return false;
+    
+    const previous = versionData.previous;
+    const threshold = new DosboatVersion("0.1.0");
 
     if (previous.lessThan(threshold)) return true;
 
@@ -41,11 +46,8 @@ export async function performAutoMigrations(): Promise<void> {
     
     let migrated = false;
     try {
-        // In case of a version prior to 0.9.0, the NoVNC port will be set to the default 8006
-        // which is how we know we need to perform the migration, because from 0.9.0 we can rely
-        // on the stored version strings
         const previous = wbConfig.config.versionData.previous;
-        const threshold = new DosboatVersion("0.9.0");
+        const threshold = new DosboatVersion("0.1.0");
 
         if (previous.lessThan(threshold)) {
             const novncMapping = composeMapper.getShortPortMapping(CommonPorts.NOVNC);
@@ -62,29 +64,25 @@ export async function performAutoMigrations(): Promise<void> {
         return;
     }
 
-    if (migrated) {
-        // Update the config to mark migration as complete
-        const threshold = new DosboatVersion("0.9.0");
-        wbConfig.config.versionData.previous = threshold;
-        logger.info("[performAutoMigrations]: Updated config previous version to mark migration complete");
-    }
+    // Always update migration state after processing
+    wbConfig.config.versionData = {
+        ...wbConfig.config.versionData,
+        migrationComplete: true,
+        previous: wbConfig.config.versionData.current
+    };
 
-    // If previous version was < 0.9.0, update it to prevent future checks
-    const previous = wbConfig.config.versionData.previous;
-    const threshold = new DosboatVersion("0.9.0");
-    if (previous.lessThan(threshold)) {
-        wbConfig.config.versionData = { ...wbConfig.config.versionData, previous: threshold };
-        logger.info("[performAutoMigrations]: Updated config previous version to 0.9.0 to prevent future migration checks");
+    if (migrated) {
+        logger.info("[performAutoMigrations]: Completed necessary migrations.");
     }
 
     logger.info("[performAutoMigrations]: Finished automatic migrations");
 }
 
 /**
- * Perform compose port migrations for pre-0.9.0 installations
+ * Perform compose port migrations for pre-0.1.0 installations
  */
 async function migrateComposePorts_Pre090(containerManager: ContainerManager): Promise<void> {
-    logger.info("[migrateComposePorts_Pre090]: Performing migrations for 0.9.0");
+    logger.info("[migrateComposePorts_Pre090]: Performing migrations for 0.1.0");
 
     // Compose migration
     if (await containerManager.exists()) {

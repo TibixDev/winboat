@@ -44,9 +44,10 @@ export class DosboatVersion {
     }
 }
 
-type DosboatVersionData = {
-    previous: DosboatVersion,
-    current: DosboatVersion
+export interface DosboatVersionData {
+    previous: DosboatVersion;
+    current: DosboatVersion;
+    migrationComplete?: boolean;  // Add this line
 }
 
 export type DosboatConfigObj = {
