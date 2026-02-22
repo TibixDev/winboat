@@ -34,13 +34,10 @@ const emit = defineEmits<{
     hide: [];
 }>();
 
-const triggerRef = ref<HTMLElement>();
 const menuRef = ref<HTMLElement>();
 
 const isVisible = ref(false);
 const menuPosition = ref({ x: 0, y: 0 });
-
-const hasTrigger = computed(() => props.trigger !== "none");
 
 const menuStyle = computed(() => ({
     left: `${menuPosition.value.x}px`,

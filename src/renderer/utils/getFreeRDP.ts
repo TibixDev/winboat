@@ -38,7 +38,9 @@ export async function getFreeRDP() {
             if (shellOutput.stdout.includes(VERSION_3_STRING)) {
                 return installation;
             }
-        } catch {}
+        } catch {
+            // Ignore failed probe; try next installation.
+        }
     }
     return null;
 }

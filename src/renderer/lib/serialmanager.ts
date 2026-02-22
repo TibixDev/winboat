@@ -5,20 +5,20 @@ const fs: typeof import("node:fs") = require("node:fs");
 const path: typeof import("node:path") = require("node:path");
 
 export type SerialPortInfo = {
-    path: string;        // e.g. "/dev/ttyS0", "/dev/ttyUSB0"
-    name: string;        // e.g. "ttyS0", "ttyUSB0" 
-    type: "native" | "usb-serial";  // native RS-232 vs USB-to-serial adapter
+    path: string; // e.g. "/dev/ttyS0", "/dev/ttyUSB0"
+    name: string; // e.g. "ttyS0", "ttyUSB0"
+    type: "native" | "usb-serial"; // native RS-232 vs USB-to-serial adapter
     description: string; // Human-readable description from sysfs
-    vendorId?: string;   // USB VID for USB-serial adapters
-    productId?: string;  // USB PID for USB-serial adapters
+    vendorId?: string; // USB VID for USB-serial adapters
+    productId?: string; // USB PID for USB-serial adapters
 };
 
 export class SerialManager {
     private static instance: SerialManager | null = null;
-    
+
     /** All detected serial ports on the host */
     availablePorts: Ref<SerialPortInfo[]> = ref([]);
-    
+
     /** Ports currently selected for passthrough */
     passedThroughPorts: Ref<string[]> = ref([]);
 
@@ -47,7 +47,7 @@ export class SerialManager {
                 const entries = fs.readdirSync("/dev").filter((e: string) => e.startsWith(prefix));
                 for (const entry of entries) {
                     const fullPath = `/dev/${entry}`;
-                    
+
                     // For ttyS*, check if there's actual hardware behind it
                     // by reading /sys/class/tty/<name>/type
                     if (prefix === "ttyS") {
@@ -109,7 +109,9 @@ export class SerialManager {
                 }
                 current = path.dirname(current);
             }
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
         return {};
     }
 
@@ -127,6 +129,22 @@ export class SerialManager {
 
     isPortPassedThrough(portPath: string): boolean {
         return this.passedThroughPorts.value.includes(portPath);
+    }
+
+    /**
+     * Removes ports that are no longer present on the host and persists config.
+     */
+    pruneMissingPorts(): string[] {
+        this.refreshPorts();
+        const available = new Set(this.availablePorts.value.map(port => port.path));
+        const filtered = this.passedThroughPorts.value.filter(port => available.has(port));
+
+        if (filtered.length !== this.passedThroughPorts.value.length) {
+            this.passedThroughPorts.value = filtered;
+            this.persistConfig();
+        }
+
+        return filtered;
     }
 
     /**

@@ -1,7 +1,7 @@
 <template>
     <main 
         class="overflow-hidden relative w-screen h-screen"
-        :class="{ animationsDisabled: 'disable-animations' }"
+        :class="{ 'disable-animations': animationsDisabled }"
     >
         <!-- Decoration -->
         <div
@@ -164,7 +164,7 @@
 import { RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
 import { routes } from "./router";
 import { Icon } from "@iconify/vue";
-import { onMounted, ref, reactive, computed } from "vue";
+import { onMounted, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
 import { Dosboat } from "./lib/winboat";
 // Note: openAnchorLink only needed for guest server update dialog (WinBoat feature)
@@ -181,7 +181,6 @@ const $router = useRouter();
 const $route = useRoute();
 const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
-let winboat: Dosboat | null;
 let wbConfig: DosboatConfig | null;
 
 // Note: Guest server update variables not needed for FreeDOS
@@ -202,7 +201,7 @@ onMounted(async () => {
         console.log("Winboat is installed, proceeding");
         wbConfig = reactive(DosboatConfig.getInstance()); // Instantiate singleton class
         console.log("Config instance created");
-        winboat = Dosboat.getInstance(); // Instantiate singleton class
+        Dosboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
 
         // Migrations

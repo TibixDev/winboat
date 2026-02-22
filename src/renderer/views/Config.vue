@@ -382,7 +382,7 @@
                                     <x-label>Add Device</x-label>
                                     <TransitionGroup ref="usbMenu" name="menu" tag="x-menu" class="max-h-52">
                                         <x-menuitem
-                                            v-for="(device, k) of availableDevices as Device[]"
+                                            v-for="device of availableDevices as Device[]"
                                             :key="device.portNumbers.join(',')"
                                             @click="addDevice(device)"
                                         >
@@ -680,8 +680,8 @@ async function assignValues() {
     compose.value = Dosboat.readCompose(winboat.containerMgr!.composeFilePath);
     portMapper.value = new ComposePortMapper(compose.value);
 
-    serialManager.refreshPorts();
-    origSerialPorts.value = [...serialManager.passedThroughPorts.value];
+    const validSerialPorts = serialManager.pruneMissingPorts();
+    origSerialPorts.value = [...validSerialPorts];
 
     numCores.value = Number(compose.value.services.freedos.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -798,7 +798,7 @@ async function saveCompose() {
             `${compose.value!.services.freedos.environment.ARGUMENTS} ${buildSharedDriveArg()}`.trim();
     }
 
-    const serialPorts = [...serialManager.passedThroughPorts.value];
+    const serialPorts = serialManager.pruneMissingPorts();
     const portPrefixes = SERIAL_PORT_PREFIXES.map(prefix => `/dev/${prefix}`);
     compose.value!.services.freedos.devices = (compose.value!.services.freedos.devices ?? []).filter(
         device => !portPrefixes.some(prefix => device.includes(prefix)),

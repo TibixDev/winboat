@@ -31,7 +31,8 @@ export default [
         process: 'readonly',
         global: 'readonly',
         __dirname: 'readonly',
-        __filename: 'readonly'
+        __filename: 'readonly',
+        console: 'readonly'
       }
     },
     plugins: {
@@ -76,7 +77,24 @@ export default [
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
-        console: 'readonly'
+        crypto: 'readonly',
+        console: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLButtonElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        Event: 'readonly',
+        MouseEvent: 'readonly',
+        CustomEvent: 'readonly',
+        // Node.js globals used by renderer lib files
+        require: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+        NodeJS: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly'
       }
     },
     plugins: {
@@ -100,14 +118,27 @@ export default [
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
-        console: 'readonly'
+        crypto: 'readonly',
+        console: 'readonly',
+        // Node.js globals used by renderer lib files
+        require: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+        NodeJS: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly'
       }
     },
     plugins: {
       '@typescript-eslint': ts
     },
     rules: {
-      ...ts.configs.recommended.rules
+      ...ts.configs.recommended.rules,
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn'
     }
   },
   prettier

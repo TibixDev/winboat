@@ -28,22 +28,6 @@ export enum PodmanAPIStatus {
     UNAVAILABLE = "Unavailable",
 }
 
-type PodmanInfo = {
-    host: {
-        remoteSocket: {
-            exists: boolean;
-            path: string;
-        };
-        [Key: string]: any;
-    };
-    plugins: object;
-    registries: {
-        search: string[];
-    };
-    store: object;
-    version: object;
-};
-
 const COMPOSE_ENV_VARS = { PODMAN_COMPOSE_PROVIDER: "podman-compose", PODMAN_COMPOSE_WARNING_LOGS: "false" };
 
 export class PodmanContainer extends ContainerManager {

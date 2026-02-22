@@ -301,7 +301,7 @@ export class ComposePortMapper {
             port = Number.parseInt(port);
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise(resolve => {
             const server = createServer();
 
             server.once("error", (err: any) => {

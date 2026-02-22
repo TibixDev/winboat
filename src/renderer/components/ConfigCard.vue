@@ -120,7 +120,7 @@
                     :toggled="value"
                     @toggle="
                         (_: any) => {
-                            $emit('toggle');
+                            emit('toggle');
                             value = !value;
                         }
                     "
@@ -197,7 +197,12 @@ type PropsType = {
 };
 
 const props = defineProps<PropsType>();
-const value = defineModel("value");
+
+const emit = defineEmits<{
+    toggle: [];
+}>();
+
+const value = defineModel<number | string | boolean>("value");
 
 function ensureNumericInput(e: any) {
     if (e.metaKey || e.ctrlKey || e.which <= 0 || e.which === 8 || e.key === "ArrowRight" || e.key === "ArrowLeft") {

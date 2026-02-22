@@ -10,7 +10,7 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
         freedos: {
             build: {
                 context: "./build/freedos-image",
-                dockerfile: "Dockerfile"
+                dockerfile: "Dockerfile",
             },
             container_name: "DOSBoat",
             environment: {

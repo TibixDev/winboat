@@ -211,7 +211,7 @@ function parseRAMToMB(ramSizeStr: string): number {
 function getMBLabel(mb: number): string {
     // Find the exact match or closest option
     const validOptions = Object.entries(DOS_MEMORY_OPTIONS).sort(([, a], [, b]) => a - b);
-    const matched = validOptions.find(([_, optMB]) => Math.abs(optMB - mb) < 1);
+    const matched = validOptions.find(([, optMB]) => Math.abs(optMB - mb) < 1);
     return matched ? matched[0] : `${(mb / 1024).toFixed(2)} GB`;
 }
 

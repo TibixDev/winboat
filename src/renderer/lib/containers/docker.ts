@@ -82,12 +82,21 @@ export class DockerContainer extends ContainerManager {
         try {
             const { stdout } = await execFileAsync(this.executableAlias, args);
 
+            if (!stdout.trim()) {
+                containerLogger.warn("Docker port returned empty output");
+                return this.cachedPortMappings ?? [];
+            }
+
             for (const line of stdout.trim().split("\n")) {
+                if (!line.includes("->")) continue;
                 const parts = line.split("->").map(part => part.trim());
                 const hostPart = parts[1];
                 const containerPart = parts[0];
-
-                ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
+                try {
+                    ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
+                } catch (parseError) {
+                    containerLogger.warn(`Skipping invalid port mapping line: '${line}'`, parseError);
+                }
             }
         } catch (e) {
             containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
@@ -96,7 +105,9 @@ export class DockerContainer extends ContainerManager {
         }
 
         containerLogger.info("Docker container active port mappings: ", JSON.stringify(ret));
-        this.cachedPortMappings = ret;
+        if (ret.length > 0) {
+            this.cachedPortMappings = ret;
+        }
         return ret;
     }
 

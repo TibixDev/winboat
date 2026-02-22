@@ -385,7 +385,7 @@ export class USBManager {
             });
             assert("result" in response);
 
-            // @ts-ignore property "result" already exists due to assert
+            // @ts-expect-error QMP response shape validated by assert above
             return response.return.includes(`usb-host, id "${vendorId}:${productId}"`);
         } catch (e) {
             logger.error(`There was an error checking whether USB device '${vendorId}:${productId}' exists`);
@@ -399,7 +399,9 @@ export class USBManager {
     async #QMPAddDevice(device: Device) {
         // Check if QMP is available
         if (!this.#winboat.qmpMgr) {
-            logger.info(`QMP not available yet, will retry adding device ${device.deviceDescriptor.idVendor}:${device.deviceDescriptor.idProduct}`);
+            logger.info(
+                `QMP not available yet, will retry adding device ${device.deviceDescriptor.idVendor}:${device.deviceDescriptor.idProduct}`,
+            );
             return;
         }
 
@@ -478,7 +480,7 @@ export class USBManager {
                 const response = await this.#winboat.qmpMgr.executeCommand("human-monitor-command", {
                     "command-line": "info qtree",
                 });
-                // @ts-ignore
+                // @ts-expect-error QMP response can be string/array/object based on command
                 const qraw = response && ("return" in response ? response.return : response);
                 if (typeof qraw === "string") {
                     qtreeFull = qraw;
@@ -492,7 +494,9 @@ export class USBManager {
                 const productIdHex = productId.toString(16).padStart(4, "0");
                 qtreeDeviceLines = qtreeFull
                     .split("\n")
-                    .filter((l: string) => l.includes("usb-host") || l.includes(vendorIdHex) || l.includes(productIdHex));
+                    .filter(
+                        (l: string) => l.includes("usb-host") || l.includes(vendorIdHex) || l.includes(productIdHex),
+                    );
                 inGuest = qtreeDeviceLines.some(l => /usb-host/.test(l));
             } catch (e) {
                 qtreeFull = `Error getting qtree: ${String(e)}`;
@@ -504,14 +508,16 @@ export class USBManager {
         const DOSBOAT_DIR = remote.app.getPath("userData");
         try {
             const qmpLogPath = path.join(DOSBOAT_DIR, "qmp.log");
-            if (fs.existsSync(qmpLogPath)) qmpLogTail = fs.readFileSync(qmpLogPath, "utf8").split("\n").slice(-120).join("\n");
+            if (fs.existsSync(qmpLogPath))
+                qmpLogTail = fs.readFileSync(qmpLogPath, "utf8").split("\n").slice(-120).join("\n");
         } catch (e) {
             qmpLogTail = `Error reading qmp.log: ${String(e)}`;
         }
 
         try {
             const dosboatLogPath = path.join(DOSBOAT_DIR, "dosboat.log");
-            if (fs.existsSync(dosboatLogPath)) dosboatLogTail = fs.readFileSync(dosboatLogPath, "utf8").split("\n").slice(-120).join("\n");
+            if (fs.existsSync(dosboatLogPath))
+                dosboatLogTail = fs.readFileSync(dosboatLogPath, "utf8").split("\n").slice(-120).join("\n");
         } catch (e) {
             dosboatLogTail = `Error reading dosboat.log: ${String(e)}`;
         }

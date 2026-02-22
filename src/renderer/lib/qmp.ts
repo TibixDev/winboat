@@ -7,8 +7,6 @@ const { createConnection }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(DOSBOAT_DIR, "qmp.log"));
 
-type QMPStatus = "Connected" | "Closed";
-
 type QMPGreeting = {
     QMP: {
         version: {
@@ -202,9 +200,9 @@ export class QMPManager {
                 } else {
                     if (ch === '"') {
                         inString = true;
-                    } else if (ch === '{') {
+                    } else if (ch === "{") {
                         depth++;
-                    } else if (ch === '}') {
+                    } else if (ch === "}") {
                         depth--;
                         if (depth === 0) {
                             return { jsonStr: text.slice(start, i + 1), rest: text.slice(i + 1) };
@@ -253,10 +251,13 @@ export class QMPManager {
             // If we receive a 'return' with no id, DO NOT auto-resolve pending requests —
             // this can mis-route responses (observed when unrelated 'query-status' payloads arrived).
             if (parsed && typeof parsed === "object" && "return" in parsed && !("id" in parsed)) {
-                logger.warn("Unidentified QMP 'return' message received without id; ignoring (will not resolve pending).", {
-                    pendingCount: this._pending.size,
-                    sample: parsed,
-                });
+                logger.warn(
+                    "Unidentified QMP 'return' message received without id; ignoring (will not resolve pending).",
+                    {
+                        pendingCount: this._pending.size,
+                        sample: parsed,
+                    },
+                );
                 continue;
             }
 
@@ -295,9 +296,9 @@ export class QMPManager {
                 } else {
                     if (ch === '"') {
                         inString = true;
-                    } else if (ch === '{') {
+                    } else if (ch === "{") {
                         depth++;
-                    } else if (ch === '}') {
+                    } else if (ch === "}") {
                         depth--;
                         if (depth === 0) {
                             return { jsonStr: text.slice(start, i + 1), rest: text.slice(i + 1) };
@@ -392,12 +393,12 @@ export class QMPManager {
      *
      */
     async isAlive(): Promise<boolean> {
-        return new Promise(async (resolve, _) => {
+        return new Promise(resolve => {
             if (this.qmpSocket.closed || this.qmpSocket.destroyed) {
                 return resolve(false);
             }
 
-            const tm = setTimeout(_ => {
+            const tm = setTimeout(() => {
                 logger.warn("Querying status of QMP connection timed out.");
                 resolve(false);
             }, QMPManager.IS_ALIVE_TIMEOUT);
@@ -418,6 +419,4 @@ export class QMPManager {
                 });
         });
     }
-
-    private static handleError(e: unknown, msg?: string) {}
 }

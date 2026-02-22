@@ -771,24 +771,26 @@ const fs: typeof import("fs") = require("node:fs");
 const os: typeof import("os") = require("node:os");
 const checkDiskSpace: typeof import("check-disk-space").default = require("check-disk-space").default;
 
+const StepID = {
+    WELCOME: "STEP_WELCOME",
+    PREREQUISITES: "STEP_PREREQUISITES",
+    LICENSE: "STEP_LICENSE",
+    INSTALL_LOCATION: "STEP_INSTALL_LOCATION",
+    FREEDOS_CONFIG: "STEP_FREEDOS_CONFIG",
+    HARDWARE_CONFIG: "STEP_HARDWARE_CONFIG",
+    SHOULD_SHARE_HOME_FOLDER: "STEP_SHOULD_SHARE_HOME_FOLDER",
+    REVIEW: "STEP_OVERVIEW",
+    INSTALL: "STEP_INSTALL",
+    FINISH: "STEP_FINISH",
+} as const;
+
+type StepId = (typeof StepID)[keyof typeof StepID];
+
 type Step = {
-    id: string;
+    id: StepId;
     title: string;
     icon: string;
 };
-
-enum StepID {
-    WELCOME = "STEP_WELCOME",
-    PREREQUISITES = "STEP_PREREQUISITES",
-    LICENSE = "STEP_LICENSE",
-    INSTALL_LOCATION = "STEP_INSTALL_LOCATION",
-    FREEDOS_CONFIG = "STEP_FREEDOS_CONFIG",
-    HARDWARE_CONFIG = "STEP_HARDWARE_CONFIG",
-    SHOULD_SHARE_HOME_FOLDER = "STEP_SHOULD_SHARE_HOME_FOLDER",
-    REVIEW = "STEP_OVERVIEW",
-    INSTALL = "STEP_INSTALL",
-    FINISH = "STEP_FINISH",
-}
 
 const steps: Step[] = [
     {
@@ -868,13 +870,6 @@ const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
-// These are the install steps where the container is actually up and running
-const linkableInstallSteps = [
-    InstallStates.MONITORING_PREINSTALL,
-    InstallStates.INSTALLING_WINDOWS,
-    InstallStates.COMPLETED,
-];
-
 let installManager: InstallManager | null;
 
 onMounted(async () => {

@@ -4,6 +4,12 @@ const { exec }: typeof import("child_process") = require("node:child_process");
 const { promisify }: typeof import("util") = require("node:util");
 const execAsync = promisify(exec);
 
+export type Specs = {
+    cpuCores: number;
+    ramGB: number;
+    kvmEnabled: boolean;
+};
+
 export function satisfiesPrequisites(specs: Specs, containerSpecs?: ContainerSpecs) {
     return (
         containerSpecs &&

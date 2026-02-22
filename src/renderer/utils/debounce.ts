@@ -1,10 +1,12 @@
-export function debounce(func: Function, timeout = 300): Function {
+export function debounce<T extends (...args: any[]) => void>(
+    func: T,
+    timeout = 300,
+): (...args: Parameters<T>) => void {
     let timer: NodeJS.Timeout;
-    return (...args: any[]) => {
+    return (...args: Parameters<T>) => {
         clearTimeout(timer);
         timer = setTimeout(() => {
-            // @ts-ignore - Even casting as any fails
-            func.apply(this, args);
+            func(...args);
         }, timeout);
     };
 }

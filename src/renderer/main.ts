@@ -15,7 +15,9 @@ const process: typeof import("process") = require("node:process");
  * We include the default homebrew bin directory for exactly this reason.
  * It's not WinBoat's responsibility if the PATH envvar is incomplete, but in this case it affects a lot of users.
  */
-process.env.PATH && (process.env.PATH += `:${DEFAULT_HOMEBREW_DIR}`);
+if (process.env.PATH) {
+    process.env.PATH += `:${DEFAULT_HOMEBREW_DIR}`;
+}
 
 createApp(App)
     .directive("auto-scroll", autoScroll)

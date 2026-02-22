@@ -157,7 +157,7 @@
                             </x-label>
                         </x-menuitem>
 
-                        <x-menuitem v-for="(label, value) in AllSources" :value="value">
+                        <x-menuitem v-for="(label, value) in AllSources" :key="value" :value="value">
                             <x-label>
                                 <span class="qualifier"> Filter: </span>
                                 {{ label }}
@@ -326,7 +326,7 @@ onMounted(async () => {
 
     await refreshApps();
 
-    watch(winboat.isOnline, async (newVal, _) => {
+    watch(winboat.isOnline, async newVal => {
         if (newVal) {
             await refreshApps();
             console.log("Apps list: ", apps.value);

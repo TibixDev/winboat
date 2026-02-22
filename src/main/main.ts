@@ -56,7 +56,7 @@ let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
     if (!app.requestSingleInstanceLock()) {
-        // @ts-ignore property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
+        // @ts-expect-error property "window" is optional, see: [dialog.showMessageBoxSync](https://www.electronjs.org/docs/latest/api/dialog#dialogshowmessageboxsyncwindow-options)
         dialog.showMessageBoxSync(null, {
             type: "error",
             buttons: ["Close"],
@@ -138,7 +138,7 @@ app.on("window-all-closed", function () {
     if (process.platform !== "darwin") app.quit();
 });
 
-app.on("second-instance", _ => {
+app.on("second-instance", () => {
     if (mainWindow) {
         mainWindow.focus();
     }

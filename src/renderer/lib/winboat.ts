@@ -284,9 +284,14 @@ export class Dosboat {
 
     async #connectQMPManager() {
         try {
+            const qmpPort = getActiveHostPort(this.containerMgr!, CommonPorts.QMP);
+            if (!qmpPort) {
+                logger.warn("QMP port not available yet; skipping QMP connection attempt");
+                return;
+            }
             this.qmpMgr = await QMPManager.createConnection(
                 "127.0.0.1",
-                getActiveHostPort(this.containerMgr!, CommonPorts.QMP)!,
+                qmpPort,
             ).catch(e => {
                 logger.error(e);
                 throw e;
@@ -300,7 +305,7 @@ export class Dosboat {
                 logger.error("Invalid response to 'query-commands' — unexpected shape:", commands);
                 throw new Error("Invalid QMP response for query-commands");
             }
-            // @ts-ignore property "result" already exists due to assert
+            // @ts-expect-error QMP response shape validated by assert above
             assert((commands as any).return.every((x: any) => "name" in x));
         } catch (e) {
             logger.error("There was an error connecting to QMP");

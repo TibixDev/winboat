@@ -10,7 +10,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
         freedos: {
             build: {
                 context: "./build/freedos-image",
-                dockerfile: "Dockerfile"
+                dockerfile: "Dockerfile",
             },
             container_name: "DOSBoat",
             environment: {
@@ -33,11 +33,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             stop_grace_period: "120s",
             restart: RESTART_ON_FAILURE,
             privileged: true,
-            volumes: [
-                "data:/storage",
-                "${HOME}:/shared",
-                "./images/FD14-base.qcow2:/oem/base.qcow2:ro",
-            ],
+            volumes: ["data:/storage", "${HOME}:/shared", "./images/FD14-base.qcow2:/oem/base.qcow2:ro"],
             devices: [
                 "/dev/kvm",
                 "/dev/bus/usb",

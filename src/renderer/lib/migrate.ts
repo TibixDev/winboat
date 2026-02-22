@@ -15,10 +15,10 @@ const logger = createLogger(path.join(DOSBOAT_DIR, "migrations.log"));
 export function detectMigrationNeeded(): boolean {
     const wbConfig = DosboatConfig.getInstance();
     const versionData = wbConfig.config.versionData;
-    
+
     // No migration needed if this is not a version update
     if (!versionData.previous.lessThan(versionData.current)) return false;
-    
+
     const previous = versionData.previous;
     const threshold = new DosboatVersion("0.1.0");
 
@@ -42,8 +42,8 @@ export async function performAutoMigrations(): Promise<void> {
 
     const wbConfig = DosboatConfig.getInstance(); // Get DosboatConfig instance
     const containerManager = createContainer(wbConfig.config.containerRuntime);
-    const composeMapper = new ComposePortMapper(Dosboat.readCompose(containerManager.composeFilePath))
-    
+    const composeMapper = new ComposePortMapper(Dosboat.readCompose(containerManager.composeFilePath));
+
     let migrated = false;
     try {
         const previous = wbConfig.config.versionData.previous;
@@ -57,10 +57,13 @@ export async function performAutoMigrations(): Promise<void> {
                 migrated = true;
             }
         }
-    }
-    catch (e: any) {
+    } catch (error: unknown) {
         logger.error("[performAutoMigrations]: Automatic migrations failed");
-        logger.error(e.message ?? e);
+        if (error instanceof Error) {
+            logger.error(error.message);
+        } else {
+            logger.error(String(error));
+        }
         return;
     }
 
@@ -68,7 +71,7 @@ export async function performAutoMigrations(): Promise<void> {
     wbConfig.config.versionData = {
         ...wbConfig.config.versionData,
         migrationComplete: true,
-        previous: wbConfig.config.versionData.current
+        previous: wbConfig.config.versionData.current,
     };
 
     if (migrated) {
@@ -95,7 +98,8 @@ async function migrateComposePorts_Pre090(containerManager: ContainerManager): P
 
     currentCompose.services.freedos.ports = defaultCompose.services.freedos.ports;
     currentCompose.services.freedos.image = defaultCompose.services.freedos.image;
-    currentCompose.services.freedos.environment["USER_PORTS"] = defaultCompose.services.freedos.environment["USER_PORTS"];
+    currentCompose.services.freedos.environment["USER_PORTS"] =
+        defaultCompose.services.freedos.environment["USER_PORTS"];
 
     containerManager.writeCompose(currentCompose);
 
@@ -103,7 +107,10 @@ async function migrateComposePorts_Pre090(containerManager: ContainerManager): P
     const composeMapper = new ComposePortMapper(currentCompose);
     const novncMapping = composeMapper.getShortPortMapping(CommonPorts.NOVNC);
     if (novncMapping) {
-        composeMapper.setShortPortMapping(CommonPorts.NOVNC, 8007, { hostIP: novncMapping.hostIP, protocol: novncMapping.protocol });
+        composeMapper.setShortPortMapping(CommonPorts.NOVNC, 8007, {
+            hostIP: novncMapping.hostIP,
+            protocol: novncMapping.protocol,
+        });
         currentCompose.services.freedos.ports = composeMapper.composeFormat;
         containerManager.writeCompose(currentCompose);
     }
