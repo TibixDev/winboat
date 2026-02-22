@@ -180,6 +180,12 @@ type PropsType = {
      * When provided, the input will display labels instead of raw values.
      */
     valueMap?: { [key: number]: string };
+
+    /**
+     * Array of options for the dropdown type.
+     * Can contain simple values (strings, numbers) or objects with `value` and `label` properties.
+     */
+    options?: (string | number | { value: string | number; label: string })[];
 };
 
 const props = defineProps<PropsType>();

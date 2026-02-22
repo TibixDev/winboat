@@ -26,6 +26,19 @@ export type PTSerializableDeviceInfo = {
     productId: number;
 } & DeviceStrings;
 
+export type PTDeviceDiagnostics = {
+    // Whether the device is attached in the guest VM
+    inGuest: boolean;
+    // Full QEMU device tree output
+    qtreeFull: string;
+    // Filtered qtree lines containing device info
+    qtreeDeviceLines: string[];
+    // Recent lines from qmp.log
+    qmpLogTail: string;
+    // Recent lines from dosboat.log
+    dosboatLogTail: string;
+};
+
 type VidPidHex = {
     // USB Vendor ID in hex
     vendorIdHex: string;
@@ -455,13 +468,7 @@ export class USBManager {
      * @param productId The product ID of the device
      * @returns An object containing diagnostic information
      */
-    async getDeviceDiagnostics(vendorId: number, productId: number): Promise<{
-        inGuest: boolean;
-        qtreeFull: string;
-        qtreeDeviceLines: string[];
-        qmpLogTail: string;
-        dosboatLogTail: string;
-    }> {
+    async getDeviceDiagnostics(vendorId: number, productId: number): Promise<PTDeviceDiagnostics> {
         let qtreeFull = "QMP not available";
         let qtreeDeviceLines: string[] = [];
         let inGuest = false;
@@ -494,6 +501,7 @@ export class USBManager {
 
         let qmpLogTail = "qmp.log not found";
         let dosboatLogTail = "dosboat.log not found";
+        const DOSBOAT_DIR = remote.app.getPath("userData");
         try {
             const qmpLogPath = path.join(DOSBOAT_DIR, "qmp.log");
             if (fs.existsSync(qmpLogPath)) qmpLogTail = fs.readFileSync(qmpLogPath, "utf8").split("\n").slice(-120).join("\n");

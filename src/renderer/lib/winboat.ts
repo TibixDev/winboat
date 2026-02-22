@@ -3,6 +3,7 @@ import { DOSBOAT_DIR } from "./constants";
 import type {
     ComposeConfig,
     Metrics,
+    WinApp,
 } from "../../types";
 import { createLogger } from "../utils/log";
 import YAML from "yaml";
@@ -83,6 +84,14 @@ export class Dosboat {
     readonly #wbConfig: DosboatConfig | null = null;
     qmpMgr: QMPManager | null = null;
     containerMgr: ContainerManager | null = null;
+    appMgr: {
+        getApps(apiUrl: string): Promise<WinApp[]>;
+        updateAppCache(apiUrl: string): Promise<void>;
+        addCustomApp(name: string, path: string, args: string, icon: string): Promise<void>;
+        updateCustomApp(originalName: string, config: { Name: string; Path: string; Args: string; Icon: string }): Promise<void>;
+        removeCustomApp(app: WinApp): Promise<void>;
+    } | null = null;
+    apiUrl: string | null = null;
 
     static getInstance() {
         Dosboat.instance ??= new Dosboat();
@@ -263,6 +272,14 @@ export class Dosboat {
         const url = `http://127.0.0.1:${novncHostPort}/vnc.html?autoconnect=true&resize=${resizeMode}`;
         openLink(url);
         logger.info(`Launched VNC browser display at ${url}`);
+    }
+
+    /**
+     * Launches an application in the guest VM
+     * @param app The application to launch
+     */
+    launchApp(app: WinApp) {
+        logger.info(`Launching app: ${app.Name}`);
     }
 
     async #connectQMPManager() {
