@@ -1,6 +1,6 @@
 import { type FreeDOSVersionKey } from "./renderer/lib/constants";
 import { ContainerRuntimes } from "./renderer/lib/containers/common";
-import { type Dosboat } from "./renderer/lib/winboat";
+import { type Dosboat } from "./renderer/lib/dosboat";
 
 export type Specs = {
     cpuCores: number;

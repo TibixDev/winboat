@@ -139,7 +139,11 @@ export class Dosboat {
         this.#metricsInverval = setInterval(async () => {
             // If the VM is not ready, don't bother checking metrics
             if (!this.isOnline.value) return;
-            this.metrics.value = await this.getMetrics();
+            try {
+                this.metrics.value = await this.getMetrics();
+            } catch (e) {
+                logger.warn("Failed to get metrics:", e);
+            }
         }, METRICS_WAIT_MS);
 
         // *** QMP Interval ***
@@ -337,13 +341,14 @@ export class Dosboat {
         this.containerActionLoading.value = true;
         try {
             await this.containerMgr!.container("start");
+            logger.info("Successfully started Dosboat container");
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
             throw e;
+        } finally {
+            this.containerActionLoading.value = false;
         }
-        logger.info("Successfully started Dosboat container");
-        this.containerActionLoading.value = false;
     }
 
     async stopContainer() {

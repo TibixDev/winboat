@@ -179,7 +179,7 @@ import { FREEDOS_VERSIONS, DOS_MEMORY_OPTIONS, SERIAL_PORT_PREFIXES } from "../l
 import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
 import { SerialManager } from "../lib/serialmanager";
-import { Dosboat } from "../lib/winboat";
+import { Dosboat } from "../lib/dosboat";
 
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
 

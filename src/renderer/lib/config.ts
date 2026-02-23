@@ -2,7 +2,7 @@ const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
 import { DOSBOAT_DIR, SHARED_DRIVE_LETTERS, type SharedDriveLetter } from "./constants";
 import { ContainerRuntimes } from "./containers/common";
-import { logger } from "./winboat";
+import { logger } from "./dosboat";
 import type { PTSerializableDeviceInfo } from "./usbmanager";
 
 export class DosboatVersion {
@@ -16,7 +16,7 @@ export class DosboatVersion {
         const versionNumbers = versionTags[0].split(".").map(value => {
             const parsedValue = parseInt(value);
 
-            if (Number.isNaN(parsedValue)) {
+            if(Number.isNaN(parsedValue)) {
                 throw new Error(`Invalid dosboat version format: '${versionToken}'`);
             }
 
@@ -47,7 +47,7 @@ export class DosboatVersion {
 export interface DosboatVersionData {
     previous: DosboatVersion;
     current: DosboatVersion;
-    migrationComplete?: boolean; // Add this line
+    migrationComplete?: boolean; 
 }
 
 export type DosboatConfigObj = {
@@ -77,14 +77,14 @@ const defaultConfig: DosboatConfigObj = {
     containerRuntime: ContainerRuntimes.DOCKER,
     versionData: {
         previous: currentVersion,
-        current: currentVersion,
+        current: currentVersion
     },
 };
 
 export class DosboatConfig {
     private static readonly configPath: string = path.join(DOSBOAT_DIR, "dosboat.config.json");
     private static instance: DosboatConfig | null = null;
-
+    
     // Due to us wrapping DosboatConfig in reactive, this can't be private
     configData: DosboatConfigObj = { ...defaultConfig };
 
@@ -97,13 +97,11 @@ export class DosboatConfig {
         this.configData = DosboatConfig.readConfigObject()!;
 
         // Set correct versionData
-        if (this.config.versionData.current.versionToken !== currentVersion.versionToken) {
+        if(this.config.versionData.current.versionToken !== currentVersion.versionToken) {
             this.config.versionData.previous = this.config.versionData.current;
             this.config.versionData.current = currentVersion;
 
-            logger.info(
-                `Updated version data from '${this.config.versionData.previous.toString()}' to '${currentVersion.toString()}'`,
-            );
+            logger.info(`Updated version data from '${this.config.versionData.previous.toString()}' to '${currentVersion.toString()}'`);
         }
 
         console.log("Reading current config", this.configData);
@@ -152,7 +150,7 @@ export class DosboatConfig {
             const configObjRaw = JSON.parse(rawConfig);
 
             // Parse dosboat version data
-            if (configObjRaw.versionData) {
+            if(configObjRaw.versionData) {
                 configObjRaw.versionData.current = new DosboatVersion(configObjRaw.versionData.current);
                 configObjRaw.versionData.previous = new DosboatVersion(configObjRaw.versionData.previous);
             }
@@ -173,9 +171,9 @@ export class DosboatConfig {
                     configObj[key] = defaultConfig[key];
                     hasMissing = true;
                     console.log(
-                        `Added missing config key: ${key} with default value: ${JSON.stringify(
-                            defaultConfig[key as keyof DosboatConfigObj],
-                        )}`,
+                        `Added missing config key: ${key} with default value: ${
+                            JSON.stringify(defaultConfig[key as keyof DosboatConfigObj])
+                        }`,
                     );
                 }
 

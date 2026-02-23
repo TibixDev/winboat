@@ -67,7 +67,7 @@ export class DockerContainer extends ContainerManager {
         const args = ["container", action, this.containerName];
         try {
             const { stdout } = await execFileAsync(this.executableAlias, args);
-            containerLogger.info(`Container action '${action}' response: '${stdout}'`);
+            containerLogger.info(`Container action '${action}' completed`);
         } catch (e) {
             containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
@@ -83,7 +83,36 @@ export class DockerContainer extends ContainerManager {
             const { stdout } = await execFileAsync(this.executableAlias, args);
 
             if (!stdout.trim()) {
-                containerLogger.warn("Docker port returned empty output");
+                containerLogger.warn("Docker port returned empty output; retrying...");
+                // Port mappings might not be ready yet; wait 500ms and retry once
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const retryArgs = ["port", this.containerName];
+                const { stdout: retryStdout } = await execFileAsync(this.executableAlias, retryArgs).catch(() => ({ stdout: "" }));
+
+                if (!retryStdout.trim()) {
+                    containerLogger.warn("Docker port still empty after retry; using cached mappings");
+                    return this.cachedPortMappings ?? [];
+                }
+
+                // Process retry output
+                for (const line of retryStdout.trim().split("\n")) {
+                    if (!line.includes("->")) continue;
+                    const parts = line.split("->").map(part => part.trim());
+                    const hostPart = parts[1];
+                    const containerPart = parts[0];
+                    try {
+                        ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
+                    } catch (parseError) {
+                        containerLogger.warn(`Skipping invalid port mapping line: '${line}'`, parseError);
+                    }
+                }
+
+                if (ret.length > 0) {
+                    this.cachedPortMappings = ret;
+                    containerLogger.info("Docker container active port mappings (from retry): ", JSON.stringify(ret));
+                    return ret;
+                }
+
                 return this.cachedPortMappings ?? [];
             }
 

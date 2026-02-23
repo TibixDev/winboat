@@ -1,6 +1,6 @@
 import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
-import { logger, Dosboat } from "./winboat";
+import { logger, Dosboat } from "./dosboat";
 import { DosboatConfig } from "./config";
 import { assert } from "@vueuse/core";
 

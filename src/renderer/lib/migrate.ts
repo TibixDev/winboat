@@ -4,7 +4,7 @@ import { DosboatConfig, DosboatVersion } from "./config";
 import { DOSBOAT_DIR } from "./constants";
 import { CommonPorts, createContainer } from "./containers/common";
 import { ContainerManager } from "./containers/container";
-import { Dosboat } from "./winboat";
+import { Dosboat } from "./dosboat";
 
 const path: typeof import("path") = require("path");
 const logger = createLogger(path.join(DOSBOAT_DIR, "migrations.log"));

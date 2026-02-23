@@ -252,7 +252,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { computed, onMounted, ref, useTemplateRef, watch, nextTick } from "vue";
-import { Dosboat } from "../lib/winboat";
+import { Dosboat } from "../lib/dosboat";
 import { ContainerStatus } from "../lib/containers/common";
 import { type WinApp } from "../../types";
 import WBContextMenu from "../components/WBContextMenu.vue";

@@ -536,7 +536,7 @@ import ConfigCard from "../components/ConfigCard.vue";
 import { computed, onMounted, ref, watch, reactive } from "vue";
 import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
-import { Dosboat } from "../lib/winboat";
+import { Dosboat } from "../lib/dosboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";

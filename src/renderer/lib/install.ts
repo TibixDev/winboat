@@ -2,7 +2,7 @@ import { type InstallConfiguration } from "../../types";
 import { DOSBOAT_DIR, SHARED_DRIVE_INDEX_BY_LETTER, FREEDOS_BASE_IMAGE_FILES } from "./constants";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
-import { Dosboat } from "./winboat";
+import { Dosboat } from "./dosboat";
 import { ContainerManager } from "./containers/container";
 import { DosboatConfig } from "./config";
 import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
@@ -21,7 +21,7 @@ export enum InstallStates {
     INSTALLING_FREEDOS = "Installing FreeDOS",
     COMPLETED = "Completed",
     INSTALL_ERROR = "Install Error",
-}
+};
 
 interface InstallEvents {
     stateChanged: (state: InstallStates) => void;
@@ -93,7 +93,7 @@ export class InstallManager {
         // Get app root path for resolving build context and image paths
         const appPath = remote.app.getAppPath();
         const isDev = !remote.app.isPackaged;
-        const appRoot = isDev
+        const appRoot = isDev 
             ? path.join(appPath, "..", "..") // In dev: getAppPath() returns .../src/renderer, go up to project root
             : path.dirname(remote.process.resourcesPath); // In production: go to app root
 
@@ -109,15 +109,14 @@ export class InstallManager {
         }
 
         // Update base image volume to use absolute path
-        const baseImageIdx = composeContent.services.freedos.volumes.findIndex(
-            vol => vol.includes("-base.qcow2") || vol.includes("/oem/base.qcow2"),
+        const baseImageIdx = composeContent.services.freedos.volumes.findIndex(vol => 
+            vol.includes("-base.qcow2") || vol.includes("/oem/base.qcow2")
         );
         if (baseImageIdx !== -1) {
             // Get the version-specific base image filename
-            const baseImageFile =
-                this.conf.freedosVersion !== "custom"
-                    ? FREEDOS_BASE_IMAGE_FILES[this.conf.freedosVersion]
-                    : "FD14-base.qcow2"; // Fallback for custom ISOs
+            const baseImageFile = this.conf.freedosVersion !== "custom" 
+                ? FREEDOS_BASE_IMAGE_FILES[this.conf.freedosVersion]
+                : "FD14-base.qcow2"; // Fallback for custom ISOs
             const baseImagePath = path.join(appRoot, "images", baseImageFile);
             composeContent.services.freedos.volumes[baseImageIdx] = `${baseImagePath}:/oem/base.qcow2:ro`;
             logger.info(`Base image path set to: ${baseImagePath}`);
@@ -131,7 +130,7 @@ export class InstallManager {
 
         // Storage folder mapping
         const storageFolderIdx = composeContent.services.freedos.volumes.findIndex(vol => vol.includes("/storage"));
-
+        
         if (storageFolderIdx === -1) {
             logger.warn("No /storage volume found in compose template, adding one...");
             composeContent.services.freedos.volumes.push(`${this.conf.installFolder}:/storage`);
@@ -141,7 +140,7 @@ export class InstallManager {
 
         // Shared folder mapping
         const sharedFolderIdx = composeContent.services.freedos.volumes.findIndex(vol => vol.includes("/shared"));
-
+        
         if (!this.conf.sharedFolderPath) {
             // Remove shared folder if not enabled
             if (sharedFolderIdx !== -1) {
@@ -151,7 +150,7 @@ export class InstallManager {
         } else {
             // Add or update shared folder
             const volumeStr = `${this.conf.sharedFolderPath}:/shared`;
-
+            
             if (sharedFolderIdx === -1) {
                 composeContent.services.freedos.volumes.push(volumeStr);
                 logger.info(`Added shared folder: ${this.conf.sharedFolderPath}`);
@@ -183,7 +182,7 @@ export class InstallManager {
                     composeContent.services.freedos.devices.push(deviceMapping);
                 }
             }
-
+            
             // Add QEMU serial arguments
             const serialArgs = this.conf.serialPorts
                 .map((port, index) => {
@@ -191,7 +190,7 @@ export class InstallManager {
                     return `-chardev serial,id=${id},path=${port} -device isa-serial,chardev=${id}`;
                 })
                 .join(" ");
-
+            
             if (serialArgs) {
                 composeContent.services.freedos.environment.ARGUMENTS += ` ${serialArgs}`;
             }
@@ -286,7 +285,9 @@ export class InstallManager {
 
         // Clean up custom ISO if it was used
         const compose = Dosboat.readCompose(this.container.composeFilePath);
-        const filteredVolumes = compose.services.freedos.volumes.filter(volume => !volume.endsWith("/boot.iso"));
+        const filteredVolumes = compose.services.freedos.volumes.filter(
+            volume => !volume.endsWith("/boot.iso"),
+        );
 
         if (compose.services.freedos.volumes.length !== filteredVolumes.length) {
             compose.services.freedos.volumes = filteredVolumes;
@@ -294,7 +295,7 @@ export class InstallManager {
             this.container.writeCompose(compose);
         }
     }
-
+                     
     async install() {
         logger.info("Starting installation...");
 

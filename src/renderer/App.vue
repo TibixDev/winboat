@@ -166,7 +166,7 @@ import { routes } from "./router";
 import { Icon } from "@iconify/vue";
 import { onMounted, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
-import { Dosboat } from "./lib/winboat";
+import { Dosboat } from "./lib/dosboat";
 // Note: openAnchorLink only needed for guest server update dialog (WinBoat feature)
 // import { openAnchorLink } from "./utils/openLink";
 import { DosboatConfig } from "./lib/config";

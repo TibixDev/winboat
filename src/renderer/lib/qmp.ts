@@ -238,7 +238,6 @@ export class QMPManager {
                 const pid = String(parsed.id);
                 const pending = this._pending.get(pid);
                 if (pending) {
-                    logger.debug(`QMP response matched pending id=${pid} cmd=${pending.cmd ?? "<unknown>"}`);
                     clearTimeout(pending.timeout);
                     pending.resolve(parsed as any);
                     this._pending.delete(pid);
