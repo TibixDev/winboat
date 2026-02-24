@@ -66,7 +66,6 @@ export class DockerContainer extends ContainerManager {
     async container(action: ContainerAction): Promise<void> {
         const args = ["container", action, this.containerName];
         try {
-            const { stdout } = await execFileAsync(this.executableAlias, args);
             containerLogger.info(`Container action '${action}' completed`);
         } catch (e) {
             containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
@@ -87,7 +86,9 @@ export class DockerContainer extends ContainerManager {
                 // Port mappings might not be ready yet; wait 500ms and retry once
                 await new Promise(resolve => setTimeout(resolve, 500));
                 const retryArgs = ["port", this.containerName];
-                const { stdout: retryStdout } = await execFileAsync(this.executableAlias, retryArgs).catch(() => ({ stdout: "" }));
+                const { stdout: retryStdout } = await execFileAsync(this.executableAlias, retryArgs).catch(() => ({
+                    stdout: "",
+                }));
 
                 if (!retryStdout.trim()) {
                     containerLogger.warn("Docker port still empty after retry; using cached mappings");

@@ -96,6 +96,7 @@
                 <div class="flex flex-col gap-4">
                     <!-- RAM Allocation -->
                     <ConfigCard
+                        v-model:value="ramMB"
                         icon="game-icons:ram"
                         title="RAM Allocation"
                         desc="Memory available to the FreeDOS virtual machine"
@@ -104,11 +105,11 @@
                         :max="memoryOptionsMB[memoryOptionsMB.length - 1]"
                         :step="memoryOptionsMB"
                         :value-map="ramMBToLabel"
-                        v-model:value="ramMB"
                     />
 
                     <!-- CPU Cores -->
                     <ConfigCard
+                        v-model:value="numCores"
                         icon="solar:cpu-bold"
                         title="CPU Cores"
                         desc="How many CPU Cores are allocated to the FreeDOS virtual machine"
@@ -116,17 +117,16 @@
                         unit="Cores"
                         :min="1"
                         :max="maxNumCores"
-                        v-model:value="numCores"
                     />
 
                     <!-- Shared Folder -->
                     <ConfigCard
+                        v-model:value="shareFolder"
                         icon="fluent:folder-link-32-filled"
                         title="Shared Folder"
                         type="switch"
-                        v-model:value="shareFolder"
                     >
-                        <template v-slot:desc>
+                        <template #desc>
                             If enabled, your selected folder will appear in FreeDOS as a shared drive (<span
                                 class="font-mono bg-neutral-700 rounded-md px-1 py-0.5"
                                 >D:</span
@@ -136,7 +136,7 @@
 
                     <!-- Shared Folder Location -->
                     <ConfigCard v-if="shareFolder" icon="mdi:folder-cog" title="Shared Folder Location" type="custom">
-                        <template v-slot:desc>
+                        <template #desc>
                             <span v-if="sharedFolderPath">
                                 Currently sharing:
                                 <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{
@@ -151,33 +151,33 @@
                     <!-- Shared Folder Drive Letter -->
                     <ConfigCard
                         v-if="shareFolder"
+                        v-model:value="wbConfig.config.sharedDriveLetter"
                         icon="mdi:drive-harddisk"
                         title="Shared Folder Drive Letter"
                         desc="Drive letter is fixed to avoid FreeDOS letter gaps."
                         type="dropdown"
                         :options="SHARED_DRIVE_LETTERS"
-                        v-model:value="wbConfig.config.sharedDriveLetter"
                     />
 
                     <!-- Auto Start Container -->
                     <ConfigCard
+                        v-model:value="autoStartContainer"
                         icon="clarity:power-solid"
                         title="Auto Start Container"
                         desc="If enabled, the FreeDOS container will automatically be started when the system boots up"
                         type="switch"
-                        v-model:value="autoStartContainer"
                     />
                     <div class="flex flex-col">
-                        <p class="my-0 text-red-500" v-for="(error, k) of errors" :key="k">❗ {{ error }}</p>
+                        <p v-for="(error, k) of errors" :key="k" class="my-0 text-red-500">❗ {{ error }}</p>
                     </div>
                     <x-button
                         :disabled="saveButtonDisabled || isUpdatingUSBPrerequisites"
-                        @click="saveCompose()"
                         class="w-24"
                         :class="{
                             '!bg-violet-500/30 hover:!bg-violet-500/40 !border-violet-500/30 !text-violet-100':
                                 !saveButtonDisabled && !isUpdatingUSBPrerequisites,
                         }"
+                        @click="saveCompose()"
                     >
                         <span v-if="!isApplyingChanges || isUpdatingUSBPrerequisites">Save</span>
                         <x-throbber v-else class="w-10"></x-throbber>
@@ -221,8 +221,8 @@
                                         @click="addRequiredComposeFieldsUSB"
                                     >
                                         <x-label
-                                            class="ext-lg font-normal text-yellow-200"
                                             v-if="!isUpdatingUSBPrerequisites"
+                                            class="ext-lg font-normal text-yellow-200"
                                         >
                                             Update
                                         </x-label>
@@ -251,16 +251,16 @@
                                 "
                             >
                                 <x-label
-                                    class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
                                     v-if="usbManager.ptDevices.value.length == 0"
+                                    class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
                                 >
                                     Press the button below to add USB devices to your passthrough list
                                 </x-label>
                                 <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
                                     <x-card
-                                        class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
                                         v-for="device of usbManager.ptDevices.value"
                                         :key="`${device.vendorId}-${device.productId}`"
+                                        class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
                                         :class="{
                                             'bg-white/[calc(0.05*0.75)] [&_*:not(div):not(span)]:opacity-75':
                                                 !usbManager.isPTDeviceConnected(device),
@@ -341,7 +341,6 @@
 
                                         <div class="flex items-center gap-2">
                                             <x-button
-                                                @click="verifyDeviceInGuest(device)"
                                                 :disabled="!canVerify"
                                                 :title="
                                                     canVerify
@@ -351,21 +350,22 @@
                                                           : 'VM not running'
                                                 "
                                                 class="mt-1 !bg-gradient-to-tl from-blue-400/10 to-transparent hover:from-blue-400/20 transition !border-0 text-xs"
+                                                @click="verifyDeviceInGuest(device)"
                                             >
                                                 <x-label v-if="!canVerify">Verify</x-label>
                                                 <x-label v-else>Verify</x-label>
                                             </x-button>
                                             <x-button
-                                                @click="showDeviceDetails(device)"
                                                 :disabled="!canVerify"
                                                 :title="canVerify ? 'Show QMP/log details' : 'Waiting for QMP...'"
                                                 class="mt-1 !bg-gradient-to-tl from-neutral-700/10 to-transparent hover:from-neutral-700/20 transition !border-0 text-xs"
+                                                @click="showDeviceDetails(device)"
                                             >
                                                 <x-icon href="#info"></x-icon>
                                             </x-button>
                                             <x-button
-                                                @click="removeDevice(device)"
                                                 class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
+                                                @click="removeDevice(device)"
                                             >
                                                 <x-icon href="#remove"></x-icon>
                                             </x-button>
@@ -454,6 +454,7 @@
                 <div class="flex flex-col gap-4">
                     <!-- VNC Display Scaling -->
                     <ConfigCard
+                        v-model:value="wbConfig.config.vncScale"
                         class="relative z-10"
                         icon="mdi:monitor-screenshot"
                         title="VNC Display Scaling"
@@ -463,7 +464,6 @@
                             { label: 'Standard', value: 1 },
                             { label: 'Automatic', value: 2 },
                         ]"
-                        v-model:value="wbConfig.config.vncScale"
                     />
                 </div>
             </div>
@@ -474,11 +474,11 @@
                 <div class="flex flex-col gap-4">
                     <!-- Experimental Features -->
                     <ConfigCard
+                        v-model:value="wbConfig.config.experimentalFeatures"
                         icon="streamline-ultimate:lab-tube-experiment"
                         title="Experimental Features"
                         desc="If enabled, you'll have access to experimental features that may not be stable or complete"
                         type="switch"
-                        v-model:value="wbConfig.config.experimentalFeatures"
                         @toggle="toggleExperimentalFeatures"
                     />
 
@@ -493,11 +493,11 @@
 
                     <!-- Disable Animations -->
                     <ConfigCard
+                        v-model:value="wbConfig.config.disableAnimations"
                         icon="mdi:animation-outline"
                         title="Disable Animations"
                         desc="Disables all animations in DOSBoat. Useful if the UI feels sluggish or your system lacks dedicated GPU acceleration."
                         type="switch"
-                        v-model:value="wbConfig.config.disableAnimations"
                     />
                 </div>
             </div>
@@ -515,8 +515,8 @@
                 <div></div>
                 <x-button
                     class="!bg-red-800/20 px-4 py-1 !border-red-500/10 generic-hover flex flex-row items-center gap-2 !text-red-300"
-                    @click="resetDosboat()"
                     :disabled="isResettingWinboat"
+                    @click="resetDosboat()"
                 >
                     <Icon v-if="resetQuestionCounter < 3" icon="mdi:bomb" class="size-8"></Icon>
                     <x-throbber v-else class="size-8"></x-throbber>

@@ -6,15 +6,15 @@
                 <div class="flex flex-col flex-none gap-2 justify-center items-center">
                     <div class="relative">
                         <img
-                            alt="Icon for current app"
                             v-if="currentAppForm.Icon"
+                            alt="Icon for current app"
                             :src="currentAppForm.Icon"
                             class="size-24"
                         />
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
-                            @click="pickCustomAppIcon"
                             class="flex absolute top-0 left-0 flex-col gap-1 justify-center items-center w-full h-full rounded-xl opacity-0 backdrop-blur-sm transition duration-200 absoute bg-black/50 hover:opacity-100"
+                            @click="pickCustomAppIcon"
                         >
                             <Icon icon="mdi:pencil" class="size-10"></Icon>
                             <x-label>Change Icon</x-label>
@@ -27,8 +27,8 @@
                     <x-input
                         v-model="currentAppForm.Name"
                         class="!max-w-full"
-                        @input="(e: any) => (customAppName = e.target.value)"
                         type="text"
+                        @input="(e: any) => (customAppName = e.target.value)"
                     />
 
                     <!-- Path field -->
@@ -61,9 +61,9 @@
                     </p>
                 </div>
                 <div
-                    class="flex flex-row gap-2 items-center my-0 font-semibold text-red-500"
                     v-for="(error, k) of customAppAddErrors"
                     :key="k"
+                    class="flex flex-row gap-2 items-center my-0 font-semibold text-red-500"
                 >
                     <Icon icon="fluent:warning-32-filled" class="inline size-4"></Icon>
                     <p class="!my-0">{{ error }}</p>
@@ -83,12 +83,12 @@
                 </div>
             </template>
             <footer>
-                <x-button @click="cancelAddCustomApp" id="cancel-button">
+                <x-button id="cancel-button" @click="cancelAddCustomApp">
                     <x-label>Cancel</x-label>
                 </x-button>
                 <x-button
-                    toggled
                     id="add-button"
+                    toggled
                     :disabled="customAppAddErrors.length > 0 || (orginalAppForm?.Source === 'custom' && isSame)"
                     @click="saveApp"
                 >
@@ -118,13 +118,13 @@
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
                 <x-select
+                    :disabled="!winboat.isOnline.value"
                     @change="
                         (e: any) => {
                             sortBy = e.detail.newValue;
                             DosboatConfig.getInstance().config.appsSortOrder = e.detail.newValue;
                         }
                     "
-                    :disabled="!winboat.isOnline.value"
                 >
                     <x-menu class="">
                         <x-menuitem value="name" :toggled="sortBy === 'name'">
@@ -144,9 +144,9 @@
                     </x-menu>
                 </x-select>
                 <x-select
-                    @change="(e: any) => (filterBy = e.detail.newValue)"
                     :disabled="!winboat.isOnline.value"
                     class="flex flex-row-reverse gap-1 items-center justify-center"
+                    @change="(e: any) => (filterBy = e.detail.newValue)"
                 >
                     <Icon icon="mdi:filter-outline" style="width: 17; height: 17"></Icon>
                     <x-menu class="">
@@ -173,8 +173,8 @@
                     type="text"
                     maxlength="32"
                     :value="searchInput"
-                    @input="(e: any) => (searchInput = e.target.value)"
                     :disabled="!winboat.isOnline.value"
+                    @input="(e: any) => (searchInput = e.target.value)"
                 >
                     <x-icon href="#search"></x-icon>
                     <x-label>Search</x-label>

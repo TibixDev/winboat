@@ -15,7 +15,7 @@
                     ></div>
                 </div>
                 <Transition name="bounce" mode="out-in">
-                    <div :key="currentStepIdx" id="stepIcon" class="flex items-center justify-center relative h-full">
+                    <div id="stepIcon" :key="currentStepIdx" class="flex items-center justify-center relative h-full">
                         <Icon
                             key="icon1"
                             class="size-[60%] text-violet-400 z-30 relative"
@@ -57,7 +57,7 @@
             </div>
 
             <Transition name="bouncedown" mode="out-in">
-                <div :key="currentStepIdx" id="stepContent" class="overflow-scroll">
+                <div id="stepContent" :key="currentStepIdx" class="overflow-scroll">
                     <!-- Welcome -->
                     <div v-if="currentStep.id === StepID.WELCOME" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
@@ -114,9 +114,9 @@
                                 Virtualization (KVM) enabled
                                 <a
                                     href="https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web"
-                                    @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
+                                    @click="openAnchorLink"
                                 >
                                     How?
                                 </a>
@@ -128,8 +128,8 @@
 
                                 <div>
                                     <x-select
-                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
                                         class="w-fit"
+                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
                                     >
                                         <x-menu>
                                             <x-menuitem
@@ -146,9 +146,9 @@
                                 installed
                                 <a
                                     href="https://docs.docker.com/engine/install/"
-                                    @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
+                                    @click="openAnchorLink"
                                     >How?</a
                                 >
                             </li>
@@ -169,9 +169,9 @@
                                     Docker Compose v2 installed
                                     <a
                                         href="https://docs.docker.com/compose/install/#plugin-linux-only"
-                                        @click="openAnchorLink"
                                         target="_blank"
                                         class="text-violet-400 hover:underline ml-1"
+                                        @click="openAnchorLink"
                                         >How?</a
                                     >
                                 </li>
@@ -192,9 +192,9 @@
                                     <span class="text-gray-600"> (Relog required) </span>
                                     <a
                                         href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
-                                        @click="openAnchorLink"
                                         target="_blank"
                                         class="text-violet-400 hover:underline ml-1"
+                                        @click="openAnchorLink"
                                         >How?</a
                                     >
                                 </li>
@@ -214,9 +214,9 @@
                                     <span class="text-gray-600"> (Also enable on boot) </span>
                                     <a
                                         href="https://docs.docker.com/config/daemon/start/"
-                                        @click="openAnchorLink"
                                         target="_blank"
                                         class="text-violet-400 hover:underline ml-1"
+                                        @click="openAnchorLink"
                                         >How?</a
                                     >
                                 </li>
@@ -238,9 +238,9 @@
                                     Podman Compose installed
                                     <a
                                         href="https://github.com/containers/podman-compose?tab=readme-ov-file#installation"
-                                        @click="openAnchorLink"
                                         target="_blank"
                                         class="text-violet-400 hover:underline ml-1"
+                                        @click="openAnchorLink"
                                         >How?</a
                                     >
                                 </li>
@@ -251,8 +251,8 @@
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
                                 :disabled="!satisfiesPrequisites(specs, containerSpecs)"
+                                @click="currentStepIdx++"
                             >
                                 Next
                             </x-button>
@@ -327,17 +327,17 @@
                             <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
                             <x-select
                                 id="select-edition"
-                                @change="(e: any) => (freedosVersion = e.detail.newValue)"
                                 class="w-64"
                                 :disabled="!!customIsoPath"
+                                @change="(e: any) => (freedosVersion = e.detail.newValue)"
                             >
                                 <x-menu>
                                     <x-menuitem
                                         v-for="(version, key) in FREEDOS_VERSIONS"
+                                        v-show="key !== 'custom'"
                                         :key="key"
                                         :value="key"
                                         :toggled="freedosVersion === key"
-                                        v-show="key !== 'custom'"
                                     >
                                         <x-label>{{ version }}</x-label>
                                     </x-menuitem>
@@ -497,13 +497,13 @@
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-cpu-cores"
-                                        @change="(e: any) => (cpuCores = Number(e.target.value))"
                                         class="w-[50%]"
                                         :value="cpuCores"
                                         :min="MIN_CPU_CORES"
                                         :max="specs.cpuCores"
                                         step="1"
                                         ticks
+                                        @change="(e: any) => (cpuCores = Number(e.target.value))"
                                     />
                                     <x-label>{{ cpuCores }} Core{{ cpuCores > 1 ? "s" : "" }}</x-label>
                                 </div>
@@ -513,8 +513,8 @@
                                 <label for="select-ram" class="text-sm text-neutral-400"> Select RAM </label>
                                 <x-select
                                     id="select-ram"
-                                    @change="(e: any) => (dosMemory = e.detail.newValue)"
                                     class="w-64"
+                                    @change="(e: any) => (dosMemory = e.detail.newValue)"
                                 >
                                     <x-menu @change="(e: any) => (dosMemory = e.detail.newValue)">
                                         <x-menuitem
@@ -552,12 +552,12 @@
                                 <div class="flex flex-row gap-4 items-center">
                                     <x-slider
                                         id="select-disk"
-                                        @change="(e: any) => (diskSpaceGB = Number(e.target.value))"
                                         class="w-[50%]"
                                         :value="diskSpaceGB"
                                         :min="MIN_DISK_GB"
                                         :max="installFolderDiskSpaceGB || 0"
                                         step="8"
+                                        @change="(e: any) => (diskSpaceGB = Number(e.target.value))"
                                     />
                                     <x-label>{{ diskSpaceGB }} GB</x-label>
                                 </div>
@@ -584,7 +584,7 @@
                             download and open in FreeDOS.
                         </p>
 
-                        <x-checkbox class="my-4" @toggle="folderSharing = !folderSharing" :toggled="folderSharing">
+                        <x-checkbox class="my-4" :toggled="folderSharing" @toggle="folderSharing = !folderSharing">
                             <x-label><strong>Enable folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
                                 By checking this box, you acknowledge the risks mentioned above
@@ -615,8 +615,8 @@
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
                                 :disabled="folderSharing && !sharedFolderPath"
+                                @click="currentStepIdx++"
                             >
                                 Next
                             </x-button>

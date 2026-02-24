@@ -40,49 +40,49 @@
             <!-- Buttons -->
             <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
                 <button
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     title="View Desktop"
                     class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     @click="winboat.launchVNC()"
                 >
                     <Icon class="w-20 h-20 text-blue-300" icon="mdi:monitor"></Icon>
                 </button>
                 <button
-                    title="Start"
-                    class="generic-hover"
                     v-if="
                         winboat.containerStatus.value === ContainerStatus.EXITED ||
                         winboat.containerStatus.value === ContainerStatus.CREATED ||
                         winboat.containerStatus.value === ContainerStatus.UNKNOWN
                     "
+                    title="Start"
+                    class="generic-hover"
                     @click="handleStartContainer"
                 >
                     <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
                 </button>
                 <button
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     title="Stop"
                     class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     @click="winboat.stopContainer()"
                 >
                     <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
                 </button>
                 <button
+                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     title="Restart"
                     class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     @click="winboat.restartContainer()"
                 >
                     <Icon class="w-20 h-20 text-orange-300" icon="mingcute:refresh-3-line"></Icon>
                 </button>
 
                 <button
-                    title="Pause / Unpause"
-                    class="generic-hover"
                     v-if="
                         winboat.containerStatus.value === ContainerStatus.RUNNING ||
                         winboat.containerStatus.value === ContainerStatus.PAUSED
                     "
+                    title="Pause / Unpause"
+                    class="generic-hover"
                     @click="
                         winboat.containerStatus.value === ContainerStatus.PAUSED
                             ? winboat.unpauseContainer()
@@ -303,9 +303,7 @@ async function handleStartContainer(): Promise<void> {
             return;
         }
 
-        const allowedPorts = serialManager.passedThroughPorts.value.filter(
-            port => !missingPorts.includes(port),
-        );
+        const allowedPorts = serialManager.passedThroughPorts.value.filter(port => !missingPorts.includes(port));
         await applySerialPortsForStart(allowedPorts);
         return;
     }

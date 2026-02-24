@@ -49,7 +49,9 @@
                     :min="props.min"
                     :max="props.max"
                     :value="props.valueMap ? props.valueMap[value] || value : value"
-                    v-on:keydown="(e: any) => ensureNumericInput(e)"
+                    :disabled="!!props.valueMap"
+                    required
+                    @keydown="(e: any) => ensureNumericInput(e)"
                     @input="
                         (e: any) => {
                             if (props.valueMap) {
@@ -66,8 +68,6 @@
                             }
                         }
                     "
-                    :disabled="!!props.valueMap"
-                    required
                 />
                 <x-button
                     v-if="props.step"
@@ -99,15 +99,15 @@
                     <Icon icon="mdi:plus" class="size-4"></Icon>
                     <x-label class="sr-only">Add</x-label>
                 </x-button>
-                <p class="text-neutral-100" v-if="props.unit && !props.valueMap">{{ props.unit }}</p>
+                <p v-if="props.unit && !props.valueMap" class="text-neutral-100">{{ props.unit }}</p>
             </template>
             <template v-else-if="props.type === 'dropdown'">
                 <x-select class="w-20" @change="(e: any) => (value = e.detail.newValue)">
                     <x-menu>
                         <x-menuitem
                             v-for="(opt, key) in props.options"
-                            :value="getOptionValue(opt)"
                             :key="key"
+                            :value="getOptionValue(opt)"
                             :toggled="value === getOptionValue(opt)"
                         >
                             <x-label>{{ getOptionLabel(opt) }}{{ props.unit ?? "" }}</x-label>
@@ -118,13 +118,13 @@
             <template v-else-if="props.type === 'switch'">
                 <x-switch
                     :toggled="value"
+                    size="large"
                     @toggle="
                         (_: any) => {
                             emit('toggle');
                             value = !value;
                         }
                     "
-                    size="large"
                 />
             </template>
         </div>

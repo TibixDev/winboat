@@ -1,10 +1,6 @@
 import { ref, type Ref } from "vue";
 import { DOSBOAT_DIR } from "./constants";
-import type {
-    ComposeConfig,
-    Metrics,
-    WinApp,
-} from "../../types";
+import type { ComposeConfig, Metrics, WinApp } from "../../types";
 import { createLogger } from "../utils/log";
 import YAML from "yaml";
 import { openLink } from "../utils/openLink";
@@ -88,7 +84,10 @@ export class Dosboat {
         getApps(apiUrl: string): Promise<WinApp[]>;
         updateAppCache(apiUrl: string): Promise<void>;
         addCustomApp(name: string, path: string, args: string, icon: string): Promise<void>;
-        updateCustomApp(originalName: string, config: { Name: string; Path: string; Args: string; Icon: string }): Promise<void>;
+        updateCustomApp(
+            originalName: string,
+            config: { Name: string; Path: string; Args: string; Icon: string },
+        ): Promise<void>;
         removeCustomApp(app: WinApp): Promise<void>;
     } | null = null;
     apiUrl: string | null = null;
@@ -253,7 +252,9 @@ export class Dosboat {
             const memTotalMB = parseHumanSizeToMB(memTotalStr || "0");
             return { cpuPercent, memUsedMB, memTotalMB };
         } catch (e) {
-            logger.error(`Failed to read container stats via '${stringifyExecFile(this.containerMgr.executableAlias, args)}'`);
+            logger.error(
+                `Failed to read container stats via '${stringifyExecFile(this.containerMgr.executableAlias, args)}'`,
+            );
             logger.error(e);
             return { cpuPercent: 0, memUsedMB: 0, memTotalMB: 0 };
         }
@@ -272,7 +273,7 @@ export class Dosboat {
         const novncHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.NOVNC);
         const vncScale = DosboatConfig.getInstance().config.vncScale;
         // Use resize=scale for automatic viewport scaling, or resize=off for native resolution
-        const resizeMode = vncScale > 1 ? 'scale' : 'off';
+        const resizeMode = vncScale > 1 ? "scale" : "off";
         const url = `http://127.0.0.1:${novncHostPort}/vnc.html?autoconnect=true&resize=${resizeMode}`;
         openLink(url);
         logger.info(`Launched VNC browser display at ${url}`);
@@ -293,10 +294,7 @@ export class Dosboat {
                 logger.warn("QMP port not available yet; skipping QMP connection attempt");
                 return;
             }
-            this.qmpMgr = await QMPManager.createConnection(
-                "127.0.0.1",
-                qmpPort,
-            ).catch(e => {
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", qmpPort).catch(e => {
                 logger.error(e);
                 throw e;
             });

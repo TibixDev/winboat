@@ -1,8 +1,5 @@
 <template>
-    <main 
-        class="overflow-hidden relative w-screen h-screen"
-        :class="{ 'disable-animations': animationsDisabled }"
-    >
+    <main class="overflow-hidden relative w-screen h-screen" :class="{ 'disable-animations': animationsDisabled }">
         <!-- Decoration -->
         <div
             class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15 blob-anim"
@@ -19,9 +16,9 @@
 
         <!-- Titlebar -->
         <x-titlebar
+            class="backdrop-blur-xl bg-neutral-900/50"
             @minimize="handleMinimize()"
             @buttonclick="handleTitleBarEvent"
-            class="backdrop-blur-xl bg-neutral-900/50"
         >
             <x-label>DOSBoat</x-label>
         </x-titlebar>
@@ -121,18 +118,16 @@
                     </div>
                 </div>
                 <RouterLink
-                        v-for="route of routes.filter(
-                            (r: RouteRecordRaw) => {
-                                // Hide Apps tab unless dev flag is set
-                                if (r.name === 'Apps' && !isDev) return false;
-                                return !['SetupUI', 'Loading', 'Migration'].includes(String(r.name));
-                            },
-                        )"
-                    :to="route.path"
+                    v-for="route of routes.filter((r: RouteRecordRaw) => {
+                        // Hide Apps tab unless dev flag is set
+                        if (r.name === 'Apps' && !isDev) return false;
+                        return !['SetupUI', 'Loading', 'Migration'].includes(String(r.name));
+                    })"
                     :key="route.path"
+                    :to="route.path"
                 >
                     <x-navitem>
-                        <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
+                        <Icon class="mr-4 w-5 h-5" :icon="route.meta!.icon as string" />
                         <x-label>{{ route.name }}</x-label>
                     </x-navitem>
                 </RouterLink>
