@@ -4,6 +4,9 @@
 
 DOSBoat is an Electron app that allows you to run FreeDOS in a Docker/Podman container on Linux, with the primary feature being **host serial port passthrough** to the FreeDOS VM. This enables you to use DOS applications that require serial port access (RS-232, USB-to-serial adapters, etc.) on modern Linux systems.
 
+
+*Notice:* This is mostly just a working fork of WinBoat for ham radio operators. Currently, it is very rough but working POC.    I got it working for Kenwood DOS software with one USB-to-serial Prolific PL2303. There is still a lot of WinBoat logic that needs to be removed (like the Window Apps Service) and the rebrand to DOSBoat is not complete.
+
 ## Features
 
 - **FreeDOS in a Container**: Run FreeDOS 1.4 in an isolated Docker/Podman environment
@@ -82,38 +85,10 @@ DOSBoat uses a custom FreeDOS container image with an efficient two-layer disk s
 
 This overlay approach saves disk space and allows the base image to be shared across installations while protecting it from corruption.
 
-## First-Time Setup: Creating the Base Image
-
-Before you can use DOSBoat, you need to create the FreeDOS base image **once**. We provide a helper script:
-
-```bash
-./scripts/create-base-image.sh
-```
-
-The script will:
-1. Create a blank 1GB QCOW2 disk
-2. Launch QEMU with the FreeDOS 1.4 LiveCD
-3. Guide you through the FreeDOS installation
-4. Save the installed image as the base
-
-**During the installation:**
-- Choose "Install to harddisk"
-- Select your language
-- When prompted about Drive C not being partitioned, answer "Yes" to partition
-- System will reboot automatically
-- After reboot, choose "Yes" to format the drive
-- Select installation options (full installation recommended)
-- After installation completes, type: `fdapm /poweroff`
-
-**Manual creation** (if you prefer):
-See detailed instructions in [build/freedos-image/README.md](build/freedos-image/README.md).
 
 ## Building DOSBoat
 
 ### Prerequisites
-
-1. **Create the base image first** - See [First-Time Setup](#first-time-setup-creating-the-base-image) above
-2. **Install Bun** - See instructions below
 
 ### Installing Bun
 
@@ -168,7 +143,7 @@ Building the Electron app compiles native modules (like `usb`) and requires syst
 sudo apt-get update && sudo apt-get install -y libudev-dev rpm
 ```
 
-**Fedora/RHEL (dnf):**
+**Fedora/RHEL:**
 ```bash
 sudo dnf install -y systemd-devel rpm-build
 ```
@@ -188,8 +163,7 @@ If you are on another distro, install the equivalent `libudev` development packa
 ## Running DOSBoat in Development Mode
 
 - Make sure you meet the [prerequisites](#prerequisites)
-- Create the base image (see [First-Time Setup](#first-time-setup-creating-the-base-image))
-- Additionally, for development you need to have Bun installed (see [Installing Bun](#installing-bun))
+- For development you need to have Bun installed (see [Installing Bun](#installing-bun))
 - Clone the repo: `git clone https://github.com/chevybowtie/dosboat`
 - Navigate to the directory: `cd dosboat`
 - Install dependencies: `bun i`
@@ -199,7 +173,7 @@ If you are on another distro, install the equivalent `libudev` development packa
 
 Contributions are welcome! Whether it's bug fixes, feature improvements, or documentation updates, we appreciate your help making DOSBoat better.
 
-**Please note**: We maintain a focus on technical contributions only. Let's keep things focused on making great software! 🚀
+**Please note**: We maintain a focus on technical contributions only. 
 
 Feel free to:
 - Report bugs and issues
@@ -222,4 +196,3 @@ DOSBoat is a fork of [WinBoat](https://github.com/TibixDev/winboat) by TibixDev,
 - [Electron](https://www.electronjs.org/) - Cross-platform desktop framework
 - [Vue.js](https://vuejs.org/) - UI framework
 - [noVNC](https://novnc.com/) - Browser-based VNC client
-- Original [dockur/freedos](https://github.com/dockur/freedos) work inspired our container approach
