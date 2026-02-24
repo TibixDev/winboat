@@ -20,3 +20,5 @@ guest_server/winboat_guest_server.zip
 images/FD14-LiveCD/
 images/FD14-base.qcow2
 coverage/
+*/.nfs00000000*
+
