@@ -121,9 +121,13 @@
                     </div>
                 </div>
                 <RouterLink
-                    v-for="route of routes.filter(
-                        (r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)),
-                    )"
+                        v-for="route of routes.filter(
+                            (r: RouteRecordRaw) => {
+                                // Hide Apps tab unless dev flag is set
+                                if (r.name === 'Apps' && !isDev) return false;
+                                return !['SetupUI', 'Loading', 'Migration'].includes(String(r.name));
+                            },
+                        )"
                     :to="route.path"
                     :key="route.path"
                 >
