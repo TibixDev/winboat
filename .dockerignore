@@ -1,0 +1,10 @@
+.git
+.idea
+.vscode
+build
+dist
+guest_server/winboat_guest_server.exe
+guest_server/winboat_guest_server.zip
+node_modules
+result
+temp
