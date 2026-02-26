@@ -7,6 +7,7 @@ import {
     ComposeArguments,
     ComposeDirection,
     ContainerAction,
+    BackupOptions,
     containerLogger,
     ContainerManager,
     ContainerStatus,
@@ -143,6 +144,85 @@ export class DockerContainer extends ContainerManager {
             );
             containerLogger.error(e);
             return false;
+        }
+    }
+
+    async exportBackup(targetPath: string, options: BackupOptions): Promise<void> {
+        // We use a temporary alpine container to tar the storage volume and/or settings
+        const backupDir = path.dirname(targetPath);
+        const backupFile = path.basename(targetPath);
+
+        const args = ["run", "--rm", "-v", `${backupDir}:/backup`];
+        const tarCmd = ["tar", "-czf", `/backup/${backupFile}`];
+
+        if (options.includeStorage) {
+            const compose = YAML.parse(fs.readFileSync(this.composeFilePath, "utf-8")) as ComposeConfig;
+            const storage = compose.services.windows.volumes.find(vol => vol.includes("/storage"));
+            if (storage) {
+                const storagePath = storage.split(":")[0];
+                args.push("-v", `${storagePath}:/export/storage`);
+                tarCmd.push("-C", "/export", "storage");
+            }
+        }
+
+        if (options.includeSettings) {
+            args.push("-v", `${WINBOAT_DIR}:/export/settings`);
+            tarCmd.push("-C", "/export", "settings");
+        }
+
+        if (tarCmd.length === 3) return; // Nothing to backup
+
+        args.push("alpine", ...tarCmd);
+
+        try {
+            await execFileAsync(this.executableAlias, args);
+        } catch (e) {
+            containerLogger.error(`Failed to export backup to ${targetPath}`);
+            containerLogger.error(e);
+            throw e;
+        }
+    }
+
+    async importBackup(sourcePath: string, options: BackupOptions): Promise<void> {
+        // 1. Stop the container if it's running
+        const status = await this.getStatus();
+        if (status === ContainerStatus.RUNNING) {
+            await this.container("stop");
+        }
+
+        const sourceDir = path.dirname(sourcePath);
+        const sourceFile = path.basename(sourcePath);
+
+        const args = ["run", "--rm", "-v", `${sourceDir}:/backup`];
+        let shCmd = `mkdir -p /temp && tar -xzf /backup/${sourceFile} -C /temp`;
+
+        if (options.includeStorage) {
+            const compose = YAML.parse(fs.readFileSync(this.composeFilePath, "utf-8")) as ComposeConfig;
+            const storage = compose.services.windows.volumes.find(vol => vol.includes("/storage"));
+            if (storage) {
+                const storagePath = storage.split(":")[0];
+                if (fs.existsSync(storagePath)) {
+                    fs.rmSync(storagePath, { recursive: true, force: true });
+                }
+                fs.mkdirSync(storagePath, { recursive: true });
+                args.push("-v", `${storagePath}:/storage`);
+                shCmd += ` && if [ -d /temp/storage ]; then cp -a /temp/storage/. /storage/; fi`;
+            }
+        }
+
+        if (options.includeSettings) {
+            args.push("-v", `${WINBOAT_DIR}:/winboat_dir`);
+            shCmd += ` && if [ -d /temp/settings ]; then cp -a /temp/settings/. /winboat_dir/; fi`;
+        }
+
+        args.push("alpine", "sh", "-c", shCmd);
+
+        try {
+            await execFileAsync(this.executableAlias, args);
+        } catch (e) {
+            containerLogger.error(`Failed to import backup from ${sourcePath}`);
+            containerLogger.error(e);
+            throw e;
         }
     }
 

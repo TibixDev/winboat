@@ -11,6 +11,11 @@ export type ComposeDirection = "up" | "down";
 export type ComposeArguments = "--no-start";
 export type ContainerAction = "start" | "stop" | "pause" | "unpause" | "restart";
 
+export interface BackupOptions {
+    includeStorage: boolean;
+    includeSettings: boolean;
+}
+
 export abstract class ContainerManager {
     abstract readonly defaultCompose: ComposeConfig;
     abstract readonly composeFilePath: string;
@@ -25,6 +30,9 @@ export abstract class ContainerManager {
     abstract remove(): Promise<void>;
     abstract getStatus(): Promise<ContainerStatus>;
     abstract exists(): Promise<boolean>;
+
+    abstract exportBackup(targetPath: string, options: BackupOptions): Promise<void>;
+    abstract importBackup(sourcePath: string, options: BackupOptions): Promise<void>;
 
     abstract get containerName(): string;
 

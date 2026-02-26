@@ -50,6 +50,10 @@
                         </p>
                         <div class="flex flex-row gap-4">
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button class="px-6 border-violet-400/20 text-violet-300" @click="showRestoreDialog = true">
+                                <Icon icon="solar:cloud-upload-bold" class="mr-2" />
+                                Import Backup
+                            </x-button>
                         </div>
                     </div>
 
@@ -800,10 +804,128 @@
                             <x-button @click="$router.push('/home')">Finish</x-button>
                         </div>
                     </div>
+
+                    <!-- Restoration -->
+                    <div v-if="currentStep.id === StepID.RESTORE" class="step-block">
+                        <h1 class="text-3xl font-semibold">Restoration</h1>
+                        <p class="text-lg text-gray-400 text-justify">
+                            WinBoat is now restoring your backup. Please be patient as this may take some time depending on
+                            your backup size. In the meantime, you can check the status
+                            <span v-if="linkableInstallSteps.includes(installState)">
+                                <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
+                            </span>
+                        </p>
+
+                        <!-- Restoring -->
+                        <div
+                            v-if="
+                                installState !== InstallStates.COMPLETED && installState !== InstallStates.INSTALL_ERROR
+                            "
+                            class="flex flex-col h-full items-center justify-center gap-4"
+                        >
+                            <x-throbber class="size-16"></x-throbber>
+                            <x-label
+                                v-if="installState !== InstallStates.MONITORING_PREINSTALL"
+                                class="text-lg text-gray-400 text-center"
+                            >
+                                {{ installState }}...
+                            </x-label>
+                            <x-label v-else class="text-lg text-gray-400 text-center">
+                                {{ preinstallMsg }}
+                            </x-label>
+
+                            <!-- Progress Bar -->
+                            <div class="w-full max-w-md bg-neutral-800 h-2 rounded-full mt-4 overflow-hidden border border-white/5 shadow-inner">
+                                <div 
+                                    class="bg-violet-500 h-full transition-all duration-500 ease-out shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+                                    :style="{ width: `${progress}%` }"
+                                ></div>
+                            </div>
+                            <x-label class="text-xs font-bold text-violet-400/60 uppercase tracking-widest mt-1">{{ Math.round(progress) }}% Complete</x-label>
+                        </div>
+
+                        <!-- Error -->
+                        <div
+                            v-if="installState === InstallStates.INSTALL_ERROR"
+                            class="flex flex-col h-full items-center justify-center gap-4"
+                        >
+                            <Icon icon="line-md:alert" class="size-16 text-red-500"></Icon>
+                            <x-label class="text-lg text-gray-400 text-center">
+                                An error occurred while restoring your backup. Please check the logs in
+                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
+                                for more information.
+                            </x-label>
+                        </div>
+
+                        <!-- Completed -->
+                        <div
+                            v-if="installState === InstallStates.COMPLETED"
+                            class="flex flex-col h-full items-center justify-center gap-4"
+                        >
+                            <Icon icon="line-md:confirm-circle" class="size-16 text-green-500"></Icon>
+                            <x-label class="text-lg text-gray-400 text-center">
+                                Backup has been restored successfully!
+                            </x-label>
+                            <x-button @click="$router.push('/home')">Finish</x-button>
+                        </div>
+                    </div>
                 </div>
             </Transition>
         </div>
         <div class="absolute gradient-bg left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] -z-10"></div>
+
+        <!-- Restore Dialog -->
+        <dialog v-if="showRestoreDialog" open class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm w-screen h-screen">
+            <div class="bg-[#1a1b23] border border-white/10 rounded-3xl p-8 shadow-2xl max-w-lg w-full text-white flex flex-col gap-6 animate-in fade-in zoom-in duration-300">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 rounded-2xl bg-violet-500/10 text-violet-400 border border-violet-500/20 shadow-lg shadow-violet-500/10">
+                        <Icon icon="solar:cloud-upload-bold-duotone" class="size-10" />
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold">Restore Backup</h2>
+                        <p class="text-white/40 text-sm">Pick your backup file and installation settings</p>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-white/30 uppercase tracking-widest">Backup File (.tar.gz)</label>
+                        <div class="flex gap-2">
+                            <x-input readonly :value="backupFileName" class="!max-w-full flex-grow rounded-xl bg-white/5 border-white/5 shadow-inner">
+                                <x-label>Select backup archive</x-label>
+                            </x-input>
+                            <x-button @click="selectBackupFile" class="rounded-xl border-white/10 hover:bg-white/10">Browse</x-button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-white/30 uppercase tracking-widest">Install Location</label>
+                        <div class="flex gap-2">
+                            <x-input readonly :value="installFolder" class="!max-w-full flex-grow rounded-xl bg-white/5 border-white/5 shadow-inner">
+                                <x-label>Where to restore</x-label>
+                            </x-input>
+                            <x-button @click="selectInstallFolder" class="rounded-xl border-white/10 hover:bg-white/10">Browse</x-button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-white/30 uppercase tracking-widest">Container Runtime</label>
+                        <x-select @change="(e: any) => containerRuntime = e.detail.newValue" class="w-full rounded-xl bg-white/5 border-white/5">
+                            <x-menu>
+                                <x-menuitem v-for="r in Object.values(ContainerRuntimes)" :key="r" :value="r" :toggled="r === containerRuntime">
+                                    <x-label>{{ r }}</x-label>
+                                </x-menuitem>
+                            </x-menu>
+                        </x-select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-white/5">
+                    <x-button @click="showRestoreDialog = false" class="rounded-xl px-6 border-white/10 hover:bg-white/5">Cancel</x-button>
+                    <x-button toggled @click="startRestore" :disabled="!backupPath || !installFolder" class="rounded-xl px-8 shadow-lg shadow-violet-500/20">Start Restore</x-button>
+                </div>
+            </div>
+        </dialog>
     </div>
 </template>
 
@@ -849,6 +971,7 @@ enum StepID {
     SHOULD_SHARE_HOME_FOLDER = "STEP_SHOULD_SHARE_HOME_FOLDER",
     REVIEW = "STEP_OVERVIEW",
     INSTALL = "STEP_INSTALL",
+    RESTORE = "STEP_RESTORE",
     FINISH = "STEP_FINISH",
 }
 
@@ -904,6 +1027,11 @@ const steps: Step[] = [
         icon: "line-md:downloading-loop",
     },
     {
+        id: StepID.RESTORE,
+        title: "Restoration",
+        icon: "solar:cloud-upload-bold",
+    },
+    {
         id: StepID.FINISH,
         title: "Finish",
         icon: "bx:bxs-check-circle",
@@ -934,8 +1062,63 @@ const folderSharing = ref(false);
 const sharedFolderPath = ref("");
 const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
+const progress = ref(0);
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
+
+// Restore logic
+const showRestoreDialog = ref(false);
+const backupPath = ref("");
+const backupFileName = ref("");
+
+function selectBackupFile() {
+    electron.dialog.showOpenDialog({
+        title: "Select Backup File",
+        filters: [{ name: "WinBoat Backup", extensions: ["tar.gz"] }],
+        properties: ["openFile"]
+    }).then((result: any) => {
+        if (!result.canceled && result.filePaths.length > 0) {
+            backupPath.value = result.filePaths[0];
+            backupFileName.value = path.basename(result.filePaths[0]);
+        }
+    });
+}
+
+function startRestore() {
+    // Basic config for restore, most will be overwritten by compose from backup
+    const installConfig: InstallConfiguration = {
+        windowsVersion: "11", 
+        windowsLanguage: "English",
+        cpuCores: cpuCores.value,
+        ramGB: ramGB.value,
+        installFolder: installFolder.value,
+        diskSpaceGB: 64,
+        username: "winboat",
+        password: "password",
+        container: containerRuntime.value,
+    };
+
+    const wbConfig = WinboatConfig.getInstance();
+    wbConfig.config.containerRuntime = containerRuntime.value;
+
+    installManager = new InstallManager(installConfig);
+    
+    installManager.emitter.on("stateChanged", newState => {
+        installState.value = newState;
+    });
+
+    installManager.emitter.on("vncPortChanged", port => {
+        vncPort.value = port;
+    });
+
+    installManager.emitter.on("progress", p => {
+        progress.value = p;
+    });
+
+    showRestoreDialog.value = false;
+    currentStepIdx.value = steps.findIndex(s => s.id === StepID.RESTORE);
+    installManager.restore(backupPath.value);
+}
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
 
@@ -968,6 +1151,13 @@ onUnmounted(() => {
 watch(folderSharing, (newValue) => {
     if (newValue && !sharedFolderPath.value) {
         sharedFolderPath.value = os.homedir();
+    }
+});
+
+watch(installState, (newState) => {
+    if (newState === InstallStates.COMPLETED) {
+        const { ipcRenderer } = require("electron");
+        ipcRenderer.send("init-tray");
     }
 });
 
@@ -1153,6 +1343,10 @@ function install() {
 
     installManager.emitter.on("vncPortChanged", port => {
         vncPort.value = port;
+    });
+
+    installManager.emitter.on("progress", p => {
+        progress.value = p;
     });
 
     installManager.install();

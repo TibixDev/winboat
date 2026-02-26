@@ -23,7 +23,7 @@ export class WinboatVersion {
         const versionNumbers = versionTags[0].split(".").map(value => {
             const parsedValue = parseInt(value);
 
-            if(Number.isNaN(parsedValue)) {
+            if (Number.isNaN(parsedValue)) {
                 throw new Error(`Invalid winboat version format: '${versionToken}'`);
             }
 
@@ -71,6 +71,8 @@ export type WinboatConfigObj = {
     containerRuntime: ContainerRuntimes;
     versionData: WinboatVersionData;
     appsSortOrder: string;
+    favoriteApps: string[];
+    recentApps: Array<{ name: string, timestamp: number }>;
 };
 
 const currentVersion = new WinboatVersion(import.meta.env.VITE_APP_VERSION);
@@ -94,12 +96,14 @@ const defaultConfig: WinboatConfigObj = {
         current: currentVersion
     },
     appsSortOrder: 'name',
+    favoriteApps: [],
+    recentApps: [],
 };
 
 export class WinboatConfig {
     private static readonly configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     private static instance: WinboatConfig | null = null;
-    
+
     // Due to us wrapping WinboatConfig in reactive, this can't be private
     configData: WinboatConfigObj = { ...defaultConfig };
 
@@ -112,7 +116,7 @@ export class WinboatConfig {
         this.configData = WinboatConfig.readConfigObject()!;
 
         // Set correct versionData
-        if(this.config.versionData.current.versionToken !== currentVersion.versionToken) {
+        if (this.config.versionData.current.versionToken !== currentVersion.versionToken) {
             this.config.versionData.previous = this.config.versionData.current;
             this.config.versionData.current = currentVersion;
 
@@ -165,7 +169,7 @@ export class WinboatConfig {
             const configObjRaw = JSON.parse(rawConfig);
 
             // Parse winboat version data
-            if(configObjRaw.versionData) {
+            if (configObjRaw.versionData) {
                 configObjRaw.versionData.current = new WinboatVersion(configObjRaw.versionData.current);
                 configObjRaw.versionData.previous = new WinboatVersion(configObjRaw.versionData.previous);
             }
@@ -182,8 +186,7 @@ export class WinboatConfig {
                     configObj[key] = defaultConfig[key];
                     hasMissing = true;
                     console.log(
-                        `Added missing config key: ${key} with default value: ${
-                            JSON.stringify(defaultConfig[key as keyof WinboatConfigObj])
+                        `Added missing config key: ${key} with default value: ${JSON.stringify(defaultConfig[key as keyof WinboatConfigObj])
                         }`,
                     );
                 }
