@@ -26,7 +26,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             },
             cap_add: ["NET_ADMIN"],
             ports: [
-                "127.0.0.1::8006", // VNC Web Interface
+                "127.0.0.1:8006:8006", // VNC Web Interface
                 "127.0.0.1::7148", // Winboat Guest Server API
                 "127.0.0.1::7149", // QEMU QMP Port
                 "127.0.0.1::3389/tcp", // RDP
