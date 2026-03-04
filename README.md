@@ -58,8 +58,7 @@ Before running WinBoat, ensure your system meets the following requirements:
 - **In case of Podman:**
   - **Podman**: Required for containerization
       - [Installation Guide](https://podman.io/docs/installation#installing-on-linux)
-
-      > On Debian/Ubuntu and forks, the Podman version installed with `apt install` can be too old. Make sure you have **Version 4.x.x** or higher to have the installation complete successfully
+      > On Debian/Ubuntu and forks, the Podman version installed with `apt install` could be too old. Make sure you have **Version 4.x.x** or higher to ensure the installation completes successfully.
   - **Podman Compose**: Required for compatibility with podman-compose.yml files
       - [Installation Guide](https://github.com/containers/podman-compose?tab=readme-ov-file#installation)
 - **FreeRDP**: Required for remote desktop connection (Please make sure you have **Version 3.x.x** with sound support included)
