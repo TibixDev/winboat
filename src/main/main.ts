@@ -1,9 +1,11 @@
-import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, session, dialog, Tray, Menu } from "electron";
 import { join } from "path";
 import { initialize, enable } from "@electron/remote/main/index.js";
 import Store from "electron-store";
 
 initialize();
+
+let tray: Tray | null = null;
 
 // Window Constants
 const WINDOW_MIN_WIDTH = 1280;
@@ -106,8 +108,96 @@ function createWindow() {
     }
 }
 
+let containerStatus = "exited"; // running | paused | exited
+
+function updateTrayMenu() {
+    if (!tray) return;
+
+    const template: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: "Show WinBoat",
+            click: () => {
+                mainWindow?.show();
+                mainWindow?.focus();
+            },
+        },
+        {
+            label: "Minimize to System Tray",
+            click: () => {
+                mainWindow?.hide();
+            },
+        },
+        { type: "separator" },
+    ];
+
+    if (containerStatus === "exited") {
+        template.push({
+            label: "Start Container",
+            click: () => mainWindow?.webContents.send("tray-event", "start-container"),
+        });
+    }
+
+    if (containerStatus === "running") {
+        template.push(
+            {
+                label: "Stop Container",
+                click: () => mainWindow?.webContents.send("tray-event", "stop-container"),
+            },
+            {
+                label: "Restart Container",
+                click: () => mainWindow?.webContents.send("tray-event", "restart-container"),
+            },
+            {
+                label: "Pause Container",
+                click: () => mainWindow?.webContents.send("tray-event", "pause-container"),
+            }
+        );
+    }
+
+    if (containerStatus === "paused") {
+        template.push({
+            label: "Unpause Container",
+            click: () => mainWindow?.webContents.send("tray-event", "unpause-container"),
+        });
+    }
+
+    template.push(
+        { type: "separator" },
+        {
+            label: "Quit",
+            click: () => app.quit(),
+        }
+    );
+
+    tray.setContextMenu(Menu.buildFromTemplate(template));
+}
+
+function createTray() {
+    const iconPath =
+        process.env.NODE_ENV === "development"
+            ? join(process.cwd(), "icons", "tray_icon.png")
+            : join(app.getAppPath(), "icons", "tray_icon.png");
+
+    tray = new Tray(iconPath);
+
+    tray.setToolTip("WinBoat");
+
+    tray.on("click", () => {
+        mainWindow?.show();
+        mainWindow?.focus();
+    });
+
+    updateTrayMenu();
+}
+
+ipcMain.on("container-status", (_event, status) => {
+    containerStatus = status;
+    updateTrayMenu();
+});
+
 app.whenReady().then(() => {
     createWindow();
+    createTray();
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
         callback({

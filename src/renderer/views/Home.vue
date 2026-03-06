@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { Winboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
 import { type ComposeConfig } from "../../types";
@@ -198,6 +198,33 @@ import { openAnchorLink } from "../utils/openLink";
 const winboat = Winboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
 const wallpaper = ref("");
+const { ipcRenderer } = require("electron");
+
+ipcRenderer.on("tray-event", (_event, action) => {
+    if (action === "start-container") {
+        winboat.startContainer()
+    }
+
+    if (action === "stop-container") {
+        winboat.stopContainer()
+    }
+
+    if (action === "restart-container") {
+        winboat.restartContainer()
+    }
+
+    if (action === "pause-container") {
+        winboat.pauseContainer()
+    }
+
+    if (action === "unpause-container") {
+        winboat.unpauseContainer()
+    }
+});
+
+watch(winboat.containerStatus, (newStatus) => {
+    ipcRenderer.send("container-status", newStatus.toLowerCase());
+});
 
 onMounted(async () => {
     compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
