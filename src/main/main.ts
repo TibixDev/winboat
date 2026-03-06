@@ -173,7 +173,12 @@ function updateTrayMenu() {
 }
 
 function createTray() {
-    tray = new Tray(join(app.getAppPath(), "icons", "tray_icon.png"));
+    const iconPath =
+        process.env.NODE_ENV === "development"
+            ? join(process.cwd(), "icons", "tray_icon.png")
+            : join(app.getAppPath(), "icons", "tray_icon.png");
+
+    tray = new Tray(iconPath);
 
     tray.setToolTip("WinBoat");
 
