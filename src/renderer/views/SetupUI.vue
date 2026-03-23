@@ -125,12 +125,13 @@
                                 </div>
                                 installed
                                 <a
-                                    href="https://docs.docker.com/engine/install/"
+                                    :href="containerRuntime === ContainerRuntimes.PODMAN
+                                        ? 'https://podman.io/getting-started/installation'
+                                        : 'https://docs.docker.com/engine/install/'"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
-                                >
+                                >How?</a>
                             </li>
 
                             <!-- Docker Specific Requirements -->
