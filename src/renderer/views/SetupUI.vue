@@ -125,7 +125,7 @@
                                 </div>
                                 installed
                                 <a
-                                    :href="containerRuntime === 'Podman'
+                                    :href="containerRuntime === ContainerRuntimes.PODMAN
                                         ? 'https://podman.io/getting-started/installation'
                                         : 'https://docs.docker.com/engine/install/'"
                                     @click="openAnchorLink"
