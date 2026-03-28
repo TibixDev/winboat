@@ -2,6 +2,8 @@ import { type WindowsVersionKey } from "./renderer/lib/constants";
 import { ContainerRuntimes } from "./renderer/lib/containers/common";
 import { type Winboat } from "./renderer/lib/winboat";
 
+export type DisplayScaling = "100" | "125" | "140";
+
 export type Specs = {
     cpuCores: number;
     ramGB: number;
