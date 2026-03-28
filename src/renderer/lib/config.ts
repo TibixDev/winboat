@@ -103,6 +103,15 @@ export class WinboatConfig {
     // Due to us wrapping WinboatConfig in reactive, this can't be private
     configData: WinboatConfigObj = { ...defaultConfig };
 
+    async browseSharedFolder(): Promise<string | null> {
+        const { dialog } = await import("electron");
+        const result = await dialog.showOpenDialog({
+            title: "Select Shared Folder",
+            properties: ["openDirectory"]
+        });
+        return result.canceled ? null : result.filePaths[0];
+    }
+
     static getInstance() {
         WinboatConfig.instance ??= new WinboatConfig();
         return WinboatConfig.instance;
