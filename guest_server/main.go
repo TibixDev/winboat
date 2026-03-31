@@ -33,6 +33,7 @@ const AUTHKEY_HASH_OEM_LOCATION = "C:\\OEM\\auth.hash"
 
 type Metrics struct {
 	CPU struct {
+		Cores     uint64  `json:"cores"`     // Cores
 		Usage     float64 `json:"usage"`     // Percentage, 0-100
 		Frequency uint64  `json:"frequency"` // MHz
 	} `json:"cpu"`
@@ -112,6 +113,7 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 
 	// Build metrics struct
 	metrics := Metrics{}
+	metrics.CPU.Cores = uint64(cpuInfo[0].Cores)   // Cores
 	metrics.CPU.Usage = cpuPercent[0]              // Total CPU usage
 	metrics.CPU.Frequency = uint64(cpuInfo[0].Mhz) // First CPU's frequency
 	metrics.RAM.Used = memInfo.Used / 1024 / 1024  // Bytes to MB

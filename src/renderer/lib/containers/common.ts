@@ -2,15 +2,18 @@ import { PortEntryProtocol } from "../../../types";
 import { ContainerManager } from "./container";
 import { DockerContainer, DockerSpecs } from "./docker";
 import { PodmanContainer, PodmanSpecs } from "./podman";
+import { RemoteContainer, RemoteSpecs } from "./remote";
 
 // For convenience
 export { type DockerSpecs } from "./docker";
 export { type PodmanSpecs } from "./podman";
+export { type RemoteSpecs } from "./remote";
 export { ContainerStatus } from "./container";
 
 export enum ContainerRuntimes {
     DOCKER = "Docker",
     PODMAN = "Podman",
+    REMOTE = "Remote",
 }
 
 // NOTE: These are container port values, and should be used as such
@@ -24,11 +27,13 @@ export enum CommonPorts {
 export const ContainerImplementations = {
     [ContainerRuntimes.DOCKER]: DockerContainer,
     [ContainerRuntimes.PODMAN]: PodmanContainer,
+    [ContainerRuntimes.REMOTE]: RemoteContainer,
 } as const satisfies Record<ContainerRuntimes, any>; // this makes it so ContainerImplementations has to map ContainerRuntimes to something exhaustively
 
 type ContainerSpecMap = {
     [ContainerRuntimes.DOCKER]: DockerSpecs;
     [ContainerRuntimes.PODMAN]: PodmanSpecs;
+    [ContainerRuntimes.REMOTE]: RemoteSpecs;
 };
 
 export type ContainerSpecs = ContainerSpecMap[ContainerRuntimes];
@@ -52,4 +57,12 @@ export function getActiveHostPort(
     return container.cachedPortMappings?.find(
         mapping => typeof mapping.container === "number" && mapping.container === port && mapping.protocol === protocol,
     )?.host as number;
+}
+
+export function getHostIp(container: ContainerManager) : string {
+    let hostIp = '127.0.0.1';
+
+    if (container.containerName === "Remote") hostIp = container.hostName;
+        
+    return hostIp;
 }

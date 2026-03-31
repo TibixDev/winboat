@@ -49,7 +49,7 @@
                             We will go through a few required steps to get you started in no time.
                         </p>
                         <div class="flex flex-row gap-4">
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button toggled class="px-6" @click="nextStep">Next</x-button>
                         </div>
                     </div>
 
@@ -64,8 +64,8 @@
                             {{ license }}
                         </pre>
                         <div class="flex flex-row gap-4">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">I Agree</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
+                            <x-button toggled class="px-6" @click="nextStep">I Agree</x-button>
                         </div>
                     </div>
 
@@ -125,12 +125,13 @@
                                 </div>
                                 installed
                                 <a
-                                    href="https://docs.docker.com/engine/install/"
+                                    :href="containerRuntime === ContainerRuntimes.PODMAN
+                                        ? 'https://podman.io/getting-started/installation'
+                                        : 'https://docs.docker.com/engine/install/'"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                    >How?</a
-                                >
+                                >How?</a>
                             </li>
 
                             <!-- Docker Specific Requirements -->
@@ -203,7 +204,7 @@
                             </template>
 
                             <!-- Podman Specific Requirements -->
-                            <template v-else>
+                            <template v-else-if="containerRuntime == ContainerRuntimes.PODMAN">
                                 <li class="flex items-center gap-2">
                                     <span
                                         v-if="
@@ -240,11 +241,11 @@
                             </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
+                                @click="nextStep"
                                 :disabled="!satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
@@ -296,12 +297,12 @@
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
                                 :disabled="!installFolder || installFolderErrors?.length"
-                                @click="currentStepIdx++"
+                                @click="nextStep"
                             >
                                 Next
                             </x-button>
@@ -398,24 +399,55 @@
                             </div>
                         </div>
                         <div class="flex flex-row gap-4 mt-6" :class="{ '!mt-2': customIsoPath }">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
+                            <x-button toggled class="px-6" @click="nextStep">Next</x-button>
                         </div>
                     </div>
 
                     <!-- User Configuration -->
                     <div v-if="currentStep.id === StepID.USER_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
-                        <p class="text-lg text-gray-400">Configure the username and password for Windows.</p>
 
-                        <p class="text-lg text-gray-400">
-                            These credentials will be used to log in to the Windows virtual machine and to access it
-                            through Remote Desktop Protocol (RDP). You will not be able to change these settings later
-                            on unless you reinstall.
-                        </p>
+                        <div v-if="containerRuntime !== ContainerRuntimes.REMOTE">
+                            <p class="text-lg text-gray-400">Configure the username and password for Windows.</p>
+
+                            <p class="text-lg text-gray-400">
+                                These credentials will be used to log in to the Windows virtual machine and to access it
+                                through Remote Desktop Protocol (RDP). You will not be able to change these settings later
+                                on unless you reinstall.
+                            </p>
+                        </div>
+
+                        <div v-else>
+                           <p class="text-lg text-gray-400">Configure remote machine name, username, and password.</p>
+
+                            <p class="text-lg text-gray-400">
+                                These credentials will be used to log in to the Windows machine and to access it
+                                through Remote Desktop Protocol (RDP).
+                            </p>
+                        </div>
 
                         <div class="flex flex-row gap-4">
                             <div class="flex flex-col gap-4">
+                                <div v-if="containerRuntime === ContainerRuntimes.REMOTE">
+                                    <label for="select-remotename" class="text-sm mb-4 text-neutral-400">Remote machine name</label>
+                                    <x-input
+                                        id="select-remotename"
+                                        class="w-64 max-w-64"
+                                        type="text"
+                                        minlength="2"
+                                        maxlength="32"
+                                        required
+                                        size="large"
+                                        :value="remotename"
+                                        @input="(e: any) => (remotename = e.target.value)"
+                                    >
+                                        <x-icon href="#home"></x-icon>
+                                        <x-label>Name</x-label>
+                                    </x-input>
+
+                                </div>
+
                                 <div>
                                     <label for="select-username" class="text-sm mb-4 text-neutral-400">Username</label>
                                     <x-input
@@ -474,6 +506,12 @@
                             </div>
 
                             <div class="flex flex-col gap-4 mt-6">
+                                <div id="remotename-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
+                                    <div v-for="error in remotenameErrors" :key="error">
+                                        <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
+                                        {{ error }}
+                                    </div>
+                                </div>
                                 <div id="username-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
                                     <div v-for="error in usernameErrors" :key="error">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
@@ -490,12 +528,12 @@
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
                             <x-button
-                                :disabled="usernameErrors.length || passwordErrors.length"
+                                :disabled="usernameErrors.length || passwordErrors.length || remotenameErrors.length"
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
+                                @click="nextStep"
                             >
                                 Next
                             </x-button>
@@ -602,8 +640,8 @@
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
-                            <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
+                            <x-button toggled class="px-6" @click="nextStep">Next</x-button>
                         </div>
                     </div>
 
@@ -652,11 +690,11 @@
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
+                                @click="nextStep"
                                 :disabled="folderSharing && !sharedFolderPath"
                             >
                                 Next
@@ -680,25 +718,27 @@
                                     <span class="text-sm text-gray-400">Container Runtime</span>
                                     <span class="text-base text-white">{{ containerRuntime }}</span>
                                 </div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Language</span>
-                                    <span class="text-base text-white">{{ windowsLanguage }}</span>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Windows Version</span>
-                                    <span class="text-base text-white">{{ WINDOWS_VERSIONS[windowsVersion] }}</span>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">CPU Cores</span>
-                                    <span class="text-base text-white">{{ cpuCores }} Cores</span>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">RAM</span>
-                                    <span class="text-base text-white">{{ ramGB }} GB</span>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Disk Size</span>
-                                    <span class="text-base text-white">{{ diskSpaceGB }} GB</span>
+                                <div v-if="containerRuntime !== ContainerRuntimes.REMOTE">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-gray-400">Language</span>
+                                        <span class="text-base text-white">{{ windowsLanguage }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-gray-400">Windows Version</span>
+                                        <span class="text-base text-white">{{ WINDOWS_VERSIONS[windowsVersion] }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-gray-400">CPU Cores</span>
+                                        <span class="text-base text-white">{{ cpuCores }} Cores</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-gray-400">RAM</span>
+                                        <span class="text-base text-white">{{ ramGB }} GB</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-gray-400">Disk Size</span>
+                                        <span class="text-base text-white">{{ diskSpaceGB }} GB</span>
+                                    </div>
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">Username</span>
@@ -712,12 +752,12 @@
                         </div>
 
                         <div class="flex flex-row gap-4 mt-6">
-                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button class="px-6" @click="prevStep">Back</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
                                 @click="
-                                    currentStepIdx++;
+                                    nextStep;
                                     install();
                                 "
                             >
@@ -822,6 +862,7 @@ import {
     ContainerRuntimes,
     DockerSpecs,
     PodmanSpecs,
+    RemoteSpecs,
     getContainerSpecs,
 } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
@@ -928,6 +969,7 @@ const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
 const username = ref("winboat");
+const remotename = ref("WinBoatVm");
 const password = ref("");
 const confirmPassword = ref("");
 const folderSharing = ref(false);
@@ -971,14 +1013,34 @@ watch(folderSharing, (newValue) => {
     }
 });
 
+const nextStep = computed(() => {
+    let increment = 1;
+    if (containerRuntime.value == ContainerRuntimes.REMOTE) {
+        increment = (currentStep.value.id == StepID.PREREQUISITES) ? 3 : increment;
+        increment = (currentStep.value.id == StepID.USER_CONFIG)   ? 3 : increment;
+    }
+    currentStepIdx.value += increment;
+});
+
+const prevStep = computed(() => {
+    let decrement = 1;
+    if (containerRuntime.value == ContainerRuntimes.REMOTE) {
+        decrement = (currentStep.value.id == StepID.USER_CONFIG) ? 3 : decrement;
+        decrement = (currentStep.value.id == StepID.REVIEW)      ? 3 : decrement;
+    }
+    currentStepIdx.value -= decrement;
+});
+
 const containerSpecs = computedAsync(async () => {
     return await getContainerSpecs(containerRuntime.value);
 });
 
-function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
+function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | RemoteSpecs | undefined) {
     if (!containerSpecs) return false;
     if ("dockerInstalled" in containerSpecs) return containerSpecs.dockerInstalled;
     if ("podmanInstalled" in containerSpecs) return containerSpecs.podmanInstalled;
+    if ("dummyInstalled" in containerSpecs) return containerSpecs.dummyInstalled;
+
     return false;
 }
 
@@ -997,6 +1059,29 @@ const usernameErrors = computed(() => {
 
     return errors;
 });
+
+const remotenameErrors = computed(() => {
+    let errors: string[] = [];
+
+    // At least 2 characters
+    if (remotename.value.length < 2) {
+        errors.push("Must be at least 2 characters long");
+    }
+
+    // Only alphanumeric characters are allowed
+    if (!/^[a-zA-Z0-9.]+$/.test(remotename.value)) {
+        errors.push("Must only contain alphanumeric characters");
+    }
+
+    // Youu can include the .domain in the name, bit only that one period is allowed. 
+    const parts = remotename.value.split(".");
+    if (parts.length > 2) {
+        errors.push("Must only contain a single period prior to the domain name if included.");
+    }
+
+    return errors;
+});
+
 
 const passwordErrors = computed(() => {
     let errors: string[] = [];
@@ -1128,6 +1213,7 @@ function install() {
         ramGB: ramGB.value,
         installFolder: installFolder.value,
         diskSpaceGB: diskSpaceGB.value,
+        remotename: remotename.value,
         username: username.value,
         password: password.value,
         sharedFolderPath: folderSharing.value ? sharedFolderPath.value : undefined,

@@ -20,7 +20,7 @@ import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
 import { ExecFileAsyncError } from "./exec-helper";
 import { ContainerManager, ContainerStatus } from "./containers/container";
-import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort, getHostIp } from "./containers/common";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -236,6 +236,7 @@ export class Winboat {
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
+            cores: 0,
             usage: 0,
             frequency: 0,
         },
@@ -630,13 +631,16 @@ export class Winboat {
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
 
-        const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
-
-        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
-
         const freeRDPInstallation = await getFreeRDP();
 
-        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
+        const rdpHost = getHostIp(this.containerMgr!) + ":" + getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!.toString();
+        
+        logger.info(`Launching app: ${app.Name} at path ${app.Path} for server at ${rdpHost}`);
+
+        // Override security argument for remote cases since we want higher security for remote machines.
+        if (this.containerMgr!.containerName === "Remote") {
+            this.#wbConfig?.config.rdpArgs.push({ newArg: '/sec:nla', original: '/sec:tls', isReplacement: true })
+        }
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -648,7 +652,7 @@ export class Winboat {
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs);
-        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
+        let args = [`/u:${username}`, `/p:${password}`, `/v:${rdpHost}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             args = args.concat([
@@ -808,6 +812,10 @@ export class Winboat {
 
         if (!apiPort) return undefined;
 
-        return `http://127.0.0.1:${apiPort}`;
+        const hostIp = getHostIp(this.containerMgr!);
+
+        logger.info(`http://${hostIp}:${apiPort}`);
+
+        return `http://${hostIp}:${apiPort}`;
     }
 }
