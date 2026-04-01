@@ -1017,7 +1017,7 @@ const nextStep = computed(() => {
     let increment = 1;
     if (containerRuntime.value == ContainerRuntimes.REMOTE) {
         increment = (currentStep.value.id == StepID.PREREQUISITES) ? 3 : increment;
-        increment = (currentStep.value.id == StepID.USER_CONFIG)   ? 3 : increment;
+        increment = (currentStep.value.id == StepID.USER_CONFIG)   ? 2 : increment;
     }
     currentStepIdx.value += increment;
 });
@@ -1025,8 +1025,8 @@ const nextStep = computed(() => {
 const prevStep = computed(() => {
     let decrement = 1;
     if (containerRuntime.value == ContainerRuntimes.REMOTE) {
-        decrement = (currentStep.value.id == StepID.USER_CONFIG) ? 3 : decrement;
-        decrement = (currentStep.value.id == StepID.REVIEW)      ? 3 : decrement;
+        decrement = (currentStep.value.id == StepID.USER_CONFIG)              ? 3 : decrement;
+        decrement = (currentStep.value.id == StepID.SHOULD_SHARE_HOME_FOLDER) ? 2 : decrement;
     }
     currentStepIdx.value -= decrement;
 });
@@ -1091,9 +1091,9 @@ const passwordErrors = computed(() => {
         errors.push("Passwords do not match");
     }
 
-    // Only alphanumeric characters are allowed
-    if (!/^[a-zA-Z0-9]+$/.test(password.value)) {
-        errors.push("Must only contain alphanumeric characters");
+    // Alphanumeric characters and some speical characters are allowed
+    if (!/^[a-zA-Z0-9-!#$%&*,.:;?@^_|~+<=>]+$/.test(password.value)) {
+        errors.push("Must contain alphanumeric characters or one of these special characters (-!#$%&*,.:;?@^_|~+<=>)");
     }
 
     // At least 4 characters

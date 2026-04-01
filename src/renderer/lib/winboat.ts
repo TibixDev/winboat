@@ -637,9 +637,20 @@ export class Winboat {
         
         logger.info(`Launching app: ${app.Name} at path ${app.Path} for server at ${rdpHost}`);
 
-        // Override security argument for remote cases since we want higher security for remote machines.
+        let sharedFolderArg = "";
         if (this.containerMgr!.containerName === "Remote") {
+            // Override security argument for remote cases since we want higher security for remote machines.
             this.#wbConfig?.config.rdpArgs.push({ newArg: '/sec:nla', original: '/sec:tls', isReplacement: true })
+
+            // Add argument to create shared folder.
+            const compose = Winboat.readCompose(this.containerMgr!.composeFilePath);
+            const shared = compose.services.windows.volumes.find(vol => vol.includes("/shared"));
+            if (shared !== undefined) {
+                const sharedFolder = shared.split(":").at(0) ?? null;
+                if (sharedFolder) {
+                    sharedFolderArg = '\/drive:shared,' + sharedFolder;
+                }
+            }
         }
 
         // Arguments specified by user to override stock arguments
@@ -652,7 +663,8 @@ export class Winboat {
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs);
-        let args = [`/u:${username}`, `/p:${password}`, `/v:${rdpHost}`, ...combinedArgs];
+
+        let args = [`/u:${username}`, `/p:${password}`, `/v:${rdpHost}`, sharedFolderArg, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             args = args.concat([
@@ -812,10 +824,6 @@ export class Winboat {
 
         if (!apiPort) return undefined;
 
-        const hostIp = getHostIp(this.containerMgr!);
-
-        logger.info(`http://${hostIp}:${apiPort}`);
-
-        return `http://${hostIp}:${apiPort}`;
+        return `http://${getHostIp(this.containerMgr!)}:${apiPort}`;
     }
 }

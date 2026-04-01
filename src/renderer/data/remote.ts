@@ -28,7 +28,10 @@ export const REMOTE_DEFAULT_COMPOSE: ComposeConfig = {
             ports: [],
             stop_grace_period: "120s",
             restart: RESTART_NO,
-            volumes: [],
+            volumes: [
+                "${HOME}:/shared",
+                "./oem:/oem",
+            ],
             devices: [],
         },
     },

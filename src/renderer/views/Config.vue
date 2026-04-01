@@ -27,39 +27,6 @@
                     v-model:value="numCores"
                 />
 
-                <!-- Shared Folder -->
-                <ConfigCard
-                    icon="fluent:folder-link-32-filled"
-                    title="Shared Folder"
-                    type="switch"
-                    v-model:value="shareFolder"
-                >
-                    <template v-slot:desc>
-                        If enabled, you will be able to access your selected folder within Windows under
-                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
-                    </template>
-                </ConfigCard>
-
-                <!-- Shared Folder Location -->
-                <ConfigCard
-                    v-if="shareFolder"
-                    icon="mdi:folder-cog"
-                    title="Shared Folder Location"
-                    type="custom"
-                >
-                    <template v-slot:desc>
-                        <span v-if="sharedFolderPath">
-                            Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
-                        </span>
-                        <span v-else>
-                            Select a folder to share with Windows
-                        </span>
-                    </template>
-                    <x-button @click="selectSharedFolder">
-                        Browse
-                    </x-button>
-                </ConfigCard>
-
                 <!-- Auto Start Container -->
                 <ConfigCard
                     icon="clarity:power-solid"
@@ -335,6 +302,48 @@
         <div>
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
+                <!-- Shared Folder -->
+                <ConfigCard
+                    icon="fluent:folder-link-32-filled"
+                    title="Shared Folder"
+                    type="switch"
+                    v-model:value="shareFolder"
+                >
+                    <template v-slot:desc>
+                        If enabled, you will be able to access your selected folder within Windows under
+                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
+                    </template>
+                </ConfigCard>
+
+                <!-- Shared Folder Location -->
+                <ConfigCard
+                    v-if="shareFolder"
+                    icon="mdi:folder-cog"
+                    title="Shared Folder Location"
+                    type="custom"
+                >
+                    <template v-slot:desc>
+                        <span v-if="sharedFolderPath">
+                            Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
+                        </span>
+                        <span v-else>
+                            Select a folder to share with Windows
+                        </span>
+                    </template>
+                    <x-button @click="selectSharedFolder">
+                        Browse
+                    </x-button>
+                </ConfigCard>
+
+                <x-button
+                    :disabled="saveButtonDisabled"
+                    @click="saveCompose()"
+                    class="w-24"
+                >
+                    <span v-if="!isApplyingChanges">Save</span>
+                    <x-throbber v-else class="w-10"></x-throbber>
+                </x-button>
+
                 <!-- Display Scaling -->
                 <ConfigCard
                     class="relative z-10"
@@ -595,17 +604,20 @@ async function saveCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "tcp",
-        hostIP: "127.0.0.1",
-    });
+    if (freerdpPort.value)
+    {
+        portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
+            protocol: "tcp",
+            hostIP: "127.0.0.1",
+        });
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "udp",
-        hostIP: "127.0.0.1",
-    });
-
-    compose.value!.services.windows.ports = portMapper.value!.composeFormat;
+        portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
+            protocol: "udp",
+            hostIP: "127.0.0.1",
+        });
+        
+        compose.value!.services.windows.ports = portMapper.value!.composeFormat;
+    }
 
     isApplyingChanges.value = true;
     try {
