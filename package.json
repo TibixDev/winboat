@@ -10,6 +10,7 @@
     },
     "scripts": {
         "dev": "bun scripts/dev-server.ts",
+        "test": "bun jest",
         "build:gs": "bash build-guest-server.sh",
         "build:linux-gs": "bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux"
     },

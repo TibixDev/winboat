@@ -1,4 +1,4 @@
-import { MessageBus } from "./bus"
+import { MessageBus } from "../../../src/renderer/utils/bus";
 
 describe("Test MessageBus", () => {
     test("Create MessageBus", () => {
