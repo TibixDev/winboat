@@ -43,10 +43,10 @@ export class DockerContainer extends ContainerManager {
 
         // mask plain password
         const composePassword = compose.services.windows.environment.PASSWORD ?? "";
-        const maskedCompose = JSON.stringify(composeContent, null, 2).replaceAll(
-            composePassword,
-            "*****",
-        );
+        const maskedCompose =
+            composePassword.length > 0
+                ? JSON.stringify(composeContent, null, 2).replaceAll(composePassword, "*****")
+                : JSON.stringify(composeContent, null, 2);
 
         containerLogger.info(`Compose file content: ${maskedCompose}`);
     }
