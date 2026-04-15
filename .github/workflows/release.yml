@@ -45,38 +45,36 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install -y libudev-dev libusb-1.0-0-dev
-            - name: Set up Node.js
-              uses: actions/setup-node@v5
-              with:
-                  node-version: "24"
-                  cache: "npm"
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v2
             - name: Set up Go
               uses: actions/setup-go@v5
               with:
                   go-version: "stable"
                   cache-dependency-path: "guest_server/go.sum"
             - name: Install dependencies
-              run: npm ci
+              run: bun ci
             - name: Build guest server and app
-              run: npm run build:linux-gs
+              run: bun run build:linux-gs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
             - name: Derive artifact naming
               id: meta
               shell: bash
               run: |
-                  node -e "const p=require('./package.json'); console.log('NAME='+p.name)" >> "$GITHUB_OUTPUT"
-                  node -e "const p=require('./package.json'); console.log('VERSION='+p.version)" >> "$GITHUB_OUTPUT"
-                  ARCH_FROM_FILE=$(ls dist/*.{AppImage,deb,rpm,tar.gz} 2>/dev/null | head -n1 | xargs -I{} basename {} | sed -E 's/.*-([A-Za-z0-9_]+)\.[^.]+$/\1/')
+                  bun -e "const p=require('./package.json'); console.log('NAME='+p.name)" >> "$GITHUB_OUTPUT"
+                  bun -e "const p=require('./package.json'); console.log('VERSION='+p.version)" >> "$GITHUB_OUTPUT"
+                  ARCH_FROM_FILE=$(ls dist/*.{AppImage,deb,rpm,tar.bz2} 2>/dev/null | head -n1 | xargs -I{} basename {} | sed -E 's/.*-([A-Za-z0-9_]+)\.[^.]+$/\1/')
                   if [ -n "$ARCH_FROM_FILE" ]; then
                     echo "ARCH=$ARCH_FROM_FILE" >> "$GITHUB_OUTPUT"
                   else
-                    NODE_ARCH=$(node -p "process.arch")
-                    case "$NODE_ARCH" in
+                    BUN_ARCH=$(bun -p "process.arch")
+                    case "$BUN_ARCH" in
                       x64)   echo "ARCH=x86_64" >> "$GITHUB_OUTPUT" ;;
                       arm64) echo "ARCH=arm64"  >> "$GITHUB_OUTPUT" ;;
                       arm)   echo "ARCH=armv7l" >> "$GITHUB_OUTPUT" ;;
-                      *)     echo "ARCH=$NODE_ARCH" >> "$GITHUB_OUTPUT" ;;
+                      *)     echo "ARCH=$BUN_ARCH" >> "$GITHUB_OUTPUT" ;;
                     esac
                   fi
             - name: Upload AppImage
@@ -97,11 +95,11 @@ jobs:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.rpm
                   path: dist/*.rpm
                   if-no-files-found: ignore
-            - name: Upload TAR.GZ
+            - name: Upload TAR.BZ2
               uses: actions/upload-artifact@v4
               with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.tar.gz
-                  path: dist/*.tar.gz
+                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.tar.bz2
+                  path: dist/*.tar.bz2
                   if-no-files-found: ignore
             - name: Upload unpacked directory
               uses: actions/upload-artifact@v4
@@ -170,22 +168,20 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install -y libudev-dev libusb-1.0-0-dev
-            - name: Set up Node.js
-              uses: actions/setup-node@v5
-              with:
-                  node-version: "24"
-                  cache: "npm"
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v2
             - name: Set up Go
               uses: actions/setup-go@v5
               with:
                   go-version: "stable"
                   cache-dependency-path: "guest_server/go.sum"
             - name: Install dependencies
-              run: npm ci
+              run: bun ci
             - name: Build guest server and app
-              run: npm run build:linux-gs
+              run: bun run build:linux-gs
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
             - name: Zip unpacked variant
               run: cd dist && zip -r winboat-linux-unpacked.zip linux-unpacked/
             - name: Create GitHub Release
@@ -195,7 +191,7 @@ jobs:
                       dist/*.AppImage
                       dist/*.deb
                       dist/*.rpm
-                      dist/*.tar.gz
+                      dist/*.tar.bz2
                       dist/winboat-linux-unpacked.zip
                       dist/latest-linux.yml
                       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip

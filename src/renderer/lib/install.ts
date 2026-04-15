@@ -14,21 +14,19 @@ const remote: typeof import("@electron/remote") = require("@electron/remote");
 const argon2: typeof import("argon2") = require("argon2");
 const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
-export const InstallStates = {
-    IDLE: "Preparing",
-    CREATING_COMPOSE_FILE: "Creating Compose File",
-    CREATING_OEM: "Creating OEM Assets",
-    STARTING_CONTAINER: "Starting Container",
-    MONITORING_PREINSTALL: "Monitoring Preinstall",
-    INSTALLING_WINDOWS: "Installing Windows",
-    COMPLETED: "Completed",
-    INSTALL_ERROR: "Install Error",
-} as const;
-
-export type InstallState = (typeof InstallStates)[keyof typeof InstallStates];
+export enum InstallStates {
+    IDLE = "Preparing",
+    CREATING_COMPOSE_FILE = "Creating Compose File",
+    CREATING_OEM = "Creating OEM Assets",
+    STARTING_CONTAINER = "Starting Container",
+    MONITORING_PREINSTALL = "Monitoring Preinstall",
+    INSTALLING_WINDOWS = "Installing Windows",
+    COMPLETED = "Completed",
+    INSTALL_ERROR = "Install Error",
+};
 
 interface InstallEvents {
-    stateChanged: (state: InstallState) => void;
+    stateChanged: (state: InstallStates) => void;
     preinstallMsg: (msg: string) => void;
     error: (error: Error) => void;
     vncPortChanged: (port: number) => void;
@@ -37,7 +35,7 @@ interface InstallEvents {
 export class InstallManager {
     conf: InstallConfiguration;
     emitter: Emitter<InstallEvents>;
-    state: InstallState;
+    state: InstallStates;
     preinstallMsg: string;
     container: ContainerManager;
 
@@ -46,10 +44,10 @@ export class InstallManager {
         this.state = InstallStates.IDLE;
         this.preinstallMsg = "";
         this.emitter = createNanoEvents<InstallEvents>();
-        this.container = conf.container;
+        this.container = createContainer(conf.container);
     }
 
-    changeState(newState: InstallState) {
+    changeState(newState: InstallStates) {
         this.state = newState;
         this.emitter.emit("stateChanged", newState);
         logger.info(`New state: "${newState}"`);
@@ -99,6 +97,7 @@ export class InstallManager {
 
         // Storage folder mapping
         const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
+        
         if (storageFolderIdx === -1) {
             logger.warn("No /storage volume found in compose template, adding one...");
             composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
@@ -106,14 +105,25 @@ export class InstallManager {
             composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
         }
 
-        // Home folder mapping
-        if (!this.conf.shareHomeFolder) {
-            const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
-            if (sharedFolderIdx === -1) {
-                logger.info("No home folder sharing volume found, nothing to remove");
-            } else {
+        // Shared folder mapping
+        const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
+        
+        if (!this.conf.sharedFolderPath) {
+            // Remove shared folder if not enabled
+            if (sharedFolderIdx !== -1) {
                 composeContent.services.windows.volumes.splice(sharedFolderIdx, 1);
-                logger.info("Removed home folder sharing as per user configuration");
+                logger.info("Removed shared folder as per user configuration");
+            }
+        } else {
+            // Add or update shared folder
+            const volumeStr = `${this.conf.sharedFolderPath}:/shared`;
+            
+            if (sharedFolderIdx === -1) {
+                composeContent.services.windows.volumes.push(volumeStr);
+                logger.info(`Added shared folder: ${this.conf.sharedFolderPath}`);
+            } else {
+                composeContent.services.windows.volumes[sharedFolderIdx] = volumeStr;
+                logger.info(`Updated shared folder to: ${this.conf.sharedFolderPath}`);
             }
         }
 
@@ -183,7 +193,7 @@ export class InstallManager {
             logger.error(`Failed to copy OEM assets: ${error}`);
             throw error;
         }
-        
+
         // Create password hash file in oemPath
         try {
             const hash = await argon2.hash(this.conf.password);
@@ -201,7 +211,7 @@ export class InstallManager {
         // Start the container
         await this.container.compose("up");
 
-        // Cahce ports
+        // Cache ports
         await this.container.port();
 
         // emit vnc port event
@@ -274,7 +284,7 @@ export class InstallManager {
 
                     if (compose.services.windows.volumes.length !== filteredVolumes.length) {
                         compose.services.windows.volumes = filteredVolumes;
-                        await this.container.writeCompose(compose);
+                        this.container.writeCompose(compose);
                     }
 
                     return;
@@ -308,6 +318,7 @@ export class InstallManager {
         } catch (e) {
             this.changeState(InstallStates.INSTALL_ERROR);
             logger.error("Errors encountered, could not complete the installation steps.");
+            logger.error(e);
             return;
         }
         this.changeState(InstallStates.COMPLETED);
@@ -318,7 +329,7 @@ export class InstallManager {
 
 export async function isInstalled(): Promise<boolean> {
     // Check if a winboat container exists
-    const config = WinboatConfig.readConfigObject();
+    const config = WinboatConfig.readConfigObject(false);
 
     if (!config) return false;
 

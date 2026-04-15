@@ -1,21 +1,15 @@
 import { ComposeConfig } from "../../types";
 import { RESTART_ON_FAILURE } from "../lib/constants";
 
-// TODO: investigate whether this approach is even necessary.
 export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     name: "winboat",
     volumes: {
         data: null,
     },
-    networks: {
-        podman: {
-            external: true,
-        },
-    },
     services: {
         windows: {
-            image: "ghcr.io/dockur/windows:5.07",
-            container_name: "WinBoat_Podman",
+            image: "ghcr.io/dockur/windows:5.14",
+            container_name: "WinBoat",
             environment: {
                 VERSION: "11",
                 RAM_SIZE: "4G",
@@ -25,12 +19,12 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 PASSWORD: "MyWindowsPassword",
                 HOME: "${HOME}",
                 LANGUAGE: "English",
+                NETWORK: "user",
                 USER_PORTS: "7148",
                 HOST_PORTS: "7149",
                 ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
             },
             cap_add: ["NET_ADMIN"],
-            privileged: true,
             ports: [
                 "127.0.0.1::8006", // VNC Web Interface
                 "127.0.0.1::7148", // Winboat Guest Server API
@@ -40,13 +34,13 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             ],
             stop_grace_period: "120s",
             restart: RESTART_ON_FAILURE,
+            privileged: true,
             volumes: [
                 "data:/storage",
                 "${HOME}:/shared",
-                "/dev/bus/usb:/dev/bus/usb:rslave", // QEMU Synamic USB Passthrough
                 "./oem:/oem",
             ],
-            devices: ["/dev/kvm", "/dev/net/tun", "/dev/bus/usb"],
+            devices: ["/dev/kvm", "/dev/bus/usb"],
         },
     },
 };

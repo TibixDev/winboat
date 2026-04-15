@@ -185,7 +185,7 @@ export class QMPManager {
                 const receiveData = (data: Buffer) => {
                     try {
                         const parsedData = JSON.parse(data.toString());
-                        if ("event" in parsedData) return; // In case we get notified of an event (for exampe NETDEV_STREAM_CONNECTED), we ignore it
+                        if ("event" in parsedData) return; // In case we get notified of an event (for example NETDEV_STREAM_CONNECTED), we ignore it
 
                         // We remove our callback from the data event when we get the response
                         this.qmpSocket.off("data", receiveData);
@@ -197,7 +197,7 @@ export class QMPManager {
                     }
                 };
 
-                // We can't do 'qmpSocket.once', since we may get an event notice inbetween sending the command and receiving the response.
+                // We can't do 'qmpSocket.once', since we may get an event notice in between sending the command and receiving the response.
                 this.qmpSocket.on("data", receiveData);
             });
         });

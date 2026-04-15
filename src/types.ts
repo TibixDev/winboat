@@ -1,5 +1,5 @@
 import { type WindowsVersionKey } from "./renderer/lib/constants";
-import { ContainerManager } from "./renderer/lib/containers/container";
+import { ContainerRuntimes } from "./renderer/lib/containers/common";
 import { type Winboat } from "./renderer/lib/winboat";
 
 export type Specs = {
@@ -19,8 +19,8 @@ export type InstallConfiguration = {
     username: string;
     password: string;
     customIsoPath?: string;
-    shareHomeFolder: boolean;
-    container: ContainerManager;
+    sharedFolderPath?: string;
+    container: ContainerRuntimes;
 };
 
 export type WinApp = {
@@ -76,8 +76,9 @@ export type ComposeConfig = {
                 HOST_PORTS: string;
                 [key: string]: string; // Allow additional env vars
             };
-            privileged: boolean;
+            privileged?: boolean;
             ports: Array<string | LongPortMapping>;
+            network_mode?: string;
             cap_add: string[];
             stop_grace_period: string;
             restart: string;

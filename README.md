@@ -25,10 +25,6 @@
 
 WinBoat is currently in beta, so expect to occasionally run into hiccups and bugs. You should be comfortable with some level of troubleshooting if you decide to try it, however we encourage you to give it a shot anyway.
 
-> [!NOTE]
-> #### 🧊 Feature Freeze
-> We're preparing for a 0.9.0 release, which already includes tons of changes. From this point forward, we'll be focusing on stabilizing the feature/fix set we have already merged or we're actively working on. Handling most pull requests or feature requests will be postponed up until we have a stable release and we can confidently start merging and reviewing again.
-
 ## Features
 
 - **🎨 Elegant Interface**: Sleek and intuitive interface that seamlessly integrates Windows into your Linux desktop environment, making it feel like a native experience
@@ -40,7 +36,7 @@ WinBoat is currently in beta, so expect to occasionally run into hiccups and bug
 
 ## How Does It Work?
 
-WinBoat is an Electron app which allows you to run Windows apps on Linux using a containerized approach. Windows runs as a VM inside a Docker container, we communicate with it using the [WinBoat Guest Server](https://github.com/TibixDev/winboat/tree/main/guest_server) to retrieve data we need from Windows. For compositing applications as native OS-level windows, we use FreeRDP together with Windows's RemoteApp protocol.
+WinBoat is an Electron app which allows you to run Windows apps on Linux using a containerized approach. Windows runs as a VM inside a Docker/Podman container, we communicate with it using the [WinBoat Guest Server](https://github.com/TibixDev/winboat/tree/main/guest_server) to retrieve data we need from Windows. For compositing applications as native OS-level windows, we use FreeRDP together with Windows's RemoteApp protocol.
 
 ## Prerequisites
 
@@ -51,13 +47,19 @@ Before running WinBoat, ensure your system meets the following requirements:
 - **Storage**: At least 32 GB free space on the drive your selected install folder corresponds to
 - **Virtualization**: KVM enabled in BIOS/UEFI
     - [How to enable virtualization](https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web)
-- **Docker**: Required for containerization
-    - [Installation Guide](https://docs.docker.com/engine/install/)
-    - **⚠️ NOTE:** Docker Desktop is **not** supported, you will run into issues if you use it
-- **Docker Compose v2**: Required for compatibility with docker-compose.yml files
-    - [Installation Guide](https://docs.docker.com/compose/install/#plugin-linux-only)
-- **Docker User Group**: Add your user to the `docker` group
-    - [Setup Instructions](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
+- **In case of Docker:**
+  - **Docker**: Required for containerization
+      - [Installation Guide](https://docs.docker.com/engine/install/)
+      - **⚠️ NOTE:** Docker Desktop is **not** supported, you will run into issues if you use it
+  - **Docker Compose v2**: Required for compatibility with docker-compose.yml files
+      - [Installation Guide](https://docs.docker.com/compose/install/#plugin-linux-only)
+  - **Docker User Group**: Add your user to the `docker` group
+      - [Setup Instructions](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
+- **In case of Podman:**
+  - **Podman**: Required for containerization
+      - [Installation Guide](https://podman.io/docs/installation#installing-on-linux)
+  - **Podman Compose**: Required for compatibility with podman-compose.yml files
+      - [Installation Guide](https://github.com/containers/podman-compose?tab=readme-ov-file#installation)
 - **FreeRDP**: Required for remote desktop connection (Please make sure you have **Version 3.x.x** with sound support included)
     - [Installation Guide](https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds)
 - [OPTIONAL] **Kernel Modules**: The `iptables` / `nftables` and `iptable_nat` kernel modules can be loaded for network autodiscovery and better shared filesystem performance, but this is not obligatory in newer versions of WinBoat
@@ -71,30 +73,35 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
 - **.deb:** The intended format for Debian based distributions
 - **.rpm:** The intended format for Fedora based distributions
-
+- **Nix (Nixpkgs)**
+    1. Add the winboat package to your config (ensure using nixpkgs-unstable)
+    using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.
+    2. Add the following lines to your nix configuration
+    ```nix
+    virtualisation.docker.enable = true;
+    users.users.{yourUser}.extraGroups = ["docker"];
+    ```
 ## Known Issues About Container Runtimes
 
-- Podman is **unsupported** for now
 - Docker Desktop is **unsupported** for now
-- Distros that emulate Docker through a Podman socket are **unsupported**
-- Any rootless containerization solution is currently **unsupported**
+- USB passthrough via Podman is currently **unsupported**
 
 ## Building WinBoat
 
-- For building you need to have NodeJS and Go installed on your system
+- For building you need to have Bun and Go installed on your system
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
-- Install the dependencies (`npm i`)
-- Build the app and the guest server using `npm run build:linux-gs`
+- Install the dependencies (`bun i`)
+- Build the app and the guest server using `bun run build:linux-gs`
 - You can now find the built app under `dist` with an AppImage and an Unpacked variant
 
 ## Running WinBoat in development mode
 
 - Make sure you meet the [prerequisites](#prerequisites)
-- Additionally, for development you need to have NodeJS and Go installed on your system
+- Additionally, for development you need to have Bun and Go installed on your system
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
-- Install the dependencies (`npm i`)
-- Build the guest server (`npm run build-guest-server`)
-- Run the app (`npm run dev`)
+- Install the dependencies (`bun i`)
+- Build the guest server (`bun run build:gs`)
+- Run the app (`bun run dev`)
 
 ## Contributing
 

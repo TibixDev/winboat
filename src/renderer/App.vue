@@ -1,5 +1,8 @@
 <template>
-    <main class="overflow-hidden relative w-screen h-screen">
+    <main 
+        class="overflow-hidden relative w-screen h-screen"
+        :class="{ animationsDisabled: 'disable-animations' }"
+    >
         <!-- Decoration -->
         <div
             class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15 blob-anim"
@@ -11,7 +14,6 @@
         <!-- Stripes for experimental -->
         <div
             v-show="wbConfig?.config.experimentalFeatures"
-            :key="rerenderCounter"
             class="experimental-stripes absolute top-0 left-0 w-full h-[3rem] pointer-events-none z-[10] opacity-15 grayscale"
         ></div>
 
@@ -89,7 +91,10 @@
         </dialog>
 
         <!-- UI / SetupUI -->
-        <div v-if="useRoute().name !== 'SetupUI'" class="flex flex-row h-[calc(100vh-2rem)]">
+        <div
+            v-if="!['SetupUI', 'Migration'].includes($route.name?.toString() || '')"
+            class="flex flex-row h-[calc(100vh-2rem)]"
+        >
             <x-nav class="flex flex-col flex-none gap-0.5 w-72 backdrop-blur-xl bg-gray-500/10 backdrop-contrast-90">
                 <div
                     v-if="winboat?.rdpConnected.value"
@@ -102,7 +107,7 @@
                     <img
                         class="w-16 rounded-full"
                         src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Windows_10_Default_Profile_Picture.svg/2048px-Windows_10_Default_Profile_Picture.svg.png"
-                        alt="Profile Picture"
+                        alt="Profile"
                     />
                     <div>
                         <x-label class="text-lg font-semibold">{{ os.userInfo().username }}</x-label>
@@ -110,12 +115,14 @@
                     </div>
                 </div>
                 <RouterLink
-                    v-for="route of routes.filter(r => !['SetupUI', 'Loading'].includes(String(r.name)))"
+                    v-for="route of routes.filter(
+                        (r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)),
+                    )"
                     :to="route.path"
                     :key="route.path"
                 >
                     <x-navitem>
-                        <Icon class="mr-4 w-5 h-5" :icon="route.meta!.icon as string"></Icon>
+                        <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
                         <x-label>{{ route.name }}</x-label>
                     </x-navitem>
                 </RouterLink>
@@ -133,7 +140,7 @@
                         {{ useRoute().name }}
                     </h1>
                 </div>
-                <router-view v-slot="{ Component }" @rerender="rerenderCounter++">
+                <router-view v-slot="{ Component }">
                     <transition mode="out-in" name="fade">
                         <component :is="Component" />
                     </transition>
@@ -148,24 +155,22 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { RouteRecordRaw, RouterLink, useRoute, useRouter } from "vue-router";
 import { routes } from "./router";
 import { Icon } from "@iconify/vue";
-import { onMounted, onUnmounted, ref, useTemplateRef, watch } from "vue";
+import { onMounted, ref, useTemplateRef, watch, reactive, computed } from "vue";
 import { isInstalled } from "./lib/install";
 import { Winboat } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
-import { GUEST_NOVNC_PORT } from "./lib/constants";
-import { setIntervalImmediately } from "./utils/interval";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
+import { performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
-const path: typeof import("path") = require("node:path");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
 
 const $router = useRouter();
+const $route = useRoute();
 const appVer = import.meta.env.VITE_APP_VERSION;
 const isDev = import.meta.env.DEV;
 let winboat: Winboat | null;
@@ -175,46 +180,28 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
-// TODO: Hack for non-reactive data
-const rerenderCounter = ref(0);
 const novncURL = ref("");
-let animationCheckInterval: NodeJS.Timeout | null = null;
+
+const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
+
     if (winboatInstalled) {
+        wbConfig = reactive(WinboatConfig.getInstance()); // Instantiate singleton class
         winboat = Winboat.getInstance(); // Instantiate singleton class
-        wbConfig = WinboatConfig.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
+
+        // Migrations
+        $router.push("/migration");
+        await performAutoMigrations();
+
+        // After migrations, go to home
         $router.push("/home");
     } else {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
     }
-
-    // Apply or remove disable-animations class based on config
-    const updateAnimationClass = () => {
-        if (wbConfig?.config.disableAnimations) {
-            document.body.classList.add("disable-animations");
-            console.log("Animations disabled");
-        } else {
-            document.body.classList.remove("disable-animations");
-            console.log("Animations enabled");
-        }
-    };
-
-    // Poll for config changes since the Proxy doesn't trigger Vue reactivity
-    // This is similar to how rerenderCounter is used elsewhere in the codebase
-    // Start with undefined so that the first call will always apply the current state
-    let lastAnimationState: boolean | undefined = undefined;
-    animationCheckInterval = setIntervalImmediately(() => {
-        const currentState = wbConfig?.config.disableAnimations;
-        if (currentState !== lastAnimationState) {
-            lastAnimationState = currentState;
-            updateAnimationClass();
-            rerenderCounter.value++; // Force re-render to update transitions
-        }
-    }, 1000); // Check every 1000ms
 
     // Watch for guest server updates and show dialog
     watch(
@@ -237,13 +224,6 @@ onMounted(async () => {
             }
         },
     );
-});
-
-onUnmounted(() => {
-    // Clean up the interval when component unmounts
-    if (animationCheckInterval) {
-        clearInterval(animationCheckInterval);
-    }
 });
 
 function handleMinimize() {
@@ -314,12 +294,10 @@ dialog::backdrop {
 
 .fade-enter-from {
     opacity: 0;
-    /* transform: translateX(20vw); */
 }
 
 .fade-leave-to {
     opacity: 0;
-    /* transform: translateX(-20vw); */
 }
 
 /* Stripes for the top of the window to indicate experimental features enabled */

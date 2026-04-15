@@ -3,6 +3,7 @@ const path: typeof import("path") = require("node:path");
 
 // Should be {home}/.winboat
 export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");
+export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const WINDOWS_VERSIONS = {
     "11": "Windows 11 Pro",
@@ -54,14 +55,8 @@ export const WINDOWS_LANGUAGES = {
 
 // Ports
 export const GUEST_RDP_PORT = 3389;
-export const GUEST_NOVNC_PORT = 8006;
-export const GUEST_API_PORT = 7148;
 export const GUEST_QMP_PORT = 7149;
 export const DEFAULT_HOST_QMP_PORT = 8149;
-export const PORT_MIN = 1024;
-export const PORT_MAX = 65535;
-export const PORT_SEARCH_RANGE = 100;
-export const PORT_SPACING = 1000;
 
 // USB
 export const USB_CLASS_IMAGING = 6;

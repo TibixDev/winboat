@@ -1,5 +1,4 @@
 import { PortEntryProtocol } from "../../../types";
-import { GUEST_API_PORT, GUEST_NOVNC_PORT, GUEST_QMP_PORT, GUEST_RDP_PORT } from "../constants";
 import { ContainerManager } from "./container";
 import { DockerContainer, DockerSpecs } from "./docker";
 import { PodmanContainer, PodmanSpecs } from "./podman";
@@ -14,11 +13,12 @@ export enum ContainerRuntimes {
     PODMAN = "Podman",
 }
 
+// NOTE: These are container port values, and should be used as such
 export enum CommonPorts {
-    RDP = GUEST_RDP_PORT,
-    NOVNC = GUEST_NOVNC_PORT,
-    API = GUEST_API_PORT,
-    QMP = GUEST_QMP_PORT,
+    RDP = 3389,
+    NOVNC = 8006,
+    API = 7148,
+    QMP = 7149,
 }
 
 export const ContainerImplementations = {

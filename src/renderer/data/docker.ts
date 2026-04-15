@@ -8,8 +8,8 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
     },
     services: {
         windows: {
-            image: "ghcr.io/dockur/windows:5.07",
-            container_name: "WinBoat_Docker",
+            image: "ghcr.io/dockur/windows:5.14",
+            container_name: "WinBoat",
             environment: {
                 VERSION: "11",
                 RAM_SIZE: "4G",
@@ -37,7 +37,7 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
             volumes: [
                 "data:/storage",
                 "${HOME}:/shared",
-                "/dev/bus/usb:/dev/bus/usb", // QEMU Synamic USB Passthrough
+                "/dev/bus/usb:/dev/bus/usb", // QEMU Dynamic USB Passthrough
                 "./oem:/oem",
             ],
             devices: ["/dev/kvm"],
