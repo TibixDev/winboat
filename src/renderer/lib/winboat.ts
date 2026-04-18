@@ -18,7 +18,7 @@ import { MultiMonitorMode, WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { ExecFileAsyncError } from "./exec-helper";
+import { execFileAsync, ExecFileAsyncError } from "./exec-helper";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 
@@ -32,7 +32,6 @@ const remote: typeof import("@electron/remote") = require("@electron/remote");
 const FormData: typeof import("form-data") = require("form-data");
 const argon2: typeof import("argon2") = require("argon2");
 
-const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");
 export const logger = createLogger(path.join(WINBOAT_DIR, "winboat.log"));
 
@@ -598,7 +597,7 @@ export class Winboat {
                 logger.error("Volume not supported on podman runtime");
             }
             // In this case we have a volume (legacy)
-            await execAsync("docker volume rm winboat_data");
+            await execFileAsync("docker", ["volume", "rm", "winboat_data"]);
             console.info("Removed volume");
         } else {
             const storageFolder = storage?.split(":").at(0) ?? null;
