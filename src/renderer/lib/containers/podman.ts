@@ -58,7 +58,11 @@ export class PodmanContainer extends ContainerManager {
     }
 
     writeCompose(compose: ComposeConfig): void {
-        const composeContent = YAML.stringify(compose, { nullStr: "" });
+        const composeContent = YAML.stringify(compose, {
+            nullStr: "",
+            defaultStringType: "QUOTE_DOUBLE",
+            defaultKeyType: "PLAIN",
+        });
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
