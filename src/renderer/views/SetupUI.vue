@@ -812,7 +812,6 @@
 import { Icon } from "@iconify/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
@@ -821,6 +820,7 @@ import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
 import {
     ContainerRuntimes,
+    type ContainerSpecs,
     DockerSpecs,
     PodmanSpecs,
     getContainerSpecs,
@@ -936,6 +936,7 @@ const sharedFolderPath = ref("");
 const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
+let containerSpecsRequestId = 0;
 const vncPort = ref(8006);
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
@@ -972,9 +973,23 @@ watch(folderSharing, (newValue) => {
     }
 });
 
-const containerSpecs = computedAsync(async () => {
-    return await getContainerSpecs(containerRuntime.value);
-});
+const containerSpecs = ref<ContainerSpecs>();
+
+watch(
+    containerRuntime,
+    async runtime => {
+        const requestId = ++containerSpecsRequestId;
+
+        // Clear the previous runtime checks immediately so the UI cannot reuse stale pass states.
+        containerSpecs.value = undefined;
+        const nextContainerSpecs = await getContainerSpecs(runtime);
+
+        if (requestId !== containerSpecsRequestId) return;
+
+        containerSpecs.value = nextContainerSpecs;
+    },
+    { immediate: true },
+);
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
     if (!containerSpecs) return false;
