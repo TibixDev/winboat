@@ -810,6 +810,7 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
+import { computedAsync } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { InstallConfiguration, Specs } from "../../types";
