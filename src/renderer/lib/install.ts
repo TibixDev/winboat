@@ -3,6 +3,7 @@ import { WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
+import { ContainerRuntimes } from "./containers/common";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
@@ -74,35 +75,43 @@ export class InstallManager {
         }
 
         // Ensure the installation directory exists
-        if (!fs.existsSync(this.conf.installFolder)) {
-            fs.mkdirSync(this.conf.installFolder, { recursive: true });
-            logger.info(`Created installation directory: ${this.conf.installFolder}`);
+        if (this.container.executableAlias !== 'remote') {
+            if (!fs.existsSync(this.conf.installFolder)) {
+                fs.mkdirSync(this.conf.installFolder, { recursive: true });
+                logger.info(`Created installation directory: ${this.conf.installFolder}`);
+            }
         }
-
         // Configure the compose file
         const composeContent = this.container.defaultCompose;
 
+        if (this.container.executableAlias == 'remote') {
+            this.conf.windowsVersion = "remote";
+        }
+        
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
         composeContent.services.windows.environment.VERSION = this.conf.windowsVersion;
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
+        composeContent.services.windows.environment.REMOTENAME = this.conf.remotename;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
-
+        
         // Boot image mapping
         if (this.conf.customIsoPath) {
             composeContent.services.windows.volumes.push(`${this.conf.customIsoPath}:/boot.iso`);
         }
 
-        // Storage folder mapping
-        const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
-        
-        if (storageFolderIdx === -1) {
-            logger.warn("No /storage volume found in compose template, adding one...");
-            composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
-        } else {
-            composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
+        if (this.container.executableAlias !== 'remote') {
+            // Storage folder mapping
+            const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
+            
+            if (storageFolderIdx === -1) {
+                logger.warn("No /storage volume found in compose template, adding one...");
+                composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
+            } else {
+                composeContent.services.windows.volumes[storageFolderIdx] = `${this.conf.installFolder}:/storage`;
+            }
         }
 
         // Shared folder mapping
@@ -205,7 +214,14 @@ export class InstallManager {
     }
 
     async startContainer() {
+        // Just bug out it using remote VM or PC
+        if (this.conf.container === ContainerRuntimes.REMOTE) {
+            logger.info("Not starting a container. Using remote VM or PC.")
+            return;
+        }
+
         this.changeState(InstallStates.STARTING_CONTAINER);
+
         logger.info("Starting container...");
 
         // Start the container
@@ -220,7 +236,12 @@ export class InstallManager {
         logger.info("Container started successfully.");
     }
 
-    async monitorContainerPreinstall() {
+    async monitorContainerPreinstall() {   
+        // Just bug out it using remote VM or PC
+        if (this.conf.container === ContainerRuntimes.REMOTE) {
+            return;
+        }
+
         // Sleep a bit to make sure the webserver is up in the container
         await this.sleep(3000);
 
@@ -259,6 +280,12 @@ export class InstallManager {
     }
 
     async monitorAPIHealth() {
+        // Just bug out it using remote VM or PC
+        if (this.conf.container === ContainerRuntimes.REMOTE) {
+            this.changeState(InstallStates.COMPLETED);
+            return;
+        }
+
         this.changeState(InstallStates.INSTALLING_WINDOWS);
         logger.info("Waiting for WinBoat Guest Server to wrap up installation...");
 
@@ -329,11 +356,13 @@ export class InstallManager {
 
 export async function isInstalled(): Promise<boolean> {
     // Check if a winboat container exists
-    const config = WinboatConfig.readConfigObject(false);
+    const config = WinboatConfig.readConfigObject(false);   
 
     if (!config) return false;
 
     const containerRuntime = createContainer(config.containerRuntime);
-
+    
+    if (config.containerRuntime === ContainerRuntimes.REMOTE) return true;
+    
     return await containerRuntime.exists();
 }

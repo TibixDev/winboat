@@ -1,6 +1,6 @@
 <template>
     <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ hidden: !maxNumCores }">
-        <div>
+        <div v-if="winboat.containerMgr!.executableAlias !== 'remote'">
             <x-label class="mb-4 text-neutral-300">Container</x-label>
             <div class="flex flex-col gap-4">
                 <!-- RAM Allocation -->
@@ -26,39 +26,6 @@
                     :max="maxNumCores"
                     v-model:value="numCores"
                 />
-
-                <!-- Shared Folder -->
-                <ConfigCard
-                    icon="fluent:folder-link-32-filled"
-                    title="Shared Folder"
-                    type="switch"
-                    v-model:value="shareFolder"
-                >
-                    <template v-slot:desc>
-                        If enabled, you will be able to access your selected folder within Windows under
-                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
-                    </template>
-                </ConfigCard>
-
-                <!-- Shared Folder Location -->
-                <ConfigCard
-                    v-if="shareFolder"
-                    icon="mdi:folder-cog"
-                    title="Shared Folder Location"
-                    type="custom"
-                >
-                    <template v-slot:desc>
-                        <span v-if="sharedFolderPath">
-                            Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
-                        </span>
-                        <span v-else>
-                            Select a folder to share with Windows
-                        </span>
-                    </template>
-                    <x-button @click="selectSharedFolder">
-                        Browse
-                    </x-button>
-                </ConfigCard>
 
                 <!-- Auto Start Container -->
                 <ConfigCard
@@ -105,152 +72,154 @@
             </div>
         </div>
         <div v-show="wbConfig.config.experimentalFeatures">
-            <x-label class="mb-4 text-neutral-300">Devices</x-label>
-            <div class="flex flex-col gap-4">
-                <!-- USB Passthrough -->
-                <x-card
-                    class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
-                >
-                    <div class="w-full">
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-usb-24-filled"></Icon>
-                            <h1 class="my-0 text-lg font-semibold">
-                                USB Passthrough
-                                <span class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2"> Experimental </span>
-                            </h1>
-                        </div>
-
-                        <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
-                            <x-card
-                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
-                            >
-                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
-                                <h1 class="my-0 text-base font-normal text-yellow-200">
-                                    We need to update your Compose in order to use this feature!
+            <div v-if="winboat.containerMgr!.executableAlias !== 'remote'">
+                <x-label class="mb-4 text-neutral-300">Devices</x-label>
+                <div class="flex flex-col gap-4">
+                    <!-- USB Passthrough -->
+                    <x-card
+                        class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                    >
+                        <div class="w-full">
+                            <div class="flex flex-row gap-2 items-center mb-2">
+                                <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-usb-24-filled"></Icon>
+                                <h1 class="my-0 text-lg font-semibold">
+                                    USB Passthrough
+                                    <span class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2"> Experimental </span>
                                 </h1>
+                            </div>
 
-                                <x-button
-                                    :disabled="isUpdatingUSBPrerequisites"
-                                    class="mt-1 !bg-gradient-to-tl from-yellow-200/20 to-transparent ml-auto hover:from-yellow-300/30 transition !border-0"
-                                    @click="addRequiredComposeFieldsUSB"
-                                >
-                                    <x-label
-                                        class="ext-lg font-normal text-yellow-200"
-                                        v-if="!isUpdatingUSBPrerequisites"
-                                    >
-                                        Update
-                                    </x-label>
-
-                                    <x-throbber v-else class="w-8 text-yellow-300"></x-throbber>
-                                </x-button>
-                            </x-card>
-                        </template>
-                        <template v-if="wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
-                            <x-card
-                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
-                            >
-                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
-                                <h1 class="my-0 text-base font-normal text-yellow-200">
-                                    USB Passthrough is not yet supported while using Podman as the container runtime.
-                                </h1>
-                            </x-card>
-                        </template>
-                        <template
-                            v-if="
-                                !usbPassthroughDisabled &&
-                                !isUpdatingUSBPrerequisites &&
-                                wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER
-                            "
-                        >
-                            <x-label
-                                class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
-                                v-if="usbManager.ptDevices.value.length == 0"
-                            >
-                                Press the button below to add USB devices to your passthrough list
-                            </x-label>
-                            <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
+                            <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
                                 <x-card
-                                    class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
-                                    v-for="device of usbManager.ptDevices.value"
-                                    :key="`${device.vendorId}-${device.productId}`"
-                                    :class="{
-                                        'bg-white/[calc(0.05*0.75)] [&_*:not(div):not(span)]:opacity-75':
-                                            !usbManager.isPTDeviceConnected(device),
-                                    }"
+                                    class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
                                 >
-                                    <div class="flex flex-row gap-2 items-center">
-                                        <span
-                                            v-if="
-                                                usbManager.isMTPDevice(device) ||
-                                                usbManager
-                                                    .stringifyPTSerializableDevice(device)
-                                                    .toLowerCase()
-                                                    .includes('mtp')
-                                            "
-                                            class="relative group"
-                                        >
-                                            <Icon
-                                                icon="clarity:warning-solid"
-                                                class="text-yellow-300 size-7 cursor-pointer"
-                                            />
-                                            <span
-                                                class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
-                                            >
-                                                This device appears to be using the MTP protocol, which is known for
-                                                being problematic. Some Desktop Environments automatically mount MTP
-                                                devices, which in turn causes WinBoat to not be able to pass the device
-                                                through.
-                                            </span>
-                                        </span>
+                                    <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                    <h1 class="my-0 text-base font-normal text-yellow-200">
+                                        We need to update your Compose in order to use this feature!
+                                    </h1>
 
-                                        <span v-if="!usbManager.isPTDeviceConnected(device)" class="relative group">
-                                            <Icon
-                                                icon="ix:connection-fail"
-                                                class="text-red-500 size-7 cursor-pointer"
-                                            />
-                                            <span
-                                                class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
-                                            >
-                                                This device is currently not connected.
-                                            </span>
-                                        </span>
-
-                                        <p class="text-base !m-0 text-gray-200">
-                                            {{ usbManager.stringifyPTSerializableDevice(device) }}
-                                        </p>
-                                    </div>
                                     <x-button
-                                        @click="removeDevice(device)"
-                                        class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
+                                        :disabled="isUpdatingUSBPrerequisites"
+                                        class="mt-1 !bg-gradient-to-tl from-yellow-200/20 to-transparent ml-auto hover:from-yellow-300/30 transition !border-0"
+                                        @click="addRequiredComposeFieldsUSB"
                                     >
-                                        <x-icon href="#remove"></x-icon>
+                                        <x-label
+                                            class="ext-lg font-normal text-yellow-200"
+                                            v-if="!isUpdatingUSBPrerequisites"
+                                        >
+                                            Update
+                                        </x-label>
+
+                                        <x-throbber v-else class="w-8 text-yellow-300"></x-throbber>
                                     </x-button>
                                 </x-card>
-                            </TransitionGroup>
-                            <x-button
-                                v-if="availableDevices.length > 0"
-                                class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
-                                :class="{ 'mt-4': usbManager.ptDevices.value.length }"
-                                @click="refreshAvailableDevices()"
+                            </template>
+                            <template v-if="wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
+                                <x-card
+                                    class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                                >
+                                    <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                    <h1 class="my-0 text-base font-normal text-yellow-200">
+                                        USB Passthrough is not yet supported while using Podman as the container runtime.
+                                    </h1>
+                                </x-card>
+                            </template>
+                            <template
+                                v-if="
+                                    !usbPassthroughDisabled &&
+                                    !isUpdatingUSBPrerequisites &&
+                                    wbConfig.config.containerRuntime === ContainerRuntimes.DOCKER
+                                "
                             >
-                                <x-icon href="#add"></x-icon>
-                                <x-label>Add Device</x-label>
-                                <TransitionGroup ref="usbMenu" name="menu" tag="x-menu" class="max-h-52">
-                                    <x-menuitem
-                                        v-for="(device, k) of availableDevices as Device[]"
-                                        :key="device.portNumbers.join(',')"
-                                        @click="addDevice(device)"
+                                <x-label
+                                    class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
+                                    v-if="usbManager.ptDevices.value.length == 0"
+                                >
+                                    Press the button below to add USB devices to your passthrough list
+                                </x-label>
+                                <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
+                                    <x-card
+                                        class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
+                                        v-for="device of usbManager.ptDevices.value"
+                                        :key="`${device.vendorId}-${device.productId}`"
+                                        :class="{
+                                            'bg-white/[calc(0.05*0.75)] [&_*:not(div):not(span)]:opacity-75':
+                                                !usbManager.isPTDeviceConnected(device),
+                                        }"
                                     >
-                                        <x-label>{{ usbManager.stringifyDevice(device) }}</x-label>
-                                    </x-menuitem>
-                                    <x-menuitem v-if="availableDevices.length === 0" disabled>
-                                        <x-label>No available devices</x-label>
-                                    </x-menuitem>
+                                        <div class="flex flex-row gap-2 items-center">
+                                            <span
+                                                v-if="
+                                                    usbManager.isMTPDevice(device) ||
+                                                    usbManager
+                                                        .stringifyPTSerializableDevice(device)
+                                                        .toLowerCase()
+                                                        .includes('mtp')
+                                                "
+                                                class="relative group"
+                                            >
+                                                <Icon
+                                                    icon="clarity:warning-solid"
+                                                    class="text-yellow-300 size-7 cursor-pointer"
+                                                />
+                                                <span
+                                                    class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                                >
+                                                    This device appears to be using the MTP protocol, which is known for
+                                                    being problematic. Some Desktop Environments automatically mount MTP
+                                                    devices, which in turn causes WinBoat to not be able to pass the device
+                                                    through.
+                                                </span>
+                                            </span>
+
+                                            <span v-if="!usbManager.isPTDeviceConnected(device)" class="relative group">
+                                                <Icon
+                                                    icon="ix:connection-fail"
+                                                    class="text-red-500 size-7 cursor-pointer"
+                                                />
+                                                <span
+                                                    class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                                >
+                                                    This device is currently not connected.
+                                                </span>
+                                            </span>
+
+                                            <p class="text-base !m-0 text-gray-200">
+                                                {{ usbManager.stringifyPTSerializableDevice(device) }}
+                                            </p>
+                                        </div>
+                                        <x-button
+                                            @click="removeDevice(device)"
+                                            class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
+                                        >
+                                            <x-icon href="#remove"></x-icon>
+                                        </x-button>
+                                    </x-card>
                                 </TransitionGroup>
-                            </x-button>
-                        </template>
-                    </div>
-                </x-card>
+                                <x-button
+                                    v-if="availableDevices.length > 0"
+                                    class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                    :class="{ 'mt-4': usbManager.ptDevices.value.length }"
+                                    @click="refreshAvailableDevices()"
+                                >
+                                    <x-icon href="#add"></x-icon>
+                                    <x-label>Add Device</x-label>
+                                    <TransitionGroup ref="usbMenu" name="menu" tag="x-menu" class="max-h-52">
+                                        <x-menuitem
+                                            v-for="(device, k) of availableDevices as Device[]"
+                                            :key="device.portNumbers.join(',')"
+                                            @click="addDevice(device)"
+                                        >
+                                            <x-label>{{ usbManager.stringifyDevice(device) }}</x-label>
+                                        </x-menuitem>
+                                        <x-menuitem v-if="availableDevices.length === 0" disabled>
+                                            <x-label>No available devices</x-label>
+                                        </x-menuitem>
+                                    </TransitionGroup>
+                                </x-button>
+                            </template>
+                        </div>
+                    </x-card>
+                </div>
             </div>
         </div>
         <div v-show="wbConfig.config.advancedFeatures">
@@ -333,6 +302,48 @@
         <div>
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
+                <!-- Shared Folder -->
+                <ConfigCard
+                    icon="fluent:folder-link-32-filled"
+                    title="Shared Folder"
+                    type="switch"
+                    v-model:value="shareFolder"
+                >
+                    <template v-slot:desc>
+                        If enabled, you will be able to access your selected folder within Windows under
+                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
+                    </template>
+                </ConfigCard>
+
+                <!-- Shared Folder Location -->
+                <ConfigCard
+                    v-if="shareFolder"
+                    icon="mdi:folder-cog"
+                    title="Shared Folder Location"
+                    type="custom"
+                >
+                    <template v-slot:desc>
+                        <span v-if="sharedFolderPath">
+                            Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
+                        </span>
+                        <span v-else>
+                            Select a folder to share with Windows
+                        </span>
+                    </template>
+                    <x-button @click="selectSharedFolder">
+                        Browse
+                    </x-button>
+                </ConfigCard>
+
+                <x-button
+                    :disabled="saveButtonDisabled"
+                    @click="saveCompose()"
+                    class="w-24"
+                >
+                    <span v-if="!isApplyingChanges">Save</span>
+                    <x-throbber v-else class="w-10"></x-throbber>
+                </x-button>
+
                 <!-- Display Scaling -->
                 <ConfigCard
                     class="relative z-10"
@@ -428,7 +439,7 @@
             </div>
         </div>
 
-        <div>
+        <div v-if="winboat.containerMgr!.executableAlias !== 'remote'">
             <x-label class="mb-4 text-neutral-300">Danger Zone</x-label>
             <x-card class="flex flex-col py-3 my-0 mb-6 w-full backdrop-blur-xl backdrop-brightness-150 bg-red-500/10">
                 <h1 class="my-0 text-lg font-normal text-red-300">
@@ -526,7 +537,13 @@ onMounted(async () => {
  */
 async function assignValues() {
     compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
-    portMapper.value = new ComposePortMapper(compose.value);
+
+    if (winboat.containerMgr?.executableAlias !== "remote") {
+        portMapper.value = new ComposePortMapper(compose.value);
+    }
+    else{
+        portMapper.value = null;
+    }
 
     numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
     origNumCores.value = numCores.value;
@@ -551,8 +568,10 @@ async function assignValues() {
     autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
     origAutoStartContainer.value = autoStartContainer.value;
 
-    freerdpPort.value = (portMapper.value.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
-    origFreerdpPort.value = freerdpPort.value;
+    if (winboat.containerMgr?.executableAlias !== "remote") {
+        freerdpPort.value = (portMapper.value!.getShortPortMapping(GUEST_RDP_PORT)?.host as number) ?? GUEST_RDP_PORT;
+        origFreerdpPort.value = freerdpPort.value;
+    }
 
     const specs = await getSpecs();
     maxRamGB.value = specs.ramGB;
@@ -585,17 +604,20 @@ async function saveCompose() {
 
     compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "tcp",
-        hostIP: "127.0.0.1",
-    });
+    if (freerdpPort.value)
+    {
+        portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
+            protocol: "tcp",
+            hostIP: "127.0.0.1",
+        });
 
-    portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
-        protocol: "udp",
-        hostIP: "127.0.0.1",
-    });
-
-    compose.value!.services.windows.ports = portMapper.value!.composeFormat;
+        portMapper.value!.setShortPortMapping(GUEST_RDP_PORT, freerdpPort.value, {
+            protocol: "udp",
+            hostIP: "127.0.0.1",
+        });
+        
+        compose.value!.services.windows.ports = portMapper.value!.composeFormat;
+    }
 
     isApplyingChanges.value = true;
     try {

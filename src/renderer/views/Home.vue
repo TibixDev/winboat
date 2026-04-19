@@ -14,9 +14,16 @@
                         <h1 class="text-3xl">
                             {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
                         </h1>
-                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold !m-0">
-                            {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
-                        </p>
+                        <div v-if="winboat.containerMgr!.executableAlias !== 'remote'">
+                            <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold !m-0">
+                                {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
+                            </p>
+                        </div>
+                        <div v-else>
+                            <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold !m-0">
+                                {{ compose?.services.windows.environment.REMOTENAME ?? "unknown" }}
+                            </p>
+                        </div>
                     </div>
 
                     <div
@@ -39,74 +46,78 @@
                         </p>
                     </div>
 
-                    <div
-                        class="flex flex-row items-center gap-1.5"
-                        :class="{
-                            'text-green-500': winboat.containerStatus.value === ContainerStatus.RUNNING,
-                            'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
-                            'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
-                            'text-orange-500': winboat.containerStatus.value === ContainerStatus.UNKNOWN,
-                            'text-gray-500': winboat.containerStatus.value === ContainerStatus.CREATED,
-                        }"
-                    >
-                        <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>
-                        <p class="!my-0 font-semibold text-lg">
-                            Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
-                        </p>
+                    <div v-if="winboat.containerMgr!.executableAlias !== 'remote'">
+                        <div
+                            class="flex flex-row items-center gap-1.5"
+                            :class="{
+                                'text-green-500': winboat.containerStatus.value === ContainerStatus.RUNNING,
+                                'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
+                                'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
+                                'text-orange-500': winboat.containerStatus.value === ContainerStatus.UNKNOWN,
+                                'text-gray-500': winboat.containerStatus.value === ContainerStatus.CREATED,
+                            }"
+                        >
+                            <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>
+                            <p class="!my-0 font-semibold text-lg">
+                                Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Buttons -->
-            <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
-                <button
-                    title="Start"
-                    class="generic-hover"
-                    v-if="
-                        winboat.containerStatus.value === ContainerStatus.EXITED ||
-                        winboat.containerStatus.value === ContainerStatus.CREATED ||
-                        winboat.containerStatus.value === ContainerStatus.UNKNOWN
-                    "
-                    @click="winboat.startContainer()"
-                >
-                    <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
-                </button>
-                <button
-                    title="Stop"
-                    class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
-                    @click="winboat.stopContainer()"
-                >
-                    <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
-                </button>
-                <button
-                    title="Restart"
-                    class="generic-hover"
-                    v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
-                    @click="winboat.restartContainer()"
-                >
-                    <Icon class="w-20 h-20 text-orange-300" icon="mingcute:refresh-3-line"></Icon>
-                </button>
+             <div v-if="winboat.containerMgr!.executableAlias !== 'remote'">
+                <div v-if="!winboat.containerActionLoading.value" class="flex flex-row items-center gap-5 text-gray-200/80">
+                    <button
+                        title="Start"
+                        class="generic-hover"
+                        v-if="
+                            winboat.containerStatus.value === ContainerStatus.EXITED ||
+                            winboat.containerStatus.value === ContainerStatus.CREATED ||
+                            winboat.containerStatus.value === ContainerStatus.UNKNOWN
+                        "
+                        @click="winboat.startContainer()"
+                    >
+                        <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
+                    </button>
+                    <button
+                        title="Stop"
+                        class="generic-hover"
+                        v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
+                        @click="winboat.stopContainer()"
+                    >
+                        <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
+                    </button>
+                    <button
+                        title="Restart"
+                        class="generic-hover"
+                        v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
+                        @click="winboat.restartContainer()"
+                    >
+                        <Icon class="w-20 h-20 text-orange-300" icon="mingcute:refresh-3-line"></Icon>
+                    </button>
 
-                <button
-                    title="Pause / Unpause"
-                    class="generic-hover"
-                    v-if="
-                        winboat.containerStatus.value === ContainerStatus.RUNNING ||
-                        winboat.containerStatus.value === ContainerStatus.PAUSED
-                    "
-                    @click="
-                        winboat.containerStatus.value === ContainerStatus.PAUSED
-                            ? winboat.unpauseContainer()
-                            : winboat.pauseContainer()
-                    "
-                >
-                    <Icon class="w-20 h-20 text-yellow-100" icon="mingcute:pause-line"></Icon>
-                </button>
-            </div>
+                    <button
+                        title="Pause / Unpause"
+                        class="generic-hover"
+                        v-if="
+                            winboat.containerStatus.value === ContainerStatus.RUNNING ||
+                            winboat.containerStatus.value === ContainerStatus.PAUSED
+                        "
+                        @click="
+                            winboat.containerStatus.value === ContainerStatus.PAUSED
+                                ? winboat.unpauseContainer()
+                                : winboat.pauseContainer()
+                        "
+                    >
+                        <Icon class="w-20 h-20 text-yellow-100" icon="mingcute:pause-line"></Icon>
+                    </button>
+                </div>
 
-            <div v-else>
-                <x-throbber class="w-16 h-16"></x-throbber>
+                <div v-else>
+                    <x-throbber class="w-16 h-16"></x-throbber>
+                </div>
             </div>
         </x-card>
 
@@ -130,7 +141,7 @@
                         <h2 class="my-0 text-2xl">CPU</h2>
                     </div>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
-                        {{ compose?.services.windows.environment.CPU_CORES }} Virtual Cores
+                        {{ winboat.metrics.value.cpu.cores }} Cores
                     </p>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
                         Frequency: {{ (winboat.metrics.value.cpu.frequency / 1000).toFixed(2) }} GHz
