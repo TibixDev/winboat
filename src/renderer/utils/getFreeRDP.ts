@@ -25,6 +25,10 @@ const freeRDPInstallations = [
     new FreeRDPInstallation("xfreerdp3"),
     new FreeRDPInstallation("xfreerdp"),
     new FreeRDPInstallation("flatpak", ["run", "--command=xfreerdp", "com.freerdp.FreeRDP"]),
+    new FreeRDPInstallation("sdl-freerdp3"),
+    new FreeRDPInstallation("sdl-freerdp"),
+    new FreeRDPInstallation("sdl3-freerdp3"),
+    new FreeRDPInstallation("sdl3-freerdp"),
 ];
 
 /**
