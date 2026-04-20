@@ -513,10 +513,10 @@
 
                         <p class="text-lg text-gray-400">
                             It is not recommended to allocate more than half of your system resources to Windows. You
-                            will be able to change these settings later on if needed.
+                            will be able to change the CPU and RAM settings later on if needed.
                         </p>
 
-                        <div class="flex flex-col gap-6">
+                        <div class="flex flex-col gap-3 pl-[2px]">
                             <div>
                                 <label for="select-cpu-cores" class="text-sm text-neutral-400">Select CPU Cores</label>
                                 <div class="flex flex-row gap-4 items-center">
@@ -538,7 +538,7 @@
                                 <label for="select-ram" class="text-sm text-neutral-400">
                                     Select RAM
                                     <span
-                                        v-if="memoryInfo.availableGB < ramGB"
+                                        v-if="memoryInfo.availableGB < ramGB || ramGB < 2"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5" />
@@ -546,24 +546,48 @@
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            You don't have enough unused memory available to allocate the requested
-                                            amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of unused
-                                            memory available. If you continue with this amount of RAM, the container
-                                            will likely crash.
+                                            <template v-if="memoryInfo.availableGB < ramGB">
+                                                You don't have enough unused memory available to allocate the requested
+                                                amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of unused
+                                                memory available. If you continue with this amount of RAM, the container
+                                                will likely crash.
+                                            </template>
+                                            <template v-else>
+                                                Allocating less than 2 GB of RAM may cause Windows to become unstable
+                                                or unusable. You currently have ~{{ memoryInfo.availableGB }} GB of unused
+                                                memory available. If you continue with this amount of RAM, the container
+                                                will likely crash.
+                                            </template>
                                         </span>
                                     </span>
                                 </label>
-                                <div class="flex flex-row gap-4 items-center">
-                                    <x-slider
-                                        id="select-ram"
-                                        @change="(e: any) => (ramGB = Number(e.target.value))"
-                                        class="w-[50%]"
-                                        :value="ramGB"
-                                        :min="MIN_RAM_GB"
-                                        :max="specs.ramGB"
-                                        step="1"
-                                    />
-                                    <x-label>{{ ramGB }} GB</x-label>
+                                <div class="flex flex-row gap-2 items-center relative">
+                                    <div class="relative">
+                                        <input
+                                            id="select-ram"
+                                            type="text"
+                                            v-model.number="ramGB"
+                                            @input="ramGB = Math.min(Number(ramGB) || 0, specs.ramGB)"
+                                            class="border border-neutral-700 rounded-xl px-3 py-2 pr-10 w-[80px] text-right bg-neutral-800/60 backdrop-blur-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400 transition"
+                                        />
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">GB</span>
+                                    </div>
+                                    <div class="flex flex-col ml-1 -ml-1">
+                                        <button
+                                            type="button"
+                                            class="p-0 flex justify-center items-center"
+                                            @click="ramGB = Math.min(ramGB + 1, specs.ramGB)"
+                                        >
+                                            <Icon icon="mdi:chevron-up" class="size-4 text-neutral-300 hover:text-white" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="p-0 flex justify-center items-center"
+                                            @click="ramGB = ramGB - 1"
+                                        >
+                                            <Icon icon="mdi:chevron-down" class="size-4 text-neutral-300 hover:text-white" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -571,7 +595,7 @@
                                 <label for="select-disk" class="text-sm text-neutral-400">
                                     Select Disk Size
                                     <span
-                                        v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5"
+                                        v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5 || diskSpaceGB < 32"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
@@ -579,30 +603,54 @@
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            You're about to allocate most of your remaining disk space with less than
-                                            5GB in excess. You currently have ~{{ installFolderDiskSpaceGB }} GB of disk
-                                            space available for the drive corresponding to {{ installFolder }}. If you
-                                            continue with this disk size, you may run out of space and encounter
-                                            unexpected issues.
+                                            <template v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5">
+                                                You're about to allocate most of your remaining disk space with less than
+                                                5GB in excess. You currently have ~{{ installFolderDiskSpaceGB }} GB of disk
+                                                space available for the drive corresponding to {{ installFolder }}. If you
+                                                continue with this disk size, you may run out of space and encounter
+                                                unexpected issues.
+                                            </template>
+                                            <template v-else>
+                                                Allocating less than 32 GB of disk space may cause Windows to become unstable 
+                                                or unusable. You currently have ~{{ installFolderDiskSpaceGB }} GB of disk
+                                                space available for the drive corresponding to {{ installFolder }}. If you
+                                                continue with this disk size, Windows may run out of space and encounter unexpected issues.
+                                            </template>
                                         </span>
                                     </span>
                                 </label>
-                                <div class="flex flex-row gap-4 items-center">
-                                    <x-slider
-                                        id="select-disk"
-                                        @change="(e: any) => (diskSpaceGB = Number(e.target.value))"
-                                        class="w-[50%]"
-                                        :value="diskSpaceGB"
-                                        :min="MIN_DISK_GB"
-                                        :max="installFolderDiskSpaceGB || 0"
-                                        step="8"
-                                    />
-                                    <x-label>{{ diskSpaceGB }} GB</x-label>
+                                <div class="flex flex-row gap-2 items-center relative">
+                                    <div class="relative">
+                                        <input
+                                            id="select-disk"
+                                            type="text"
+                                            v-model.number="diskSpaceGB"
+                                            @input="diskSpaceGB = Math.min(Number(diskSpaceGB) || 0, installFolderDiskSpaceGB || 0)"
+                                            class="border border-neutral-700 rounded-xl px-3 py-2 pr-10 w-[80px] text-right bg-neutral-800/60 backdrop-blur-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400 transition"
+                                        />
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">GB</span>
+                                    </div>
+                                    <div class="flex flex-col ml-1 -ml-1">
+                                        <button
+                                            type="button"
+                                            class="p-0 flex justify-center items-center"
+                                            @click="diskSpaceGB = Math.min(diskSpaceGB + 8, installFolderDiskSpaceGB || 0)"
+                                        >
+                                            <Icon icon="mdi:chevron-up" class="size-4 text-neutral-300 hover:text-white" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="p-0 flex justify-center items-center"
+                                            @click="diskSpaceGB = diskSpaceGB - 8"
+                                        >
+                                            <Icon icon="mdi:chevron-down" class="size-4 text-neutral-300 hover:text-white" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="flex flex-row gap-4 mt-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
                         </div>
