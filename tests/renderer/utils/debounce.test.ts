@@ -33,8 +33,15 @@ describe("Test debounce", () => {
     }, 3000);
 
     // test arguments passthrough
-    test("Test Arguments", async() => {
+    test("Test debounce argument passthrough", async() => {
         let args = new Array(args_len).fill(0).map((i)=>Math.random());
-        await new Promise
+
+        let res = await new Promise((resolve,reject) => {
+            debounce((..._args) => {
+                resolve(_args);
+            }, 10)(...args);
+        });
+
+        expect(res).toEqual(args);
     })
 })
