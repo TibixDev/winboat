@@ -107,10 +107,7 @@
                                 <span v-else class="text-red-500">✘</span>
 
                                 <div>
-                                    <x-select
-                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
-                                        class="w-fit"
-                                    >
+                                    <x-select @change="handleContainerRuntimeChange" class="w-fit">
                                         <x-menu>
                                             <x-menuitem
                                                 v-for="(runtime, key) in Object.values(ContainerRuntimes)"
@@ -246,7 +243,7 @@
                                 toggled
                                 class="px-6"
                                 @click="currentStepIdx++"
-                                :disabled="!satisfiesPrequisites(specs, containerSpecs)"
+                                :disabled="checkingPrerequisites || !satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
                             </x-button>
@@ -810,9 +807,9 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { computedAsync } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
@@ -937,7 +934,7 @@ const sharedFolderPath = ref("");
 const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
-let containerSpecsRequestId = 0;
+const checkingPrerequisites = ref(true);
 const vncPort = ref(8006);
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
@@ -979,18 +976,22 @@ const containerSpecs = ref<ContainerSpecs>();
 watch(
     containerRuntime,
     async runtime => {
-        const requestId = ++containerSpecsRequestId;
-
-        // Clear the previous runtime checks immediately so the UI cannot reuse stale pass states.
+        checkingPrerequisites.value = true;
         containerSpecs.value = undefined;
-        const nextContainerSpecs = await getContainerSpecs(runtime);
-
-        if (requestId !== containerSpecsRequestId) return;
-
-        containerSpecs.value = nextContainerSpecs;
+        try {
+            containerSpecs.value = await getContainerSpecs(runtime);
+        } finally {
+            checkingPrerequisites.value = false;
+        }
     },
     { immediate: true },
 );
+
+function handleContainerRuntimeChange(e: CustomEvent<{ newValue: ContainerRuntimes }>) {
+    checkingPrerequisites.value = true;
+    containerSpecs.value = undefined;
+    containerRuntime.value = e.detail.newValue;
+}
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
     if (!containerSpecs) return false;
