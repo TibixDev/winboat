@@ -1,5 +1,4 @@
 import { debounce } from "../../../src/renderer/utils/debounce";
-import { generateRandomLowercase } from "../../testutils";
 
 const range = [10, 1000];
 const num_tests = 10;

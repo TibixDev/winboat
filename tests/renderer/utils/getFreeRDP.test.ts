@@ -1,5 +1,4 @@
 import { FreeRDPInstallation, getFreeRDP } from "../../../src/renderer/utils/getFreeRDP";
-import { existsSync } from "node:fs";
 import { isCommandInPath } from "../../testutils";
 
 describe("Test getFreeRDP", () => {
