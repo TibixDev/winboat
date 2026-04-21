@@ -2,7 +2,7 @@ import { debounce } from "../../../src/renderer/utils/debounce";
 
 const range = [10, 1000];
 const num_tests = 10;
-const allow_miss_ms = 10;
+const allow_miss_ms = 5;
 const args_len = 3;
 
 describe("Test debounce", () => {

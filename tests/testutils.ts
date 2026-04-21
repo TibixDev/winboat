@@ -25,3 +25,9 @@ export function isCommandInPath(command: string): boolean {
     }
     return false;
 }
+
+export function averageNumArray(ns:Array<number>): number {
+    let sum = 0;
+    for(const n of ns) sum += n;
+    return sum / ns.length;
+}
