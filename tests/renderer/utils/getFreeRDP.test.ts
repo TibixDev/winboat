@@ -1,5 +1,6 @@
 import { FreeRDPInstallation, getFreeRDP } from "../../../src/renderer/utils/getFreeRDP";
 import { existsSync } from "node:fs";
+import { isCommandInPath } from "../../testutils";
 
 describe("Test getFreeRDP", () => {
     let freerdp: null | FreeRDPInstallation | undefined = undefined;
@@ -19,10 +20,11 @@ describe("Test getFreeRDP", () => {
     if(freerdp !== null) {
         test(rdpClassTestName, () => {
             // test type of file
-            expect(freerdp?.file).toEqual(expect.any("string"));
+            expect(typeof freerdp?.file).toBe("string");
+            if(typeof freerdp?.file !== "string") return;
 
             // test existance
-            expect(existsSync(freerdp?.file as string)).toBeTruthy();
+            expect(isCommandInPath(freerdp?.file)).toBeTruthy();
         })
     } else {
         test.skip(`${rdpClassTestName} (no freerdp installation).`);
