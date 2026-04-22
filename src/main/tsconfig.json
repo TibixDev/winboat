@@ -8,7 +8,8 @@
         "forceConsistentCasingInFileNames": true,
         "outDir": "../../build/main",
         "allowJs": true,
-        "noImplicitAny": false
+        "noImplicitAny": false,
+        "types": ["jest"]
     },
     "exclude": ["static"]
 }
