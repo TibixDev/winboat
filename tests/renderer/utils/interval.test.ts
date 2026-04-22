@@ -43,6 +43,11 @@ describe("Test set interval immidiate", () => {
     }
 
     // clear the interval so timings stay constant
+    test("Free interval", async () => {
+        await test_lock_await;
+        clearInterval(interval);
+    })
+
     test("Assert function return type", async () => {
         await test_lock_await
         expect(interval instanceof Timeout).toBeTruthy();
