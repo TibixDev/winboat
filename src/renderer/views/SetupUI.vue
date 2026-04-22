@@ -114,6 +114,9 @@
                                                 :key="key"
                                                 :value="runtime"
                                                 :toggled="runtime === containerRuntime"
+                                                @pointerdown="beginContainerRuntimeChange(runtime)"
+                                                @keydown.enter="beginContainerRuntimeChange(runtime)"
+                                                @click="beginContainerRuntimeChange(runtime)"
                                             >
                                                 <x-label>{{ runtime }}</x-label>
                                             </x-menuitem>
@@ -242,7 +245,7 @@
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
+                                @click="goToInstallLocationStep"
                                 :disabled="checkingPrerequisites || !satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
@@ -988,9 +991,21 @@ watch(
 );
 
 function handleContainerRuntimeChange(e: CustomEvent<{ newValue: ContainerRuntimes }>) {
+    beginContainerRuntimeChange(e.detail.newValue);
+}
+
+function beginContainerRuntimeChange(runtime: ContainerRuntimes) {
+    if (runtime === containerRuntime.value) return;
+
     checkingPrerequisites.value = true;
     containerSpecs.value = undefined;
-    containerRuntime.value = e.detail.newValue;
+    containerRuntime.value = runtime;
+}
+
+function goToInstallLocationStep() {
+    if (checkingPrerequisites.value || !satisfiesPrequisites(specs.value, containerSpecs.value)) return;
+
+    currentStepIdx.value++;
 }
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
