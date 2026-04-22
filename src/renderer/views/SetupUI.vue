@@ -107,16 +107,16 @@
                                 <span v-else class="text-red-500">✘</span>
 
                                 <div>
-                                    <x-select
-                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
-                                        class="w-fit"
-                                    >
+                                    <x-select @change="handleContainerRuntimeChange" class="w-fit">
                                         <x-menu>
                                             <x-menuitem
                                                 v-for="(runtime, key) in Object.values(ContainerRuntimes)"
                                                 :key="key"
                                                 :value="runtime"
                                                 :toggled="runtime === containerRuntime"
+                                                @pointerdown="beginContainerRuntimeChange(runtime)"
+                                                @keydown.enter="beginContainerRuntimeChange(runtime)"
+                                                @click="beginContainerRuntimeChange(runtime)"
                                             >
                                                 <x-label>{{ runtime }}</x-label>
                                             </x-menuitem>
@@ -245,8 +245,8 @@
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
-                                :disabled="!satisfiesPrequisites(specs, containerSpecs)"
+                                @click="goToInstallLocationStep"
+                                :disabled="checkingPrerequisites || !satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
                             </x-button>
@@ -821,6 +821,7 @@ import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
 import {
     ContainerRuntimes,
+    type ContainerSpecs,
     DockerSpecs,
     PodmanSpecs,
     getContainerSpecs,
@@ -936,6 +937,7 @@ const sharedFolderPath = ref("");
 const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
+const checkingPrerequisites = ref(true);
 const vncPort = ref(8006);
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
@@ -972,9 +974,39 @@ watch(folderSharing, (newValue) => {
     }
 });
 
-const containerSpecs = computedAsync(async () => {
-    return await getContainerSpecs(containerRuntime.value);
-});
+const containerSpecs = ref<ContainerSpecs>();
+
+watch(
+    containerRuntime,
+    async runtime => {
+        checkingPrerequisites.value = true;
+        containerSpecs.value = undefined;
+        try {
+            containerSpecs.value = await getContainerSpecs(runtime);
+        } finally {
+            checkingPrerequisites.value = false;
+        }
+    },
+    { immediate: true },
+);
+
+function handleContainerRuntimeChange(e: CustomEvent<{ newValue: ContainerRuntimes }>) {
+    beginContainerRuntimeChange(e.detail.newValue);
+}
+
+function beginContainerRuntimeChange(runtime: ContainerRuntimes) {
+    if (runtime === containerRuntime.value) return;
+
+    checkingPrerequisites.value = true;
+    containerSpecs.value = undefined;
+    containerRuntime.value = runtime;
+}
+
+function goToInstallLocationStep() {
+    if (checkingPrerequisites.value || !satisfiesPrequisites(specs.value, containerSpecs.value)) return;
+
+    currentStepIdx.value++;
+}
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
     if (!containerSpecs) return false;
