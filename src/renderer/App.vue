@@ -95,40 +95,54 @@
             v-if="!['SetupUI', 'Migration'].includes($route.name?.toString() || '')"
             class="flex flex-row h-[calc(100vh-2rem)]"
         >
-            <x-nav class="flex flex-col flex-none gap-0.5 w-72 backdrop-blur-xl bg-gray-500/10 backdrop-contrast-90">
-                <div
-                    v-if="winboat?.rdpConnected.value"
-                    class="w-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-blue-500 text-white !mt-0 py-1 shadow-md shadow-indigo-500/50 transition-all duration-300 hover:brightness-105 flex flex-row items-center justify-center gap-2"
-                >
-                    <Icon class="size-5" icon="mdi:remote-desktop"></Icon>
-                    <span class="font-semibold text-center"> RDP Session Active </span>
-                </div>
-                <div class="flex flex-row gap-4 items-center p-4">
-                    <img
-                        class="w-16 rounded-full"
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Windows_10_Default_Profile_Picture.svg/2048px-Windows_10_Default_Profile_Picture.svg.png"
-                        alt="Profile"
-                    />
-                    <div>
-                        <x-label class="text-lg font-semibold">{{ os.userInfo().username }}</x-label>
-                        <x-label class="text-[0.8rem]">Local Account</x-label>
+            <x-nav class="flex flex-col flex-none gap-0.5 w-72 backdrop-blur-xl bg-gray-500/10 backdrop-contrast-90 justify-between h-full">
+                <div>
+                    <div
+                        v-if="winboat?.rdpConnected.value"
+                        class="w-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-blue-500 text-white !mt-0 py-1 shadow-md shadow-indigo-500/50 transition-all duration-300 hover:brightness-105 flex flex-row items-center justify-center gap-2"
+                    >
+                        <Icon class="size-5" icon="mdi:remote-desktop"></Icon>
+                        <span class="font-semibold text-center"> RDP Session Active </span>
                     </div>
+                    <div class="flex flex-row gap-4 items-center p-4">
+                        <img
+                            class="w-16 rounded-full"
+                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Windows_10_Default_Profile_Picture.svg/2048px-Windows_10_Default_Profile_Picture.svg.png"
+                            alt="Profile"
+                        />
+                        <div>
+                            <x-label class="text-lg font-semibold">{{ os.userInfo().username }}</x-label>
+                            <x-label class="text-[0.8rem]">Local Account</x-label>
+                        </div>
+                    </div>
+                    <RouterLink
+                        v-for="route of routes.filter(
+                            (r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)),
+                        )"
+                        :to="route.path"
+                        :key="route.path"
+                    >
+                        <x-navitem>
+                            <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
+                            <x-label>{{ route.name }}</x-label>
+                        </x-navitem>
+                    </RouterLink>
                 </div>
-                <RouterLink
-                    v-for="route of routes.filter(
-                        (r: RouteRecordRaw) => !['SetupUI', 'Loading', 'Migration'].includes(String(r.name)),
-                    )"
-                    :to="route.path"
-                    :key="route.path"
-                >
-                    <x-navitem>
-                        <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
-                        <x-label>{{ route.name }}</x-label>
-                    </x-navitem>
-                </RouterLink>
                 <div class="flex flex-col justify-end items-center p-4 h-full">
                     <p class="text-xs text-neutral-500">WinBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
+                    <div class="flex flex-row gap-2 items-left">
+                        <a href="https://winboat.app" @click="openAnchorLink" title="Homepage">
+                            <Icon class="w-8 h-8 text-neutral-500 hover:scale-110 active:scale-95 pointer-events-none" icon="mdi:web" />
+                        </a>
+                        <a href="https://github.com/TibixDev/winboat" @click="openAnchorLink" title="GitHub">
+                            <Icon class="w-8 h-8 text-neutral-500 hover:scale-110 active:scale-95 pointer-events-none" icon="mdi:github" />
+                        </a>
+                        <a href="https://discord.gg/MEwmpWm4tN" @click="openAnchorLink" title="Discord">
+                            <Icon class="w-8 h-8 text-neutral-500 hover:scale-110 active:scale-95 pointer-events-none" icon="simple-icons:discord" />
+                        </a>
+                    </div>
                 </div>
+
             </x-nav>
             <div class="px-5 flex-grow max-h-[calc(100vh-2rem)] overflow-y-auto py-4">
                 <div class="flex flex-row gap-2 items-center my-6">
