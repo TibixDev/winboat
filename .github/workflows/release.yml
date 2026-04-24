@@ -26,7 +26,7 @@ jobs:
             (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'guest-server-only')
         steps:
             - name: Checkout code
-              uses: actions/checkout@v5
+              uses: actions/checkout@v6
             - name: Update USB IDs database
               run: |
                   echo "Removing old usb.ids file..."
@@ -48,7 +48,7 @@ jobs:
             - name: Set up Bun
               uses: oven-sh/setup-bun@v2
             - name: Set up Go
-              uses: actions/setup-go@v5
+              uses: actions/setup-go@v6
               with:
                   go-version: "stable"
                   cache-dependency-path: "guest_server/go.sum"
@@ -78,43 +78,43 @@ jobs:
                     esac
                   fi
             - name: Upload AppImage
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.appimage
                   path: dist/*.AppImage
                   if-no-files-found: ignore
             - name: Upload DEB
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.deb
                   path: dist/*.deb
                   if-no-files-found: ignore
             - name: Upload RPM
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.rpm
                   path: dist/*.rpm
                   if-no-files-found: ignore
             - name: Upload TAR.BZ2
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.tar.bz2
                   path: dist/*.tar.bz2
                   if-no-files-found: ignore
             - name: Upload unpacked directory
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-unpacked.zip
                   path: dist/linux-unpacked/**
                   if-no-files-found: ignore
             - name: Upload guest server zip
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-guest_server.zip
                   path: dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
                   if-no-files-found: ignore
             # - name: Upload metadata
-            #   uses: actions/upload-artifact@v4
+            #   uses: actions/upload-artifact@v7
             #   with:
             #     name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-metadata
             #     path: |
@@ -126,19 +126,19 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
         steps:
             - name: Checkout code
-              uses: actions/checkout@v5
+              uses: actions/checkout@v6
             - name: Show build type
               run: |
                   echo "Manual workflow triggered with build type: guest-server-only"
             - name: Set up Go
-              uses: actions/setup-go@v5
+              uses: actions/setup-go@v6
               with:
                   go-version: "stable"
                   cache-dependency-path: "guest_server/go.sum"
             - name: Build guest server only
               run: bash build-guest-server.sh
             - name: Upload guest server artifacts
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: guest-server-artifacts
                   path: guest_server/
@@ -149,7 +149,7 @@ jobs:
             (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'all')
         steps:
             - name: Checkout code
-              uses: actions/checkout@v5
+              uses: actions/checkout@v6
             - name: Update USB IDs database
               run: |
                   echo "Removing old usb.ids file..."
@@ -171,7 +171,7 @@ jobs:
             - name: Set up Bun
               uses: oven-sh/setup-bun@v2
             - name: Set up Go
-              uses: actions/setup-go@v5
+              uses: actions/setup-go@v6
               with:
                   go-version: "stable"
                   cache-dependency-path: "guest_server/go.sum"
@@ -185,7 +185,7 @@ jobs:
             - name: Zip unpacked variant
               run: cd dist && zip -r winboat-linux-unpacked.zip linux-unpacked/
             - name: Create GitHub Release
-              uses: softprops/action-gh-release@v1
+              uses: softprops/action-gh-release@v3
               with:
                   files: |
                       dist/*.AppImage
