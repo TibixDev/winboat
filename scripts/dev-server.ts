@@ -6,14 +6,13 @@ import Path from "path";
 import Chalk from "chalk";
 import Chokidar from "chokidar";
 import Electron from "electron";
-import compileTs from "./private/tsc.ts";
-// ^ Extension needed because no TSConfig in the root
 import FileSystem from "fs";
 import { EOL } from "os";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = Path.dirname(__filename);
+const projectRoot = Path.join(__dirname, "..");
 
 let viteServer: Vite.ViteDevServer | null = null;
 let electronProcess: ChildProcessWithoutNullStreams | null = null;
@@ -29,6 +28,45 @@ async function startRenderer() {
     return viteServer.listen();
 }
 
+function compileMain() {
+    return new Promise<void>((resolve, reject) => {
+        const tscProcess = ChildProcess.spawn(process.execPath, ["run", "tsc", "-p", "src/main/tsconfig.json"], {
+            cwd: projectRoot,
+        });
+
+        tscProcess.stdout.on("data", data =>
+            process.stdout.write(Chalk.yellowBright(`[tsc] `) + Chalk.white(data.toString())),
+        );
+
+        tscProcess.stderr.on("data", data =>
+            process.stderr.write(Chalk.yellowBright(`[tsc] `) + Chalk.white(data.toString())),
+        );
+
+        tscProcess.on("error", reject);
+
+        tscProcess.on("close", (exitCode, signal) => {
+            if (signal) {
+                reject(new Error(`tsc was terminated by signal ${signal}`));
+                return;
+            }
+
+            if ((exitCode ?? 1) > 0) {
+                reject(new Error(`tsc exited with code ${exitCode ?? 1}`));
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
+function formatError(error: unknown) {
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    return String(error);
+}
+
 async function startElectron() {
     if (electronProcess) {
         // single instance lock
@@ -36,9 +74,10 @@ async function startElectron() {
     }
 
     try {
-        await compileTs(Path.join(__dirname, "..", "src", "main"));
-    } catch {
-        console.log(Chalk.redBright("Could not start Electron because of the above typescript error(s)."));
+        await compileMain();
+    } catch (error) {
+        console.error(Chalk.redBright("Could not start Electron because of the above typescript error(s)."));
+        console.error(Chalk.redBright(formatError(error)));
         electronProcessLocker = false;
         return;
     }
@@ -85,11 +124,9 @@ The working dir of Electron is build/main instead of src/main because of TS.
 tsc does not copy static files, so copy them over manually for dev server.
 */
 function copy(path) {
-    FileSystem.cpSync(
-        Path.join(__dirname, "..", "src", "main", path),
-        Path.join(__dirname, "..", "build", "main", path),
-        { recursive: true },
-    );
+    FileSystem.cpSync(Path.join(projectRoot, "src", "main", path), Path.join(projectRoot, "build", "main", path), {
+        recursive: true,
+    });
 }
 
 function stop() {
@@ -108,7 +145,7 @@ async function start() {
     copyStaticFiles();
     startElectron();
 
-    const path = Path.join(__dirname, "..", "src", "main");
+    const path = Path.join(projectRoot, "src", "main");
     Chokidar.watch(path, {
         cwd: path,
     }).on("change", path => {

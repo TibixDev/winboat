@@ -10,8 +10,12 @@
     },
     "scripts": {
         "dev": "bun scripts/dev-server.ts",
+        "build:app": "rm -rf build && vite build --config vite.config.ts && tsc -p src/main/tsconfig.json",
         "build:gs": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux"
+        "build:linux-gs": "bash build-guest-server.sh && bun run build:app && electron-builder --linux",
+        "type-check": "vue-tsc -p src/renderer/tsconfig.json --noEmit && tsc -p src/main/tsconfig.json --noEmit",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
