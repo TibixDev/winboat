@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 import * as packageJson from "./package.json";
 
 const config = defineConfig({
+    base: "./",
     root: path.join(__dirname, "src", "renderer"),
     publicDir: "public",
     server: {

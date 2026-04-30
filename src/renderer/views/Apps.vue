@@ -262,11 +262,11 @@ import WBContextMenu from "../components/WBContextMenu.vue";
 import WBMenuItem from "../components/WBMenuItem.vue";
 import { AppIcons, DEFAULT_ICON } from "../data/appicons";
 import { debounce } from "../utils/debounce";
-import { Jimp, JimpMime } from "jimp";
 import { WinboatConfig } from "../lib/config";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const FormData: typeof import("form-data") = require("form-data");
 
+const CUSTOM_ICON_SIZE = 128;
 const winboat = Winboat.getInstance();
 const apps = ref<WinApp[]>([]);
 const searchInput = ref("");
@@ -490,6 +490,36 @@ function launchApp() {
     }
 }
 
+function loadImage(src: string) {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Failed to load selected image"));
+        image.src = src;
+    });
+}
+
+async function resizeIconFile(file: File) {
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+        const image = await loadImage(objectUrl);
+        const canvas = document.createElement("canvas");
+        canvas.width = CUSTOM_ICON_SIZE;
+        canvas.height = CUSTOM_ICON_SIZE;
+
+        const context = canvas.getContext("2d");
+        if (!context) {
+            throw new Error("Failed to create image canvas");
+        }
+
+        context.drawImage(image, 0, 0, CUSTOM_ICON_SIZE, CUSTOM_ICON_SIZE);
+        return canvas.toDataURL("image/png");
+    } finally {
+        URL.revokeObjectURL(objectUrl);
+    }
+}
+
 /**
  * Triggers the file picker for the custom app icon, then processes the image selected
  */
@@ -505,12 +535,7 @@ function pickCustomAppIcon() {
         }
 
         try {
-            const buf = await file.arrayBuffer();
-
-            const image = await Jimp.read(Buffer.from(buf));
-            image.resize({ w: 128, h: 128 });
-            const pngBuffer = await image.getBuffer(JimpMime.png);
-            customAppIcon.value = `data:image/png;base64,${pngBuffer.toString("base64")}`;
+            customAppIcon.value = await resizeIconFile(file);
         } catch (error) {
             console.error("Image processing failed:", error);
         }
