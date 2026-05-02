@@ -1,8 +1,12 @@
 app-id: app.winboat.WinBoat
+branch: stable
 runtime: org.freedesktop.Platform
 runtime-version: '24.08'
 sdk: org.freedesktop.Sdk
 command: winboat
+
+build-options:
+  no-debuginfo: true
 
 finish-args:
   - --share=network

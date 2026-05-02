@@ -38,7 +38,9 @@
         },
         "!build",
         "!dist",
-        "!scripts"
+        "!scripts",
+        "!flatpak",
+        "!.flatpak-builder"
     ],
     "extraResources": [
         {

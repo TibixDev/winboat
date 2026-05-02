@@ -15,3 +15,9 @@ package-lock.json
 temp
 guest_server/winboat_guest_server.exe
 guest_server/winboat_guest_server.zip
+
+# Local Flatpak builder outputs
+flatpak/.flatpak-build-dir
+flatpak/.flatpak-repo-local
+flatpak/.flatpak-builder-state
+.flatpak-builder

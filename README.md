@@ -104,11 +104,60 @@ docker run --rm -it -v "$PWD:/work" -w /work ghcr.io/flathub-infra/flatpak-build
 
 ## Building WinBoat
 
-- For building you need to have Bun and Go installed on your system
+- For building you need **Bun**, **Go**, and **Node.js** (see `engines` in `package.json`; Vite’s CLI runs under `node` during production builds)
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
 - Install the dependencies (`bun i`)
-- Build the app and the guest server using `bun run build:linux-gs`
-- You can now find the built app under `dist` with an AppImage and an Unpacked variant
+
+**Linux outputs:**
+
+| Command | Produces | Notes |
+|--------|----------|--------|
+| `bun run build:linux-dir` | `dist/linux-unpacked/` only | No AppImage/deb/rpm; **no `rpmbuild`** needed — use this before Flatpak locally. |
+| `bun run build:linux-gs` | AppImage, deb, **rpm**, tar.bz2, unpacked | On Debian/Ubuntu install **`rpm`** so electron-builder can call `rpmbuild`: `sudo apt install rpm`. |
+
+CI installs **`rpm`** alongside **`flatpak`** / **`flatpak-builder`** so release jobs match your `electron-builder.json` targets.
+
+### Building the Flatpak bundle locally
+
+You need **`flatpak`** and **`flatpak-builder`** (e.g. `sudo apt install flatpak flatpak-builder`). The first run downloads the Freedesktop SDK/runtime from Flathub and can take a while.
+
+The source build expects **`Node.js` on your `PATH`** so Vite runs under Node; Bun runs scripts and installs deps. If you see `Cannot find module 'vite/module-runner'`, run `rm -rf node_modules && bun install` so **Vite stays at 7.3.1** (pinned in `package.json` + `overrides`).
+
+**Recommended one-shot** (unpack dir target + bundle — avoids RPM tooling):
+
+```bash
+bun run build:linux-flatpak
+flatpak install --bundle ./dist/winboat.flatpak
+```
+
+If you already built unpacked output (`build:linux-dir` or `build:linux-gs`):
+
+```bash
+bun run build:flatpak
+```
+
+Gitignored Flatpak working dirs: `flatpak/.flatpak-build-dir`, `flatpak/.flatpak-repo-local`, `flatpak/.flatpak-builder-state`, and repo-root **`.flatpak-builder`** (cache flatpak-builder sometimes writes next to the project). **`electron-builder` excludes `flatpak/` and `.flatpak-builder/`** so it does not traverse sandbox or cache trees (`EACCES` under paths like `wpa_supplicant`). If problems persist, delete those directories — avoid `chmod -R` on them.
+
+### Bun install and Docker
+
+- **Host install:** `curl -fsSL https://bun.sh/install | bash` then restart your shell (or `source ~/.bashrc`).
+- **`oven/bun`** images ship Bun only — they do **not** include Flatpak, `rpmbuild`, or your distro libraries. Use them only for steps like `bun ci` / `bun run build:linux-dir` **inside** a volume-mounted repo; run **`flatpak/build-bundle.sh`** on the host (or use a **full OS container** below).
+
+**Full Linux build in Docker (example):** Debian/Ubuntu base + deps + Bun + Node + Go + Flatpak tooling + `rpm` for parity with CI:
+
+```bash
+docker run --rm -it \
+  -v "$(pwd):/src" -w /src \
+  ubuntu:22.04 bash -lc '
+    apt-get update && apt-get install -y curl ca-certificates git unzip \
+      libudev-dev libusb-1.0-0-dev flatpak flatpak-builder rpm golang-go nodejs npm &&
+    curl -fsSL https://bun.sh/install | bash &&
+    export PATH="$HOME/.bun/bin:$PATH" &&
+    bun ci && bun run build:linux-flatpak
+  '
+```
+
+Use a **newer Node** than the default `nodejs` package if your distro’s version is below `engines.node` (e.g. install from [nodejs.org](https://nodejs.org/) inside the image).
 
 ## Running WinBoat in development mode
 
