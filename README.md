@@ -89,6 +89,8 @@ We currently offer these variants:
 
 WinBoat drives **Docker or Podman on the host** and uses **KVM** (`/dev/kvm`) for the Windows VM inside [dockur/windows](https://github.com/dockur/windows). The Flatpak is wired for that: host home directory access, container sockets (`/run/docker.sock`, XDG Podman paths), DRI, Pulse/PipeWire audio, and talking to the host Flatpak session so `flatpak run com.freerdp.FreeRDP` can satisfy FreeRDP 3.
 
+The Flatpak wrapper runs Electron with **`--no-sandbox`** / **`--disable-setuid-sandbox`**: Chromium’s setuid `chrome-sandbox` cannot be root-owned inside a Flatpak, so process isolation for the UI relies on **Flatpak’s sandbox** instead (same pattern as many other Electron Flatpaks).
+
 **Flathub:** Publishing on [Flathub](https://flathub.org/) is a separate submission ([author docs](https://docs.flathub.org/docs/for-app-authors/submission)). Reviewers treat apps that depend heavily on host services case-by-case; upstream maintenance expectation applies especially where emulation or host tooling is involved. The canonical manifest for packaging lives at [`flatpak/app.winboat.WinBoat.yml`](flatpak/app.winboat.WinBoat.yml).
 
 **Optional GitHub Pages repo:** The workflow [flatpak-pages.yml](.github/workflows/flatpak-pages.yml) builds an OSTree repo plus `.flatpakrepo`, `.flatpakref`, and a bundle on tags (`v*`) or manual dispatch, and pushes them to the `gh-pages` branch (enable **Pages** in the repo settings first). To mirror Flathub’s builder locally:
