@@ -87,9 +87,25 @@ We currently offer these variants:
 
 ### Flatpak details
 
-WinBoat drives **Docker or Podman on the host** and uses **KVM** (`/dev/kvm`) for the Windows VM inside [dockur/windows](https://github.com/dockur/windows). The Flatpak is wired for that: host home directory access, container sockets (`/run/docker.sock`, XDG Podman paths), DRI, Pulse/PipeWire audio, and talking to the host Flatpak session so `flatpak run com.freerdp.FreeRDP` can satisfy FreeRDP 3.
+WinBoat drives **Docker or Podman on the host** and uses **KVM** (`/dev/kvm`) for the Windows VM inside [dockur/windows](https://github.com/dockur/windows). The Flatpak is wired for that: host home directory access, container sockets (`/run/docker.sock`, XDG Podman paths), DRI, Pulse/PipeWire audio, **session + system D-Bus** (so Chromium/Electron stops probing a missing `/run/dbus/system_bus_socket`), **`ELECTRON_TRASH=gio`**, host icon paths for cursor scaling under Wayland, and talking to the host Flatpak session so `flatpak run com.freerdp.FreeRDP` can satisfy FreeRDP 3.
 
-The Flatpak wrapper runs Electron with **`--no-sandbox`** / **`--disable-setuid-sandbox`**: Chromium’s setuid `chrome-sandbox` cannot be root-owned inside a Flatpak, so process isolation for the UI relies on **Flatpak’s sandbox** instead (same pattern as many other Electron Flatpaks).
+Packaging follows ideas from the official [Electron on Flatpak](https://docs.flatpak.org/en/latest/electron.html) guide. This repo **repacks your existing `linux-unpacked` Electron build** (self-contained binary). The Flathub-style alternative is **`org.electronjs.Electron2.BaseApp`** plus a **`zypak-wrapper`** launcher so Chromium is shared and sandbox integration matches upstream samples—that would be a larger manifest rewrite than the current “bundle what electron-builder produced” flow.
+
+The Flatpak wrapper runs Electron with **`--no-sandbox`** / **`--disable-setuid-sandbox`**: Chromium’s setuid `chrome-sandbox` cannot be root-owned inside a Flatpak, so process isolation for the UI relies on **Flatpak’s sandbox** instead (same pattern as many other Electron Flatpaks). **`--ozone-platform-hint=auto`** is passed so Wayland is used when the session supports it (still consider X11/Xwayland the most predictable default per the guide).
+
+#### Host tools when you install the Flatpak (Docker + FreeRDP)
+
+The setup wizard talks to the **host**: install and run these **outside** the Flatpak. The Flatpak does **not** ship the `docker` / `podman` CLIs; WinBoat runs them on the host with **`flatpak-spawn --host`** (see [`flatpak-host.ts`](src/renderer/lib/flatpak-host.ts)) while using the mounted **Docker/Podman sockets**. You still need **`--talk-name=org.freedesktop.Flatpak`** in the manifest (already set).
+
+| Check | Debian/Ubuntu-style hints |
+|--------|---------------------------|
+| **Docker Engine** | `sudo apt install docker.io` (or Docker’s official repo). |
+| **Docker Compose v2** | `sudo apt install docker-compose-v2` (plugin: `docker compose version`). |
+| **`docker` group** | `sudo usermod -aG docker "$USER"` then **log out and back in** (or reboot). |
+| **Daemon running** | `sudo systemctl enable --now docker` then `docker ps`. |
+| **FreeRDP 3.x** | Install **`xfreerdp3`** on the host, **or** `flatpak install --user flathub com.freerdp.FreeRDP` (WinBoat probes the host via `flatpak-spawn --host …`). Verify on the host: `xfreerdp3 --version` or `flatpak run com.freerdp.FreeRDP --command=xfreerdp -- --version`. |
+
+Use **Podman** instead of Docker if you prefer; the Flatpak exposes `xdg-run/podman` paths for the rootless socket.
 
 **Flathub:** Publishing on [Flathub](https://flathub.org/) is a separate submission ([author docs](https://docs.flathub.org/docs/for-app-authors/submission)). Reviewers treat apps that depend heavily on host services case-by-case; upstream maintenance expectation applies especially where emulation or host tooling is involved. The canonical manifest for packaging lives at [`flatpak/app.winboat.WinBoat.yml`](flatpak/app.winboat.WinBoat.yml).
 

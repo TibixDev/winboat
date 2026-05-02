@@ -14,14 +14,19 @@ finish-args:
   - --socket=fallback-x11
   - --socket=wayland
   - --socket=pulseaudio
+  - --socket=session-bus
+  - --socket=system-bus
   - --device=dri
   - --device=kvm
   - --filesystem=home
   - --filesystem=/run/docker.sock
+  - --filesystem=/var/run/docker.sock
   - --filesystem=xdg-run/docker
   - --filesystem=xdg-run/podman:create
   - --filesystem=xdg-run/podman
   - --talk-name=org.freedesktop.Flatpak
+  - --env=ELECTRON_TRASH=gio
+  - --env=XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons
 
 modules:
   - name: winboat

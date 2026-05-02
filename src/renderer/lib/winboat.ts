@@ -18,7 +18,8 @@ import { MultiMonitorMode, WinboatConfig } from "./config";
 import { QMPManager } from "./qmp";
 import { assert } from "@vueuse/core";
 import { setIntervalImmediately } from "../utils/interval";
-import { ExecFileAsyncError } from "./exec-helper";
+import { ExecFileAsyncError, execFileAsync } from "./exec-helper";
+import { hostExec } from "./flatpak-host";
 import { ContainerManager, ContainerStatus } from "./containers/container";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 
@@ -598,7 +599,10 @@ export class Winboat {
                 logger.error("Volume not supported on podman runtime");
             }
             // In this case we have a volume (legacy)
-            await execAsync("docker volume rm winboat_data");
+            {
+                const sp = hostExec("docker", ["volume", "rm", "winboat_data"]);
+                await execFileAsync(sp.file, sp.args);
+            }
             console.info("Removed volume");
         } else {
             const storageFolder = storage?.split(":").at(0) ?? null;
