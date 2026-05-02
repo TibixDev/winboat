@@ -67,12 +67,26 @@ Before running WinBoat, ensure your system meets the following requirements:
 
 ## Downloading
 
-You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer four variants:
+You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer these variants:
 
 - **AppImage:** A popular & portable app format which should run fine on most distributions
+- **Flatpak (`winboat.flatpak`):** Single-file bundle from releases (`flatpak install --bundle ./winboat.flatpak`). Uses Flatpak app ID `app.winboat.WinBoat` (for stores like Flathub); your Electron/desktop integration ID remains `com.teabox.winboat`. When you bump `package.json` **version**, update `<release version="…"/>` in [`flatpak/app.winboat.WinBoat.metainfo.xml`](flatpak/app.winboat.WinBoat.metainfo.xml) for accurate store metadata.
 - **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
 - **.deb:** The intended format for Debian based distributions
 - **.rpm:** The intended format for Fedora based distributions
+
+### Flatpak details
+
+WinBoat drives **Docker or Podman on the host** and uses **KVM** (`/dev/kvm`) for the Windows VM inside [dockur/windows](https://github.com/dockur/windows). The Flatpak is wired for that: host home directory access, container sockets (`/run/docker.sock`, XDG Podman paths), DRI, Pulse/PipeWire audio, and talking to the host Flatpak session so `flatpak run com.freerdp.FreeRDP` can satisfy FreeRDP 3.
+
+**Flathub:** Publishing on [Flathub](https://flathub.org/) is a separate submission ([author docs](https://docs.flathub.org/docs/for-app-authors/submission)). Reviewers treat apps that depend heavily on host services case-by-case; upstream maintenance expectation applies especially where emulation or host tooling is involved. The canonical manifest for packaging lives at [`flatpak/app.winboat.WinBoat.yml`](flatpak/app.winboat.WinBoat.yml).
+
+**Optional GitHub Pages repo:** The workflow [flatpak-pages.yml](.github/workflows/flatpak-pages.yml) builds an OSTree repo plus `.flatpakrepo`, `.flatpakref`, and a bundle on tags (`v*`) or manual dispatch, and pushes them to the `gh-pages` branch (enable **Pages** in the repo settings first). To mirror Flathub’s builder locally:
+
+```bash
+docker run --rm -it -v "$PWD:/work" -w /work ghcr.io/flathub-infra/flatpak-builder:stable \
+  flatpak-builder --help
+```
 - **Nix (Nixpkgs)**
     1. Add the winboat package to your config (ensure using nixpkgs-unstable)
     using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.

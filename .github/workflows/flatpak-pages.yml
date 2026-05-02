@@ -1,0 +1,108 @@
+# Optional GitHub Pages site: static Flatpak repo + .flatpakrepo / .flatpakref / bundle.
+# Enable Pages (branch: gh-pages) in repo Settings before relying on this workflow.
+name: Publish Flatpak repository
+
+on:
+    workflow_dispatch:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+
+concurrency:
+    group: flatpak-pages-${{ github.repository }}
+    cancel-in-progress: true
+
+jobs:
+    pages-flatpak-repo:
+        runs-on: ubuntu-22.04
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+
+            - name: Update USB IDs database
+              run: |
+                rm -f data/usb.ids
+                curl -fsSL -o data/usb.ids http://www.linux-usb.org/usb.ids
+
+            - name: Install system dependencies
+              run: |
+                sudo apt-get update
+                sudo apt-get install -y libudev-dev libusb-1.0-0-dev flatpak flatpak-builder
+
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v2
+
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "stable"
+                  cache-dependency-path: "guest_server/go.sum"
+
+            - name: Cache Flatpak builder state
+              uses: actions/cache@v4
+              with:
+                  path: ~/.flatpak-builder/cache
+                  key: flatpak-pages-${{ runner.os }}-24.08-${{ hashFiles('flatpak/app.winboat.WinBoat.yml') }}
+                  restore-keys: |
+                      flatpak-pages-${{ runner.os }}-24.08-
+
+            - name: Install dependencies
+              run: bun ci
+
+            - name: Build guest server and Linux unpacked tree
+              run: bun run build:linux-gs
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
+
+            - name: Build Flatpak repo and bundle
+              run: |
+                set -eux
+                flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+                flatpak-builder --user --disable-rofiles-fuse \
+                  --install-deps-from=flathub \
+                  --repo=fp-repo \
+                  --force-clean \
+                  fp-build-dir \
+                  flatpak/app.winboat.WinBoat.yml
+                flatpak build-update-repo fp-repo --generate-static-deltas
+                flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo fp-repo winboat.flatpak app.winboat.WinBoat stable
+
+            - name: Assemble Pages directory
+              run: |
+                set -eux
+                OWNER="${GITHUB_REPOSITORY%%/*}"
+                REPO="${GITHUB_REPOSITORY##*/}"
+                BASE_URL="https://${OWNER}.github.io/${REPO}"
+                mkdir -p site/repo
+                cp -a fp-repo/. site/repo/
+                cp winboat.flatpak site/
+                cp flatpak/pages-index.html site/index.html
+                {
+                  echo '[Flatpak Repo]'
+                  echo 'Title=WinBoat'
+                  echo "Url=${BASE_URL}/repo/"
+                  echo "Homepage=https://github.com/${GITHUB_REPOSITORY}"
+                  echo 'Comment=Nightly Flatpak repository (unsigned unless you add GPG)'
+                  echo 'Description=WinBoat — Windows apps on Linux via containers'
+                } > site/winboat.flatpakrepo
+                {
+                  echo '[Flatpak Ref]'
+                  echo 'Name=app.winboat.WinBoat'
+                  echo 'Branch=stable'
+                  echo 'Title=WinBoat'
+                  echo "Url=${BASE_URL}/repo/"
+                  echo 'RuntimeRepo=https://flathub.org/repo/flathub.flatpakrepo'
+                  echo 'IsRuntime=false'
+                  echo 'SuggestRemoteName=winboat'
+                } > site/winboat.flatpakref
+
+            - name: Deploy to gh-pages
+              uses: peaceiris/actions-gh-pages@v4
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./site
+                  force_orphan: true

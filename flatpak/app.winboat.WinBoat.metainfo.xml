@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>app.winboat.WinBoat</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>WinBoat</name>
+  <summary>Windows for Penguins — Windows apps on Linux via containers</summary>
+  <description>
+    <p>
+      WinBoat is an Electron desktop app that runs Windows inside a Docker or Podman container (QEMU/KVM),
+      then integrates RemoteApp windows into your Linux session using FreeRDP 3.x.
+    </p>
+    <p>
+      You must install and run Docker Engine or Podman on the host, enable KVM (/dev/kvm), and install FreeRDP 3
+      (host package or the Flathub FreeRDP app). The Flatpak can talk to the host container socket and KVM device.
+    </p>
+  </description>
+  <launchable type="desktop-id">app.winboat.WinBoat.desktop</launchable>
+  <url type="homepage">https://www.winboat.app/</url>
+  <url type="bugtracker">https://github.com/TibixDev/winboat/issues</url>
+  <url type="vcs-browser">https://github.com/TibixDev/winboat</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Dashboard</caption>
+      <image type="source">https://raw.githubusercontent.com/TibixDev/winboat/main/gh-assets/features/feat_dash.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Apps</caption>
+      <image type="source">https://raw.githubusercontent.com/TibixDev/winboat/main/gh-assets/features/feat_apps.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Native windows</caption>
+      <image type="source">https://raw.githubusercontent.com/TibixDev/winboat/main/gh-assets/features/feat_native.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.9.0" date="2026-05-02"/>
+  </releases>
+  <developer id="app.winboat">
+    <name>TibixDev</name>
+  </developer>
+</component>

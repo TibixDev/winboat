@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=WinBoat
+Comment=Run Windows apps on Linux with Docker or Podman
+Exec=winboat %u
+Icon=app.winboat.WinBoat
+Categories=Utility;System;
+Terminal=false
+StartupNotify=true

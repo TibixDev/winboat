@@ -167,7 +167,7 @@ jobs:
             - name: Install system dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+                  sudo apt-get install -y libudev-dev libusb-1.0-0-dev flatpak flatpak-builder
             - name: Set up Bun
               uses: oven-sh/setup-bun@v2
             - name: Set up Go
@@ -175,6 +175,13 @@ jobs:
               with:
                   go-version: "stable"
                   cache-dependency-path: "guest_server/go.sum"
+            - name: Cache Flatpak builder state
+              uses: actions/cache@v4
+              with:
+                  path: ~/.flatpak-builder/cache
+                  key: flatpak-release-${{ runner.os }}-24.08-${{ hashFiles('flatpak/app.winboat.WinBoat.yml') }}
+                  restore-keys: |
+                      flatpak-release-${{ runner.os }}-24.08-
             - name: Install dependencies
               run: bun ci
             - name: Build guest server and app
@@ -182,6 +189,17 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
+            - name: Build Flatpak bundle
+              run: |
+                  set -eux
+                  flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+                  flatpak-builder --user --disable-rofiles-fuse \
+                    --install-deps-from=flathub \
+                    --repo=flatpak-repo-ci \
+                    --force-clean \
+                    flatpak-build-dir \
+                    flatpak/app.winboat.WinBoat.yml
+                  flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo flatpak-repo-ci dist/winboat.flatpak app.winboat.WinBoat stable
             - name: Zip unpacked variant
               run: cd dist && zip -r winboat-linux-unpacked.zip linux-unpacked/
             - name: Create GitHub Release
@@ -192,6 +210,7 @@ jobs:
                       dist/*.deb
                       dist/*.rpm
                       dist/*.tar.bz2
+                      dist/winboat.flatpak
                       dist/winboat-linux-unpacked.zip
                       dist/latest-linux.yml
                       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip

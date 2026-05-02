@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>WinBoat — Flatpak</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    code { background: #f4f4f5; padding: 0.15rem 0.35rem; border-radius: 4px; }
+    a.button { display: inline-block; margin: 0.35rem 0.35rem 0 0; padding: 0.5rem 1rem; background: #4f46e5; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; }
+    .muted { color: #555; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>WinBoat Flatpak</h1>
+  <p class="muted">These CI artifacts are for testing; an official <a href="https://flathub.org/">Flathub</a> listing is tracked upstream separately.</p>
+  <p><strong>Requirements:</strong> Docker or Podman on the host, KVM, and FreeRDP 3 (host install or <code>com.freerdp.FreeRDP</code> from Flathub).</p>
+  <h2>Install</h2>
+  <p><a class="button" href="./winboat.flatpakrepo">Add repository</a>
+     <a class="button" href="./winboat.flatpakref">One-click ref</a>
+     <a class="button" href="./winboat.flatpak">Download bundle</a></p>
+  <p class="muted">If the repo is unsigned, use <code>flatpak remote-add --user --no-gpg-verify winboat &lt;Repo URL from .flatpakrepo&gt;</code>.</p>
+  <h2>CLI</h2>
+  <pre><code># Use this site’s origin as BASE (e.g. https://you.github.io/winboat)
+flatpak remote-add --user --no-gpg-verify winboat BASE/winboat.flatpakrepo
+flatpak install winboat app.winboat.WinBoat</code></pre>
+</body>
+</html>
