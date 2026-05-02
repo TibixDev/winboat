@@ -67,13 +67,23 @@ Before running WinBoat, ensure your system meets the following requirements:
 
 ## Downloading
 
-You can download the latest Linux builds under the [Releases](https://github.com/TibixDev/winboat/releases) tab. We currently offer these variants:
+You can download the latest Linux builds from **[Releases](https://github.com/TibixDev/winboat/releases)** (created when you push a **`v*`** tag or run **Actions → Build WinBoat → Run workflow** with **Build type: all**) and from **every push to `main`** via **Actions → latest run → Artifacts** (AppImage, `.flatpak`, etc.).
+
+We currently offer these variants:
 
 - **AppImage:** A popular & portable app format which should run fine on most distributions
-- **Flatpak (`winboat.flatpak`):** Single-file bundle from releases (`flatpak install --bundle ./winboat.flatpak`). Uses Flatpak app ID `app.winboat.WinBoat` (for stores like Flathub); your Electron/desktop integration ID remains `com.teabox.winboat`. When you bump `package.json` **version**, update `<release version="…"/>` in [`flatpak/app.winboat.WinBoat.metainfo.xml`](flatpak/app.winboat.WinBoat.metainfo.xml) for accurate store metadata.
+- **Flatpak (`winboat.flatpak`):** After each successful **`build`** workflow on `main`, download the artifact named like `winboat-*-x86_64.flatpak`, extract it if zipped (GitHub zips single-file artifacts), then run `flatpak install --bundle ./winboat.flatpak`. The same file is attached to **Releases** when a release is produced. Uses Flatpak app ID `app.winboat.WinBoat` (for stores like Flathub); your Electron/desktop integration ID remains `com.teabox.winboat`. When you bump `package.json` **version**, update `<release version="…"/>` in [`flatpak/app.winboat.WinBoat.metainfo.xml`](flatpak/app.winboat.WinBoat.metainfo.xml) for accurate store metadata.
 - **Unpacked:** The raw unpacked files, simply run the executable (`linux-unpacked/winboat`)
 - **.deb:** The intended format for Debian based distributions
 - **.rpm:** The intended format for Fedora based distributions
+- **Nix (Nixpkgs)**
+    1. Add the winboat package to your config (ensure using nixpkgs-unstable)
+    using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.
+    2. Add the following lines to your nix configuration
+    ```nix
+    virtualisation.docker.enable = true;
+    users.users.{yourUser}.extraGroups = ["docker"];
+    ```
 
 ### Flatpak details
 
@@ -87,14 +97,6 @@ WinBoat drives **Docker or Podman on the host** and uses **KVM** (`/dev/kvm`) fo
 docker run --rm -it -v "$PWD:/work" -w /work ghcr.io/flathub-infra/flatpak-builder:stable \
   flatpak-builder --help
 ```
-- **Nix (Nixpkgs)**
-    1. Add the winboat package to your config (ensure using nixpkgs-unstable)
-    using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.
-    2. Add the following lines to your nix configuration
-    ```nix
-    virtualisation.docker.enable = true;
-    users.users.{yourUser}.extraGroups = ["docker"];
-    ```
 ## Known Issues About Container Runtimes
 
 - Docker Desktop is **unsupported** for now

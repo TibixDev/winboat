@@ -44,7 +44,7 @@ jobs:
             - name: Install system dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+                  sudo apt-get install -y libudev-dev libusb-1.0-0-dev flatpak flatpak-builder
             - name: Set up Bun
               uses: oven-sh/setup-bun@v2
             - name: Set up Go
@@ -52,6 +52,13 @@ jobs:
               with:
                   go-version: "stable"
                   cache-dependency-path: "guest_server/go.sum"
+            - name: Cache Flatpak builder state
+              uses: actions/cache@v4
+              with:
+                  path: ~/.flatpak-builder/cache
+                  key: flatpak-${{ runner.os }}-24.08-${{ hashFiles('flatpak/app.winboat.WinBoat.yml') }}
+                  restore-keys: |
+                      flatpak-${{ runner.os }}-24.08-
             - name: Install dependencies
               run: bun ci
             - name: Build guest server and app
@@ -77,6 +84,23 @@ jobs:
                       *)     echo "ARCH=$BUN_ARCH" >> "$GITHUB_OUTPUT" ;;
                     esac
                   fi
+            - name: Build Flatpak bundle
+              run: |
+                  set -eux
+                  flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+                  flatpak-builder --user --disable-rofiles-fuse \
+                    --install-deps-from=flathub \
+                    --repo=flatpak-repo-ci \
+                    --force-clean \
+                    flatpak-build-dir \
+                    flatpak/app.winboat.WinBoat.yml
+                  flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo flatpak-repo-ci dist/winboat.flatpak app.winboat.WinBoat stable
+            - name: Upload Flatpak bundle
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.flatpak
+                  path: dist/winboat.flatpak
+                  if-no-files-found: error
             - name: Upload AppImage
               uses: actions/upload-artifact@v4
               with:
@@ -179,9 +203,9 @@ jobs:
               uses: actions/cache@v4
               with:
                   path: ~/.flatpak-builder/cache
-                  key: flatpak-release-${{ runner.os }}-24.08-${{ hashFiles('flatpak/app.winboat.WinBoat.yml') }}
+                  key: flatpak-${{ runner.os }}-24.08-${{ hashFiles('flatpak/app.winboat.WinBoat.yml') }}
                   restore-keys: |
-                      flatpak-release-${{ runner.os }}-24.08-
+                      flatpak-${{ runner.os }}-24.08-
             - name: Install dependencies
               run: bun ci
             - name: Build guest server and app

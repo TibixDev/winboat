@@ -45,9 +45,9 @@ jobs:
               uses: actions/cache@v4
               with:
                   path: ~/.flatpak-builder/cache
-                  key: flatpak-pages-${{ runner.os }}-24.08-${{ hashFiles('flatpak/app.winboat.WinBoat.yml') }}
+                  key: flatpak-${{ runner.os }}-24.08-${{ hashFiles('flatpak/app.winboat.WinBoat.yml') }}
                   restore-keys: |
-                      flatpak-pages-${{ runner.os }}-24.08-
+                      flatpak-${{ runner.os }}-24.08-
 
             - name: Install dependencies
               run: bun ci
