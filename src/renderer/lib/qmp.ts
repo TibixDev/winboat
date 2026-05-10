@@ -2,6 +2,7 @@ import { WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
 const path: typeof import("path") = require("node:path");
 import { type Socket } from "net";
+import { EventEmitter } from "events";
 import { assert } from "@vueuse/core";
 const { createConnection }: typeof import("net") = require("node:net");
 
@@ -50,6 +51,10 @@ type QMPBlockInfo = {
     inserted?: object;
 };
 
+type QMPQueryBalloon = {
+    actual: number;
+};
+
 type QMPError = {
     error: object;
 };
@@ -57,7 +62,7 @@ type QMPError = {
 type QMPReturn<T> = T extends never ? never : { return: T } | QMPError;
 
 type QMPCommandWithArgs = "human-monitor-command" | "device_add" | "device_del" | "device-list-properties";
-type QMPCommandNoArgs = "qmp_capabilities" | "query-commands" | "query-status" | "query-block";
+type QMPCommandNoArgs = "qmp_capabilities" | "query-commands" | "query-status" | "query-block" | "query-balloon";
 type QMPCommand = QMPCommandWithArgs | QMPCommandNoArgs;
 
 type QMPArgumentProps = {
@@ -106,18 +111,86 @@ export type QMPResponse<T extends QMPCommand> = QMPReturn<
                     ? QMPObjectPropertyInfo[]
                     : T extends "query-block"
                       ? QMPBlockInfo[]
-                      : never
+                      : T extends "query-balloon"
+                        ? QMPQueryBalloon[]
+                        : never
 >;
 
-export class QMPManager {
+type QMPEvents = {
+    message: [message: any];
+};
+
+export class QMPManager extends EventEmitter<QMPEvents> {
     private static readonly IS_ALIVE_TIMEOUT = 2000;
-    qmpSocket: Socket;
+    private static readonly DEFAULT_COMMAND_TIMEOUT = 10000;
+    private qmpSocket!: Socket;
+    private buffer: Buffer = Buffer.alloc(0);
+    private commandId: number = 0;
+    private pendingCommands: Map<number, { resolve: (data: any) => void; reject: (error: Error) => void; timeout: NodeJS.Timeout }> = new Map();
 
     /**
      * Please use {@link QMPManager.createConnection} instead.
      */
-    constructor(socket: Socket) {
-        this.qmpSocket = socket;
+    private constructor(private host: string, private port: number) {
+        super();
+    }
+
+    private async connect(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.once("message", (message) => {
+                if ("QMP" in message) {
+                    resolve();
+                } else {
+                    reject(new Error(`Invalid QMP greeting: ${JSON.stringify(message)}`));
+                }
+            });
+            
+            this.qmpSocket = createConnection({ host: this.host, port: this.port }, () => {
+                this.qmpSocket.once("error", reject);
+                this.qmpSocket.on("data", this.handleData);
+            });
+        });
+    }
+
+    public disconnect() {
+        this.qmpSocket.off("data", this.handleData);
+        this.buffer = Buffer.alloc(0);
+        this.qmpSocket.destroy();
+    }
+
+    private handleData = (data: Buffer) => {
+        this.buffer = Buffer.concat([this.buffer, data]);
+        let separatorIndex: number;
+        while ((separatorIndex = this.buffer.indexOf("\r\n")) !== -1) {
+            const messageBuffer = this.buffer.subarray(0, separatorIndex);
+            this.buffer = this.buffer.subarray(separatorIndex + 2);
+            if (messageBuffer.length > 0) {
+                try {
+                    const parsed = JSON.parse(messageBuffer.toString());
+                    this.handleMessage(parsed);
+                } catch (e) {
+                    logger.error("Failed to parse QMP message:", e);
+                    logger.error("Message:", messageBuffer.toString());
+                }
+            }
+        }
+    }
+
+    private handleMessage(message: any) {
+        if ("event" in message) {
+            // Currently ignored.
+            return;
+        } else if ("id" in message) {
+            const pending = this.pendingCommands.get(message.id);
+            if (pending) {
+                clearTimeout(pending.timeout);
+                this.pendingCommands.delete(message.id);
+                pending.resolve(message);
+            }
+        } else {
+            // Generic message (usually the greeting).
+            this.emit("message", message);
+        }
     }
 
     /**
@@ -129,76 +202,58 @@ export class QMPManager {
      * @param port - The port of the qmp connection (e.g. 6969, 420)
      *
      */
-    static async createConnection(host: string, port: number): Promise<QMPManager> {
-        return new Promise((resolve, reject) => {
-            const socket = createConnection({ host, port }, () => {
-                socket.once("error", reject);
-                socket.once("data", data => {
-                    try {
-                        const response = JSON.parse(data.toString());
-
-                        if ("QMP" in response) {
-                            return resolve(new QMPManager(socket));
-                        }
-
-                        reject(new Error(`Invalid QMP response: ${data.toString()}`));
-                    } catch (e) {
-                        logger.error(e);
-                        logger.error(`QMP request 'data.toString()': ${data.toString()}`);
-                        reject(e);
-                    }
-                });
-            });
-        });
+    static async createConnection(host: string, port: number) {
+        const manager = new QMPManager(host, port);
+        await manager.connect();
+        return manager;
     }
 
     /**
      * Executes the QMP command specified by `command`.
      *
-     * Optionally, you can specify an argument for given command if it requires one.
+     * Optionally, you can specify an argument for given command if it requires one and a timeout in ms.
      *
      * @param command
      *
      */
-    async executeCommand<C extends QMPCommandNoArgs>(command: C): Promise<QMPResponse<C>>;
+    async executeCommand<C extends QMPCommandNoArgs>(command: C, timeout?: number): Promise<QMPResponse<C>>;
     async executeCommand<C extends QMPCommandWithArgs>(
         command: C,
         qmpArgument: QMPCommandExpectedArgument<C>,
+        timeout?: number,
     ): Promise<QMPResponse<C>>;
     async executeCommand<C extends QMPCommand>(
         command: C,
-        qmpArgument?: QMPCommandExpectedArgument<C>,
+        qmpArgument_or_timeout?: QMPCommandExpectedArgument<C> | number,
+        timeout?: number,
     ): Promise<QMPResponse<C>> {
+        const id = ++this.commandId;
+        const actualTimeout = typeof qmpArgument_or_timeout === "number" ? qmpArgument_or_timeout : (timeout ?? QMPManager.DEFAULT_COMMAND_TIMEOUT);
+        const actualArgument = typeof qmpArgument_or_timeout === "object" ? qmpArgument_or_timeout : undefined;
         const message = {
             execute: command,
-            ...(qmpArgument && { arguments: qmpArgument }),
+            id: id,
+            ...(actualArgument && { arguments: actualArgument }),
         };
 
         return new Promise<QMPResponse<C>>((resolve, reject) => {
-            this.qmpSocket.write(JSON.stringify(message), err => {
+            const timeoutHandle = setTimeout(() => {
+                this.pendingCommands.delete(id);
+                reject(new Error(`QMP command '${command}' timed out after ${actualTimeout}ms`));
+            }, actualTimeout);
+
+            this.pendingCommands.set(id, { resolve, reject, timeout: timeoutHandle });
+
+            this.qmpSocket.write(JSON.stringify(message) + "\r\n", err => {
                 if (err) {
                     logger.error(err);
+                    const pending = this.pendingCommands.get(id);
+                    if (pending) {
+                        clearTimeout(pending.timeout);
+                        this.pendingCommands.delete(id);
+                    }
                     reject(err);
                 }
-
-                // This callback processes data received from the QMP socket
-                const receiveData = (data: Buffer) => {
-                    try {
-                        const parsedData = JSON.parse(data.toString());
-                        if ("event" in parsedData) return; // In case we get notified of an event (for example NETDEV_STREAM_CONNECTED), we ignore it
-
-                        // We remove our callback from the data event when we get the response
-                        this.qmpSocket.off("data", receiveData);
-                        resolve(JSON.parse(data.toString()));
-                    } catch (e) {
-                        logger.error(e);
-                        logger.error(`QMP request 'data.toString()': ${data.toString()}`);
-                        reject(e);
-                    }
-                };
-
-                // We can't do 'qmpSocket.once', since we may get an event notice in between sending the command and receiving the response.
-                this.qmpSocket.on("data", receiveData);
             });
         });
     }

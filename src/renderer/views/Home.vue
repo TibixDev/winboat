@@ -142,7 +142,7 @@
                     class="translate-y-2"
                     type="radialBar"
                     :options="chartOptions"
-                    :series="[winboat.metrics.value.ram.percentage]"
+                    :series="[winboat.memoryStats.value.percentage]"
                     :width="120"
                     :height="120"
                 />
@@ -152,10 +152,10 @@
                         <h2 class="my-0 text-2xl">RAM</h2>
                     </div>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
-                        {{ Math.round(winboat.metrics.value.ram.total / 1024).toFixed(2) }} GB Total RAM
+                        <span v-if="showBallooned">{{ (winboat.memoryStats.value.totalAvailable / 1024).toFixed(2) }}/</span>{{ Math.round(winboat.memoryStats.value.total / 1024).toFixed(2) }} GB Total
                     </p>
                     <p class="!my-0 text-gray-400 h-6 overflow-hidden">
-                        {{ (winboat.metrics.value.ram.used / 1024).toFixed(2) }} GB Used RAM
+                        {{ (winboat.memoryStats.value.used / 1024).toFixed(2) }} GB Used
                     </p>
                 </div>
             </x-card>
@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 import { Winboat } from "../lib/winboat";
 import { ContainerStatus } from "../lib/containers/common";
 import { type ComposeConfig } from "../../types";
@@ -209,6 +209,12 @@ onMounted(async () => {
     // navitem is highlighted and we can't use `toggled`
     document.querySelector<HTMLButtonElement>("x-navitem")?.click();
 });
+
+const showBallooned = computed(() => {
+    // Total ram is rounded to GB, so we show the ballooned value only if lesser than the rounded total memory
+    return (winboat.memoryStats.value.totalAvailable / 1024).toFixed(2) < Math.round(winboat.memoryStats.value.total / 1024);
+});
+
 
 const chartOptions = ref({
     chart: {

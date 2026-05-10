@@ -15,6 +15,15 @@
                     v-model:value="ramGB"
                 />
 
+                <ConfigCard 
+                    v-show="wbConfig.config.experimentalFeatures"
+                    icon="game-icons:ram"
+                    title="Dynamic memory"
+                    desc="If enabled, Windows virtual machine memory will be reclaimed when the computer is under memory pressure"
+                    type="switch"
+                    v-model:value="memoryBallooning"
+                />
+
                 <!-- CPU Cores -->
                 <ConfigCard
                     icon="solar:cpu-bold"
@@ -486,6 +495,8 @@ const maxNumCores = ref(0);
 const ramGB = ref(0);
 const origRamGB = ref(0);
 const maxRamGB = ref(0);
+const memoryBallooning = ref(0);
+const origMemoryBallooning = ref(0);
 const shareFolder = ref(false);
 const origShareFolder = ref(false);
 const sharedFolderPath = ref("");
@@ -534,6 +545,11 @@ async function assignValues() {
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
 
+    memoryBallooning.value = 
+        "BALLOONING" in compose.value.services.windows.environment
+        && compose.value.services.windows.environment["BALLOONING"] == "Y";
+    origMemoryBallooning.value = memoryBallooning.value;
+
     // Find any volume that ends with /shared
     const sharedVolume = compose.value.services.windows.volumes.find(v => v.includes("/shared"));
     if (sharedVolume) {
@@ -568,6 +584,12 @@ async function assignValues() {
 async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
+
+    if (memoryBallooning.value) {
+        compose.value!.services.windows.environment["BALLOONING"] = "Y";
+    } else if ("BALLOONING" in compose.value!.services.windows.environment) {
+        delete compose.value!.services.windows.environment["BALLOONING"];
+    }
 
     // Remove any existing shared volume
     const existingSharedVolume = compose.value!.services.windows.volumes.find(v => v.includes("/shared"));
@@ -722,6 +744,7 @@ const saveButtonDisabled = computed(() => {
     const hasResourceChanges =
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
+        origMemoryBallooning.value !== memoryBallooning.value ||
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
         (!Number.isNaN(freerdpPort.value) && freerdpPort.value !== origFreerdpPort.value) ||
@@ -775,8 +798,11 @@ function removeDevice(ptDevice: PTSerializableDeviceInfo): void {
 async function toggleExperimentalFeatures() {
     // Remove all passthrough USB devices if we're disabling experimental features
     // since USB passthrough is an experimental feature
+    // Disable also memory ballooning.
     if (!wbConfig.config.experimentalFeatures) {
         await usbManager.removeAllPassthroughDevicesAndConfig();
+
+        memoryBallooning.value == false;
 
         // Create the QMP interval if experimental features are enabled
         // This would get created by default since we're changing the compose and re-deploying,
