@@ -58,7 +58,7 @@
             <template v-else-if="props.type === 'switch'">
                 <x-switch
                     :toggled="value"
-                    @toggle="(_: any) => { $emit('toggle'); (value = !value) }"
+                    @toggle="(_: any) => { emit('toggle'); (value = !value) }"
                     size="large"
                 />
             </template>
@@ -124,6 +124,9 @@ type PropsType = {
 };
 
 const props = defineProps<PropsType>();
+const emit = defineEmits<{
+    (e: "toggle"): void;
+}>();
 const value = defineModel("value");
 
 function ensureNumericInput(e: any) {

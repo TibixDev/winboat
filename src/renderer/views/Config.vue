@@ -479,7 +479,11 @@ import {
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 import CustomVolumeMounts from "../components/CustomVolumeMounts.vue";
 import type { CustomVolumeMount } from "../../types";
-import { applyCustomMounts } from "../lib/volumes";
+import {
+    applyCustomMounts,
+    getSharedFolderHostPath,
+    isRootSharedFolderMount,
+} from "../lib/volumes";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
 const os: typeof import("os") = require("node:os");
@@ -543,13 +547,10 @@ async function assignValues() {
     ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
 
-    // Find any volume that ends with /shared
-    const sharedVolume = compose.value.services.windows.volumes.find(v => v.includes("/shared"));
-    if (sharedVolume) {
+    const sharedFolderHostPath = getSharedFolderHostPath(compose.value);
+    if (sharedFolderHostPath) {
         shareFolder.value = true;
-        // Extract the path before :/shared
-        const [hostPath] = sharedVolume.split(":");
-        sharedFolderPath.value = hostPath.replace("${HOME}", os.homedir());
+        sharedFolderPath.value = sharedFolderHostPath;
     } else {
         shareFolder.value = false;
         sharedFolderPath.value = "";
@@ -581,13 +582,9 @@ async function saveCompose() {
     compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
     compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
 
-    // Remove any existing shared volume
-    const existingSharedVolume = compose.value!.services.windows.volumes.find(v => v.includes("/shared"));
-    if (existingSharedVolume) {
-        compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(
-            v => !v.includes("/shared"),
-        );
-    }
+    compose.value!.services.windows.volumes = compose.value!.services.windows.volumes.filter(
+        volume => !isRootSharedFolderMount(volume),
+    );
 
     // Add the new shared volume if enabled
     if (shareFolder.value && sharedFolderPath.value) {

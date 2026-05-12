@@ -6,7 +6,7 @@
         </div>
         <p class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0 mb-4">
             Mount additional folders from your Linux filesystem into Windows.
-            They appear under <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">\\host.lan\Data\&lt;name&gt;</span>
+            They appear under <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">\\host.lan\Data2\&lt;name&gt;</span>
         </p>
 
         <!-- Existing Mounts List -->

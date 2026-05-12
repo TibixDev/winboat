@@ -1,7 +1,16 @@
 const fs: typeof import("fs") = require("node:fs");
+const os: typeof import("os") = require("node:os");
 const path: typeof import("path") = require("node:path");
 
 import type { CustomVolumeMount, ComposeConfig } from "../../types";
+
+const SHARED_FOLDER_ROOT = "/shared";
+const CUSTOM_SHARE_ROOT = "/shared2";
+const STORAGE_SHARED_FOLDER_ROOT = "/storage/shared";
+const LEGACY_CUSTOM_DATA_ROOT = "/data2";
+const LEGACY_CUSTOM_MOUNT_BASE = "/mnt/winboat";
+const LEGACY_SAMBA_MOUNT_BASE = "/tmp/smb";
+const LEGACY_SINGLE_PATH_MOUNT = /^\/[a-zA-Z0-9_-]+$/;
 
 /**
  * Validates a host path exists and is accessible.
@@ -32,50 +41,89 @@ export function validateShareName(name: string): void {
     if (name.length > 32) throw new Error(`Name '${name}' exceeds maximum length of 32 characters`);
 }
 
-// Base path for custom mounts (avoids /tmp/smb which gets cleaned on container start)
-export const CUSTOM_MOUNT_BASE = "/mnt/winboat";
+function resolveComposeHostPath(hostPath: string): string {
+    return hostPath.replace("${HOME}", os.homedir());
+}
 
-/**
- * Converts a CustomVolumeMount to compose volume string format
- * Mounts under /mnt/winboat/ - symlinks are created in /tmp/smb/ after container starts
- */
-export function mountToVolumeString(mount: CustomVolumeMount): string {
-    return `${mount.hostPath}:${CUSTOM_MOUNT_BASE}/${mount.shareName}`;
+function getVolumePaths(volumeStr: string): [hostPath: string, containerPath: string] | null {
+    const parts = volumeStr.split(":");
+    if (parts.length < 2) {
+        return null;
+    }
+
+    const lastPart = parts.at(-1)!;
+    const containerPathIndex = lastPart.startsWith("/") ? parts.length - 1 : parts.length - 2;
+    const containerPath = parts[containerPathIndex];
+    if (!containerPath?.startsWith("/")) {
+        return null;
+    }
+
+    return [parts.slice(0, containerPathIndex).join(":"), containerPath];
+}
+
+export function isRootSharedFolderMount(volumeStr: string): boolean {
+    return getVolumePaths(volumeStr)?.[1] === SHARED_FOLDER_ROOT;
+}
+
+function getSharedFolderVolume(compose: ComposeConfig): string | undefined {
+    return compose.services.windows.volumes.find(isRootSharedFolderMount);
+}
+
+export function getSharedFolderHostPath(compose: ComposeConfig): string | null {
+    const sharedFolderVolume = getSharedFolderVolume(compose);
+    const hostPath = sharedFolderVolume ? getVolumePaths(sharedFolderVolume)?.[0] : null;
+    return hostPath ? resolveComposeHostPath(hostPath) : null;
 }
 
 /**
- * Identifies if a volume string is a custom user mount (not system)
- * Custom mounts are under /mnt/winboat/ (or legacy paths /tmp/smb/, or bare paths like /gamez)
+ * Converts a CustomVolumeMount to compose volume string format.
+ * Custom mounts always live under Dockur's Data2 share root.
+ */
+function mountToVolumeString(mount: CustomVolumeMount): string {
+    return `${mount.hostPath}:${CUSTOM_SHARE_ROOT}/${mount.shareName}`;
+}
+
+function isManagedCustomMountPath(containerPath: string): boolean {
+    return (
+        containerPath.startsWith(`${CUSTOM_SHARE_ROOT}/`) ||
+        containerPath.startsWith(`${SHARED_FOLDER_ROOT}/`) ||
+        containerPath.startsWith(`${STORAGE_SHARED_FOLDER_ROOT}/`) ||
+        containerPath.startsWith(`${LEGACY_CUSTOM_DATA_ROOT}/`) ||
+        containerPath.startsWith(`${LEGACY_CUSTOM_MOUNT_BASE}/`) ||
+        containerPath.startsWith(`${LEGACY_SAMBA_MOUNT_BASE}/`) ||
+        LEGACY_SINGLE_PATH_MOUNT.test(containerPath)
+    );
+}
+
+/**
+ * Identifies if a volume string is a custom user mount (not system).
+ * Custom mounts live under Data2, with cleanup for older mount layouts.
  */
 export function isCustomMount(volumeStr: string): boolean {
-    const parts = volumeStr.split(":");
-    const containerPath = parts.length >= 2 ? parts[parts.length - 1] : "";
-
-    // System paths that should NOT be considered custom mounts
-    const systemPaths = ["/storage", "/shared", "/oem", "/dev/bus/usb", "/dev"];
-
-    // If it's a system path, it's not custom
-    if (systemPaths.some(p => containerPath === p || containerPath.startsWith(p + "/"))) {
+    const containerPath = getVolumePaths(volumeStr)?.[1];
+    if (!containerPath) {
         return false;
     }
 
-    // Current format: /mnt/winboat/<name>
-    if (containerPath.startsWith(CUSTOM_MOUNT_BASE + "/")) {
-        return true;
+    const systemPaths = [
+        "/storage",
+        SHARED_FOLDER_ROOT,
+        CUSTOM_SHARE_ROOT,
+        STORAGE_SHARED_FOLDER_ROOT,
+        LEGACY_CUSTOM_DATA_ROOT,
+        "/oem",
+        "/dev",
+        "/dev/bus/usb",
+    ];
+    if (systemPaths.includes(containerPath)) {
+        return false;
     }
 
-    // Legacy format: /tmp/smb/<name>
-    if (containerPath.startsWith("/tmp/smb/")) {
-        return true;
+    if (containerPath.startsWith("/dev/")) {
+        return false;
     }
 
-    // Very old format: bare path like /gamez (not a system path, likely custom)
-    // Only match single-level paths that aren't system
-    if (containerPath.match(/^\/[a-zA-Z0-9_-]+$/)) {
-        return true;
-    }
-
-    return false;
+    return isManagedCustomMountPath(containerPath);
 }
 
 /**
@@ -97,18 +145,4 @@ export function applyCustomMounts(
         .map(mountToVolumeString);
 
     compose.services.windows.volumes.push(...enabledMounts);
-}
-
-/**
- * Creates symlinks in /tmp/smb/ pointing to /mnt/winboat/ mounts
- * This makes custom mounts accessible via \\host.lan\Data\<shareName>
- * Returns shell commands to execute inside the container
- */
-export function getSymlinkCommands(mounts: CustomVolumeMount[]): string[] {
-    const enabledMounts = mounts.filter(m => m.enabled);
-    if (enabledMounts.length === 0) return [];
-
-    return enabledMounts.map(mount =>
-        `ln -sfn ${CUSTOM_MOUNT_BASE}/${mount.shareName} /tmp/smb/${mount.shareName}`
-    );
 }
