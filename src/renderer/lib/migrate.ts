@@ -18,8 +18,8 @@ export async function performAutoMigrations(): Promise<void> {
 
     const wbConfig = WinboatConfig.getInstance(); // Get WinboatConfig instance
     const containerManager = createContainer(wbConfig.config.containerRuntime);
-    const composeMapper = new ComposePortMapper(Winboat.readCompose(containerManager.composeFilePath))
-    
+    const composeMapper = new ComposePortMapper(Winboat.readCompose(containerManager.composeFilePath));
+
     try {
         // In case of a version prior to 0.9.0, the NoVNC port will be set to the default 8006
         // which is how we know we need to perform the migration, because from 0.9.0 we can rely
@@ -29,8 +29,7 @@ export async function performAutoMigrations(): Promise<void> {
         if (!Range.isRange(novncMapping!.host) && novncMapping!.host === CommonPorts.NOVNC) {
             await migrateComposePorts_Pre090(containerManager);
         }
-    }
-    catch (e: any) {
+    } catch (e: any) {
         logger.error("[performAutoMigrations]: Automatic migrations failed");
         logger.error(e.message ?? e);
         return;
@@ -56,7 +55,8 @@ async function migrateComposePorts_Pre090(containerManager: ContainerManager): P
 
     currentCompose.services.windows.ports = defaultCompose.services.windows.ports;
     currentCompose.services.windows.image = defaultCompose.services.windows.image;
-    currentCompose.services.windows.environment["USER_PORTS"] = defaultCompose.services.windows.environment["USER_PORTS"];
+    currentCompose.services.windows.environment["USER_PORTS"] =
+        defaultCompose.services.windows.environment["USER_PORTS"];
 
     containerManager.writeCompose(currentCompose);
 

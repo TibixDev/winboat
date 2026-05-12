@@ -127,7 +127,8 @@ export class DockerContainer extends ContainerManager {
             const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch (e) {
-            containerLogger.error(`Failed to get status of docker container ${e}'`);
+            containerLogger.error("Failed to get status of docker container");
+            containerLogger.error(e);
             return ContainerStatus.UNKNOWN;
         }
     }

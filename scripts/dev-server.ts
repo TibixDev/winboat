@@ -5,15 +5,17 @@ import ChildProcess, { type ChildProcessWithoutNullStreams } from "child_process
 import Path from "path";
 import Chalk from "chalk";
 import Chokidar from "chokidar";
-import Electron from "electron";
 import compileTs from "./private/tsc.ts";
 // ^ Extension needed because no TSConfig in the root
 import FileSystem from "fs";
 import { EOL } from "os";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = Path.dirname(__filename);
+const require = createRequire(import.meta.url);
+const electronPath = require("electron") as string;
 
 let viteServer: Vite.ViteDevServer | null = null;
 let electronProcess: ChildProcessWithoutNullStreams | null = null;
@@ -45,7 +47,7 @@ async function startElectron() {
 
     const args = [Path.join(__dirname, "..", "build", "main", "main.js"), String(rendererPort)];
 
-    electronProcess = ChildProcess.spawn(String(Electron), args);
+    electronProcess = ChildProcess.spawn(electronPath, args);
     electronProcessLocker = false;
 
     electronProcess!.stdout.on("data", data => {
@@ -72,7 +74,7 @@ function restartElectron() {
 
     if (!electronProcessLocker) {
         electronProcessLocker = true;
-        startElectron();
+        void startElectron();
     }
 }
 
@@ -84,7 +86,7 @@ function copyStaticFiles() {
 The working dir of Electron is build/main instead of src/main because of TS.
 tsc does not copy static files, so copy them over manually for dev server.
 */
-function copy(path) {
+function copy(path: string) {
     FileSystem.cpSync(
         Path.join(__dirname, "..", "src", "main", path),
         Path.join(__dirname, "..", "build", "main", path),
@@ -93,7 +95,7 @@ function copy(path) {
 }
 
 function stop() {
-    viteServer!.close();
+    void viteServer?.close();
     process.exit();
 }
 
@@ -106,20 +108,20 @@ async function start() {
     rendererPort = devServer.config.server.port;
 
     copyStaticFiles();
-    startElectron();
+    void startElectron();
 
-    const path = Path.join(__dirname, "..", "src", "main");
-    Chokidar.watch(path, {
-        cwd: path,
-    }).on("change", path => {
-        console.log(Chalk.blueBright(`[electron] `) + `Change in ${path}. reloading... 🚀`);
+    const mainPath = Path.join(__dirname, "..", "src", "main");
+    Chokidar.watch(mainPath, {
+        cwd: mainPath,
+    }).on("change", (changedPath: string) => {
+        console.log(Chalk.blueBright(`[electron] `) + `Change in ${changedPath}. reloading... 🚀`);
 
-        if (path.startsWith(Path.join("static", "/"))) {
-            copy(path);
+        if (changedPath.startsWith(Path.join("static", "/"))) {
+            copy(changedPath);
         }
 
         restartElectron();
     });
 }
 
-start();
+void start();

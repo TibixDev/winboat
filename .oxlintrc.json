@@ -1,0 +1,16 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["typescript", "unicorn", "oxc", "vue"],
+    "categories": {
+        "correctness": "error"
+    },
+    "rules": {},
+    "env": {
+        "builtin": true
+    },
+    "ignorePatterns": ["/src/renderer/public/xel"],
+    "options": {
+        "typeAware": true,
+        "typeCheck": true
+    }
+}

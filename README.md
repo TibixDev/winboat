@@ -48,18 +48,18 @@ Before running WinBoat, ensure your system meets the following requirements:
 - **Virtualization**: KVM enabled in BIOS/UEFI
     - [How to enable virtualization](https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web)
 - **In case of Docker:**
-  - **Docker**: Required for containerization
-      - [Installation Guide](https://docs.docker.com/engine/install/)
-      - **⚠️ NOTE:** Docker Desktop is **not** supported, you will run into issues if you use it
-  - **Docker Compose v2**: Required for compatibility with docker-compose.yml files
-      - [Installation Guide](https://docs.docker.com/compose/install/#plugin-linux-only)
-  - **Docker User Group**: Add your user to the `docker` group
-      - [Setup Instructions](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
+    - **Docker**: Required for containerization
+        - [Installation Guide](https://docs.docker.com/engine/install/)
+        - **⚠️ NOTE:** Docker Desktop is **not** supported, you will run into issues if you use it
+    - **Docker Compose v2**: Required for compatibility with docker-compose.yml files
+        - [Installation Guide](https://docs.docker.com/compose/install/#plugin-linux-only)
+    - **Docker User Group**: Add your user to the `docker` group
+        - [Setup Instructions](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
 - **In case of Podman:**
-  - **Podman**: Required for containerization
-      - [Installation Guide](https://podman.io/docs/installation#installing-on-linux)
-  - **Podman Compose**: Required for compatibility with podman-compose.yml files
-      - [Installation Guide](https://github.com/containers/podman-compose?tab=readme-ov-file#installation)
+    - **Podman**: Required for containerization
+        - [Installation Guide](https://podman.io/docs/installation#installing-on-linux)
+    - **Podman Compose**: Required for compatibility with podman-compose.yml files
+        - [Installation Guide](https://github.com/containers/podman-compose?tab=readme-ov-file#installation)
 - **FreeRDP**: Required for remote desktop connection (Please make sure you have **Version 3.x.x** with sound support included)
     - [Installation Guide](https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds)
 - [OPTIONAL] **Kernel Modules**: The `iptables` / `nftables` and `iptable_nat` kernel modules can be loaded for network autodiscovery and better shared filesystem performance, but this is not obligatory in newer versions of WinBoat
@@ -75,12 +75,13 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - **.rpm:** The intended format for Fedora based distributions
 - **Nix (Nixpkgs)**
     1. Add the winboat package to your config (ensure using nixpkgs-unstable)
-    using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.
+       using `environment.systemPackages = [pkgs.winboat];` or `home.packages = [pkgs.winboat];` if using home manager.
     2. Add the following lines to your nix configuration
     ```nix
     virtualisation.docker.enable = true;
     users.users.{yourUser}.extraGroups = ["docker"];
     ```
+
 ## Known Issues About Container Runtimes
 
 - Docker Desktop is **unsupported** for now
