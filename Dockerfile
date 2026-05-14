@@ -1,4 +1,4 @@
-ARG GO_IMAGE=golang:1.25-alpine
+ARG GO_IMAGE=golang:1.26-alpine
 ARG FLATPAK_IMAGE=ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
 
 FROM ${GO_IMAGE} AS go-sources
