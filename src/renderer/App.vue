@@ -166,7 +166,8 @@ import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
 import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
 import { performAutoMigrations } from "./lib/migrate";
-const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
+const { BrowserWindow, ipcRenderer }: typeof import("@electron/remote") & { ipcRenderer: any } = require("@electron/remote");
+const { ipcRenderer: electronIpcRenderer } = require("electron");
 const os: typeof import("os") = require("node:os");
 
 const $router = useRouter();
@@ -188,6 +189,7 @@ onMounted(async () => {
     const winboatInstalled = await isInstalled();
 
     if (winboatInstalled) {
+        electronIpcRenderer.send("init-tray");
         wbConfig = reactive(WinboatConfig.getInstance()); // Instantiate singleton class
         winboat = Winboat.getInstance(); // Instantiate singleton class
         USBManager.getInstance(); // Instantiate singleton class
@@ -202,6 +204,39 @@ onMounted(async () => {
         console.log("Not installed, redirecting to setup...");
         $router.push("/setup");
     }
+
+    // IPC Listeners from Tray
+    electronIpcRenderer.on("navigate", (_event: any, path: string) => {
+        $router.push(path);
+    });
+
+    electronIpcRenderer.on("container-action", (_event: any, action: string) => {
+        if (winboat) {
+            switch (action) {
+                case "start":
+                    winboat.startContainer();
+                    break;
+                case "stop":
+                    winboat.stopContainer();
+                    break;
+                case "pause":
+                    winboat.pauseContainer();
+                    break;
+                case "unpause":
+                    winboat.unpauseContainer();
+                    break;
+                case "restart":
+                    winboat.restartContainer();
+                    break;
+            }
+        }
+    });
+
+    electronIpcRenderer.on("launch-app-by-name", (_event: any, appName: string) => {
+        if (winboat) {
+            winboat.launchAppByName(appName);
+        }
+    });
 
     // Watch for guest server updates and show dialog
     watch(
@@ -310,6 +345,7 @@ dialog::backdrop {
         rgb(129 140 248) 50px
     );
     -webkit-mask-image: -webkit-gradient(linear, left 0%, left bottom, from(rgba(0, 0, 0, 1)), to(rgba(0, 0, 0, 0)));
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
 }
 
 /* Disable all animations when the setting is enabled */

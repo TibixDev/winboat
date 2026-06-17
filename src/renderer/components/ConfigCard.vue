@@ -1,6 +1,7 @@
 <template>
     <x-card
         class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+        :class="{ 'opacity-50 pointer-events-none': props.disabled }"
     >
         <div>
             <div class="flex flex-row gap-2 items-center mb-2">
@@ -18,6 +19,7 @@
                     v-if="props.step"
                     type="button"
                     class="size-8 !p-0"
+                    :disabled="props.disabled"
                     @click="() => applyStep(-props.step!)"
                 >
                     <Icon icon="mdi:minus" class="size-4"></Icon>
@@ -28,6 +30,7 @@
                     :min="props.min"
                     :max="props.max"
                     :value="value"
+                    :disabled="props.disabled"
                     v-on:keydown="(e: any) => ensureNumericInput(e)"
                     @input="(e: any) => (value = Number(/^\d+$/.exec(e.target.value)![0] || props.min))"
                     required
@@ -36,6 +39,7 @@
                     v-if="props.step"
                     type="button"
                     class="size-8 !p-0"
+                    :disabled="props.disabled"
                     @click="() => applyStep(props.step!)"
                 >
                     <Icon icon="mdi:plus" class="size-4"></Icon>
@@ -46,6 +50,7 @@
             <template v-else-if="props.type === 'dropdown'">
                 <x-select
                     class="w-20"
+                    :disabled="props.disabled"
                     @change="(e: any) => (value = e.detail.newValue)"
                 >
                     <x-menu>
@@ -58,6 +63,7 @@
             <template v-else-if="props.type === 'switch'">
                 <x-switch
                     :toggled="value"
+                    :disabled="props.disabled"
                     @toggle="(_: any) => { $emit('toggle'); (value = !value) }"
                     size="large"
                 />
@@ -121,6 +127,11 @@ type PropsType = {
      * Defines dropdown entries in case the `dropdown` type is specified.
      */
     options?: any[];
+
+    /**
+     * If true, disables all interactive elements and applies greyed-out styling.
+     */
+    disabled?: boolean;
 };
 
 const props = defineProps<PropsType>();

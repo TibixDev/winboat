@@ -1,4 +1,6 @@
-import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, session, dialog, Tray, Menu, nativeImage } from "electron";
+import fs from "fs";
+import os from "os";
 import { join } from "path";
 import { initialize, enable } from "@electron/remote/main/index.js";
 import Store from "electron-store";
@@ -42,9 +44,11 @@ const windowStore = new Store<SchemaType>({
             properties: {
                 x: {
                     type: "number",
+                    default: 0,
                 },
                 y: {
                     type: "number",
+                    default: 0,
                 },
             },
             required: ["x", "y"],
@@ -53,6 +57,98 @@ const windowStore = new Store<SchemaType>({
 });
 
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
+
+const CONFIG_PATH = join(os.homedir(), ".winboat", "winboat.config.json");
+
+function updateTrayMenu() {
+    if (!tray) return;
+
+    let recentApps: any[] = [];
+    try {
+        if (fs.existsSync(CONFIG_PATH)) {
+            const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+            recentApps = config.recentApps || [];
+        }
+    } catch (e) {
+        console.error("Failed to read config for tray", e);
+    }
+
+    const recentAppsMenu = recentApps.slice(0, 10).map((app: any) => ({
+        label: app.name,
+        click: () => {
+            mainWindow?.webContents.send("launch-app-by-name", app.name);
+            mainWindow?.show();
+        },
+    }));
+
+    const contextMenu = Menu.buildFromTemplate([
+        { label: "WinBoat", enabled: false },
+        { type: "separator" },
+        {
+            label: "Open Apps",
+            click: () => {
+                mainWindow?.webContents.send("navigate", "/apps");
+                mainWindow?.show();
+            },
+        },
+        {
+            label: "Open Configuration",
+            click: () => {
+                mainWindow?.webContents.send("navigate", "/config");
+                mainWindow?.show();
+            },
+        },
+        { type: "separator" },
+        {
+            label: "Recent Apps",
+            submenu: recentAppsMenu.length > 0 ? recentAppsMenu : [{ label: "No recent apps", enabled: false }],
+        },
+        { type: "separator" },
+        { label: "Run Container", click: () => mainWindow?.webContents.send("container-action", "start") },
+        { label: "Pause Container", click: () => mainWindow?.webContents.send("container-action", "pause") },
+        { type: "separator" },
+        {
+            label: "Quit",
+            click: () => {
+                isQuitting = true;
+                app.quit();
+            },
+        },
+    ]);
+
+    tray.setContextMenu(contextMenu);
+}
+
+function createTray() {
+    // Try to find the logo
+    let iconPath = app.isPackaged
+        ? join(process.resourcesPath, "icons", "winboat_logo.png")
+        : join(app.getAppPath(), "icons", "winboat_logo.png");
+
+    if (!fs.existsSync(iconPath)) {
+        // Fallback to SVG if PNG doesn't exist, though Tray might not support SVG on all platforms
+        iconPath = app.isPackaged
+            ? join(process.resourcesPath, "icons", "winboat_logo.svg")
+            : join(app.getAppPath(), "icons", "winboat_logo.svg");
+    }
+
+    const icon = nativeImage.createFromPath(iconPath);
+    // TODO: Use the project SVG icon, downscale it to 32x32 and make it monochrome (Lazy to do this)
+    tray = new Tray(icon.resize({ width: 16, height: 16 }));
+
+    updateTrayMenu();
+
+    tray.on("click", () => {
+        if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+        }
+    });
+
+    tray.setToolTip("WinBoat");
+}
 
 function createWindow() {
     if (!app.requestSingleInstanceLock()) {
@@ -82,7 +178,13 @@ function createWindow() {
         },
     });
 
-    mainWindow.on("close", () => {
+    mainWindow.on("close", (event) => {
+        if (!isQuitting) {
+            event.preventDefault();
+            mainWindow?.hide();
+            return false;
+        }
+
         const bounds = mainWindow?.getBounds();
 
         windowStore.set("dimensions", {
@@ -146,4 +248,14 @@ app.on("second-instance", _ => {
 
 ipcMain.on("message", (_event, message) => {
     console.log(message);
+});
+
+ipcMain.on("update-tray", () => {
+    updateTrayMenu();
+});
+
+ipcMain.on("init-tray", () => {
+    if (!tray) {
+        createTray();
+    }
 });

@@ -1,5 +1,54 @@
 <template>
     <div class="flex flex-col gap-10 overflow-x-hidden" :class="{ hidden: !maxNumCores }">
+        <dialog ref="showLogsDialog" class="bg-transparent backdrop:bg-black/90 max-w-5xl w-full p-0 rounded-2xl overflow-hidden shadow-2xl border border-white/10 m-auto text-white outline-none">
+            <div class="bg-[#1a1b23] flex flex-col h-[80vh] w-full">
+                <!-- Header -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/20 backdrop-blur-sm sticky top-0 z-10">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                            <Icon icon="solar:file-text-bold-duotone" class="size-5" />
+                        </div>
+                        <div class="flex flex-col">
+                            <h3 class="font-bold text-sm tracking-wide text-white/90">{{ currentLogFileName }}</h3>
+                            <span class="text-[0.65rem] text-white/40 font-mono">/home/user/.winboat/</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1 bg-black/40 rounded-lg p-1 border border-white/5">
+                            <button 
+                                @click="copyLogContent" 
+                                class="px-3 py-1.5 rounded-md hover:bg-white/10 transition-all flex items-center gap-2 group"
+                                title="Copy to Clipboard"
+                            >
+                                <Icon icon="solar:copy-bold" class="size-4 text-white/50 group-hover:text-violet-400 transition-colors" />
+                                <span class="text-xs font-bold text-white/50 group-hover:text-white transition-colors">Copy</span>
+                            </button>
+                            <div class="w-px h-4 bg-white/10"></div>
+                            <button 
+                                @click="saveLogFile" 
+                                class="px-3 py-1.5 rounded-md hover:bg-white/10 transition-all flex items-center gap-2 group"
+                                title="Save to File"
+                            >
+                                <Icon icon="solar:diskette-bold" class="size-4 text-white/50 group-hover:text-blue-400 transition-colors" />
+                                <span class="text-xs font-bold text-white/50 group-hover:text-white transition-colors">Save</span>
+                            </button>
+                        </div>
+                        
+                        <button 
+                            @click="closeLogsDialog" 
+                            class="p-2 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-all text-white/20 ml-2"
+                        >
+                            <Icon icon="solar:close-circle-bold" class="size-6" />
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-grow overflow-auto p-6 bg-[#0d0e12] font-mono text-xs text-gray-300 custom-scrollbar">
+                    <pre class="whitespace-pre-wrap break-all leading-relaxed opacity-90 selection:bg-violet-500/30 selection:text-white">{{ currentLogContent }}</pre>
+                </div>
+            </div>
+        </dialog>
         <div>
             <x-label class="mb-4 text-neutral-300">Container</x-label>
             <div class="flex flex-col gap-4">
@@ -12,6 +61,7 @@
                     unit="GB"
                     :min="2"
                     :max="maxRamGB"
+                    :disabled="isContainerRunning"
                     v-model:value="ramGB"
                 />
 
@@ -24,6 +74,7 @@
                     unit="Cores"
                     :min="2"
                     :max="maxNumCores"
+                    :disabled="isContainerRunning"
                     v-model:value="numCores"
                 />
 
@@ -32,6 +83,7 @@
                     icon="fluent:folder-link-32-filled"
                     title="Shared Folder"
                     type="switch"
+                    :disabled="isContainerRunning"
                     v-model:value="shareFolder"
                 >
                     <template v-slot:desc>
@@ -46,6 +98,7 @@
                     icon="mdi:folder-cog"
                     title="Shared Folder Location"
                     type="custom"
+                    :disabled="isContainerRunning"
                 >
                     <template v-slot:desc>
                         <span v-if="sharedFolderPath">
@@ -75,6 +128,7 @@
                     title="FreeRDP Port"
                     desc="You can change what port FreeRDP uses to communicate with the VM"
                     type="custom"
+                    :disabled="isContainerRunning"
                 >
                     <x-input
                         class="max-w-16 text-right text-[1.1rem]"
@@ -429,27 +483,140 @@
         </div>
 
         <div>
-            <x-label class="mb-4 text-neutral-300">Danger Zone</x-label>
-            <x-card class="flex flex-col py-3 my-0 mb-6 w-full backdrop-blur-xl backdrop-brightness-150 bg-red-500/10">
-                <h1 class="my-0 text-lg font-normal text-red-300">
-                    ⚠️ <span class="font-bold">WARNING:</span> All actions here are potentially destructive, proceed at
-                    your own caution!
-                </h1>
-            </x-card>
-            <div></div>
-            <x-button
-                class="!bg-red-800/20 px-4 py-1 !border-red-500/10 generic-hover flex flex-row items-center gap-2 !text-red-300"
-                @click="resetWinboat()"
-                :disabled="isResettingWinboat"
-            >
-                <Icon v-if="resetQuestionCounter < 3" icon="mdi:bomb" class="size-8"></Icon>
-                <x-throbber v-else class="size-8"></x-throbber>
+            <x-label class="mb-4 text-neutral-300">System Logs</x-label>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <button 
+                    v-for="log in logFiles" 
+                    :key="log"
+                    class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/5 hover:border-violet-500/50 hover:from-violet-500/10 hover:to-violet-500/5 transition-all p-4 text-left flex items-center gap-4 outline-none focus:ring-2 focus:ring-violet-500/50"
+                    @click="viewLog(log)"
+                 >
+                    <div class="p-2.5 rounded-lg bg-black/40 text-violet-400 group-hover:text-violet-300 group-hover:bg-violet-500/20 border border-white/5 group-hover:border-violet-500/20 transition-all shadow-lg">
+                        <Icon icon="solar:file-text-bold-duotone" class="size-6" />
+                    </div>
+                    <div class="flex flex-col z-10">
+                        <span class="text-sm font-bold text-white/90 group-hover:text-white transition-colors">{{ log }}</span>
+                        <span class="text-[0.65rem] font-bold text-white/30 uppercase tracking-wider group-hover:text-violet-300/70 transition-colors flex items-center gap-1">
+                            LOG FILE
+                        </span>
+                    </div>
+                    
+                    <!-- Hover Effect Background -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full group-hover:translate-x-full duration-1000 transition-transform ease-in-out"></div>
+                    
+                    <!-- Arrow -->
+                    <div class="absolute right-4 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-violet-400">
+                        <Icon icon="solar:alt-arrow-right-bold" class="size-5" />
+                    </div>
+                 </button>
+            </div>
+        </div>
 
-                <span v-if="resetQuestionCounter === 0">Reset Winboat & Remove VM</span>
-                <span v-else-if="resetQuestionCounter === 1">Are you sure? This action cannot be undone.</span>
-                <span v-else-if="resetQuestionCounter === 2">One final check, are you ABSOLUTELY sure?</span>
-                <span v-else-if="resetQuestionCounter === 3">Resetting Winboat...</span>
-            </x-button>
+        <div>
+            <x-label class="mb-4 text-neutral-300">Backup & Restore</x-label>
+            <div class="flex flex-col gap-4">
+                <x-card class="p-6 backdrop-blur-xl bg-neutral-800/20 border border-white/5 rounded-2xl">
+                    <div class="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-lg shadow-blue-500/5">
+                                <Icon icon="solar:cloud-upload-bold-duotone" class="size-8" />
+                            </div>
+                            <div class="flex flex-col">
+                                <h3 class="text-lg font-bold text-white/90">Backup & Restore</h3>
+                                <p class="text-sm text-white/40 max-w-md">
+                                    Create a portable archive of your Windows storage volume or restore from an existing backup.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3 w-full md:w-auto">
+                            <x-button 
+                                @click="handleExportBackup" 
+                                :disabled="isBackingUp || isRestoring || isContainerRunning || (!backupIncludeStorage && !backupIncludeSettings)"
+                                class="flex-grow md:flex-initial !bg-blue-600/20 hover:!bg-blue-600/30 transition-all border border-blue-500/20"
+                            >
+                                <Icon v-if="!isBackingUp" icon="solar:download-square-bold" class="mr-2 size-5" />
+                                <x-throbber v-else class="mr-2 size-5" />
+                                <x-label>{{ isBackingUp ? 'Exporting...' : 'Export Backup' }}</x-label>
+                            </x-button>
+                            <x-button 
+                                @click="handleImportBackup" 
+                                :disabled="isBackingUp || isRestoring || isContainerRunning || (!backupIncludeStorage && !backupIncludeSettings)"
+                                class="flex-grow md:flex-initial !bg-violet-600/20 hover:!bg-violet-600/30 transition-all border border-violet-500/20"
+                            >
+                                <Icon v-if="!isRestoring" icon="solar:upload-square-bold" class="mr-2 size-5" />
+                                <x-throbber v-else class="mr-2 size-5" />
+                                <x-label>{{ isRestoring ? 'Importing...' : 'Restore Backup' }}</x-label>
+                            </x-button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3 mt-6 pt-6 border-t border-white/5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[0.65rem] font-black text-white/20 uppercase tracking-[0.2em]">Backup Options</span>
+                            <div class="h-px flex-grow bg-white/5"></div>
+                        </div>
+                        <div class="flex flex-wrap gap-x-12 gap-y-3 items-center">
+                            <x-checkbox 
+                                :toggled="backupIncludeStorage" 
+                                @toggle="backupIncludeStorage = !backupIncludeStorage"
+                                :disabled="isBackingUp || isRestoring || isContainerRunning"
+                            >
+                                <x-label class="text-sm font-medium text-white/70">Windows Data (Storage Volume)</x-label>
+                            </x-checkbox>
+                            <x-checkbox 
+                                :toggled="backupIncludeSettings" 
+                                @toggle="backupIncludeSettings = !backupIncludeSettings"
+                                :disabled="isBackingUp || isRestoring || isContainerRunning"
+                            >
+                                <x-label class="text-sm font-medium text-white/70">App Settings (Config & Compose)</x-label>
+                            </x-checkbox>
+                        </div>
+                    </div>
+                    <div v-if="backupError" class="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+                        <Icon icon="solar:danger-bold" class="size-5" />
+                        {{ backupError }}
+                    </div>
+                </x-card>
+            </div>
+        </div>
+
+        <div>
+            <x-label class="mb-4 text-neutral-300 font-bold uppercase tracking-wider text-xs">Danger Zone</x-label>
+            <x-card class="p-6 backdrop-blur-xl bg-red-500/5 border border-red-500/10 rounded-2xl overflow-hidden relative">
+                <div class="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                    <Icon icon="mdi:bomb" class="size-32" />
+                </div>
+                
+                <div class="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between relative z-10">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 shadow-lg shadow-red-500/5">
+                            <Icon icon="solar:danger-triangle-bold-duotone" class="size-8" />
+                        </div>
+                        <div class="flex flex-col">
+                            <h3 class="text-lg font-bold text-red-200">Reset WinBoat</h3>
+                            <p class="text-sm text-red-200/40 max-w-md">
+                                Completely remove the Windows container and all associated data. This action is <span class="text-red-400/80 font-bold underline">permanent</span> and cannot be undone.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full md:w-auto">
+                        <x-button
+                            class="w-full md:w-auto !bg-red-600/20 hover:!bg-red-600/30 !text-red-300 border border-red-500/20 transition-all font-bold px-6 py-3"
+                            @click="resetWinboat()"
+                            :disabled="isResettingWinboat"
+                        >
+                            <Icon v-if="resetQuestionCounter < 3" icon="mdi:bomb" class="mr-2 size-5"></Icon>
+                            <x-throbber v-else class="mr-2 size-5"></x-throbber>
+
+                            <span v-if="resetQuestionCounter === 0">Factory Reset</span>
+                            <span v-else-if="resetQuestionCounter === 1">Are you sure?</span>
+                            <span v-else-if="resetQuestionCounter === 2">Final Warning!</span>
+                            <span v-else-if="resetQuestionCounter === 3">Resetting...</span>
+                        </x-button>
+                    </div>
+                </div>
+            </x-card>
         </div>
     </div>
 </template>
@@ -477,6 +644,8 @@ import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
 const os: typeof import("os") = require("node:os");
+const fs: typeof import("fs") = require("fs");
+const path: typeof import("path") = require("path");
 
 // For Resources
 const compose = ref<ComposeConfig | null>(null);
@@ -498,6 +667,124 @@ const isApplyingChanges = ref(false);
 const resetQuestionCounter = ref(0);
 const isResettingWinboat = ref(false);
 const isUpdatingUSBPrerequisites = ref(false);
+
+// For Backup & Restore
+const isBackingUp = ref(false);
+const isRestoring = ref(false);
+const backupError = ref("");
+const backupIncludeStorage = ref(true);
+const backupIncludeSettings = ref(true);
+
+async function handleExportBackup() {
+    const { filePath } = await electron.dialog.showSaveDialog({
+        title: "Export Backup",
+        defaultPath: `winboat-backup-${new Date().toISOString().split("T")[0]}.tar.gz`,
+        filters: [{ name: "WinBoat Backup", extensions: ["tar.gz"] }],
+    });
+
+    if (filePath) {
+        isBackingUp.value = true;
+        backupError.value = "";
+        try {
+            await winboat.containerMgr!.exportBackup(filePath, {
+                includeStorage: backupIncludeStorage.value,
+                includeSettings: backupIncludeSettings.value
+            });
+        } catch (e: any) {
+            backupError.value = `Export failed: ${e.message}`;
+        } finally {
+            isBackingUp.value = false;
+        }
+    }
+}
+
+async function handleImportBackup() {
+    const { filePaths } = await electron.dialog.showOpenDialog({
+        title: "Import Backup",
+        properties: ["openFile"],
+        filters: [{ name: "WinBoat Backup", extensions: ["tar.gz"] }],
+    });
+
+    if (filePaths.length > 0) {
+        const choice = electron.dialog.showMessageBoxSync({
+            type: "warning",
+            buttons: ["Cancel", "Yes, Overwrite"],
+            title: "Confirm Restore",
+            message: `This will overwrite your current ${[
+                backupIncludeStorage.value ? "Windows storage" : "",
+                backupIncludeSettings.value ? "settings" : ""
+            ].filter(Boolean).join(" and ")}. This action cannot be undone. Are you sure?`,
+        });
+
+        if (choice === 1) {
+            isRestoring.value = true;
+            backupError.value = "";
+            try {
+                await winboat.containerMgr!.importBackup(filePaths[0], {
+                    includeStorage: backupIncludeStorage.value,
+                    includeSettings: backupIncludeSettings.value
+                });
+                
+                if (backupIncludeSettings.value) {
+                    // Refresh config and UI
+                    await assignValues();
+                }
+
+                electron.dialog.showMessageBoxSync({
+                    type: "info",
+                    title: "Restore Successful",
+                    message: "The backup has been restored successfully.",
+                });
+            } catch (e: any) {
+                backupError.value = `Import failed: ${e.message}`;
+            } finally {
+                isRestoring.value = false;
+            }
+        }
+    }
+}
+
+// For Logs
+const showLogsDialog = ref<HTMLDialogElement | null>(null);
+const currentLogContent = ref("");
+const currentLogFileName = ref("");
+const logFiles = ["container.log", "migrations.log", "install.log", "winboat.log"];
+
+async function viewLog(filename: string) {
+    currentLogFileName.value = filename;
+    try {
+        const logPath = path.join(os.homedir(), ".winboat", filename);
+        if (fs.existsSync(logPath)) {
+            currentLogContent.value = fs.readFileSync(logPath, "utf-8");
+        } else {
+            currentLogContent.value = `Log file not found: ${logPath}`;
+        }
+    } catch (e) {
+        currentLogContent.value = `Error reading log file: ${e}`;
+    }
+    showLogsDialog.value?.showModal();
+}
+
+function closeLogsDialog() {
+    showLogsDialog.value?.close();
+    currentLogContent.value = "";
+}
+
+function copyLogContent() {
+    electron.clipboard.writeText(currentLogContent.value);
+}
+
+async function saveLogFile() {
+    const { filePath } = await electron.dialog.showSaveDialog({
+        title: `Save ${currentLogFileName.value}`,
+        defaultPath: currentLogFileName.value,
+        filters: [{ name: "Log Files", extensions: ["log", "txt"] }]
+    });
+    
+    if (filePath) {
+        fs.writeFileSync(filePath, currentLogContent.value);
+    }
+}
 
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
@@ -716,6 +1003,10 @@ const hasHostPort = (_compose: typeof compose) =>
 
 const usbPassthroughDisabled = computed(() => {
     return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
+});
+
+const isContainerRunning = computed(() => {
+    return winboat.containerStatus.value === ContainerStatus.RUNNING;
 });
 
 const saveButtonDisabled = computed(() => {
