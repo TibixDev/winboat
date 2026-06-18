@@ -304,7 +304,7 @@ export class Winboat {
             const _isOnline = await this.getHealth();
             if (_isOnline !== this.isOnline.value) {
                 this.isOnline.value = _isOnline;
-                logger.info(`Winboat Guest API went ${this.isOnline ? "online" : "offline"}`);
+                logger.info(`Winboat Guest API went ${this.isOnline.value ? "online" : "offline"}`);
 
                 if (this.isOnline.value) {
                     await this.checkVersionAndUpdateGuestServer();
@@ -617,7 +617,7 @@ export class Winboat {
     }
 
     async launchApp(app: WinApp) {
-        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
+        if (!this.isOnline.value) throw new Error("Cannot launch app, Winboat is offline");
 
         if (customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
