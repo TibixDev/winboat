@@ -1,8 +1,14 @@
 const os: typeof import("os") = require("node:os");
 const path: typeof import("path") = require("node:path");
+const process: typeof import("process") = require("node:process");
 
-// Should be {home}/.winboat
-export const WINBOAT_DIR = path.join(os.homedir(), ".winboat");
+// Should be $HOME/.winboat (or $XDG_DATA_HOME/winboat in flatpak)
+export const WINBOAT_DIR = process.env.FLATPAK_ID
+    ? path.join(process.env.XDG_STATE_HOME, "winboat")
+    : path.join(os.homedir(), ".winboat");
+export const DEFAULT_VM_DATA_DIR = process.env.FLATPAK_ID
+    ? path.join(process.env.XDG_DATA_HOME, "winboat")
+    : path.join(os.homedir(), "winboat");
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const WINDOWS_VERSIONS = {
