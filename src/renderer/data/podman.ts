@@ -15,6 +15,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 RAM_SIZE: "4G",
                 CPU_CORES: "4",
                 DISK_SIZE: "64G",
+                REMOTENAME: "MyWindowsPc",
                 USERNAME: "MyWindowsUser",
                 PASSWORD: "MyWindowsPassword",
                 HOME: "${HOME}",

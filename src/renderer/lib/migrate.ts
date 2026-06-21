@@ -4,6 +4,8 @@ import { WinboatConfig } from "./config";
 import { WINBOAT_DIR } from "./constants";
 import { CommonPorts, createContainer } from "./containers/common";
 import { ContainerManager } from "./containers/container";
+import { RemoteContainer } from "./containers/remote";
+import { ContainerRuntimes } from "./containers/common";
 import { Winboat } from "./winboat";
 
 const path: typeof import("path") = require("path");
@@ -17,25 +19,29 @@ export async function performAutoMigrations(): Promise<void> {
     logger.info("[performAutoMigrations]: Starting automatic migrations");
 
     const wbConfig = WinboatConfig.getInstance(); // Get WinboatConfig instance
-    const containerManager = createContainer(wbConfig.config.containerRuntime);
-    const composeMapper = new ComposePortMapper(Winboat.readCompose(containerManager.composeFilePath))
-    
-    try {
-        // In case of a version prior to 0.9.0, the NoVNC port will be set to the default 8006
-        // which is how we know we need to perform the migration, because from 0.9.0 we can rely
-        // on the stored version strings
-        const novncMapping = composeMapper.getShortPortMapping(CommonPorts.NOVNC);
-        console.log(composeMapper);
-        if (!Range.isRange(novncMapping!.host) && novncMapping!.host === CommonPorts.NOVNC) {
-            await migrateComposePorts_Pre090(containerManager);
-        }
-    }
-    catch (e: any) {
-        logger.error("[performAutoMigrations]: Automatic migrations failed");
-        logger.error(e.message ?? e);
-        return;
-    }
 
+    if (wbConfig.config.containerRuntime !== ContainerRuntimes.REMOTE) {
+        const containerManager = createContainer(wbConfig.config.containerRuntime);
+        const composeMapper = new ComposePortMapper(Winboat.readCompose(containerManager.composeFilePath))
+    
+        try {
+            // In case of a version prior to 0.9.0, the NoVNC port will be set to the default 8006
+            // which is how we know we need to perform the migration, because from 0.9.0 we can rely
+            // on the stored version strings
+            const novncMapping = composeMapper.getShortPortMapping(CommonPorts.NOVNC);
+            console.log(composeMapper);
+            if (!Range.isRange(novncMapping!.host) && novncMapping!.host === CommonPorts.NOVNC) {
+                await migrateComposePorts_Pre090(containerManager);
+            }
+        }
+        catch (e: any) {
+            logger.error("[performAutoMigrations]: Automatic migrations failed");
+            logger.error(e.message ?? e);
+            return;
+        }
+
+    }
+    
     logger.info("[performAutoMigrations]: Finished automatic migrations");
 }
 

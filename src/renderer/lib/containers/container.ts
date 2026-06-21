@@ -1,5 +1,6 @@
 import { ComposeConfig } from "../../../types";
 import { WINBOAT_DIR } from "../constants";
+import { Winboat } from "../winboat";
 import { createLogger } from "../../utils/log";
 import { ComposePortEntry } from "../../utils/port";
 
@@ -27,6 +28,14 @@ export abstract class ContainerManager {
     abstract exists(): Promise<boolean>;
 
     abstract get containerName(): string;
+    get hostName() : string {
+        if (this.cachedPortMappings) {
+            return this.cachedPortMappings[0].hostIP;
+        }
+        
+        const compose = Winboat.readCompose(this.composeFilePath);
+        return compose.services.windows.environment.REMOTENAME;
+    }
 
     // static "abstract" function
     static async _getSpecs(): Promise<any> {

@@ -16,6 +16,7 @@ export type InstallConfiguration = {
     ramGB: number;
     installFolder: string;
     diskSpaceGB: number;
+    remotename: string;
     username: string;
     password: string;
     customIsoPath?: string;
@@ -68,6 +69,7 @@ export type ComposeConfig = {
                 RAM_SIZE: string;
                 CPU_CORES: string;
                 DISK_SIZE: string;
+                REMOTENAME: string;
                 USERNAME: string;
                 PASSWORD: string;
                 HOME: string;
@@ -90,6 +92,7 @@ export type ComposeConfig = {
 
 export type Metrics = {
     cpu: {
+        cores: number; // Number of cores
         usage: number; // Percentage, from 0 to 100%
         frequency: number; // Frequency in Mhz (e.g. 2700)
     };
