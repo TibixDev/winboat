@@ -1,0 +1,59 @@
+app-id: app.winboat.WinBoat
+branch: stable
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: winboat
+
+build-options:
+  no-debuginfo: true
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --socket=session-bus
+  - --socket=system-bus
+  - --device=dri
+  - --device=kvm
+  - --filesystem=home
+  - --filesystem=/run/docker.sock
+  - --filesystem=/var/run/docker.sock
+  - --filesystem=xdg-run/docker
+  - --filesystem=xdg-run/podman:create
+  - --filesystem=xdg-run/podman
+  - --talk-name=org.freedesktop.Flatpak
+  - --env=ELECTRON_TRASH=gio
+  - --env=XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons
+
+modules:
+  - name: winboat
+    buildsystem: simple
+    build-commands:
+      - cp -a . "${FLATPAK_DEST}/winboat/"
+      - rm -f "${FLATPAK_DEST}/winboat/winboat.sh"
+      - rm -f "${FLATPAK_DEST}/winboat/app.winboat.WinBoat.desktop"
+      - rm -f "${FLATPAK_DEST}/winboat/app.winboat.WinBoat.metainfo.xml"
+      - rm -f "${FLATPAK_DEST}/winboat/winboat_logo.svg"
+      - |
+        if [ -x "${FLATPAK_DEST}/winboat/WinBoat" ] && [ ! -e "${FLATPAK_DEST}/winboat/winboat" ]; then
+          ln -s WinBoat "${FLATPAK_DEST}/winboat/winboat"
+        fi
+      - chmod +x "${FLATPAK_DEST}/winboat/winboat"
+      - install -Dm755 winboat.sh "${FLATPAK_DEST}/bin/winboat"
+      - install -Dm644 app.winboat.WinBoat.desktop "${FLATPAK_DEST}/share/applications/app.winboat.WinBoat.desktop"
+      - install -Dm644 app.winboat.WinBoat.metainfo.xml "${FLATPAK_DEST}/share/metainfo/app.winboat.WinBoat.metainfo.xml"
+      - install -Dm644 winboat_logo.svg "${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/app.winboat.WinBoat.svg"
+    sources:
+      - type: dir
+        path: ../dist/linux-unpacked
+      - type: file
+        path: winboat.sh
+      - type: file
+        path: app.winboat.WinBoat.desktop
+      - type: file
+        path: app.winboat.WinBoat.metainfo.xml
+      - type: file
+        path: ../icons/winboat_logo.svg
