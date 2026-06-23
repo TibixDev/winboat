@@ -64,6 +64,15 @@
             "from": "./packaging/apparmor",
             "to": "apparmor",
             "filter": ["**/*"]
+        },
+        {
+            "from": "./packaging/polkit",
+            "to": "polkit",
+            "filter": ["**/*"]
+        },
+        {
+            "from": "./gpu_helper/winboat-gpu-helper",
+            "to": "winboat-gpu-helper"
         }
     ]
 }

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD polkit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+
+<!--
+    WinBoat GPU passthrough — polkit action definitions.
+
+    Two action IDs are defined to keep authorisation strictly scoped:
+
+      org.winboat.gpu-passthrough.manage  — bind / unbind / modprobe.
+          Requires admin (sudo / wheel) auth. We use auth_admin_keep so
+          a single authentication covers the bind-on-start and
+          unbind-on-stop pair (typical session); the timeout is short
+          enough that an idle WinBoat doesn't carry a stale grant.
+
+      org.winboat.gpu-passthrough.status  — read driver bindings.
+          Read-only, so we set it to "yes" (no auth needed). The helper
+          still validates the BDF format and refuses to touch anything
+          outside the sysfs PCI tree, so allowing this unauthenticated
+          can leak only a list of driver names — which `lspci -k` already
+          shows to any user.
+
+    The annotation `<annotate key="org.freedesktop.policykit.exec.path">`
+    pins the helper binary path. pkexec will refuse to launch any other
+    binary, even if a different binary is symlinked at the same path.
+
+    The path "/opt/WinBoat/resources/winboat-gpu-helper" matches what
+    electron-builder produces when we add the binary to extraResources
+    (see electron-builder.json). Distros that repackage WinBoat under a
+    different prefix MUST regenerate this file with the new path.
+-->
+
+<policyconfig>
+
+    <vendor>WinBoat</vendor>
+    <vendor_url>https://github.com/TibixDev/winboat</vendor_url>
+    <icon_name>video-display</icon_name>
+
+    <action id="org.winboat.gpu-passthrough.manage">
+        <description>Bind or unbind a PCI GPU for WinBoat passthrough</description>
+        <message>WinBoat needs administrator privileges to dedicate a GPU to the Windows virtual machine.</message>
+        <defaults>
+            <allow_any>auth_admin_keep</allow_any>
+            <allow_inactive>auth_admin_keep</allow_inactive>
+            <allow_active>auth_admin_keep</allow_active>
+        </defaults>
+        <annotate key="org.freedesktop.policykit.exec.path">/opt/WinBoat/resources/winboat-gpu-helper</annotate>
+        <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+    </action>
+
+    <action id="org.winboat.gpu-passthrough.status">
+        <description>Read the current driver binding of a PCI device</description>
+        <message>WinBoat is checking which kernel driver currently owns a PCI device.</message>
+        <defaults>
+            <allow_any>yes</allow_any>
+            <allow_inactive>yes</allow_inactive>
+            <allow_active>yes</allow_active>
+        </defaults>
+        <annotate key="org.freedesktop.policykit.exec.path">/opt/WinBoat/resources/winboat-gpu-helper</annotate>
+    </action>
+
+</policyconfig>
