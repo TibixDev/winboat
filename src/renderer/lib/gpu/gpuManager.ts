@@ -372,8 +372,10 @@ export const __test__ = {
 //      bindGpuToVfio helper. The compose mutation uses that VF's BDF.
 //
 //   3. We MUST active-probe the driver first because i915 reports
-//      sriov_totalvfs but doesn't implement sriov_configure (the write
-//      is a silent no-op). See sriov.ts for the probe rationale.
+//      sriov_totalvfs but doesn't implement sriov_configure — writes to
+//      sriov_numvfs return -ENOENT (kernel iov.c sriov_numvfs_store). The
+//      probe writes 1, reads back, restores, and treats either an errored
+//      write or a read-back of 0 as "not supported." See sriov.ts.
 // ---------------------------------------------------------------------------
 
 export interface SriovDeps {
@@ -455,12 +457,20 @@ export async function applySriovPassthrough(
 }
 
 /**
- * Best-effort VF BDF inference: assumes the kernel exposed the VF at
- * PF.function + 1. This is only a HINT \u2014 production code should read
- * /sys/bus/pci/devices/<PF>/virtfn0 (a symlink to the real VF BDF).
+ * Best-effort VF BDF inference: assumes the kernel placed VF0 at
+ * PF.function + 1. This is empirically true on Intel iGPUs (Xe/i915 use
+ * SR-IOV offset=1, stride=1, so VF_id N lands at PF.function + 1 + N),
+ * but the canonical computation in the kernel is offset + stride * vf_id
+ * (drivers/pci/iov.c). On platforms with different offset/stride values
+ * (notably some discrete GPUs and NICs that place VFs on their own bus),
+ * this heuristic will be WRONG and we will land on a non-existent or
+ * unrelated function.
  *
- * TODO(phase2.1): replace with a sysfs read once we have a privileged
- * read path or extend the helper with a sriov-listvfs subcommand.
+ * Source: https://elixir.bootlin.com/linux/v6.9/source/drivers/pci/iov.c
+ *
+ * TODO(phase2.1): replace with a sysfs read of
+ * /sys/bus/pci/devices/<PF>/virtfn0 once we have a privileged read path,
+ * or extend the helper with a sriov-listvfs subcommand.
  */
 function inferVfBdfHint(pfBdf: string): string {
     // pfBdf is "0000:bb:dd.f" or "bb:dd.f"; bump function by 1.

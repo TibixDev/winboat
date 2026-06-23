@@ -456,18 +456,31 @@ func runModprobe() {
 	// /sys/bus/pci/drivers/vfio-pci/new_id are usable. modprobe returns 0
 	// if the module is already loaded.
 	//
-	// Hard-coded path to modprobe — pkexec sets PATH but we don't
-	// trust it. We try /sbin then /usr/sbin then /usr/bin (NixOS,
-	// Alpine, and some minimal containers put it under /usr/bin).
+	// Hard-coded path search for modprobe — pkexec sets PATH but we
+	// don't trust it. Cover the known distros:
+	//   /sbin/modprobe                       — Debian/Ubuntu/Zorin/Mint,
+	//                                          Alpine (verified in kmod
+	//                                          package on pkgs.alpinelinux.org)
+	//   /usr/sbin/modprobe                   — Fedora/RHEL, Arch (after
+	//                                          /usr merge)
+	//   /usr/bin/modprobe                    — some minimal containers
+	//   /run/current-system/sw/bin/modprobe  — NixOS (all system tools
+	//                                          symlinked here; the actual
+	//                                          binary lives in /nix/store)
 	mp := ""
-	for _, candidate := range []string{"/sbin/modprobe", "/usr/sbin/modprobe", "/usr/bin/modprobe"} {
+	for _, candidate := range []string{
+		"/sbin/modprobe",
+		"/usr/sbin/modprobe",
+		"/usr/bin/modprobe",
+		"/run/current-system/sw/bin/modprobe",
+	} {
 		if _, err := os.Stat(candidate); err == nil {
 			mp = candidate
 			break
 		}
 	}
 	if mp == "" {
-		emitErr("modprobe not found in /sbin, /usr/sbin, or /usr/bin", "modprobe")
+		emitErr("modprobe not found in any of: /sbin, /usr/sbin, /usr/bin, /run/current-system/sw/bin", "modprobe")
 		os.Exit(1)
 	}
 	cmd := exec.Command(mp, vfioDriverName)

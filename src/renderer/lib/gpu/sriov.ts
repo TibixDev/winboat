@@ -10,10 +10,13 @@
  *   The two cases that matter to WinBoat are:
  *
  *     - i915 (pre-Xe Intel iGPU): sriov_totalvfs reports a non-zero VF
- *       count, but writing to sriov_numvfs either fails with -EINVAL or
- *       silently no-ops. A passive read lies; the probe writes "1",
- *       reads back, and reports failure if the read returns 0 or the
- *       write errored.
+ *       count, but writing to sriov_numvfs returns -ENOENT because the
+ *       i915 driver does not register a sriov_configure callback (the
+ *       kernel's sriov_numvfs_store in drivers/pci/iov.c returns ENOENT
+ *       when iov->driver_max_VFs is 0 / no callback is wired). A passive
+ *       read lies; the probe writes "1", reads back, and reports failure
+ *       if the write errored or the read returns 0.
+ *       Source: https://elixir.bootlin.com/linux/v6.9/source/drivers/pci/iov.c
  *
  *     - Xe (modern Intel iGPU): the driver implements sriov_configure
  *       BUT only when the kernel was booted with `xe.max_vfs=N`. Without
