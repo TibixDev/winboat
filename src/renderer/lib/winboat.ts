@@ -84,7 +84,7 @@ const presetApps: WinApp[] = [
  * The stock RDP args that apply to all app launches by default.
  *
  * Codec / pipeline flags:
- *   /gfx:AVC420:on,AVC444:on  — enable the RDP8.1 graphics pipeline with H.264 AVC444
+ *   /gfx:AVC444:on  — enable the RDP8.1 graphics pipeline with H.264 AVC444
  *                    (much lower bandwidth + lower CPU than legacy bitmap
  *                    cache). Syntax verified against the FreeRDP 3.x
  *                    xfreerdp3(1) manpage grammar:
@@ -108,7 +108,7 @@ const stockArgs = [
     "/sound:sys:pulse",
     "/microphone:sys:pulse",
     "/floatbar",
-    "/gfx:AVC420:on,AVC444:on",
+    "/gfx:AVC444:on",
     "/rfx",
     "/network:auto",
     "/compression",
@@ -537,8 +537,11 @@ export class Winboat {
                 logger.info(`GPU passthrough: ${gpuResult.message}`);
             }
             // replaceCompose (when needsReplace + container is RUNNING)
-            // already starts the new container, so skip the redundant
-            // start call in that case.
+            // already starts the new container. containerStatus.value is
+            // refreshed on a 1s polling interval, so this check can miss
+            // and we fall through to an extra `container start` call —
+            // that's harmless (Docker treats start-of-running as a no-op,
+            // exit 0), but the log line below will not always fire.
             if (gpuResult.status === "compose-updated" && this.containerStatus.value === ContainerStatus.RUNNING) {
                 logger.info("Container already restarted by replaceCompose; skipping explicit start.");
             } else {
