@@ -127,6 +127,58 @@ func getMetrics(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(metrics)
 }
 
+func getBalloonStatus(w http.ResponseWriter, r *http.Request) {
+	cmd := exec.Command("C:\\Windows\\Drivers\\Balloon\\blnsvr.exe", "status")
+	output, err := cmd.CombinedOutput()
+
+	response := map[string]string{}
+
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			switch exitErr.ExitCode() {
+			case 1060:
+				response["status"] = "not-installed"
+				response["details"] = string(output)
+			case 1, 1062:
+				response["status"] = "stopped"
+				response["details"] = string(output)
+			default:
+				response["status"] = "error"
+				response["details"] = string(output)
+			}
+		} else {
+			response["status"] = "error"
+			response["details"] = err.Error()
+		}
+	} else {
+		response["status"] = "running"
+		response["details"] = string(output)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func installBalloon(w http.ResponseWriter, r *http.Request) {
+	cmd := exec.Command("C:\\Windows\\Drivers\\Balloon\\blnsvr.exe", "-i")
+	output, err := cmd.CombinedOutput()
+
+	response := map[string]string{}
+
+	if err != nil {
+		response["result"] = "error"
+		response["details"] = string(output)
+	} else {
+		response["result"] = "success"
+		response["details"] = string(output)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
 func getRdpConnectedStatus(w http.ResponseWriter, r *http.Request) {
 	// Check for RDP Status via quser.exe
 	cmd := exec.Command("quser.exe")
@@ -333,6 +385,8 @@ func main() {
 	r.HandleFunc("/health", getHealth).Methods("GET")
 	r.HandleFunc("/version", getVersion).Methods("GET")
 	r.HandleFunc("/metrics", getMetrics).Methods("GET")
+	r.HandleFunc("/balloon/status", getBalloonStatus).Methods("GET")
+	r.HandleFunc("/balloon/install", installBalloon).Methods("POST")
 	r.HandleFunc("/rdp/status", getRdpConnectedStatus).Methods("GET")
 	r.HandleFunc("/update", applyUpdate).Methods("POST")
 	r.HandleFunc("/get-icon", getIcon).Methods("POST")
