@@ -2,6 +2,7 @@
 set INSTALL_DIR=C:\Program Files\WinBoat
 set EXE_PATH=%INSTALL_DIR%\winboat_guest_server.exe
 set TIME_SYNC_SCRIPT_PATH=%INSTALL_DIR%\scripts\time-sync.bat
+set NOTIFICATIONS_SCRIPT_PATH=%INSTALL_DIR%\scripts\notifications_cleanup.ps1
 set NSSM_PATH=%INSTALL_DIR%\nssm.exe
 set OEM_DIR=C:\OEM
 
@@ -29,3 +30,4 @@ netsh advfirewall firewall add rule name="Allow WinBoat API 7148" dir=in action=
 
 :: Startup Tasks
 schtasks /create /tn "TimeSyncTask" /sc ONSTART /RL HIGHEST /tr "\"%TIME_SYNC_SCRIPT_PATH%\"" /RU SYSTEM
+reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" /v "NotificationCleanup" /t REG_SZ /d "conhost --headless powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"%NOTIFICATIONS_SCRIPT_PATH%\"" /f
