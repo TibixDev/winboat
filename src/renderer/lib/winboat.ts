@@ -16,6 +16,11 @@ import { setIntervalImmediately } from "../utils/interval";
 import { createLogger } from "../utils/log";
 import { openLink } from "../utils/openLink";
 import { MultiMonitorMode, WinboatConfig } from "./config";
+import {
+    applyGpuPassthroughIfEnabled,
+    releaseGpuPassthroughIfNeeded,
+    type WinboatLike,
+} from "./gpu/gpuManager";
 import { WINBOAT_DIR } from "./constants";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 import { ContainerManager, ContainerStatus } from "./containers/container";
@@ -516,7 +521,29 @@ export class Winboat {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
-            await this.containerMgr!.container("start");
+            // Phase 1.5: bind GPU to vfio-pci + mutate compose if needed.
+            // Returns structured result; never throws. If passthrough
+            // fails we still allow the container to start so the user
+            // can boot without GPU.
+            const gpuResult = await applyGpuPassthroughIfEnabled(
+                this.#asGpuTarget(),
+                this.#wbConfig!.config,
+                { logger: { info: m => logger.info(m), warn: m => logger.warn(m), error: m => logger.error(m) } },
+            );
+            if (!gpuResult.ok) {
+                logger.warn(`GPU passthrough not applied: ${gpuResult.message}`);
+                if (gpuResult.cause) logger.warn(JSON.stringify(gpuResult.cause));
+            } else if (gpuResult.status !== "disabled" && gpuResult.status !== "no-device") {
+                logger.info(`GPU passthrough: ${gpuResult.message}`);
+            }
+            // replaceCompose (when needsReplace + container is RUNNING)
+            // already starts the new container, so skip the redundant
+            // start call in that case.
+            if (gpuResult.status === "compose-updated" && this.containerStatus.value === ContainerStatus.RUNNING) {
+                logger.info("Container already restarted by replaceCompose; skipping explicit start.");
+            } else {
+                await this.containerMgr!.container("start");
+            }
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
@@ -530,8 +557,42 @@ export class Winboat {
         logger.info("Stopping WinBoat container...");
         this.containerActionLoading.value = true;
         await this.containerMgr!.container("stop");
+        // Phase 1.5: unbind GPU only when the user opted into
+        // dynamic-unbind. Default holds the binding for fast restart.
+        try {
+            const rel = await releaseGpuPassthroughIfNeeded(
+                this.#asGpuTarget(),
+                this.#wbConfig!.config,
+                { logger: { info: m => logger.info(m), warn: m => logger.warn(m), error: m => logger.error(m) } },
+            );
+            if (!rel.ok) {
+                logger.warn(`GPU unbind not performed: ${rel.message}`);
+            } else if (rel.status === "ok") {
+                logger.info(`GPU passthrough: ${rel.message}`);
+            }
+        } catch (e) {
+            // Defensive — releaseGpuPassthroughIfNeeded never throws,
+            // but if something upstream regresses we don't want stop to fail.
+            logger.error("Unexpected error during GPU release: " + (e as Error).message);
+        }
         logger.info("Successfully stopped WinBoat container");
         this.containerActionLoading.value = false;
+    }
+
+    /**
+     * Adapter that lets gpuManager.ts work against a Winboat instance
+     * via the WinboatLike interface. Keeps gpuManager free of any
+     * direct Winboat dependency (one-way coupling, easier to test).
+     */
+    #asGpuTarget(): WinboatLike {
+        const self = this;
+        return {
+            isRunning: () => self.containerStatus.value === ContainerStatus.RUNNING,
+            composeFilePath: () => self.containerMgr!.composeFilePath,
+            readCompose: () => Winboat.readCompose(self.containerMgr!.composeFilePath),
+            replaceCompose: (c) => self.replaceCompose(c),
+            writeComposeOnly: (c) => self.containerMgr!.writeCompose(c),
+        };
     }
 
     async restartContainer() {
