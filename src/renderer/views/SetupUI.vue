@@ -812,7 +812,7 @@
 import { Icon } from "@iconify/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { computedAsync } from "@vueuse/core";
+import { computedAsync, useIntervalFn } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
@@ -942,8 +942,31 @@ const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallState
 
 let installManager: InstallManager | null;
 
-onMounted(async () => {
+// Prerequisite re-poll trigger — incremented by the interval below so that
+// `containerSpecs` and the host `specs` ref re-evaluate while the user is on
+// the prereq screen. Closes https://github.com/TibixDev/winboat/issues/685
+// (users no longer need to restart WinBoat after installing Docker / joining
+//  the docker group / starting the daemon / etc.).
+const prereqTrigger = ref(0);
+
+async function refreshHostSpecs() {
     specs.value = await getSpecs();
+}
+
+// Poll every 3s while prereqs are unmet. We auto-pause as soon as all
+// prereqs are satisfied so we don't burn CPU on the install/progress screens.
+const {
+    pause: pausePrereqPoll,
+    resume: resumePrereqPoll,
+} = useIntervalFn(async () => {
+    await refreshHostSpecs();
+    // bump trigger so computedAsync chains depending on it (containerSpecs)
+    // re-evaluate against the freshly-installed runtime.
+    prereqTrigger.value++;
+}, 3000, { immediate: false });
+
+onMounted(async () => {
+    await refreshHostSpecs();
     console.log("Specs", specs.value);
 
     memoryInfo.value = await getMemoryInfo();
@@ -957,12 +980,16 @@ onMounted(async () => {
 
     // Set default shared folder path to home directory
     sharedFolderPath.value = os.homedir();
+
+    // Start prereq re-polling on the prereq screen.
+    resumePrereqPoll();
 });
 
 onUnmounted(() => {
     if (memoryInterval.value) {
         clearInterval(memoryInterval.value);
     }
+    pausePrereqPoll();
 });
 
 // Watch for when folder sharing is enabled and set default path
@@ -973,8 +1000,25 @@ watch(folderSharing, (newValue) => {
 });
 
 const containerSpecs = computedAsync(async () => {
+    // Re-evaluate whenever the user switches runtime *or* the prereq re-poll
+    // ticks. Reading `prereqTrigger.value` registers the reactive dependency.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _tick = prereqTrigger.value;
     return await getContainerSpecs(containerRuntime.value);
 });
+
+// Stop polling as soon as all prerequisites are satisfied — no point re-checking
+// the host while the user is on the install / progress / completion screens.
+watch(
+    () => satisfiesPrequisites(specs.value, containerSpecs.value),
+    (ok) => {
+        if (ok) {
+            pausePrereqPoll();
+        } else {
+            resumePrereqPoll();
+        }
+    },
+);
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
     if (!containerSpecs) return false;
