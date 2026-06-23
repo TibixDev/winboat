@@ -79,7 +79,7 @@ const presetApps: WinApp[] = [
  * The stock RDP args that apply to all app launches by default.
  *
  * Codec / pipeline flags:
- *   /gfx:AVC444:on  — enable the RDP8.1 graphics pipeline with H.264 AVC444
+ *   /gfx:AVC420:on,AVC444:on  — enable the RDP8.1 graphics pipeline with H.264 AVC444
  *                    (much lower bandwidth + lower CPU than legacy bitmap
  *                    cache). Syntax verified against the FreeRDP 3.x
  *                    xfreerdp3(1) manpage grammar:
@@ -103,7 +103,7 @@ const stockArgs = [
     "/sound:sys:pulse",
     "/microphone:sys:pulse",
     "/floatbar",
-    "/gfx:AVC444:on",
+    "/gfx:AVC420:on,AVC444:on",
     "/rfx",
     "/network:auto",
     "/compression",
