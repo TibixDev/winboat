@@ -1,5 +1,6 @@
+import { assert } from "@vueuse/core";
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR } from "./constants";
+import YAML from "yaml";
 import type {
     ComposeConfig,
     CustomAppCallbacks,
@@ -8,19 +9,18 @@ import type {
     Metrics,
     WinApp,
 } from "../../types";
-import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
-import YAML from "yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { setIntervalImmediately } from "../utils/interval";
+import { createLogger } from "../utils/log";
 import { openLink } from "../utils/openLink";
 import { MultiMonitorMode, WinboatConfig } from "./config";
-import { QMPManager } from "./qmp";
-import { assert } from "@vueuse/core";
-import { setIntervalImmediately } from "../utils/interval";
-import { ExecFileAsyncError } from "./exec-helper";
-import { ContainerManager, ContainerStatus } from "./containers/container";
+import { WINBOAT_DIR } from "./constants";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { ContainerManager, ContainerStatus } from "./containers/container";
+import { ExecFileAsyncError } from "./exec-helper";
+import { QMPManager } from "./qmp";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -55,6 +55,14 @@ const presetApps: WinApp[] = [
         Source: "internal",
         Path: "%windir%\\explorer.exe",
         Args: "",
+        Usage: 0,
+    },
+    {
+        Name: "⚙️ Windows Settings",
+        Icon: AppIcons[InternalApps.WINDOWS_SETTINGS],
+        Source: "internal",
+        Path: "%windir%\\explorer.exe",
+        Args: "ms-settings:",
         Usage: 0,
     },
     {
