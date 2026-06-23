@@ -19,6 +19,8 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
                 PASSWORD: "MyWindowsPassword",
                 HOME: "${HOME}",
                 LANGUAGE: "English",
+                REGION: "en-US",
+                KEYBOARD: "en-US",
                 USER_PORTS: "7148",
                 HOST_PORTS: "7149",
                 ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
