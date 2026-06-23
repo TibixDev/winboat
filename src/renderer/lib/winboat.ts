@@ -76,7 +76,26 @@ const presetApps: WinApp[] = [
 ];
 
 /**
- * The stock RDP args that apply to all app launches by default
+ * The stock RDP args that apply to all app launches by default.
+ *
+ * Codec / pipeline flags:
+ *   /gfx:AVC444:on  — enable the RDP8.1 graphics pipeline with H.264 AVC444
+ *                    (much lower bandwidth + lower CPU than legacy bitmap
+ *                    cache). Syntax verified against the FreeRDP 3.x
+ *                    xfreerdp3(1) manpage grammar:
+ *                    https://man.archlinux.org/man/extra/freerdp/xfreerdp3.1.en
+ *                    The /gfx pipeline subsumes legacy /compression once
+ *                    active, but we leave /compression in place as a
+ *                    no-op fallback for older servers.
+ *   /rfx            — enable RemoteFX surface-bits codec (orthogonal to /gfx;
+ *                    used as a fallback path when the server advertises it).
+ *   /network:auto   — let FreeRDP pick experience settings dynamically based
+ *                    on measured throughput. Replaces having to pick LAN/WAN
+ *                    by hand. Helps both poor-quality (#710) and freeze
+ *                    (#566) reports where the link is bandwidth-limited.
+ *
+ * Closes #710 (FreeRDP rendering crashes / poor quality) and mitigates #566
+ * (Wayland multi-monitor freezes by reducing per-frame work).
  */
 const stockArgs = [
     "/cert:ignore",
@@ -84,6 +103,9 @@ const stockArgs = [
     "/sound:sys:pulse",
     "/microphone:sys:pulse",
     "/floatbar",
+    "/gfx:AVC444:on",
+    "/rfx",
+    "/network:auto",
     "/compression",
     "/sec:tls",
 ];
@@ -659,8 +681,13 @@ export class Winboat {
         let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
+            // Full-desktop mode. /dynamic-resolution is valid here (Display
+            // Control virtual channel) but is explicitly counterproductive in
+            // RemoteApp/RAIL mode — see FreeRDP/FreeRDP#10260 — so it stays
+            // gated to the desktop branch only.
             args = args.concat([
                 "+f",
+                "/dynamic-resolution",
                 this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
                 `/scale:${this.#wbConfig?.config.scale ?? 100}`,
             ]);
