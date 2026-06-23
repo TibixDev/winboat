@@ -239,6 +239,26 @@
                                     How?
                                 </a>
                             </li>
+
+                            <!--
+                                Optional GPU passthrough row. NON-BLOCKING — we deliberately do not
+                                add this to satisfiesPrequisites() so the prereq screen stays just
+                                as quick as before for users who don't care about GPU acceleration.
+                                The row only appears once the background probe completes and the
+                                host actually has the necessary plumbing (IOMMU + vfio-pci + an
+                                isolated GPU). On unsupported hosts it stays hidden so the wizard
+                                doesn't get bloated. Configuration lives in Config → Advanced →
+                                GPU Passthrough.
+                            -->
+                            <li
+                                v-if="gpuPassthroughAvailable"
+                                class="flex items-center gap-2"
+                            >
+                                <span class="text-green-500">✔</span>
+                                GPU passthrough available
+                                <span class="text-gray-600"> (optional) </span>
+                                <span class="bg-blue-500/40 rounded-full px-2 py-0.5 text-xs ml-1">Advanced</span>
+                            </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
@@ -826,6 +846,11 @@ import {
     getContainerSpecs,
 } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
+import {
+    detectGpuTopology,
+    isPassthroughEligible,
+    type GpuTopology,
+} from "../lib/gpu/detector";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -1006,6 +1031,33 @@ const containerSpecs = computedAsync(async () => {
     const _tick = prereqTrigger.value;
     return await getContainerSpecs(containerRuntime.value);
 });
+
+// ---------------------------------------------------------------------------
+// Optional GPU passthrough row (non-blocking)
+//
+// Probe once on mount of the wizard — the GPU situation does not change on
+// the fly in any way the wizard cares about. We intentionally do NOT gate
+// the Next button on this; passthrough is purely opt-in and lives behind
+// the Advanced toggle in Config. Per the design constraint, we extend the
+// existing prereq list with a single optional row rather than adding a new
+// wizard step.
+// ---------------------------------------------------------------------------
+const gpuTopology = ref<GpuTopology | null>(null);
+const gpuPassthroughAvailable = computed<boolean>(() =>
+    gpuTopology.value !== null && isPassthroughEligible(gpuTopology.value),
+);
+
+async function probeGpuOnce(): Promise<void> {
+    try {
+        gpuTopology.value = await detectGpuTopology();
+    } catch (e) {
+        // Non-fatal: just hide the optional row.
+        console.warn("[SetupUI] GPU probe failed", e);
+        gpuTopology.value = null;
+    }
+}
+
+probeGpuOnce();
 
 // Stop polling as soon as all prerequisites are satisfied — no point re-checking
 // the host while the user is on the install / progress / completion screens.
