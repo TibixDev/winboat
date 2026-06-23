@@ -1,0 +1,31 @@
+Windows Registry Editor Version 5.00
+
+    ; Additional RDP performance tweaks
+    [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations]
+    "DWMFRAMEINTERVAL"=dword:0000000f
+
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Dwm]
+    "OverlayMinFPS"=dword:00000000
+
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile]
+    "SystemResponsiveness"=dword:00000000
+
+    [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermDD]
+    "FlowControlDisable"=dword:00000001
+    "FlowControlDisplayBandwidth"=dword:00000010
+    "FlowControlChannelBandwidth"=dword:00000090
+    "FlowControlChargePostCompression"=dword:00000000
+
+    [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp]
+    "InteractiveDelay"=dword:00000000
+
+    [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters]
+    "DisableBandwidthThrottling"=dword:00000001
+    "DisableLargeMtu"=dword:00000000
+
+    [HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services]
+    "bEnumerateHWBeforeSW"=dword:00000001
+    "fEnableVirtualizedGraphics"=dword:00000001
+    "SelectTransport"=dword:00000002
+    "AVCHardwareEncodePreferred"=dword:00000001
+    "VGOptimization_CaptureFrameRate"=dword:0000003c
