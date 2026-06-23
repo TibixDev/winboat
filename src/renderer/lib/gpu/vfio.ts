@@ -163,8 +163,20 @@ interface SpawnOptions {
  * VfioHelperError on any failure (cancelled prompt, non-zero exit,
  * unparseable stdout).
  */
+/** Union of helper subcommands. Kept in sync with the Go helper's
+ *  main() switch in gpu_helper/main.go. New subcommands MUST be added
+ *  here AND in main.go's switch. */
+export type HelperSubcommand =
+    | "bind"
+    | "unbind"
+    | "status"
+    | "modprobe"
+    | "sriov-status"
+    | "sriov-probe"
+    | "sriov-configure";
+
 export async function runHelper(
-    subcommand: "bind" | "unbind" | "status" | "modprobe",
+    subcommand: HelperSubcommand,
     args: string[],
     opts: SpawnOptions = {},
 ): Promise<HelperResult> {

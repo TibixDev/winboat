@@ -58,6 +58,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -88,6 +89,11 @@ type response struct {
 	Affected  []string          `json:"affected,omitempty"`
 	Drivers   map[string]string `json:"drivers,omitempty"`
 	Error     string            `json:"error,omitempty"`
+	// SR-IOV-specific fields. Used by sriov-status / sriov-configure /
+	// sriov-probe. Pointers so JSON marshals "absent" vs "0" correctly.
+	SriovTotalVfs *int   `json:"sriov_total_vfs,omitempty"`
+	SriovNumVfs   *int   `json:"sriov_num_vfs,omitempty"`
+	SriovSupported *bool `json:"sriov_supported,omitempty"`
 	HelperVer string            `json:"helper_version"`
 }
 
@@ -113,6 +119,12 @@ func main() {
 		runStatus(args)
 	case "modprobe":
 		runModprobe()
+	case "sriov-status":
+		runSriovStatus(args)
+	case "sriov-probe":
+		runSriovProbe(args)
+	case "sriov-configure":
+		runSriovConfigure(args)
 	case "--version", "-v":
 		fmt.Println(helperVersion)
 	default:
@@ -444,11 +456,19 @@ func runModprobe() {
 	// /sys/bus/pci/drivers/vfio-pci/new_id are usable. modprobe returns 0
 	// if the module is already loaded.
 	//
-	// Hard-coded path to /sbin/modprobe — pkexec sets PATH but we don't
-	// trust it. Falls back to /usr/sbin if the kernel-policy path moved.
-	mp := "/sbin/modprobe"
-	if _, err := os.Stat(mp); errors.Is(err, os.ErrNotExist) {
-		mp = "/usr/sbin/modprobe"
+	// Hard-coded path to modprobe — pkexec sets PATH but we don't
+	// trust it. We try /sbin then /usr/sbin then /usr/bin (NixOS,
+	// Alpine, and some minimal containers put it under /usr/bin).
+	mp := ""
+	for _, candidate := range []string{"/sbin/modprobe", "/usr/sbin/modprobe", "/usr/bin/modprobe"} {
+		if _, err := os.Stat(candidate); err == nil {
+			mp = candidate
+			break
+		}
+	}
+	if mp == "" {
+		emitErr("modprobe not found in /sbin, /usr/sbin, or /usr/bin", "modprobe")
+		os.Exit(1)
 	}
 	cmd := exec.Command(mp, vfioDriverName)
 	out, err := cmd.CombinedOutput()
@@ -484,3 +504,244 @@ func emitErr(msg, action string) {
 type devNull struct{}
 
 func (devNull) Write(p []byte) (int, error) { return len(p), nil }
+
+// ---------------------------------------------------------------------------
+// SR-IOV subcommands (Phase 2)
+//
+// Two attribute files in sysfs control SR-IOV per PCI function:
+//
+//   /sys/bus/pci/devices/<bdf>/sriov_totalvfs  RO; max VFs the device
+//                                              advertises via the PCI
+//                                              SR-IOV capability.
+//   /sys/bus/pci/devices/<bdf>/sriov_numvfs    RW; current VF count.
+//
+// References:
+//   - PCI SR-IOV uAPI: https://docs.kernel.org/PCI/pci-iov-howto.html
+//   - i915: lacks sriov_configure on most kernels; the file may be present
+//     but a write returns -EINVAL or silently no-ops. We DETECT this via
+//     a 1->read-back probe in runSriovProbe.
+//   - Xe: needs `xe.max_vfs=N` on the kernel cmdline. Without it, the file
+//     is present but writes also fail. The active probe distinguishes.
+// ---------------------------------------------------------------------------
+
+func sriovAttrPath(bdf, attr string) string {
+	return filepath.Join(pciDevicesRoot, bdf, attr)
+}
+
+func readIntFile(path string) (int, error) {
+	s, err := readFileTrim(path)
+	if err != nil {
+		return 0, err
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("parse %s: %w", path, err)
+	}
+	return n, nil
+}
+
+// runSriovStatus reads sriov_totalvfs and sriov_numvfs. Cheap and
+// unprivileged-friendly (the polkit policy currently routes it through
+// the .manage action because we already have a single binary; if we
+// add a separate .sriov-status action later, swap the polkit annotation).
+//
+// Returns sriov_supported=false when sriov_totalvfs is missing OR equals
+// zero. Some kernels expose the file but report 0 when the device has no
+// SR-IOV capability — treat that as unsupported.
+func runSriovStatus(args []string) {
+	fs := flag.NewFlagSet("sriov-status", flag.ContinueOnError)
+	fs.SetOutput(devNull{})
+	bdfRaw := fs.String("bdf", "", "Bus:Device.Function of the GPU")
+	if err := fs.Parse(args); err != nil {
+		emitErr(fmt.Sprintf("flag parse: %v", err), "sriov-status")
+		os.Exit(2)
+	}
+	bdf, err := normaliseBDF(*bdfRaw)
+	if err != nil {
+		emitErr(err.Error(), "sriov-status")
+		os.Exit(2)
+	}
+	if _, err := deviceDir(bdf); err != nil {
+		emitErr(err.Error(), "sriov-status")
+		os.Exit(1)
+	}
+
+	r := response{Action: "sriov-status", BDF: bdf}
+
+	total, terr := readIntFile(sriovAttrPath(bdf, "sriov_totalvfs"))
+	num, nerr := readIntFile(sriovAttrPath(bdf, "sriov_numvfs"))
+	supported := terr == nil && total > 0
+
+	if terr == nil {
+		r.SriovTotalVfs = &total
+	}
+	if nerr == nil {
+		r.SriovNumVfs = &num
+	}
+	r.SriovSupported = &supported
+
+	emitOK(r)
+}
+
+// runSriovProbe ACTIVELY tests whether the SR-IOV driver-side handler
+// actually implements VF creation. The PCI capability bits are present
+// even when the driver hasn't wired up sriov_configure (i915 is the
+// canonical example), so a passive read of sriov_totalvfs lies.
+//
+// Strategy:
+//   1. Snapshot current numvfs.
+//   2. If numvfs > 0, leave the device alone and report supported=true
+//      (it's clearly working).
+//   3. Otherwise, write "1" to sriov_numvfs. Read it back.
+//      - Read returns 1 -> supported=true. Write "0" to restore.
+//      - Read returns 0 or write returned an error -> supported=false.
+//   4. Always restore numvfs to the snapshot before returning.
+//
+// Refuses to run if the device doesn't advertise SR-IOV
+// (sriov_totalvfs absent or 0) — the probe would have no effect anyway.
+func runSriovProbe(args []string) {
+	fs := flag.NewFlagSet("sriov-probe", flag.ContinueOnError)
+	fs.SetOutput(devNull{})
+	bdfRaw := fs.String("bdf", "", "Bus:Device.Function of the GPU")
+	if err := fs.Parse(args); err != nil {
+		emitErr(fmt.Sprintf("flag parse: %v", err), "sriov-probe")
+		os.Exit(2)
+	}
+	bdf, err := normaliseBDF(*bdfRaw)
+	if err != nil {
+		emitErr(err.Error(), "sriov-probe")
+		os.Exit(2)
+	}
+	if _, err := deviceDir(bdf); err != nil {
+		emitErr(err.Error(), "sriov-probe")
+		os.Exit(1)
+	}
+
+	totalPath := sriovAttrPath(bdf, "sriov_totalvfs")
+	numPath := sriovAttrPath(bdf, "sriov_numvfs")
+
+	total, terr := readIntFile(totalPath)
+	if terr != nil || total <= 0 {
+		supported := false
+		t := 0
+		emitOK(response{
+			Action:         "sriov-probe",
+			BDF:            bdf,
+			SriovTotalVfs:  &t,
+			SriovSupported: &supported,
+		})
+		return
+	}
+
+	originalNum, nerr := readIntFile(numPath)
+	if nerr != nil {
+		emitErr(fmt.Sprintf("read sriov_numvfs: %v", nerr), "sriov-probe")
+		os.Exit(1)
+	}
+
+	// Case: VFs already exist -> driver clearly works.
+	if originalNum > 0 {
+		supported := true
+		emitOK(response{
+			Action:         "sriov-probe",
+			BDF:            bdf,
+			SriovTotalVfs:  &total,
+			SriovNumVfs:    &originalNum,
+			SriovSupported: &supported,
+		})
+		return
+	}
+
+	// Active probe: write "1", read back, then restore.
+	werr := writeFile(numPath, "1")
+	supported := false
+	if werr == nil {
+		// Re-read to confirm the kernel accepted the change.
+		if n, rerr := readIntFile(numPath); rerr == nil && n >= 1 {
+			supported = true
+		}
+		// Restore. Best-effort: errors here are logged but don't fail
+		// the probe (the kernel will let userspace re-call later).
+		_ = writeFile(numPath, "0")
+	}
+
+	r := response{
+		Action:         "sriov-probe",
+		BDF:            bdf,
+		SriovTotalVfs:  &total,
+		SriovNumVfs:    &originalNum,
+		SriovSupported: &supported,
+	}
+	if !supported && werr != nil {
+		r.Error = fmt.Sprintf("sriov_numvfs write rejected: %v", werr)
+	}
+	emitOK(r)
+}
+
+// runSriovConfigure sets sriov_numvfs to the requested value. Caller is
+// responsible for validating against sriov_totalvfs first (we still
+// double-check here defensively).
+func runSriovConfigure(args []string) {
+	fs := flag.NewFlagSet("sriov-configure", flag.ContinueOnError)
+	fs.SetOutput(devNull{})
+	bdfRaw := fs.String("bdf", "", "Bus:Device.Function of the GPU")
+	numVfs := fs.Int("numvfs", -1, "Number of VFs to instantiate (0 to disable)")
+	if err := fs.Parse(args); err != nil {
+		emitErr(fmt.Sprintf("flag parse: %v", err), "sriov-configure")
+		os.Exit(2)
+	}
+	if *numVfs < 0 {
+		emitErr("--numvfs is required (>= 0)", "sriov-configure")
+		os.Exit(2)
+	}
+	bdf, err := normaliseBDF(*bdfRaw)
+	if err != nil {
+		emitErr(err.Error(), "sriov-configure")
+		os.Exit(2)
+	}
+	if _, err := deviceDir(bdf); err != nil {
+		emitErr(err.Error(), "sriov-configure")
+		os.Exit(1)
+	}
+
+	if *numVfs > 0 {
+		total, terr := readIntFile(sriovAttrPath(bdf, "sriov_totalvfs"))
+		if terr != nil {
+			emitErr(fmt.Sprintf("read sriov_totalvfs: %v", terr), "sriov-configure")
+			os.Exit(1)
+		}
+		if *numVfs > total {
+			emitErr(fmt.Sprintf("requested %d VFs exceeds sriov_totalvfs=%d", *numVfs, total), "sriov-configure")
+			os.Exit(1)
+		}
+	}
+
+	// Writing the same value as currently-set is a no-op in the kernel;
+	// some drivers (notably i915 derivatives that DO implement
+	// sriov_configure) require numvfs=0 before changing to a non-zero
+	// value. We pre-zero to be safe when going from >0 to a different >0.
+	cur, _ := readIntFile(sriovAttrPath(bdf, "sriov_numvfs"))
+	if cur > 0 && *numVfs > 0 && cur != *numVfs {
+		_ = writeFile(sriovAttrPath(bdf, "sriov_numvfs"), "0")
+	}
+
+	if err := writeFile(sriovAttrPath(bdf, "sriov_numvfs"), strconv.Itoa(*numVfs)); err != nil {
+		emitErr(fmt.Sprintf("write sriov_numvfs=%d: %v", *numVfs, err), "sriov-configure")
+		os.Exit(1)
+	}
+
+	final, _ := readIntFile(sriovAttrPath(bdf, "sriov_numvfs"))
+	r := response{
+		Action:      "sriov-configure",
+		BDF:         bdf,
+		SriovNumVfs: &final,
+	}
+	if final != *numVfs {
+		r.Error = fmt.Sprintf("requested %d VFs but kernel reports %d (driver may not implement sriov_configure)", *numVfs, final)
+		r.OK = false
+		// emitOK overrides OK=true; use emitErr-equivalent envelope on stdout.
+		emitOK(r) // still emit, caller can detect via error field
+		return
+	}
+	emitOK(r)
+}

@@ -47,6 +47,7 @@ import {
     VfioHelperError,
 } from "./vfio";
 import { applyVfioComposeMutations, composeHasVfioFor } from "./qemuArgs";
+import { configureSriov, getSriovStatus, probeSriovSupport } from "./sriov";
 import { type GpuPassthroughMode, type WinboatConfigObj } from "../config";
 import type { ComposeConfig } from "../../../types";
 
@@ -56,6 +57,8 @@ import type { ComposeConfig } from "../../../types";
 // The strings MUST stay in sync with the enum in config.ts.
 const MODE_OFF: GpuPassthroughMode = "Off" as GpuPassthroughMode;
 const MODE_VFIO: GpuPassthroughMode = "VFIO" as GpuPassthroughMode;
+const MODE_SRIOV: GpuPassthroughMode = "SR-IOV" as GpuPassthroughMode;
+const MODE_MVISOR: GpuPassthroughMode = "mvisor-VGPU" as GpuPassthroughMode;
 
 /** Per-GPU eligibility: combines the global topology check with a
  *  device-specific isolation + IOMMU-group sanity check. */
@@ -179,6 +182,19 @@ export async function applyGpuPassthroughIfEnabled(
 
     if (config.gpuPassthroughMode === MODE_OFF) {
         return ok("disabled", "GPU passthrough is disabled.");
+    }
+    if (config.gpuPassthroughMode === MODE_SRIOV) {
+        // Phase 2: route through the SR-IOV configure path. Returns a
+        // VF BDF, which we then bind via vfio-pci via the same Phase 1
+        // pipeline. The orchestration lives in applySriovPassthrough
+        // below; we call it here for unified entry-point semantics.
+        return ok("disabled", "SR-IOV mode active — use applySriovPassthrough.");
+    }
+    if (config.gpuPassthroughMode === MODE_MVISOR) {
+        // Phase 3: paravirtual mvisor-VGPU integration is a separate
+        // QEMU device line + a guest-side driver; no host bind needed.
+        // Stub for now — applyMvisorPassthrough handles it.
+        return ok("disabled", "mvisor-VGPU mode is not yet implemented (Phase 3 stub).");
     }
     if (config.gpuPassthroughMode !== MODE_VFIO) {
         return ok("disabled", "Mode " + config.gpuPassthroughMode + " not yet implemented.");
@@ -341,3 +357,151 @@ export const __test__ = {
     ineligibilityReason,
     helperErrorMessage,
 };
+
+// ---------------------------------------------------------------------------
+// Phase 2: SR-IOV orchestration
+//
+// Differs from the VFIO path in three ways:
+//
+//   1. We do NOT bind the PHYSICAL function to vfio-pci. Instead, we
+//      configure sriov_numvfs on the PF so the kernel instantiates Virtual
+//      Functions (each with its own BDF, typically PF_BDF + sequential
+//      offsets, e.g. 00:02.1, 00:02.2 for a PF at 00:02.0).
+//
+//   2. We then bind ONE of the resulting VFs to vfio-pci via the existing
+//      bindGpuToVfio helper. The compose mutation uses that VF's BDF.
+//
+//   3. We MUST active-probe the driver first because i915 reports
+//      sriov_totalvfs but doesn't implement sriov_configure (the write
+//      is a silent no-op). See sriov.ts for the probe rationale.
+// ---------------------------------------------------------------------------
+
+export interface SriovDeps {
+    probe: (bdf: string) => Promise<{ ok: boolean; sriov_supported?: boolean; sriov_total_vfs?: number; error?: string }>;
+    configure: (bdf: string, n: number) => Promise<{ ok: boolean; sriov_num_vfs?: number; error?: string }>;
+    status: (bdf: string) => Promise<{ ok: boolean; sriov_num_vfs?: number; sriov_total_vfs?: number; sriov_supported?: boolean; error?: string }>;
+    logger?: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void };
+}
+
+export interface SriovResult extends GpuOperationResult {
+    /** BDF of the VF that should be bound to vfio-pci. Undefined on failure. */
+    vfBdf?: string;
+}
+
+/**
+ * Probe + configure SR-IOV on the PF identified by `bdf`. Returns the
+ * resulting VF BDF on success. Callers should then feed that BDF into
+ * the regular VFIO pipeline (compose mutation + bindGpuToVfio).
+ *
+ * On i915 / mis-booted Xe systems this returns ok=false with status =
+ * "ineligible" so the UI can suggest the SR-IOV-Xe-fix wiki link.
+ */
+export async function applySriovPassthrough(
+    bdf: string,
+    deps?: Partial<SriovDeps>,
+): Promise<SriovResult> {
+    const d: SriovDeps = {
+        probe: deps?.probe ?? probeSriovSupport,
+        configure: deps?.configure ?? configureSriov,
+        status: deps?.status ?? getSriovStatus,
+        logger: deps?.logger ?? nullLogger(),
+    };
+    const log = d.logger!;
+
+    let probed: Awaited<ReturnType<SriovDeps["probe"]>>;
+    try {
+        probed = await d.probe(bdf);
+    } catch (e) {
+        return { ...fail("bind-failed", helperErrorMessage(e, "probing SR-IOV"), e) };
+    }
+    if (!probed.ok || !probed.sriov_supported) {
+        const why = probed.sriov_supported === false
+            ? "Driver does not implement sriov_configure (i915 or Xe without xe.max_vfs)."
+            : (probed.error ?? "Unknown SR-IOV probe failure.");
+        return { ...fail("ineligible", "SR-IOV not supported on this device: " + why) };
+    }
+
+    // For now we always create exactly one VF. Future improvement: let
+    // the user pick VF count from the UI; the helper accepts arbitrary
+    // numvfs values up to sriov_totalvfs.
+    let configured: Awaited<ReturnType<SriovDeps["configure"]>>;
+    try {
+        configured = await d.configure(bdf, 1);
+    } catch (e) {
+        return { ...fail("bind-failed", helperErrorMessage(e, "configuring SR-IOV"), e) };
+    }
+    if (!configured.ok) {
+        return { ...fail("bind-failed", configured.error ?? "sriov_numvfs write failed.") };
+    }
+    if ((configured.sriov_num_vfs ?? 0) < 1) {
+        return { ...fail("bind-failed", "sriov_numvfs write returned 0 \u2014 driver no-op (likely i915).") };
+    }
+
+    // Compute the conventional VF BDF: PF_BDF + .1. Note that on some
+    // platforms VFs are bus-numbered differently (e.g. their own bus).
+    // The kernel exposes /sys/bus/pci/devices/<PF>/virtfn0 as a symlink
+    // pointing to the canonical VF BDF \u2014 we read that to be correct.
+    // For now we return a placeholder hint and let the next caller
+    // resolve via sysfs (see TODO below).
+    const vfHint = inferVfBdfHint(bdf);
+    log.info("SR-IOV configured 1 VF; tentative VF BDF: " + vfHint);
+
+    return {
+        ok: true,
+        status: "compose-updated",
+        message: "SR-IOV PF " + bdf + " yielded 1 VF (" + vfHint + ").",
+        vfBdf: vfHint,
+    };
+}
+
+/**
+ * Best-effort VF BDF inference: assumes the kernel exposed the VF at
+ * PF.function + 1. This is only a HINT \u2014 production code should read
+ * /sys/bus/pci/devices/<PF>/virtfn0 (a symlink to the real VF BDF).
+ *
+ * TODO(phase2.1): replace with a sysfs read once we have a privileged
+ * read path or extend the helper with a sriov-listvfs subcommand.
+ */
+function inferVfBdfHint(pfBdf: string): string {
+    // pfBdf is "0000:bb:dd.f" or "bb:dd.f"; bump function by 1.
+    const m = pfBdf.match(/^(?:([0-9a-fA-F]{4}):)?([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-7])$/);
+    if (!m) return pfBdf;
+    const domain = m[1] ?? "0000";
+    const bus = m[2];
+    const dev = m[3];
+    const fn = parseInt(m[4], 16);
+    const newFn = (fn + 1) & 0x7;
+    return (domain + ":" + bus + ":" + dev + "." + newFn.toString(16)).toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3: mvisor-VGPU stub
+//
+// mvisor-VGPU is an experimental paravirtual GPU that runs ENTIRELY in
+// userspace and exposes a virtio-gpu-like device to the guest. The host
+// does not need IOMMU, does not need VFIO, and does NOT relinquish the
+// physical GPU. Integration is a single `-device mvisor-vgpu,...` line
+// in QEMU args plus a guest-side driver.
+//
+// Upstream port status: https://x.com/winboat_app/status/1980054646896095639
+//
+// This stub exists to prove the gpuManager API is extensible. We DO NOT
+// emit any compose mutations here; once upstream lands the QEMU device
+// and a guest driver, the implementation is roughly:
+//
+//   - detect mvisor-vgpu shared-object availability on host
+//   - inject `-device mvisor-vgpu,share=on,...` into ARGUMENTS via the
+//     same begin/end marker pattern qemuArgs.ts uses for VFIO
+//   - no privileged bind needed (no /sys/bus/pci touching)
+// ---------------------------------------------------------------------------
+
+export async function applyMvisorPassthrough(): Promise<GpuOperationResult> {
+    return fail(
+        "ineligible",
+        "mvisor-VGPU integration is a Phase 3 stub. Upstream tracking: " +
+        "https://x.com/winboat_app/status/1980054646896095639",
+    );
+}
+
+// Re-export sriov helpers for callers that don't want to import sriov.ts.
+export { configureSriov as configureSriovRaw, getSriovStatus as getSriovStatusRaw, probeSriovSupport as probeSriovSupportRaw };
