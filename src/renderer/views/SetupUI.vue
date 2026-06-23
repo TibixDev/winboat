@@ -1,12 +1,12 @@
 <template>
-    <div class="relative size-full p-16 overflow-hidden">
-        <div class="size-full rounded-3xl bg-[#1F1F1F] shadow-lg shadow-black/50 gap-4 p-5 grid grid-cols-2">
+    <div class="relative size-full overflow-hidden p-16">
+        <div class="grid size-full grid-cols-2 gap-4 rounded-3xl bg-[#1F1F1F] p-5 shadow-lg shadow-black/50">
             <div>
                 <div id="stepStatus" class="flex flex-row justify-center gap-4 pt-2">
                     <div
                         v-for="(_, idx) of steps"
                         :key="idx"
-                        class="w-4 h-4 rounded-full bg-neutral-700 transition duration-1000"
+                        class="h-4 w-4 rounded-full bg-neutral-700 transition duration-1000"
                         :class="{
                             'bg-neutral-500': idx < currentStepIdx,
                             'bg-violet-400': idx === currentStepIdx,
@@ -15,21 +15,21 @@
                     ></div>
                 </div>
                 <Transition name="bounce" mode="out-in">
-                    <div :key="currentStepIdx" id="stepIcon" class="flex items-center justify-center relative h-full">
-                        <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentStep.icon" />
+                    <div :key="currentStepIdx" id="stepIcon" class="relative flex h-full items-center justify-center">
+                        <Icon key="icon1" class="relative z-30 size-[60%] text-violet-400" :icon="currentStep.icon" />
                         <Icon
                             key="icon-gradient"
-                            class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"
+                            class="absolute top-[50%] z-20 size-[60%] translate-y-[-50%] text-violet-400 blur-2xl brightness-75"
                             :icon="currentStep.icon"
                         />
                         <Icon
                             key="icon2"
-                            class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]"
+                            class="absolute top-[51.5%] z-20 size-[60%] translate-x-[1.5%] translate-y-[-50%] text-violet-400 brightness-75"
                             :icon="currentStep.icon"
                         />
                         <Icon
                             key="icon3"
-                            class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]"
+                            class="absolute top-[53%] z-10 size-[60%] translate-x-[3%] translate-y-[-50%] text-violet-400 brightness-50"
                             :icon="currentStep.icon"
                         />
                     </div>
@@ -60,7 +60,7 @@
                             WinBoat is open-source software licensed under the MIT License. Please review the license
                             agreement below.
                         </p>
-                        <pre class="text-sm text-gray-400 bg-neutral-800 p-4 rounded-lg overflow-auto">
+                        <pre class="overflow-auto rounded-lg bg-neutral-800 p-4 text-sm text-gray-400">
                             {{ license }}
                         </pre>
                         <div class="flex flex-row gap-4">
@@ -75,7 +75,7 @@
                         <p class="text-lg text-gray-400">
                             In order to run WinBoat, your computer must meet the following requirements.
                         </p>
-                        <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 rounded-lg">
+                        <ul class="list-none space-y-1.5 rounded-lg bg-neutral-800 py-3 text-lg text-gray-400">
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.ramGB >= 4" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
@@ -96,7 +96,7 @@
                                     href="https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web"
                                     @click="openAnchorLink"
                                     target="_blank"
-                                    class="text-violet-400 hover:underline ml-1"
+                                    class="ml-1 text-violet-400 hover:underline"
                                 >
                                     How?
                                 </a>
@@ -125,13 +125,16 @@
                                 </div>
                                 installed
                                 <a
-                                    :href="containerRuntime === ContainerRuntimes.PODMAN
-                                        ? 'https://podman.io/getting-started/installation'
-                                        : 'https://docs.docker.com/engine/install/'"
+                                    :href="
+                                        containerRuntime === ContainerRuntimes.PODMAN
+                                            ? 'https://podman.io/getting-started/installation'
+                                            : 'https://docs.docker.com/engine/install/'
+                                    "
                                     @click="openAnchorLink"
                                     target="_blank"
-                                    class="text-violet-400 hover:underline ml-1"
-                                >How?</a>
+                                    class="ml-1 text-violet-400 hover:underline"
+                                    >How?</a
+                                >
                             </li>
 
                             <!-- Docker Specific Requirements -->
@@ -152,7 +155,7 @@
                                         href="https://docs.docker.com/compose/install/#plugin-linux-only"
                                         @click="openAnchorLink"
                                         target="_blank"
-                                        class="text-violet-400 hover:underline ml-1"
+                                        class="ml-1 text-violet-400 hover:underline"
                                         >How?</a
                                     >
                                 </li>
@@ -169,13 +172,13 @@
                                     >
                                     <span v-else class="text-red-500">✘</span>
                                     User added to the
-                                    <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
+                                    <span class="rounded-md bg-neutral-700 px-0.5 font-mono">docker</span> group
                                     <span class="text-gray-600"> (Relog required) </span>
                                     <a
                                         href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
                                         @click="openAnchorLink"
                                         target="_blank"
-                                        class="text-violet-400 hover:underline ml-1"
+                                        class="ml-1 text-violet-400 hover:underline"
                                         >How?</a
                                     >
                                 </li>
@@ -197,7 +200,7 @@
                                         href="https://docs.docker.com/config/daemon/start/"
                                         @click="openAnchorLink"
                                         target="_blank"
-                                        class="text-violet-400 hover:underline ml-1"
+                                        class="ml-1 text-violet-400 hover:underline"
                                         >How?</a
                                     >
                                 </li>
@@ -221,7 +224,7 @@
                                         href="https://github.com/containers/podman-compose?tab=readme-ov-file#installation"
                                         @click="openAnchorLink"
                                         target="_blank"
-                                        class="text-violet-400 hover:underline ml-1"
+                                        class="ml-1 text-violet-400 hover:underline"
                                         >How?</a
                                     >
                                 </li>
@@ -234,13 +237,13 @@
                                     href="https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds"
                                     @click="openAnchorLink"
                                     target="_blank"
-                                    class="text-violet-400 hover:underline ml-1"
+                                    class="ml-1 text-violet-400 hover:underline"
                                 >
                                     How?
                                 </a>
                             </li>
                         </ul>
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="mt-6 flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
                                 toggled
@@ -265,14 +268,14 @@
                             location.
                         </p>
 
-                        <div class="flex flex-row items-center mt-4">
+                        <div class="mt-4 flex flex-row items-center">
                             <x-input
                                 id="install-location"
                                 type="text"
                                 placeholder="Select Install Location"
                                 readonly
                                 :value="installFolder"
-                                class="!max-w-full w-[300px] rounded-r-none"
+                                class="w-[300px] !max-w-full rounded-r-none"
                             >
                                 <x-icon href="#folder"></x-icon>
                                 <x-label>/your/install/folder</x-label>
@@ -282,21 +285,21 @@
                             </x-button>
                         </div>
 
-                        <div id="install-folder-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
+                        <div id="install-folder-errors" class="h-[4rem] space-y-1 text-sm font-semibold text-red-400">
                             <div v-for="error in installFolderErrors" :key="error">
                                 <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                 {{ error }}
                             </div>
                             <div
                                 v-if="installFolder && !installFolderErrors?.length"
-                                class="text-green-400 font-semibold"
+                                class="font-semibold text-green-400"
                             >
                                 <Icon icon="line-md:check-all" class="inline size-4 -translate-y-0.5"></Icon>
                                 Valid install folder
                             </div>
                         </div>
 
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="mt-6 flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
                                 toggled
@@ -320,7 +323,7 @@
                             able to change them unless you reinstall.
                         </p>
                         <div>
-                            <label for="select-edition" class="text-sm mb-4 text-neutral-400">Select Edition</label>
+                            <label for="select-edition" class="mb-4 text-sm text-neutral-400">Select Edition</label>
                             <x-select
                                 id="select-edition"
                                 @change="(e: any) => (windowsVersion = e.detail.newValue)"
@@ -341,7 +344,7 @@
                             </x-select>
                         </div>
                         <div>
-                            <label for="select-language" class="text-sm mb-4 text-neutral-400">Select Language</label>
+                            <label for="select-language" class="mb-4 text-sm text-neutral-400">Select Language</label>
                             <x-select
                                 id="select-language"
                                 @change="(e: any) => (windowsLanguage = e.detail.newValue)"
@@ -373,13 +376,13 @@
                             <div class="flex flex-col gap-2">
                                 <label for="select-iso" class="text-xs text-neutral-400">Custom ISO (Optional)</label>
                                 <div class="flex items-center gap-2">
-                                    <x-button id="select-iso" class="text-sm w-64" @click="selectIsoFile">
+                                    <x-button id="select-iso" class="w-64 text-sm" @click="selectIsoFile">
                                         Select ISO File
                                     </x-button>
-                                    <span class="relative group">
-                                        <Icon icon="line-md:alert" class="text-neutral-400 cursor-pointer" />
+                                    <span class="group relative">
+                                        <Icon icon="line-md:alert" class="cursor-pointer text-neutral-400" />
                                         <span
-                                            class="absolute bottom-5 left-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                            class="pointer-events-none absolute bottom-5 left-[-160px] z-50 hidden w-[320px] rounded-lg bg-neutral-900 px-3 py-2 text-xs text-gray-300 shadow-lg transition-opacity duration-200 group-hover:block"
                                         >
                                             We offer you the possibility of using a custom Windows ISO for your
                                             convenience, however we can't provide any support if your custom ISO breaks
@@ -389,7 +392,7 @@
                                 </div>
                                 <span
                                     v-if="customIsoPath"
-                                    class="text-xs text-gray-400 font-semibold flex items-center gap-2"
+                                    class="flex items-center gap-2 text-xs font-semibold text-gray-400"
                                 >
                                     Selected: {{ customIsoFileName }}
                                     <x-button size="small" class="ml-2 px-2 py-0" @click="deselectIsoFile"
@@ -398,7 +401,7 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="flex flex-row gap-4 mt-6" :class="{ '!mt-2': customIsoPath }">
+                        <div class="mt-6 flex flex-row gap-4" :class="{ '!mt-2': customIsoPath }">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
                         </div>
@@ -418,7 +421,7 @@
                         <div class="flex flex-row gap-4">
                             <div class="flex flex-col gap-4">
                                 <div>
-                                    <label for="select-username" class="text-sm mb-4 text-neutral-400">Username</label>
+                                    <label for="select-username" class="mb-4 text-sm text-neutral-400">Username</label>
                                     <x-input
                                         id="select-username"
                                         class="w-64 max-w-64"
@@ -436,7 +439,7 @@
                                 </div>
 
                                 <div>
-                                    <label for="select-password" class="text-sm mb-4 text-neutral-400">Password</label>
+                                    <label for="select-password" class="mb-4 text-sm text-neutral-400">Password</label>
                                     <x-input
                                         id="select-password"
                                         class="w-64 max-w-64"
@@ -454,7 +457,7 @@
                                 </div>
 
                                 <div>
-                                    <label for="confirm-password" class="text-sm mb-4 text-neutral-400">
+                                    <label for="confirm-password" class="mb-4 text-sm text-neutral-400">
                                         Confirm Password
                                     </label>
                                     <x-input
@@ -474,14 +477,14 @@
                                 </div>
                             </div>
 
-                            <div class="flex flex-col gap-4 mt-6">
-                                <div id="username-errors" class="h-[4rem] text-red-400 text-sm font-semibold space-y-1">
+                            <div class="mt-6 flex flex-col gap-4">
+                                <div id="username-errors" class="h-[4rem] space-y-1 text-sm font-semibold text-red-400">
                                     <div v-for="error in usernameErrors" :key="error">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                         {{ error }}
                                     </div>
                                 </div>
-                                <div id="password-errors" class="text-red-400 text-sm font-semibold space-y-1">
+                                <div id="password-errors" class="space-y-1 text-sm font-semibold text-red-400">
                                     <div v-for="error in passwordErrors" :key="error">
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                         {{ error }}
@@ -490,7 +493,7 @@
                             </div>
                         </div>
 
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="mt-6 flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
                                 :disabled="usernameErrors.length || passwordErrors.length"
@@ -519,7 +522,7 @@
                         <div class="flex flex-col gap-6">
                             <div>
                                 <label for="select-cpu-cores" class="text-sm text-neutral-400">Select CPU Cores</label>
-                                <div class="flex flex-row gap-4 items-center">
+                                <div class="flex flex-row items-center gap-4">
                                     <x-slider
                                         id="select-cpu-cores"
                                         @change="(e: any) => (cpuCores = Number(e.target.value))"
@@ -539,12 +542,12 @@
                                     Select RAM
                                     <span
                                         v-if="memoryInfo.availableGB < ramGB"
-                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
+                                        class="group relative ml-2 rounded-full bg-red-600 px-2 pb-0.5 text-xs font-bold text-white transition hover:bg-red-700"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5" />
                                         Warning
                                         <span
-                                            class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                            class="pointer-events-none absolute bottom-5 right-[-160px] z-50 hidden w-[320px] rounded-lg bg-neutral-900 px-3 py-2 text-xs text-gray-300 shadow-lg transition-opacity duration-200 group-hover:block"
                                         >
                                             You don't have enough unused memory available to allocate the requested
                                             amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of unused
@@ -553,7 +556,7 @@
                                         </span>
                                     </span>
                                 </label>
-                                <div class="flex flex-row gap-4 items-center">
+                                <div class="flex flex-row items-center gap-4">
                                     <x-slider
                                         id="select-ram"
                                         @change="(e: any) => (ramGB = Number(e.target.value))"
@@ -572,12 +575,12 @@
                                     Select Disk Size
                                     <span
                                         v-if="(installFolderDiskSpaceGB || 0) - diskSpaceGB < 5"
-                                        class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
+                                        class="group relative ml-2 rounded-full bg-red-600 px-2 pb-0.5 text-xs font-bold text-white transition hover:bg-red-700"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5"></Icon>
                                         Warning
                                         <span
-                                            class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                            class="pointer-events-none absolute bottom-5 right-[-160px] z-50 hidden w-[320px] rounded-lg bg-neutral-900 px-3 py-2 text-xs text-gray-300 shadow-lg transition-opacity duration-200 group-hover:block"
                                         >
                                             You're about to allocate most of your remaining disk space with less than
                                             5GB in excess. You currently have ~{{ installFolderDiskSpaceGB }} GB of disk
@@ -587,7 +590,7 @@
                                         </span>
                                     </span>
                                 </label>
-                                <div class="flex flex-row gap-4 items-center">
+                                <div class="flex flex-row items-center gap-4">
                                     <x-slider
                                         id="select-disk"
                                         @change="(e: any) => (diskSpaceGB = Number(e.target.value))"
@@ -602,7 +605,7 @@
                             </div>
                         </div>
 
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="mt-6 flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button toggled class="px-6" @click="currentStepIdx++">Next</x-button>
                         </div>
@@ -612,28 +615,24 @@
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
                         <h1 class="text-3xl font-semibold">Folder Sharing</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat allows you to share a folder from your Linux system with the Windows virtual machine.
-                            You can choose whether to enable this feature and select which folder to share.
+                            WinBoat allows you to share a folder from your Linux system with the Windows virtual
+                            machine. You can choose whether to enable this feature and select which folder to share.
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
-                            Sharing a folder exposes your Linux files to Windows-specific malware and viruses.
-                            Only enable this feature if you understand the risks involved. Always be careful with the
-                            files you download and open in Windows.
+                            Sharing a folder exposes your Linux files to Windows-specific malware and viruses. Only
+                            enable this feature if you understand the risks involved. Always be careful with the files
+                            you download and open in Windows.
                         </p>
 
-                        <x-checkbox
-                            class="my-4"
-                            @toggle="folderSharing = !folderSharing"
-                            :toggled="folderSharing"
-                        >
+                        <x-checkbox class="my-4" @toggle="folderSharing = !folderSharing" :toggled="folderSharing">
                             <x-label><strong>Enable folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
                                 By checking this box, you acknowledge the risks mentioned above
                             </x-label>
                         </x-checkbox>
 
-                        <div v-if="folderSharing" class="flex flex-col gap-2 my-4">
+                        <div v-if="folderSharing" class="my-4 flex flex-col gap-2">
                             <label class="text-sm text-neutral-400">Shared Folder Location</label>
                             <div class="flex flex-row items-center">
                                 <x-input
@@ -641,7 +640,7 @@
                                     placeholder="Select Folder to Share"
                                     readonly
                                     :value="sharedFolderPath"
-                                    class="!max-w-full w-[300px] rounded-r-none"
+                                    class="w-[300px] !max-w-full rounded-r-none"
                                 >
                                     <x-icon href="#folder"></x-icon>
                                     <x-label>/your/shared/folder</x-label>
@@ -652,7 +651,7 @@
                             </div>
                         </div>
 
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="mt-6 flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
                                 toggled
@@ -673,8 +672,8 @@
                             correct, click "Install" to begin.
                         </p>
 
-                        <div class="bg-neutral-800 p-6 rounded-lg flex flex-col gap-4">
-                            <h2 class="text-xl font-medium text-white mt-0 mb-2">Your Configuration</h2>
+                        <div class="flex flex-col gap-4 rounded-lg bg-neutral-800 p-6">
+                            <h2 class="mb-2 mt-0 text-xl font-medium text-white">Your Configuration</h2>
 
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="flex flex-col">
@@ -712,7 +711,7 @@
                             </div>
                         </div>
 
-                        <div class="flex flex-row gap-4 mt-6">
+                        <div class="mt-6 flex flex-row gap-4">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
                                 toggled
@@ -730,7 +729,7 @@
                     <!-- Installation -->
                     <div v-if="currentStep.id === StepID.INSTALL" class="step-block">
                         <h1 class="text-3xl font-semibold">Installation</h1>
-                        <p class="text-lg text-gray-400 text-justify">
+                        <p class="text-justify text-lg text-gray-400">
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
                             <span v-if="linkableInstallSteps.includes(installState)">
@@ -739,11 +738,14 @@
                             <span v-else>
                                 over at
                                 <div
-                                    style="animation-duration: 3s!important;"
-                                    class="ml-1 inline-block relative text-transparent rounded-md bg-neutral-700 animate-pulse select-none"
+                                    style="animation-duration: 3s !important"
+                                    class="relative ml-1 inline-block animate-pulse select-none rounded-md bg-neutral-700 text-transparent"
                                 >
                                     in your browser
-                                    <Icon icon="eos-icons:three-dots-loading" class="pointer-events-none absolute top-0 left-[50%] size-16 text-violet-400 -translate-x-[50%] -translate-y-[27.5%]"></Icon>
+                                    <Icon
+                                        icon="eos-icons:three-dots-loading"
+                                        class="pointer-events-none absolute left-[50%] top-0 size-16 -translate-x-[50%] -translate-y-[27.5%] text-violet-400"
+                                    ></Icon>
                                 </div>
                             </span>
                         </p>
@@ -753,16 +755,16 @@
                             v-if="
                                 installState !== InstallStates.COMPLETED && installState !== InstallStates.INSTALL_ERROR
                             "
-                            class="flex flex-col h-full items-center justify-center gap-4"
+                            class="flex h-full flex-col items-center justify-center gap-4"
                         >
                             <x-throbber class="size-16"></x-throbber>
                             <x-label
                                 v-if="installState !== InstallStates.MONITORING_PREINSTALL"
-                                class="text-lg text-gray-400 text-center"
+                                class="text-center text-lg text-gray-400"
                             >
                                 {{ installState }}...
                             </x-label>
-                            <x-label v-else class="text-lg text-gray-400 text-center">
+                            <x-label v-else class="text-center text-lg text-gray-400">
                                 {{ preinstallMsg }}
                             </x-label>
                         </div>
@@ -770,19 +772,19 @@
                         <!-- Error -->
                         <div
                             v-if="installState === InstallStates.INSTALL_ERROR"
-                            class="flex flex-col h-full items-center justify-center gap-4"
+                            class="flex h-full flex-col items-center justify-center gap-4"
                         >
                             <Icon icon="line-md:alert" class="size-16 text-red-500"></Icon>
-                            <x-label class="text-lg text-gray-400 text-center">
+                            <x-label class="text-center text-lg text-gray-400">
                                 An error occurred while installing Windows. Please check the logs in
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5">~/.winboat</span>
+                                <span class="rounded-md bg-neutral-700 px-0.5 font-mono">~/.winboat</span>
                                 and verify
-                                <span class="font-mono bg-neutral-700 rounded-md px-0.5"
+                                <span class="rounded-md bg-neutral-700 px-0.5 font-mono"
                                     >{{ installManager!.container.executableAlias }} logs WinBoat</span
                                 >
                                 in your terminal for more information.
                             </x-label>
-                            <x-label class="text-lg text-gray-400 text-center">
+                            <x-label class="text-center text-lg text-gray-400">
                                 To reset and try again, follow
                                 <a href="https://rentry.org/winboat_retry_install" @click="openAnchorLink">these</a>
                                 instructions.
@@ -792,10 +794,10 @@
                         <!-- Completed -->
                         <div
                             v-if="installState === InstallStates.COMPLETED"
-                            class="flex flex-col h-full items-center justify-center gap-4"
+                            class="flex h-full flex-col items-center justify-center gap-4"
                         >
                             <Icon icon="line-md:confirm-circle" class="size-16 text-green-500"></Icon>
-                            <x-label class="text-lg text-gray-400 text-center">
+                            <x-label class="text-center text-lg text-gray-400">
                                 Windows has been installed successfully!
                             </x-label>
                             <x-button @click="$router.push('/home')">Finish</x-button>
@@ -804,7 +806,7 @@
                 </div>
             </Transition>
         </div>
-        <div class="absolute gradient-bg left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] -z-10"></div>
+        <div class="gradient-bg absolute left-[50%] top-[50%] -z-10 translate-x-[-50%] translate-y-[-50%]"></div>
     </div>
 </template>
 
@@ -819,12 +821,7 @@ import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
-import {
-    ContainerRuntimes,
-    DockerSpecs,
-    PodmanSpecs,
-    getContainerSpecs,
-} from "../lib/containers/common";
+import { ContainerRuntimes, DockerSpecs, PodmanSpecs, getContainerSpecs } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
 
 const path: typeof import("path") = require("node:path");
@@ -938,7 +935,11 @@ const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
 const vncPort = ref(8006);
 // These are the install steps where the container is actually up and running
-const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
+const linkableInstallSteps = [
+    InstallStates.MONITORING_PREINSTALL,
+    InstallStates.INSTALLING_WINDOWS,
+    InstallStates.COMPLETED,
+];
 
 let installManager: InstallManager | null;
 
@@ -966,7 +967,7 @@ onUnmounted(() => {
 });
 
 // Watch for when folder sharing is enabled and set default path
-watch(folderSharing, (newValue) => {
+watch(folderSharing, newValue => {
     if (newValue && !sharedFolderPath.value) {
         sharedFolderPath.value = os.homedir();
     }
@@ -1180,7 +1181,7 @@ function install() {
 }
 
 .step-block {
-    @apply flex flex-col gap-4 h-full justify-center;
+    @apply flex h-full flex-col justify-center gap-4;
 }
 
 .flex p {

@@ -14,6 +14,10 @@ const remote: typeof import("@electron/remote") = require("@electron/remote");
 const argon2: typeof import("argon2") = require("argon2");
 const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
+function formatError(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 export enum InstallStates {
     IDLE = "Preparing",
     CREATING_COMPOSE_FILE = "Creating Compose File",
@@ -23,7 +27,7 @@ export enum InstallStates {
     INSTALLING_WINDOWS = "Installing Windows",
     COMPLETED = "Completed",
     INSTALL_ERROR = "Install Error",
-};
+}
 
 interface InstallEvents {
     stateChanged: (state: InstallStates) => void;
@@ -97,7 +101,7 @@ export class InstallManager {
 
         // Storage folder mapping
         const storageFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/storage"));
-        
+
         if (storageFolderIdx === -1) {
             logger.warn("No /storage volume found in compose template, adding one...");
             composeContent.services.windows.volumes.push(`${this.conf.installFolder}:/storage`);
@@ -107,7 +111,7 @@ export class InstallManager {
 
         // Shared folder mapping
         const sharedFolderIdx = composeContent.services.windows.volumes.findIndex(vol => vol.includes("/shared"));
-        
+
         if (!this.conf.sharedFolderPath) {
             // Remove shared folder if not enabled
             if (sharedFolderIdx !== -1) {
@@ -117,7 +121,7 @@ export class InstallManager {
         } else {
             // Add or update shared folder
             const volumeStr = `${this.conf.sharedFolderPath}:/shared`;
-            
+
             if (sharedFolderIdx === -1) {
                 composeContent.services.windows.volumes.push(volumeStr);
                 logger.info(`Added shared folder: ${this.conf.sharedFolderPath}`);
@@ -190,7 +194,7 @@ export class InstallManager {
             });
             logger.info("OEM assets created successfully");
         } catch (error) {
-            logger.error(`Failed to copy OEM assets: ${error}`);
+            logger.error(`Failed to copy OEM assets: ${formatError(error)}`);
             throw error;
         }
 
@@ -199,7 +203,7 @@ export class InstallManager {
             const hash = await argon2.hash(this.conf.password);
             fs.writeFileSync(path.join(oemPath, "auth.hash"), hash, { encoding: "utf8" });
         } catch (error) {
-            logger.error(`Failed to create password hash: ${error}`);
+            logger.error(`Failed to create password hash: ${formatError(error)}`);
             throw error;
         }
     }
@@ -249,7 +253,7 @@ export class InstallManager {
                     return; // Exit the method when fetch throws 404
                 }
 
-                logger.error(`Error monitoring container: ${error}`);
+                logger.error(`Error monitoring container: ${formatError(error)}`);
                 throw error;
             }
 

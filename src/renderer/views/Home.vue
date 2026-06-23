@@ -1,30 +1,30 @@
 <template>
     <div>
         <x-card
-            class="bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl flex flex-row items-center justify-between"
+            class="flex flex-row items-center justify-between bg-neutral-800/20 backdrop-blur-xl backdrop-brightness-150"
         >
-            <div class="flex flex-row gap-4 items-center">
-                <div class="border-[0.4rem] border-gray-900/30 rounded-md">
+            <div class="flex flex-row items-center gap-4">
+                <div class="rounded-md border-[0.4rem] border-gray-900/30">
                     <img class="h-32 rounded-sm" :src="wallpaper" alt="Windows Wallpaper" />
                 </div>
 
                 <!-- Status Text -->
                 <div>
-                    <div class="flex flex-row gap-2 items-center justify-center mb-6 *:m-0">
+                    <div class="mb-6 flex flex-row items-center justify-center gap-2 *:m-0">
                         <h1 class="text-3xl">
                             {{ WINDOWS_VERSIONS[compose?.services.windows.environment.VERSION ?? "11"] ?? "Unknown" }}
                         </h1>
-                        <p class="bg-purple-500 px-4 rounded-full text-lg font-semibold !m-0">
+                        <p class="!m-0 rounded-full bg-purple-500 px-4 text-lg font-semibold">
                             {{ capitalizeFirstLetter(winboat.containerMgr!.executableAlias) }}
                         </p>
                     </div>
 
                     <div
-                        class="flex flex-row items-center gap-1.5 mb-1"
+                        class="mb-1 flex flex-row items-center gap-1.5"
                         :class="{ 'text-green-500': winboat.isOnline.value, 'text-red-500': !winboat.isOnline.value }"
                     >
                         <Icon class="size-7" icon="material-symbols:api"></Icon>
-                        <p class="!my-0 font-semibold text-lg">
+                        <p class="!my-0 text-lg font-semibold">
                             WinBoat Guest API -
                             {{ winboat.isOnline.value ? "Online" : "Offline" }}
                             <a
@@ -32,9 +32,9 @@
                                 title="Get Help"
                                 href="https://rentry.org/winboat_guest_server_borked"
                                 @click="openAnchorLink"
-                                class="text-red-400 hover:text-red-500 hover:underline inline-flex translate-y-1 transition"
+                                class="inline-flex translate-y-1 text-red-400 transition hover:text-red-500 hover:underline"
                             >
-                                <Icon icon="mingcute:question-fill" class="size-6 pointer-events-none"></Icon>
+                                <Icon icon="mingcute:question-fill" class="pointer-events-none size-6"></Icon>
                             </a>
                         </p>
                     </div>
@@ -50,7 +50,7 @@
                         }"
                     >
                         <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>
-                        <p class="!my-0 font-semibold text-lg">
+                        <p class="!my-0 text-lg font-semibold">
                             Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
                         </p>
                     </div>
@@ -69,7 +69,7 @@
                     "
                     @click="winboat.startContainer()"
                 >
-                    <Icon class="w-20 h-20 text-green-300" icon="mingcute:play-fill"></Icon>
+                    <Icon class="h-20 w-20 text-green-300" icon="mingcute:play-fill"></Icon>
                 </button>
                 <button
                     title="Stop"
@@ -77,7 +77,7 @@
                     v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     @click="winboat.stopContainer()"
                 >
-                    <Icon class="w-20 h-20 text-red-300" icon="mingcute:stop-fill"></Icon>
+                    <Icon class="h-20 w-20 text-red-300" icon="mingcute:stop-fill"></Icon>
                 </button>
                 <button
                     title="Restart"
@@ -85,7 +85,7 @@
                     v-if="winboat.containerStatus.value === ContainerStatus.RUNNING"
                     @click="winboat.restartContainer()"
                 >
-                    <Icon class="w-20 h-20 text-orange-300" icon="mingcute:refresh-3-line"></Icon>
+                    <Icon class="h-20 w-20 text-orange-300" icon="mingcute:refresh-3-line"></Icon>
                 </button>
 
                 <button
@@ -101,21 +101,21 @@
                             : winboat.pauseContainer()
                     "
                 >
-                    <Icon class="w-20 h-20 text-yellow-100" icon="mingcute:pause-line"></Icon>
+                    <Icon class="h-20 w-20 text-yellow-100" icon="mingcute:pause-line"></Icon>
                 </button>
             </div>
 
             <div v-else>
-                <x-throbber class="w-16 h-16"></x-throbber>
+                <x-throbber class="h-16 w-16"></x-throbber>
             </div>
         </x-card>
 
         <!-- Metrics -->
         <div
-            class="grid grid-cols-3 w-full gap-8 transition-all duration-200"
-            :class="{ 'blur-sm opacity-50': !winboat.isOnline.value }"
+            class="grid w-full grid-cols-3 gap-8 transition-all duration-200"
+            :class="{ 'opacity-50 blur-sm': !winboat.isOnline.value }"
         >
-            <x-card class="bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl flex flex-row gap-2 pl-0 my-0">
+            <x-card class="my-0 flex flex-row gap-2 bg-neutral-800/20 pl-0 backdrop-blur-xl backdrop-brightness-150">
                 <apexchart
                     class="translate-y-2"
                     type="radialBar"
@@ -125,19 +125,19 @@
                     :height="120"
                 />
                 <div>
-                    <div class="flex flex-row gap-2 items-center mb-2">
+                    <div class="mb-2 flex flex-row items-center gap-2">
                         <Icon class="size-8 text-violet-400" icon="solar:cpu-bold"></Icon>
                         <h2 class="my-0 text-2xl">CPU</h2>
                     </div>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">
+                    <p class="!my-0 h-6 overflow-hidden text-gray-400">
                         {{ compose?.services.windows.environment.CPU_CORES }} Virtual Cores
                     </p>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">
+                    <p class="!my-0 h-6 overflow-hidden text-gray-400">
                         Frequency: {{ (winboat.metrics.value.cpu.frequency / 1000).toFixed(2) }} GHz
                     </p>
                 </div>
             </x-card>
-            <x-card class="bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl flex flex-row gap-2 pl-0 my-0">
+            <x-card class="my-0 flex flex-row gap-2 bg-neutral-800/20 pl-0 backdrop-blur-xl backdrop-brightness-150">
                 <apexchart
                     class="translate-y-2"
                     type="radialBar"
@@ -147,19 +147,19 @@
                     :height="120"
                 />
                 <div>
-                    <div class="flex flex-row gap-2 items-center mb-2">
+                    <div class="mb-2 flex flex-row items-center gap-2">
                         <Icon class="size-8 text-violet-400" icon="game-icons:ram"></Icon>
                         <h2 class="my-0 text-2xl">RAM</h2>
                     </div>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">
+                    <p class="!my-0 h-6 overflow-hidden text-gray-400">
                         {{ Math.round(winboat.metrics.value.ram.total / 1024).toFixed(2) }} GB Total RAM
                     </p>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">
+                    <p class="!my-0 h-6 overflow-hidden text-gray-400">
                         {{ (winboat.metrics.value.ram.used / 1024).toFixed(2) }} GB Used RAM
                     </p>
                 </div>
             </x-card>
-            <x-card class="bg-neutral-800/20 backdrop-brightness-150 backdrop-blur-xl flex flex-row gap-2 pl-0 my-0">
+            <x-card class="my-0 flex flex-row gap-2 bg-neutral-800/20 pl-0 backdrop-blur-xl backdrop-brightness-150">
                 <apexchart
                     class="translate-y-2"
                     type="radialBar"
@@ -169,14 +169,14 @@
                     :height="120"
                 />
                 <div>
-                    <div class="flex flex-row gap-2 items-center mb-2">
+                    <div class="mb-2 flex flex-row items-center gap-2">
                         <Icon class="size-8 text-violet-400" icon="carbon:vmdk-disk"></Icon>
                         <h2 class="my-0 text-2xl">Disk</h2>
                     </div>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">
+                    <p class="!my-0 h-6 overflow-hidden text-gray-400">
                         {{ (winboat.metrics.value.disk.total / 1024).toFixed(2) }} GB Total Disk Space
                     </p>
-                    <p class="!my-0 text-gray-400 h-6 overflow-hidden">
+                    <p class="!my-0 h-6 overflow-hidden text-gray-400">
                         {{ (winboat.metrics.value.disk.used / 1024).toFixed(2) }} GB Used Space
                     </p>
                 </div>

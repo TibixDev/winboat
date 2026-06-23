@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 body {
-    @apply bg-transparent overflow-hidden text-white;
+    @apply overflow-hidden bg-transparent text-white;
     font-family: "Open Sans", serif;
     font-optical-sizing: auto;
     font-weight: 400;
@@ -27,5 +27,5 @@ body img {
 }
 
 .generic-hover {
-    @apply hover:brightness-90 transition duration-200;
+    @apply transition duration-200 hover:brightness-90;
 }

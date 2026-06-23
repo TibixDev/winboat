@@ -1,7 +1,7 @@
 import ChildProcess from "child_process";
 import Chalk from "chalk";
 
-export default function compile(directory) {
+export default function compile(directory: string) {
     return new Promise<void>((resolve, reject) => {
         const tscProcess = ChildProcess.exec("tsc", {
             cwd: directory,

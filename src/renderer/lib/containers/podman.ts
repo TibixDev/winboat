@@ -28,22 +28,6 @@ export enum PodmanAPIStatus {
     UNAVAILABLE = "Unavailable",
 }
 
-type PodmanInfo = {
-    host: {
-        remoteSocket: {
-            exists: boolean;
-            path: string;
-        };
-        [Key: string]: any;
-    };
-    plugins: object;
-    registries: {
-        search: string[];
-    };
-    store: object;
-    version: object;
-};
-
 const COMPOSE_ENV_VARS = { PODMAN_COMPOSE_PROVIDER: "podman-compose", PODMAN_COMPOSE_WARNING_LOGS: "false" };
 
 export class PodmanContainer extends ContainerManager {
@@ -159,7 +143,8 @@ export class PodmanContainer extends ContainerManager {
             const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch (e) {
-            containerLogger.error(`Failed to get status of podman container ${e}'`);
+            containerLogger.error("Failed to get status of podman container");
+            containerLogger.error(e);
             return ContainerStatus.UNKNOWN;
         }
     }

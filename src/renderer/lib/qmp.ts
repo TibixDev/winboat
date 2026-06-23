@@ -7,8 +7,6 @@ const { createConnection }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(WINBOAT_DIR, "qmp.log"));
 
-type QMPStatus = "Connected" | "Closed";
-
 type QMPGreeting = {
     QMP: {
         version: {
@@ -34,7 +32,7 @@ type QMPStatusInfo = {
 
 type QMPObjectPropertyInfo = {
     name: string;
-    type: "u8" | "u16" | "bool" | "str" | "double" | string;
+    type: string;
     description?: string;
     "default-value"?: string;
 };
@@ -210,32 +208,36 @@ export class QMPManager {
      *
      */
     async isAlive(): Promise<boolean> {
-        return new Promise(async (resolve, _) => {
-            if (this.qmpSocket.closed || this.qmpSocket.destroyed) {
-                return resolve(false);
-            }
+        if (this.qmpSocket.closed || this.qmpSocket.destroyed) {
+            return false;
+        }
 
-            const tm = setTimeout(_ => {
+        return new Promise(resolve => {
+            let timeout: ReturnType<typeof setTimeout>;
+            let settled = false;
+
+            const finish = (alive: boolean) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                resolve(alive);
+            };
+
+            timeout = setTimeout(() => {
                 logger.warn("Querying status of QMP connection timed out.");
-                resolve(false);
+                finish(false);
             }, QMPManager.IS_ALIVE_TIMEOUT);
 
             this.executeCommand("query-status")
                 .then(response => {
                     assert("return" in response);
-                    clearTimeout(tm);
-                    resolve(true);
+                    finish(true);
                 })
                 .catch(e => {
                     logger.error(`There was an error querying status of QMP connection`);
                     logger.error(e);
-                })
-                .finally(() => {
-                    clearTimeout(tm);
-                    resolve(false);
+                    finish(false);
                 });
         });
     }
-
-    private static handleError(e: unknown, msg?: string) {}
 }

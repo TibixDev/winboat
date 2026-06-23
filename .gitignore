@@ -10,6 +10,11 @@ result
 package-lock.json
 # src/renderer/public/*
 
+AGENTS.md
+CLAUDE.md
+.codex
+.claude
+
 # Custom
 # *.exe
 temp
