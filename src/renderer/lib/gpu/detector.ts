@@ -17,13 +17,20 @@
  *     http://vfio.blogspot.com/2014/08/iommu-groups-inside-and-out.html
  */
 
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
-import { readFile, readdir, stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+// We use require() instead of `import` so Vite leaves the Node built-ins
+// alone (the renderer has nodeIntegration enabled in this app; see
+// src/main/main.ts BrowserWindow webPreferences). This matches the
+// pattern in winboat.ts, specs.ts, usbmanager.ts.
+const childProcess: typeof import("node:child_process") = require("node:child_process");
+const nodeUtil: typeof import("node:util") = require("node:util");
+const fsPromises: typeof import("node:fs/promises") = require("node:fs/promises");
+const nodeFs: typeof import("node:fs") = require("node:fs");
+const nodePath: typeof import("node:path") = require("node:path");
 
-const execAsync = promisify(exec);
+const execAsync = nodeUtil.promisify(childProcess.exec);
+const { readFile, readdir, stat } = fsPromises;
+const { existsSync } = nodeFs;
+const { join } = nodePath;
 
 // ---------------------------------------------------------------------------
 // Public types
