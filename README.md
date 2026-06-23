@@ -86,6 +86,30 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - Docker Desktop is **unsupported** for now
 - USB passthrough via Podman is currently **unsupported**
 
+
+## Installation
+
+<details>
+<summary>Packaging status</summary>
+<a href="https://repology.org/project/winboat/versions">
+    <img src="https://repology.org/badge/vertical-allrepos/winboat.svg?columns=3" alt="Packaging status">
+</a>
+</details>
+
+
+| OS/Distro                       | Command                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------|
+| Archlinux (community version)   | git clone https://aur.archlinux.org/winboat.git  <br > cd winboat  <br > makepkg -si
+| Fedora                          | wget/download the x86_64.rpm version <br > sudo dnf install x86_64.rpm 
+| Gentoo                          | [building-winboat](#building-winboat)                                   |
+| NixOS                           | nix-env -iA nixos.winboat                                               |
+| Debian and Derivatives          | wget/download the amd64.deb version <br> sudo apt install ./ x86_64.deb  
+| openSUSE                        | wget/download the amd64.rpm version <br> sudo dnf install x86_64.rpm 
+
+
+
+
+
 ## Building WinBoat
 
 - For building you need to have Bun and Go installed on your system
