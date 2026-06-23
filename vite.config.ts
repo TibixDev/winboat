@@ -30,6 +30,12 @@ const config = defineConfig({
     resolve: {
         alias: {
             path: "path-browserify",
+            // Force jimp to its ESM entry. The browser bundle is a single minified blob with
+            // commonjsGlobal shims that Rollup can't always statically analyze, causing
+            // "Jimp is not exported by node_modules/jimp/dist/browser/index.js" errors on
+            // some installs (notably npm vs bun resolutions). The ESM build has clean
+            // named exports for Jimp/JimpMime and works in Electron's renderer.
+            jimp: path.join(__dirname, "node_modules/jimp/dist/esm/index.js"),
         },
     },
 });
