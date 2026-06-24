@@ -30,7 +30,7 @@
             "filter": ["**/*"]
         },
         {
-            "from": "src/renderer",
+            "from": "build/renderer",
             "to": "renderer",
             "filter": ["**/*"]
         },
