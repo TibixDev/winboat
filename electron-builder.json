@@ -20,6 +20,9 @@
         "category": "Utility",
         "artifactName": "${name}-${version}-${arch}.${ext}"
     },
+    "toolsets": {
+        "appimage": "1.0.3"
+    },
     "files": [
         {
             "from": "build/main",
