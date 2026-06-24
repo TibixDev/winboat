@@ -239,6 +239,26 @@
                                     How?
                                 </a>
                             </li>
+
+                            <!--
+                                Optional GPU passthrough row. NON-BLOCKING — we deliberately do not
+                                add this to satisfiesPrequisites() so the prereq screen stays just
+                                as quick as before for users who don't care about GPU acceleration.
+                                The row only appears once the background probe completes and the
+                                host actually has the necessary plumbing (IOMMU + vfio-pci + an
+                                isolated GPU). On unsupported hosts it stays hidden so the wizard
+                                doesn't get bloated. Configuration lives in Config → Advanced →
+                                GPU Passthrough.
+                            -->
+                            <li
+                                v-if="gpuPassthroughAvailable"
+                                class="flex items-center gap-2"
+                            >
+                                <span class="text-green-500">✔</span>
+                                GPU passthrough available
+                                <span class="text-gray-600"> (optional) </span>
+                                <span class="bg-blue-500/40 rounded-full px-2 py-0.5 text-xs ml-1">Advanced</span>
+                            </li>
                         </ul>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
@@ -812,7 +832,7 @@
 import { Icon } from "@iconify/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { computedAsync } from "@vueuse/core";
+import { computedAsync, useIntervalFn } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
 import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
@@ -826,6 +846,11 @@ import {
     getContainerSpecs,
 } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
+import {
+    detectGpuTopology,
+    isPassthroughEligible,
+    type GpuTopology,
+} from "../lib/gpu/detector";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -942,8 +967,31 @@ const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallState
 
 let installManager: InstallManager | null;
 
-onMounted(async () => {
+// Prerequisite re-poll trigger — incremented by the interval below so that
+// `containerSpecs` and the host `specs` ref re-evaluate while the user is on
+// the prereq screen. Closes https://github.com/TibixDev/winboat/issues/685
+// (users no longer need to restart WinBoat after installing Docker / joining
+//  the docker group / starting the daemon / etc.).
+const prereqTrigger = ref(0);
+
+async function refreshHostSpecs() {
     specs.value = await getSpecs();
+}
+
+// Poll every 3s while prereqs are unmet. We auto-pause as soon as all
+// prereqs are satisfied so we don't burn CPU on the install/progress screens.
+const {
+    pause: pausePrereqPoll,
+    resume: resumePrereqPoll,
+} = useIntervalFn(async () => {
+    await refreshHostSpecs();
+    // bump trigger so computedAsync chains depending on it (containerSpecs)
+    // re-evaluate against the freshly-installed runtime.
+    prereqTrigger.value++;
+}, 3000, { immediate: false });
+
+onMounted(async () => {
+    await refreshHostSpecs();
     console.log("Specs", specs.value);
 
     memoryInfo.value = await getMemoryInfo();
@@ -957,12 +1005,16 @@ onMounted(async () => {
 
     // Set default shared folder path to home directory
     sharedFolderPath.value = os.homedir();
+
+    // Start prereq re-polling on the prereq screen.
+    resumePrereqPoll();
 });
 
 onUnmounted(() => {
     if (memoryInterval.value) {
         clearInterval(memoryInterval.value);
     }
+    pausePrereqPoll();
 });
 
 // Watch for when folder sharing is enabled and set default path
@@ -973,8 +1025,52 @@ watch(folderSharing, (newValue) => {
 });
 
 const containerSpecs = computedAsync(async () => {
+    // Re-evaluate whenever the user switches runtime *or* the prereq re-poll
+    // ticks. Reading `prereqTrigger.value` registers the reactive dependency.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _tick = prereqTrigger.value;
     return await getContainerSpecs(containerRuntime.value);
 });
+
+// ---------------------------------------------------------------------------
+// Optional GPU passthrough row (non-blocking)
+//
+// Probe once on mount of the wizard — the GPU situation does not change on
+// the fly in any way the wizard cares about. We intentionally do NOT gate
+// the Next button on this; passthrough is purely opt-in and lives behind
+// the Advanced toggle in Config. Per the design constraint, we extend the
+// existing prereq list with a single optional row rather than adding a new
+// wizard step.
+// ---------------------------------------------------------------------------
+const gpuTopology = ref<GpuTopology | null>(null);
+const gpuPassthroughAvailable = computed<boolean>(() =>
+    gpuTopology.value !== null && isPassthroughEligible(gpuTopology.value),
+);
+
+async function probeGpuOnce(): Promise<void> {
+    try {
+        gpuTopology.value = await detectGpuTopology();
+    } catch (e) {
+        // Non-fatal: just hide the optional row.
+        console.warn("[SetupUI] GPU probe failed", e);
+        gpuTopology.value = null;
+    }
+}
+
+probeGpuOnce();
+
+// Stop polling as soon as all prerequisites are satisfied — no point re-checking
+// the host while the user is on the install / progress / completion screens.
+watch(
+    () => satisfiesPrequisites(specs.value, containerSpecs.value),
+    (ok) => {
+        if (ok) {
+            pausePrereqPoll();
+        } else {
+            resumePrereqPoll();
+        }
+    },
+);
 
 function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
     if (!containerSpecs) return false;

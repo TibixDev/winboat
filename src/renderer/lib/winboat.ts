@@ -16,6 +16,11 @@ import { setIntervalImmediately } from "../utils/interval";
 import { createLogger } from "../utils/log";
 import { openLink } from "../utils/openLink";
 import { MultiMonitorMode, WinboatConfig } from "./config";
+import {
+    applyGpuPassthroughIfEnabled,
+    releaseGpuPassthroughIfNeeded,
+    type WinboatLike,
+} from "./gpu/gpuManager";
 import { WINBOAT_DIR } from "./constants";
 import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
 import { ContainerManager, ContainerStatus } from "./containers/container";
@@ -76,7 +81,26 @@ const presetApps: WinApp[] = [
 ];
 
 /**
- * The stock RDP args that apply to all app launches by default
+ * The stock RDP args that apply to all app launches by default.
+ *
+ * Codec / pipeline flags:
+ *   /gfx:AVC444:on  — enable the RDP8.1 graphics pipeline with H.264 AVC444
+ *                    (much lower bandwidth + lower CPU than legacy bitmap
+ *                    cache). Syntax verified against the FreeRDP 3.x
+ *                    xfreerdp3(1) manpage grammar:
+ *                    https://man.archlinux.org/man/extra/freerdp/xfreerdp3.1.en
+ *                    The /gfx pipeline subsumes legacy /compression once
+ *                    active, but we leave /compression in place as a
+ *                    no-op fallback for older servers.
+ *   /rfx            — enable RemoteFX surface-bits codec (orthogonal to /gfx;
+ *                    used as a fallback path when the server advertises it).
+ *   /network:auto   — let FreeRDP pick experience settings dynamically based
+ *                    on measured throughput. Replaces having to pick LAN/WAN
+ *                    by hand. Helps both poor-quality (#710) and freeze
+ *                    (#566) reports where the link is bandwidth-limited.
+ *
+ * Closes #710 (FreeRDP rendering crashes / poor quality) and mitigates #566
+ * (Wayland multi-monitor freezes by reducing per-frame work).
  */
 const stockArgs = [
     "/cert:ignore",
@@ -84,6 +108,9 @@ const stockArgs = [
     "/sound:sys:pulse",
     "/microphone:sys:pulse",
     "/floatbar",
+    "/gfx:AVC444:on",
+    "/rfx",
+    "/network:auto",
     "/compression",
     "/sec:tls",
 ];
@@ -494,7 +521,32 @@ export class Winboat {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
-            await this.containerMgr!.container("start");
+            // Phase 1.5: bind GPU to vfio-pci + mutate compose if needed.
+            // Returns structured result; never throws. If passthrough
+            // fails we still allow the container to start so the user
+            // can boot without GPU.
+            const gpuResult = await applyGpuPassthroughIfEnabled(
+                this.#asGpuTarget(),
+                this.#wbConfig!.config,
+                { logger: { info: m => logger.info(m), warn: m => logger.warn(m), error: m => logger.error(m) } },
+            );
+            if (!gpuResult.ok) {
+                logger.warn(`GPU passthrough not applied: ${gpuResult.message}`);
+                if (gpuResult.cause) logger.warn(JSON.stringify(gpuResult.cause));
+            } else if (gpuResult.status !== "disabled" && gpuResult.status !== "no-device") {
+                logger.info(`GPU passthrough: ${gpuResult.message}`);
+            }
+            // replaceCompose (when needsReplace + container is RUNNING)
+            // already starts the new container. containerStatus.value is
+            // refreshed on a 1s polling interval, so this check can miss
+            // and we fall through to an extra `container start` call —
+            // that's harmless (Docker treats start-of-running as a no-op,
+            // exit 0), but the log line below will not always fire.
+            if (gpuResult.status === "compose-updated" && this.containerStatus.value === ContainerStatus.RUNNING) {
+                logger.info("Container already restarted by replaceCompose; skipping explicit start.");
+            } else {
+                await this.containerMgr!.container("start");
+            }
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
@@ -508,8 +560,42 @@ export class Winboat {
         logger.info("Stopping WinBoat container...");
         this.containerActionLoading.value = true;
         await this.containerMgr!.container("stop");
+        // Phase 1.5: unbind GPU only when the user opted into
+        // dynamic-unbind. Default holds the binding for fast restart.
+        try {
+            const rel = await releaseGpuPassthroughIfNeeded(
+                this.#asGpuTarget(),
+                this.#wbConfig!.config,
+                { logger: { info: m => logger.info(m), warn: m => logger.warn(m), error: m => logger.error(m) } },
+            );
+            if (!rel.ok) {
+                logger.warn(`GPU unbind not performed: ${rel.message}`);
+            } else if (rel.status === "ok") {
+                logger.info(`GPU passthrough: ${rel.message}`);
+            }
+        } catch (e) {
+            // Defensive — releaseGpuPassthroughIfNeeded never throws,
+            // but if something upstream regresses we don't want stop to fail.
+            logger.error("Unexpected error during GPU release: " + (e as Error).message);
+        }
         logger.info("Successfully stopped WinBoat container");
         this.containerActionLoading.value = false;
+    }
+
+    /**
+     * Adapter that lets gpuManager.ts work against a Winboat instance
+     * via the WinboatLike interface. Keeps gpuManager free of any
+     * direct Winboat dependency (one-way coupling, easier to test).
+     */
+    #asGpuTarget(): WinboatLike {
+        const self = this;
+        return {
+            isRunning: () => self.containerStatus.value === ContainerStatus.RUNNING,
+            composeFilePath: () => self.containerMgr!.composeFilePath,
+            readCompose: () => Winboat.readCompose(self.containerMgr!.composeFilePath),
+            replaceCompose: (c) => self.replaceCompose(c),
+            writeComposeOnly: (c) => self.containerMgr!.writeCompose(c),
+        };
     }
 
     async restartContainer() {
@@ -659,8 +745,13 @@ export class Winboat {
         let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
+            // Full-desktop mode. /dynamic-resolution is valid here (Display
+            // Control virtual channel) but is explicitly counterproductive in
+            // RemoteApp/RAIL mode — see FreeRDP/FreeRDP#10260 — so it stays
+            // gated to the desktop branch only.
             args = args.concat([
                 "+f",
+                "/dynamic-resolution",
                 this.#wbConfig?.config.smartcardEnabled ? "/smartcard" : "",
                 `/scale:${this.#wbConfig?.config.scale ?? 100}`,
             ]);

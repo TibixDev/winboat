@@ -1,0 +1,33 @@
+# AppArmor profile for WinBoat (Electron app)
+#
+# Installed by the .deb / .rpm postinst script to:
+#   /etc/apparmor.d/winboat
+#
+# Purpose:
+#   On Ubuntu 23.10+ / 24.04+ and derivatives (including Zorin OS 18) the kernel
+#   sysctl `kernel.apparmor_restrict_unprivileged_userns = 1` (enabled by
+#   default) blocks Chromium's user-namespace sandbox unless the binary is
+#   covered by an AppArmor profile that explicitly grants `userns`. Without
+#   this profile the GPU process crashes with exit_code=139 /
+#   seccomp-bpf failure in syscall nr=0x3e at startup.
+#
+# References:
+#   - Electron issue 41066: https://github.com/electron/electron/issues/41066
+#   - Ubuntu wiki on unprivileged userns:
+#     https://ubuntu.com/blog/ubuntu-23-10-restricted-unprivileged-user-namespaces
+#
+# This profile is intentionally permissive on file access (the Electron app
+# needs to read user configs, write logs, exec FreeRDP / docker CLI, etc.) but
+# enforces the userns grant required for the Chromium sandbox to work.
+
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile winboat /opt/WinBoat/winboat flags=(unconfined) {
+  userns,
+
+  # Site-specific additions can be placed in /etc/apparmor.d/local/winboat
+  # (not shipped by the .deb / .rpm; created by the user if desired).
+  include if exists <local/winboat>
+}
