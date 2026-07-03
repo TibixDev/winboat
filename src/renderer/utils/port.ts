@@ -288,7 +288,7 @@ export class ComposePortMapper {
             guestPort = Number.parseInt(guestPort);
         }
 
-        return !!this.findGuestPortIndex(guestPort, protocol);
+        return this.findGuestPortIndex(guestPort, protocol) !== undefined;
     }
 
     /**

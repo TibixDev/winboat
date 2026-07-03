@@ -175,8 +175,8 @@ export class WinboatConfig {
             console.log("Successfully read the config file");
 
             // Some fields might be missing after an update, so we merge them with the default config
+            let hasMissing = false;
             for (const key in defaultConfig) {
-                let hasMissing = false;
                 if (!(key in configObj)) {
                     // @ts-expect-error This is valid
                     configObj[key] = defaultConfig[key];
@@ -187,13 +187,13 @@ export class WinboatConfig {
                         }`,
                     );
                 }
+            }
 
-                // If we have any missing keys, we should just write the config back to disk so those new keys are saved
-                // We cannot use this.writeConfig() here since #configData is not populated yet
-                if (hasMissing) {
-                    fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(configObj, null, 4), "utf-8");
-                    console.log("Wrote updated config with missing keys to disk");
-                }
+            // If we have any missing keys, we should just write the config back to disk so those new keys are saved
+            // We cannot use this.writeConfig() here since #configData is not populated yet
+            if (hasMissing) {
+                fs.writeFileSync(WinboatConfig.configPath, JSON.stringify(configObj, null, 4), "utf-8");
+                console.log("Wrote updated config with missing keys to disk");
             }
 
             return { ...configObj };

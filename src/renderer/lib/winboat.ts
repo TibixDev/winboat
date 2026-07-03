@@ -127,7 +127,7 @@ class AppManager {
         const newApps = (await res.json()) as WinApp[];
         newApps.push(...presetApps, ...this.#wbConfig!.config.customApps);
 
-        if (this.appCache.values.length == newApps.length && !options.forceRead) return;
+        if (this.appCache.length == newApps.length && !options.forceRead) return;
 
         for (const appIdx in newApps) {
             newApps[appIdx].Usage = this.appCache.find(app => app.Name == newApps[appIdx].Name)?.Usage || 0;
