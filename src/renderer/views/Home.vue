@@ -54,6 +54,10 @@
                             Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
                         </p>
                     </div>
+
+                    <p v-if="winboat.lastContainerError.value" class="!my-2 text-sm text-red-400 max-w-md">
+                        {{ winboat.lastContainerError.value }}
+                    </p>
                 </div>
             </div>
 

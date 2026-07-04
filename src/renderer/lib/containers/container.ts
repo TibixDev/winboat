@@ -37,3 +37,35 @@ export enum ContainerStatus {
     EXITED = "Exited",
     UNKNOWN = "Unknown",
 }
+
+// Errors which usually indicate that the container is in a stale/broken state,
+// e.g. because it references a passed-through USB device that is no longer
+// present on the host. In these cases the container can't be started again and
+// needs to be recreated from the compose file
+const STALE_CONTAINER_ERROR_PATTERNS = [
+    /cannot stat `[^`]*`:?\s*no such file or directory/i,
+    /oci runtime attempted to invoke a command that was not found/i,
+    /no such device or address/i,
+];
+
+function getErrorText(error: unknown): string {
+    if (!error) return "";
+    if (typeof error === "string") return error;
+
+    if (typeof error === "object") {
+        const anyError = error as { message?: string; stderr?: string; stdout?: string };
+        return [anyError.message, anyError.stderr, anyError.stdout].filter(Boolean).join("\n");
+    }
+
+    return String(error);
+}
+
+/**
+ * Determines whether an error thrown while starting/interacting with a container
+ * indicates that the container itself is stale/malfunctioning (e.g. due to
+ * an USB passthrough device that no longer exists on the host).
+ */
+export function isStaleContainerError(error: unknown): boolean {
+    const text = getErrorText(error);
+    return STALE_CONTAINER_ERROR_PATTERNS.some(pattern => pattern.test(text));
+}

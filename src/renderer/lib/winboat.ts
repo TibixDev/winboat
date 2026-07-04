@@ -18,7 +18,7 @@ import { openLink } from "../utils/openLink";
 import { MultiMonitorMode, WinboatConfig } from "./config";
 import { HOST_QMP_PORT, HOST_RDP_PORT, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
 import { ContainerRuntimes, createContainer } from "./containers/common";
-import { ContainerManager, ContainerStatus } from "./containers/container";
+import { ContainerManager, ContainerStatus, isStaleContainerError } from "./containers/container";
 import { ExecFileAsyncError } from "./exec-helper";
 import { QMPManager } from "./qmp";
 
@@ -240,6 +240,7 @@ export class Winboat {
     isUpdatingGuestServer: Ref<boolean> = ref(false);
     containerStatus: Ref<ContainerStatus> = ref(ContainerStatus.EXITED);
     containerActionLoading: Ref<boolean> = ref(false);
+    lastContainerError: Ref<string | null> = ref(null);
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
@@ -485,60 +486,135 @@ export class Winboat {
         }, QMP_WAIT_MS);
     }
 
+    /**
+     * Recreates the WinBoat container from its existing compose file.
+     * This is used to recover from a stale/malfunctioning container, e.g. one
+     * that references a passed-through USB device that no longer exists on
+     * the host, which prevents it from being started normally.
+     * @note Mirrors the manual workaround of `container rm` + `compose up`.
+     */
+    async recreateContainer() {
+        logger.warn("[recreateContainer] Recreating WinBoat container from its compose file...");
+        await this.containerMgr!.remove();
+        await this.containerMgr!.compose("up");
+        logger.info("[recreateContainer] Successfully recreated WinBoat container");
+    }
+
     async startContainer() {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
+        this.lastContainerError.value = null;
+
         try {
-            await this.containerMgr!.container("start");
+            // Start the container if it exists and recreate it if starting it runs into an error
+            // If there is no container, create it from the compose file
+            if (await this.containerMgr!.exists()) {
+                try {
+                    await this.containerMgr!.container("start");
+                } catch (e) {
+                    if (isStaleContainerError(e)) {
+                        logger.warn(
+                            "[startContainer] Container appears to be stale/malfunctioning (e.g. a stale USB passthrough reference). Attempting to recreate it...",
+                        );
+                        await this.recreateContainer();
+                    } else {
+                        throw e;
+                    }
+                }
+                logger.info("Successfully started WinBoat container");
+            } else {
+                try {
+                    await this.containerMgr!.compose("up");
+                    const recreated = await this.containerMgr!.exists();
+
+                    if (recreated) {
+                        logger.info("Successfully recreated the WinBoat container from the existing compose file");
+                    } else {
+                        logger.error(
+                            "Failed to recreate the WinBoat container: it still doesn't exist after 'compose up'",
+                        );
+                    }
+                } catch (e) {
+                    logger.error("Failed to recreate the WinBoat container from the existing compose file");
+                    logger.error(e);
+                    throw e;
+                }
+            }
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
+            this.lastContainerError.value =
+                "Failed to start the WinBoat container. Check the container logs for more details.";
             throw e;
+        } finally {
+            this.containerActionLoading.value = false;
         }
-        logger.info("Successfully started WinBoat container");
-        this.containerActionLoading.value = false;
     }
 
     async stopContainer() {
         logger.info("Stopping WinBoat container...");
         this.containerActionLoading.value = true;
-        await this.containerMgr!.container("stop");
-        logger.info("Successfully stopped WinBoat container");
-        this.containerActionLoading.value = false;
+        try {
+            await this.containerMgr!.container("stop");
+            logger.info("Successfully stopped WinBoat container");
+        } finally {
+            this.containerActionLoading.value = false;
+        }
     }
 
     async restartContainer() {
         logger.info("Restarting WinBoat container...");
         this.containerActionLoading.value = true;
+        this.lastContainerError.value = null;
         try {
-            await this.containerMgr!.container("restart");
+            try {
+                await this.containerMgr!.container("restart");
+            } catch (e) {
+                if (isStaleContainerError(e)) {
+                    logger.warn(
+                        "[restartContainer] Container appears to be stale/malfunctioning (e.g. a stale USB passthrough reference). Attempting to recreate it...",
+                    );
+                    await this.recreateContainer();
+                } else {
+                    throw e;
+                }
+            }
+            logger.info("Successfully restarted WinBoat container");
         } catch (e) {
             logger.error("There was an error restarting the container.");
             logger.error(e);
+            this.lastContainerError.value =
+                "Failed to restart the WinBoat container. Check the container logs for more details.";
             throw e;
+        } finally {
+            this.containerActionLoading.value = false;
         }
-        logger.info("Successfully restarted WinBoat container");
-        this.containerActionLoading.value = false;
     }
 
     async pauseContainer() {
         logger.info("Pausing WinBoat container...");
         this.containerActionLoading.value = true;
-        await this.containerMgr!.container("pause");
-        logger.info("Successfully paused WinBoat container");
-        this.containerActionLoading.value = false;
+        try {
+            await this.containerMgr!.container("pause");
+            logger.info("Successfully paused WinBoat container");
+        } finally {
+            this.containerActionLoading.value = false;
+        }
     }
 
     async unpauseContainer() {
         logger.info("Unpausing WinBoat container...");
         this.containerActionLoading.value = true;
-        await this.containerMgr!.container("unpause");
-        logger.info("Successfully unpaused WinBoat container");
-        this.containerActionLoading.value = false;
+        try {
+            await this.containerMgr!.container("unpause");
+            logger.info("Successfully unpaused WinBoat container");
+        } finally {
+            this.containerActionLoading.value = false;
+        }
     }
 
     // TODO: refactor / possibly remove this
-    /** 
+    /**
         Replaces the compose file, and and updates the container.
         @note Use {@link ContainerManager.writeCompose} in case only disk write is needed
     */
