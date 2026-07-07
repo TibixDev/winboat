@@ -1,0 +1,13 @@
+diff --git a/binding.gyp b/binding.gyp
+index db98bb83b50ecc75aea7ccddd9a20c99d3494c13..7f86dfd5c5511f5c331a14e47119e5f9a34f5cbe 100644
+--- a/binding.gyp
++++ b/binding.gyp
+@@ -32,7 +32,7 @@
+         'src/thread_name.cc'
+       ],
+       'cflags_cc': [
+-        '-std=c++14'
++        '-std=c++17'
+       ],
+       'defines': [
+         '_FILE_OFFSET_BITS=64',
