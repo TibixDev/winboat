@@ -1,0 +1,26 @@
+{
+    "name": "WinBoat Development",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "remoteUser": "vscode",
+    "workspaceFolder": "/workspaces/winboat",
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "runArgs": [
+        "--init"
+    ],
+    "containerEnv": {
+        "CGO_ENABLED": "1"
+    },
+    "postCreateCommand": "bun install",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.go",
+                "oven.bun-vscode"
+            ]
+        }
+    }
+}

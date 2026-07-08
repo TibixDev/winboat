@@ -36,7 +36,7 @@
         "chalk": "^5.6.2",
         "chokidar": "^5.0.0",
         "electron": "^40.2.1",
-        "electron-builder": "^26.15.2",
+        "electron-builder": "^26.7.0",
         "postcss": "^8.5.6",
         "prettier": "3.8.1",
         "tailwindcss": "^3.4.17",
