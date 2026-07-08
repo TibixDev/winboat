@@ -2,11 +2,7 @@ FROM fedora:44
 
 RUN dnf -y update && \
     dnf -y install \
-    sudo \
     git \
-    curl \
-    which \
-    findutils \
     procps-ng \
     shadow-utils \
     passwd \
