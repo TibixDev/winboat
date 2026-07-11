@@ -1,0 +1,37 @@
+name: Format & Lint
+
+on:
+    pull_request:
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - ready_for_review
+
+permissions:
+    contents: read
+
+concurrency:
+    group: format-lint-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    format-and-lint:
+        name: fmt & lint
+        runs-on: ubuntu-22.04
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v2
+
+            - name: Install dependencies
+              run: bun ci
+
+            - name: Check formatting
+              run: bun run fmt:check
+
+            - name: Run lint (CI format)
+              run: bun run lint:ci

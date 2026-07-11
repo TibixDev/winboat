@@ -36,28 +36,20 @@
                 >
                     <template v-slot:desc>
                         If enabled, you will be able to access your selected folder within Windows under
-                        <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">Network\host.lan</span>
+                        <span class="rounded-md bg-neutral-700 px-1 py-0.5 font-mono">Network\host.lan</span>
                     </template>
                 </ConfigCard>
 
                 <!-- Shared Folder Location -->
-                <ConfigCard
-                    v-if="shareFolder"
-                    icon="mdi:folder-cog"
-                    title="Shared Folder Location"
-                    type="custom"
-                >
+                <ConfigCard v-if="shareFolder" icon="mdi:folder-cog" title="Shared Folder Location" type="custom">
                     <template v-slot:desc>
                         <span v-if="sharedFolderPath">
-                            Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
+                            Currently sharing:
+                            <span class="rounded-md bg-neutral-700 px-1 py-0.5 font-mono">{{ sharedFolderPath }}</span>
                         </span>
-                        <span v-else>
-                            Select a folder to share with Windows
-                        </span>
+                        <span v-else> Select a folder to share with Windows </span>
                     </template>
-                    <x-button @click="selectSharedFolder">
-                        Browse
-                    </x-button>
+                    <x-button @click="selectSharedFolder"> Browse </x-button>
                 </ConfigCard>
 
                 <!-- Auto Start Container -->
@@ -109,29 +101,29 @@
             <div class="flex flex-col gap-4">
                 <!-- USB Passthrough -->
                 <x-card
-                    class="flex relative z-20 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                    class="relative z-20 my-0 flex w-full flex-row items-center justify-between bg-neutral-800/20 p-2 py-3 backdrop-blur-xl backdrop-brightness-150"
                 >
                     <div class="w-full">
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-usb-24-filled"></Icon>
+                        <div class="mb-2 flex flex-row items-center gap-2">
+                            <Icon class="inline-flex size-8 text-violet-400" icon="fluent:tv-usb-24-filled"></Icon>
                             <h1 class="my-0 text-lg font-semibold">
                                 USB Passthrough
-                                <span class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2"> Experimental </span>
+                                <span class="ml-2 rounded-full bg-violet-500 px-3 py-0.5 text-sm"> Experimental </span>
                             </h1>
                         </div>
 
                         <template v-if="usbPassthroughDisabled || isUpdatingUSBPrerequisites">
                             <x-card
-                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                                class="my-2 flex w-full items-center gap-4 bg-yellow-200/10 py-2 backdrop-blur-xl backdrop-brightness-150"
                             >
-                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                <Icon class="inline-flex size-8 text-yellow-500" icon="clarity:warning-solid"></Icon>
                                 <h1 class="my-0 text-base font-normal text-yellow-200">
                                     We need to update your Compose in order to use this feature!
                                 </h1>
 
                                 <x-button
                                     :disabled="isUpdatingUSBPrerequisites"
-                                    class="mt-1 !bg-gradient-to-tl from-yellow-200/20 to-transparent ml-auto hover:from-yellow-300/30 transition !border-0"
+                                    class="ml-auto mt-1 !border-0 !bg-gradient-to-tl from-yellow-200/20 to-transparent transition hover:from-yellow-300/30"
                                     @click="addRequiredComposeFieldsUSB"
                                 >
                                     <x-label
@@ -147,9 +139,9 @@
                         </template>
                         <template v-if="wbConfig.config.containerRuntime === ContainerRuntimes.PODMAN">
                             <x-card
-                                class="flex items-center py-2 w-full my-2 backdrop-blur-xl gap-4 backdrop-brightness-150 bg-yellow-200/10"
+                                class="my-2 flex w-full items-center gap-4 bg-yellow-200/10 py-2 backdrop-blur-xl backdrop-brightness-150"
                             >
-                                <Icon class="inline-flex text-yellow-500 size-8" icon="clarity:warning-solid"></Icon>
+                                <Icon class="inline-flex size-8 text-yellow-500" icon="clarity:warning-solid"></Icon>
                                 <h1 class="my-0 text-base font-normal text-yellow-200">
                                     USB Passthrough is not yet supported while using Podman as the container runtime.
                                 </h1>
@@ -163,14 +155,14 @@
                             "
                         >
                             <x-label
-                                class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
+                                class="!mt-0 !pt-0 text-[0.9rem] text-neutral-400"
                                 v-if="usbManager.ptDevices.value.length == 0"
                             >
                                 Press the button below to add USB devices to your passthrough list
                             </x-label>
-                            <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
+                            <TransitionGroup name="devices" tag="x-box" class="mt-4 flex-col gap-2">
                                 <x-card
-                                    class="flex justify-between items-center px-2 py-0 m-0 bg-white/5"
+                                    class="m-0 flex items-center justify-between bg-white/5 px-2 py-0"
                                     v-for="device of usbManager.ptDevices.value"
                                     :key="`${device.vendorId}-${device.productId}`"
                                     :class="{
@@ -178,7 +170,7 @@
                                             !usbManager.isPTDeviceConnected(device),
                                     }"
                                 >
-                                    <div class="flex flex-row gap-2 items-center">
+                                    <div class="flex flex-row items-center gap-2">
                                         <span
                                             v-if="
                                                 usbManager.isMTPDevice(device) ||
@@ -187,14 +179,14 @@
                                                     .toLowerCase()
                                                     .includes('mtp')
                                             "
-                                            class="relative group"
+                                            class="group relative"
                                         >
                                             <Icon
                                                 icon="clarity:warning-solid"
-                                                class="text-yellow-300 size-7 cursor-pointer"
+                                                class="size-7 cursor-pointer text-yellow-300"
                                             />
                                             <span
-                                                class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                                class="pointer-events-none absolute bottom-5 z-50 hidden w-[320px] rounded-lg bg-neutral-800/90 px-3 py-2 text-xs text-gray-300 shadow-lg backdrop-blur-sm transition-opacity duration-200 group-hover:block"
                                             >
                                                 This device appears to be using the MTP protocol, which is known for
                                                 being problematic. Some Desktop Environments automatically mount MTP
@@ -203,25 +195,25 @@
                                             </span>
                                         </span>
 
-                                        <span v-if="!usbManager.isPTDeviceConnected(device)" class="relative group">
+                                        <span v-if="!usbManager.isPTDeviceConnected(device)" class="group relative">
                                             <Icon
                                                 icon="ix:connection-fail"
-                                                class="text-red-500 size-7 cursor-pointer"
+                                                class="size-7 cursor-pointer text-red-500"
                                             />
                                             <span
-                                                class="absolute bottom-5 z-50 w-[320px] bg-neutral-800/90 backdrop-blur-sm text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
+                                                class="pointer-events-none absolute bottom-5 z-50 hidden w-[320px] rounded-lg bg-neutral-800/90 px-3 py-2 text-xs text-gray-300 shadow-lg backdrop-blur-sm transition-opacity duration-200 group-hover:block"
                                             >
                                                 This device is currently not connected.
                                             </span>
                                         </span>
 
-                                        <p class="text-base !m-0 text-gray-200">
+                                        <p class="!m-0 text-base text-gray-200">
                                             {{ usbManager.stringifyPTSerializableDevice(device) }}
                                         </p>
                                     </div>
                                     <x-button
                                         @click="removeDevice(device)"
-                                        class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
+                                        class="mt-1 !border-0 !bg-gradient-to-tl from-red-500/20 to-transparent transition hover:from-red-500/30"
                                     >
                                         <x-icon href="#remove"></x-icon>
                                     </x-button>
@@ -229,7 +221,7 @@
                             </TransitionGroup>
                             <x-button
                                 v-if="availableDevices.length > 0"
-                                class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                class="!bg-gradient-to-tl from-blue-400/20 to-transparent shadow-md shadow-blue-950/20 transition hover:from-blue-400/30"
                                 :class="{ 'mt-4': usbManager.ptDevices.value.length }"
                                 @click="refreshAvailableDevices()"
                             >
@@ -258,31 +250,31 @@
             <div class="flex flex-col gap-4">
                 <!-- RDP args -->
                 <x-card
-                    class="flex flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                    class="my-0 flex w-full flex-row items-center justify-between bg-neutral-800/20 p-2 py-3 backdrop-blur-xl backdrop-brightness-150"
                 >
                     <div class="w-full">
-                        <div class="flex flex-row gap-2 items-center mb-2">
-                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:tv-24-filled"></Icon>
+                        <div class="mb-2 flex flex-row items-center gap-2">
+                            <Icon class="inline-flex size-8 text-violet-400" icon="fluent:tv-24-filled"></Icon>
                             <h1 class="my-0 text-lg font-semibold">
                                 FreeRDP Arguments
-                                <span class="bg-blue-500 rounded-full px-3 py-0.5 text-sm ml-2"> Advanced </span>
+                                <span class="ml-2 rounded-full bg-blue-500 px-3 py-0.5 text-sm"> Advanced </span>
                             </h1>
                         </div>
 
                         <x-label
                             v-if="wbConfig.config.rdpArgs.length == 0"
-                            class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0"
+                            class="!mt-0 !pt-0 text-[0.9rem] text-neutral-400"
                         >
                             Press the buttons below to add arguments to FreeRDP, you can choose to either add a new
                             argument or modify an existing one to your liking via replacement
                         </x-label>
-                        <TransitionGroup name="devices" tag="x-box" class="flex-col gap-2 mt-4">
+                        <TransitionGroup name="devices" tag="x-box" class="mt-4 flex-col gap-2">
                             <x-card
-                                class="flex justify-between items-center gap-2 px-2 py-0 m-0 bg-white/5"
+                                class="m-0 flex items-center justify-between gap-2 bg-white/5 px-2 py-0"
                                 v-for="(arg, index) in wbConfig.config.rdpArgs"
                                 :key="index"
                             >
-                                <div class="grid grid-cols-2 gap-2 items-center w-full">
+                                <div class="grid w-full grid-cols-2 items-center gap-2">
                                     <x-input
                                         type="text"
                                         class="!max-w-full"
@@ -294,7 +286,7 @@
                                     </x-input>
                                     <x-input
                                         type="text"
-                                        class="!max-w-full !mt-0"
+                                        class="!mt-0 !max-w-full"
                                         :class="{ 'col-span-2': !arg.isReplacement }"
                                         :value="arg.newArg"
                                         @input="(e: any) => (arg.newArg = e.target.value)"
@@ -303,7 +295,7 @@
                                     </x-input>
                                 </div>
                                 <x-button
-                                    class="mt-1 !bg-gradient-to-tl from-red-500/20 to-transparent hover:from-red-500/30 transition !border-0"
+                                    class="mt-1 !border-0 !bg-gradient-to-tl from-red-500/20 to-transparent transition hover:from-red-500/30"
                                     @click="wbConfig.config.rdpArgs.splice(index, 1)"
                                 >
                                     <x-icon href="#remove"></x-icon>
@@ -312,14 +304,14 @@
                         </TransitionGroup>
                         <div class="flex flex-row gap-2" :class="{ 'mt-4': wbConfig.config.rdpArgs.length }">
                             <x-button
-                                class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                class="!bg-gradient-to-tl from-blue-400/20 to-transparent shadow-md shadow-blue-950/20 transition hover:from-blue-400/30"
                                 @click="wbConfig.config.rdpArgs.push({ newArg: '', isReplacement: false })"
                             >
                                 <x-icon href="#add"></x-icon>
                                 <x-label>Add Argument</x-label>
                             </x-button>
                             <x-button
-                                class="!bg-gradient-to-tl from-yellow-400/20 shadow-md shadow-yellow-950/20 to-transparent hover:from-yellow-400/30 transition"
+                                class="!bg-gradient-to-tl from-yellow-400/20 to-transparent shadow-md shadow-yellow-950/20 transition hover:from-yellow-400/30"
                                 @click="wbConfig.config.rdpArgs.push({ newArg: '', original: '', isReplacement: true })"
                             >
                                 <Icon class="inline-flex size-6" icon="codex:replace" />
@@ -367,9 +359,9 @@
                     v-model:value="wbConfig.config.multiMonitor"
                 >
                     <template v-slot:desc>
-                        Controls how multiple monitors are handled. MultiMon creates separate displays for each
-                        monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may
-                        work better depending on your setup.
+                        Controls how multiple monitors are handled. MultiMon creates separate displays for each monitor,
+                        while Span stretches the display across all monitors. Note: Span or MultiMon may work better
+                        depending on your setup.
                     </template>
                 </ConfigCard>
 
@@ -430,7 +422,7 @@
 
         <div>
             <x-label class="mb-4 text-neutral-300">Danger Zone</x-label>
-            <x-card class="flex flex-col py-3 my-0 mb-6 w-full backdrop-blur-xl backdrop-brightness-150 bg-red-500/10">
+            <x-card class="my-0 mb-6 flex w-full flex-col bg-red-500/10 py-3 backdrop-blur-xl backdrop-brightness-150">
                 <h1 class="my-0 text-lg font-normal text-red-300">
                     ⚠️ <span class="font-bold">WARNING:</span> All actions here are potentially destructive, proceed at
                     your own caution!
@@ -438,7 +430,7 @@
             </x-card>
             <div></div>
             <x-button
-                class="!bg-red-800/20 px-4 py-1 !border-red-500/10 generic-hover flex flex-row items-center gap-2 !text-red-300"
+                class="generic-hover flex flex-row items-center gap-2 !border-red-500/10 !bg-red-800/20 px-4 py-1 !text-red-300"
                 @click="resetWinboat()"
                 :disabled="isResettingWinboat"
             >
@@ -466,13 +458,7 @@ import { Icon } from "@iconify/vue";
 import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
-import {
-    USB_VID_BLACKLIST,
-    RESTART_ON_FAILURE,
-    RESTART_NO,
-    GUEST_RDP_PORT,
-    GUEST_QMP_PORT,
-} from "../lib/constants";
+import { USB_VID_BLACKLIST, RESTART_ON_FAILURE, RESTART_NO, GUEST_RDP_PORT, GUEST_QMP_PORT } from "../lib/constants";
 import { ComposePortEntry, ComposePortMapper, Range } from "../utils/port";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -790,7 +776,7 @@ async function toggleExperimentalFeatures() {
 }
 
 // Watch for when shared folder is enabled and set default path
-watch(shareFolder, (newValue) => {
+watch(shareFolder, newValue => {
     if (newValue && !sharedFolderPath.value) {
         sharedFolderPath.value = os.homedir();
     }

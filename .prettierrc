@@ -1,5 +1,7 @@
 {
     "tabWidth": 4,
     "printWidth": 120,
-    "arrowParens": "avoid"
+    "arrowParens": "avoid",
+    "plugins": ["prettier-plugin-tailwindcss"],
+    "tailwindConfig": "./tailwind.config.ts"
 }

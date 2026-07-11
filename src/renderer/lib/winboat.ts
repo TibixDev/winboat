@@ -129,9 +129,9 @@ class AppManager {
 
         if (this.appCache.length == newApps.length && !options.forceRead) return;
 
-        for (const appIdx in newApps) {
-            newApps[appIdx].Usage = this.appCache.find(app => app.Name == newApps[appIdx].Name)?.Usage || 0;
-            this.appUsageCache[newApps[appIdx].Name] = newApps[appIdx].Usage;
+        for (const app of newApps) {
+            app.Usage = this.appCache.find(cachedApp => cachedApp.Name == app.Name)?.Usage || 0;
+            this.appUsageCache[app.Name] = app.Usage;
         }
 
         this.appCache = newApps;
@@ -543,7 +543,7 @@ export class Winboat {
     }
 
     // TODO: refactor / possibly remove this
-    /** 
+    /**
         Replaces the compose file, and and updates the container.
         @note Use {@link ContainerManager.writeCompose} in case only disk write is needed
     */
@@ -631,7 +631,7 @@ export class Winboat {
             logger.info(`Found custom app command for '${app.Name}'`);
             customAppCallbacks[app.Path]!(this);
             this.appMgr?.incrementAppUsage(app);
-            this.appMgr?.writeToDisk();
+            void this.appMgr?.writeToDisk();
             return;
         }
 
@@ -678,7 +678,7 @@ export class Winboat {
         args = args.filter((v, _i, _a) => v.trim() !== "");
 
         this.appMgr?.incrementAppUsage(app);
-        this.appMgr?.writeToDisk();
+        void this.appMgr?.writeToDisk();
 
         if (!freeRDPInstallation) {
             logger.error("No FreeRDP installation found");

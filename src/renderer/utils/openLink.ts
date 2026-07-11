@@ -2,7 +2,7 @@ const { shell }: typeof import("@electron/remote") = require("@electron/remote")
 
 export function openLink(link: string) {
     if (link.startsWith("http")) {
-        shell.openExternal(link);
+        void shell.openExternal(link);
     } else {
         shell.showItemInFolder(link);
     }

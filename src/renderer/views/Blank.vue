@@ -1,5 +1,5 @@
 <template>
-    <div class="flex justify-center items-center mt-40">
-        <x-throbber class="w-16 h-16"></x-throbber>
+    <div class="mt-40 flex items-center justify-center">
+        <x-throbber class="h-16 w-16"></x-throbber>
     </div>
 </template>
