@@ -20,6 +20,15 @@
         "category": "Utility",
         "artifactName": "${name}-${version}-${arch}.${ext}"
     },
+    "deb": {
+        "depends": ["libnotify4", "libxtst6", "libnss3", "xdg-utils", "libatspi2.0-0"],
+        "afterInstall": "packaging/installer/linux-after-install.sh",
+        "afterRemove": "packaging/installer/linux-before-remove.sh"
+    },
+    "rpm": {
+        "afterInstall": "packaging/installer/linux-after-install.sh",
+        "afterRemove": "packaging/installer/linux-before-remove.sh"
+    },
     "files": [
         {
             "from": "build/main",
@@ -50,6 +59,20 @@
             "from": "./data",
             "to": "data",
             "filter": ["**/*"]
+        },
+        {
+            "from": "./packaging/apparmor",
+            "to": "apparmor",
+            "filter": ["**/*"]
+        },
+        {
+            "from": "./packaging/polkit",
+            "to": "polkit",
+            "filter": ["**/*"]
+        },
+        {
+            "from": "./gpu_helper/winboat-gpu-helper",
+            "to": "winboat-gpu-helper"
         }
     ]
 }

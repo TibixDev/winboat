@@ -11,7 +11,8 @@
     "scripts": {
         "dev": "bun scripts/dev-server.ts",
         "build:gs": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux"
+        "build:gpu-helper": "bash build-gpu-helper.sh",
+        "build:linux-gs": "bash build-guest-server.sh && bash build-gpu-helper.sh && bun scripts/build.ts && electron-builder --linux"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {

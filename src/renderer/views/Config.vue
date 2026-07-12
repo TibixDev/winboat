@@ -330,6 +330,154 @@
                 </x-card>
             </div>
         </div>
+        <div v-show="wbConfig.config.advancedFeatures">
+            <x-label class="mb-4 text-neutral-300">GPU Passthrough</x-label>
+            <div class="flex flex-col gap-4">
+                <x-card
+                    class="flex relative z-10 flex-row justify-between items-center p-2 py-3 my-0 w-full backdrop-blur-xl backdrop-brightness-150 bg-neutral-800/20"
+                >
+                    <div class="w-full">
+                        <!-- Header -->
+                        <div class="flex flex-row gap-2 items-center mb-2">
+                            <Icon class="inline-flex text-violet-400 size-8" icon="fluent:video-recording-20-filled"></Icon>
+                            <h1 class="my-0 text-lg font-semibold">
+                                GPU Passthrough
+                                <span class="bg-blue-500 rounded-full px-3 py-0.5 text-sm ml-2"> Advanced </span>
+                                <span
+                                    v-if="wbConfig.config.gpuPassthroughMode === GpuPassthroughMode.Vfio"
+                                    class="bg-violet-500 rounded-full px-3 py-0.5 text-sm ml-2"
+                                >
+                                    Experimental
+                                </span>
+                            </h1>
+                        </div>
+                        <x-label class="text-neutral-400 text-[0.9rem] !pt-0 !mt-0">
+                            Forward a physical GPU into the Windows guest for native acceleration. Changes only take
+                            effect after the next container start. The container must be stopped to switch modes.
+                        </x-label>
+
+                        <!-- Probe in progress -->
+                        <x-card
+                            v-if="gpuProbing && !gpuTopology"
+                            class="flex items-center py-2 w-full my-3 backdrop-blur-xl gap-3 backdrop-brightness-150 bg-neutral-700/30"
+                        >
+                            <x-throbber class="w-8"></x-throbber>
+                            <x-label class="text-neutral-300">Probing host GPU topology…</x-label>
+                        </x-card>
+
+                        <!-- Probe failed -->
+                        <x-card
+                            v-if="gpuProbeError"
+                            class="flex items-center py-2 w-full my-3 backdrop-blur-xl gap-3 backdrop-brightness-150 bg-red-500/10"
+                        >
+                            <Icon class="inline-flex text-red-400 size-8" icon="clarity:error-solid"></Icon>
+                            <span class="my-0 text-base font-normal text-red-200">
+                                GPU probe failed: {{ gpuProbeError }}
+                            </span>
+                        </x-card>
+
+                        <!-- Host-readiness warnings -->
+                        <x-card
+                            v-if="gpuTopology && gpuWarningMessages.length > 0"
+                            class="flex flex-col py-2 w-full my-3 backdrop-blur-xl gap-2 backdrop-brightness-150 bg-yellow-200/10"
+                        >
+                            <div
+                                v-for="(msg, i) in gpuWarningMessages"
+                                :key="i"
+                                class="flex items-start gap-2"
+                            >
+                                <Icon class="inline-flex text-yellow-500 size-6 shrink-0 mt-0.5" icon="clarity:warning-solid"></Icon>
+                                <span class="my-0 text-sm font-normal text-yellow-200">{{ msg }}</span>
+                            </div>
+                        </x-card>
+
+                        <!-- Mode dropdown -->
+                        <div class="flex flex-row items-center justify-between gap-3 mt-4">
+                            <div class="flex flex-col">
+                                <span class="text-base font-semibold">Passthrough Mode</span>
+                                <span class="text-neutral-400 text-[0.85rem]">
+                                    Off keeps WinBoat in software-rendered RDP mode (current default).
+                                </span>
+                            </div>
+                            <x-select
+                                @change="(e: any) => (wbConfig.config.gpuPassthroughMode = e.detail.newValue)"
+                                class="w-fit"
+                            >
+                                <x-menu>
+                                    <x-menuitem
+                                        v-for="(mode, key) in gpuModeOptions"
+                                        :key="key"
+                                        :value="mode"
+                                        :toggled="mode === wbConfig.config.gpuPassthroughMode"
+                                        :disabled="mode !== GpuPassthroughMode.Off && !gpuPassthroughHostReady"
+                                    >
+                                        <x-label>{{ mode }}</x-label>
+                                    </x-menuitem>
+                                </x-menu>
+                            </x-select>
+                        </div>
+
+                        <!-- Device picker (only shown for VFIO) -->
+                        <div
+                            v-if="wbConfig.config.gpuPassthroughMode === GpuPassthroughMode.Vfio && gpuDeviceOptions.length > 0"
+                            class="flex flex-row items-center justify-between gap-3 mt-4"
+                        >
+                            <div class="flex flex-col">
+                                <span class="text-base font-semibold">GPU Device</span>
+                                <span class="text-neutral-400 text-[0.85rem]">
+                                    {{ gpuDeviceDescription(wbConfig.config.gpuPassthroughDevice) || "Select a GPU to forward" }}
+                                </span>
+                            </div>
+                            <x-select
+                                @change="(e: any) => (wbConfig.config.gpuPassthroughDevice = e.detail.newValue)"
+                                class="w-fit"
+                            >
+                                <x-menu>
+                                    <x-menuitem
+                                        v-for="bdf in gpuDeviceOptions"
+                                        :key="bdf"
+                                        :value="bdf"
+                                        :toggled="bdf === wbConfig.config.gpuPassthroughDevice"
+                                    >
+                                        <x-label>{{ gpuDeviceDescription(bdf) }}</x-label>
+                                    </x-menuitem>
+                                </x-menu>
+                            </x-select>
+                        </div>
+
+                        <!-- Dynamic unbind (advanced opt-in) -->
+                        <div
+                            v-if="wbConfig.config.gpuPassthroughMode === GpuPassthroughMode.Vfio"
+                            class="flex flex-row items-center justify-between gap-3 mt-4"
+                        >
+                            <div class="flex flex-col">
+                                <span class="text-base font-semibold">Dynamic Unbind</span>
+                                <span class="text-neutral-400 text-[0.85rem]">
+                                    Rebind the GPU only while the VM is running. Risky on single-GPU systems — the
+                                    host display will go dark for the duration of the session.
+                                </span>
+                            </div>
+                            <x-switch
+                                :toggled="wbConfig.config.gpuDynamicUnbind"
+                                @toggle="wbConfig.config.gpuDynamicUnbind = !wbConfig.config.gpuDynamicUnbind"
+                            />
+                        </div>
+
+                        <!-- Re-probe button -->
+                        <div class="flex flex-row gap-2 mt-4">
+                            <x-button
+                                class="!bg-gradient-to-tl from-blue-400/20 shadow-md shadow-blue-950/20 to-transparent hover:from-blue-400/30 transition"
+                                @click="refreshGpuTopology"
+                                :disabled="gpuProbing"
+                            >
+                                <Icon class="inline-flex size-5" icon="mdi:refresh" />
+                                <x-label>Re-probe Hardware</x-label>
+                            </x-button>
+                        </div>
+                    </div>
+                </x-card>
+            </div>
+        </div>
         <div>
             <x-label class="mb-4 text-neutral-300">General</x-label>
             <div class="flex flex-col gap-4">
@@ -463,7 +611,13 @@ import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
 import { Icon } from "@iconify/vue";
-import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
+import { GpuPassthroughMode, MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
+import {
+    detectGpuTopology,
+    describeGpu,
+    isPassthroughEligible,
+    type GpuTopology,
+} from "../lib/gpu/detector";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
@@ -502,6 +656,16 @@ const isUpdatingUSBPrerequisites = ref(false);
 // For USB Devices
 const availableDevices = ref<Device[]>([]);
 
+// For GPU Passthrough
+const gpuTopology = ref<GpuTopology | null>(null);
+const gpuProbing = ref<boolean>(false);
+const gpuProbeError = ref<string | null>(null);
+// Cap mode dropdown options at the modes that are actually wired up. SR-IOV
+// is Phase 2 and mvisor-VGPU is Phase 3 — we hide them until those phases
+// land so the user can't pick a no-op mode. The enum keeps the values for
+// future iterations / migration.
+const gpuModeOptions = [GpuPassthroughMode.Off, GpuPassthroughMode.Vfio];
+
 // For handling the QMP port, as we can't rely on the winboat instance doing this for us.
 // A great example is when the container is offline. In that case, winboat's portManager isn't instantiated.
 let portMapper = ref<ComposePortMapper | null>(null);
@@ -518,7 +682,74 @@ const QMP_ARGUMENT = "-qmp tcp:0.0.0.0:7149,server,wait=off"; // 7149 can remain
 
 onMounted(async () => {
     await assignValues();
+    // Kick off GPU topology probe in the background — cheap (~20ms on most
+    // systems, dominated by lspci spawn). Failure is non-fatal: the panel
+    // shows the warning row and the user just can't enable passthrough.
+    refreshGpuTopology();
 });
+
+async function refreshGpuTopology(): Promise<void> {
+    gpuProbing.value = true;
+    gpuProbeError.value = null;
+    try {
+        gpuTopology.value = await detectGpuTopology();
+    } catch (e) {
+        gpuProbeError.value = e instanceof Error ? e.message : String(e);
+        console.error("[GPU detect] probe failed", e);
+    } finally {
+        gpuProbing.value = false;
+    }
+}
+
+/** Computed list of selectable GPU BDFs from the most recent topology probe. */
+const gpuDeviceOptions = computed<string[]>(() => {
+    const t = gpuTopology.value;
+    if (!t) return [];
+    return t.gpus.map(g => g.primary.bdf);
+});
+
+/** True when the host environment can actually support VFIO passthrough. */
+const gpuPassthroughHostReady = computed<boolean>(() => {
+    return gpuTopology.value !== null && isPassthroughEligible(gpuTopology.value);
+});
+
+/**
+ * If the user has the mode set to VFIO but the host isn't ready (or no GPU
+ * is selected), we surface a yellow warning card with actionable hints.
+ */
+const gpuWarningMessages = computed<string[]>(() => {
+    const t = gpuTopology.value;
+    if (!t) return [];
+    const msgs: string[] = [];
+    if (!t.iommu.enabled) {
+        msgs.push(
+            "IOMMU is not enabled. Enable VT-d (Intel) or AMD-Vi in BIOS, then add 'intel_iommu=on' or 'amd_iommu=on' to your kernel cmdline.",
+        );
+    }
+    if (!t.vfio.moduleAvailable) {
+        msgs.push(
+            "The vfio-pci kernel module is not available. Install the linux-modules-extra package (Ubuntu/Debian/Mint/Zorin) or the matching kernel-modules package for your distro.",
+        );
+    }
+    if (t.gpus.length === 0) {
+        msgs.push(
+            "No supported GPUs were detected. WinBoat looks for NVIDIA, AMD, and Intel display controllers via lspci.",
+        );
+    } else if (!t.gpus.some(g => g.isolated)) {
+        msgs.push(
+            "All detected GPUs share an IOMMU group with unrelated devices. VFIO passthrough requires an isolated IOMMU group; an ACS-override patch or different PCIe slot may help.",
+        );
+    }
+    for (const w of t.warnings) msgs.push(w);
+    return msgs;
+});
+
+function gpuDeviceDescription(bdf: string): string {
+    const t = gpuTopology.value;
+    if (!t) return bdf;
+    const match = t.gpus.find(g => g.primary.bdf === bdf);
+    return match ? describeGpu(match) : bdf;
+}
 
 /**
  * Assigns the initial values from the Compose file to the reactive refs

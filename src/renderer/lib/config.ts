@@ -56,6 +56,27 @@ export enum MultiMonitorMode {
     Span = "Span"
 };
 
+/**
+ * GPU passthrough mode selector.
+ *
+ *   OFF        — no GPU acceleration in the guest beyond what FreeRDP
+ *                already provides (Phase 0 defaults).
+ *   VFIO       — full PCIe passthrough via vfio-pci. Requires IOMMU,
+ *                a clean IOMMU group, an isolated discrete GPU, and the
+ *                polkit helper (Phase 1.3+). Bind happens pre-boot;
+ *                restore happens post-stop.
+ *   SRIOV      — Intel iGPU SR-IOV (i915 / Xe). Requires kernel support;
+ *                actively probed before being offered (Phase 2).
+ *   MVISOR     — mvisor-VGPU paravirtual integration hook. Reserved for
+ *                Phase 3; currently a no-op stub.
+ */
+export enum GpuPassthroughMode {
+    Off = "Off",
+    Vfio = "VFIO",
+    SrIov = "SR-IOV",
+    Mvisor = "mvisor-VGPU",
+};
+
 export type WinboatConfigObj = {
     scale: number;
     scaleDesktop: number;
@@ -71,6 +92,21 @@ export type WinboatConfigObj = {
     containerRuntime: ContainerRuntimes;
     versionData: WinboatVersionData;
     appsSortOrder: string;
+    /** GPU passthrough mode. Defaults to OFF on first run / upgrade. */
+    gpuPassthroughMode: GpuPassthroughMode;
+    /**
+     * Selected GPU BDF (Bus:Device.Function) for VFIO passthrough, e.g.
+     * "03:00.0". Empty when no GPU is selected. The full IOMMU group is
+     * resolved at boot time by the GpuManager (Phase 1.5).
+     */
+    gpuPassthroughDevice: string;
+    /**
+     * Advanced opt-in: unbind / rebind the GPU dynamically at
+     * container start / stop rather than holding the binding while
+     * WinBoat is running. Off by default because runtime unbind can
+     * leave the host without a console if the user only has one GPU.
+     */
+    gpuDynamicUnbind: boolean;
 };
 
 const currentVersion = new WinboatVersion(import.meta.env.VITE_APP_VERSION);
@@ -94,6 +130,9 @@ const defaultConfig: WinboatConfigObj = {
         current: currentVersion
     },
     appsSortOrder: 'name',
+    gpuPassthroughMode: GpuPassthroughMode.Off,
+    gpuPassthroughDevice: "",
+    gpuDynamicUnbind: false,
 };
 
 export class WinboatConfig {
