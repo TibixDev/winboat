@@ -87,6 +87,8 @@ export class InstallManager {
         composeContent.services.windows.environment.DISK_SIZE = `${this.conf.diskSpaceGB}G`;
         composeContent.services.windows.environment.VERSION = this.conf.windowsVersion;
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
+        composeContent.services.windows.environment.REGION = this.conf.windowsRegion;
+        composeContent.services.windows.environment.KEYBOARD = this.conf.keyboardLayout;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
 

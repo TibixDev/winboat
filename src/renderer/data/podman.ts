@@ -19,6 +19,8 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 PASSWORD: "MyWindowsPassword",
                 HOME: "${HOME}",
                 LANGUAGE: "English",
+                REGION: "en-US",
+                KEYBOARD: "en-US",
                 NETWORK: "user",
                 USER_PORTS: "7148",
                 HOST_PORTS: "7149",
