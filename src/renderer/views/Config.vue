@@ -591,7 +591,7 @@ async function addRequiredComposeFieldsUSB() {
     isUpdatingUSBPrerequisites.value = true;
     await winboat.stopContainer();
 
-    if (!hasUsbVolume(compose)) {
+    if (!hasUsbVolume()) {
         compose.value!.services.windows.volumes.push(USB_BUS_PATH);
     }
     if (!hasQmpPort()) {
@@ -601,14 +601,14 @@ async function addRequiredComposeFieldsUSB() {
     if (!compose.value!.services.windows.environment.ARGUMENTS) {
         compose.value!.services.windows.environment.ARGUMENTS = "";
     }
-    if (!hasQmpArgument(compose)) {
+    if (!hasQmpArgument()) {
         compose.value!.services.windows.environment.ARGUMENTS += `\n${QMP_ARGUMENT}`;
     }
 
     if (!compose.value!.services.windows.environment.HOST_PORTS) {
         compose.value!.services.windows.environment.HOST_PORTS = "";
     }
-    if (!hasHostPort(compose)) {
+    if (!hasHostPort()) {
         const delimiter = compose.value!.services.windows.environment.HOST_PORTS.length == 0 ? "" : ",";
         compose.value!.services.windows.environment.HOST_PORTS += delimiter + GUEST_QMP_PORT;
     }
@@ -640,17 +640,14 @@ const errors = computed(() => {
     return errCollection;
 });
 
-const hasUsbVolume = (_compose: typeof compose) =>
-    _compose.value?.services.windows.volumes?.some(x => x.includes(USB_BUS_PATH));
-const hasQmpArgument = (_compose: typeof compose) =>
-    _compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
+const hasUsbVolume = () => compose.value?.services.windows.volumes?.some(x => x.includes(USB_BUS_PATH));
+const hasQmpArgument = () => compose.value?.services.windows.environment.ARGUMENTS?.includes(QMP_ARGUMENT);
 const hasQmpPort = () =>
     compose.value?.services.windows.ports.some(port => port.endsWith(`:${GUEST_QMP_PORT}`)) ?? false;
-const hasHostPort = (_compose: typeof compose) =>
-    _compose.value?.services.windows.environment.HOST_PORTS?.includes(GUEST_QMP_PORT.toString());
+const hasHostPort = () => compose.value?.services.windows.environment.HOST_PORTS?.includes(`${GUEST_QMP_PORT}`);
 
 const usbPassthroughDisabled = computed(() => {
-    return !hasUsbVolume(compose) || !hasQmpArgument(compose) || !hasQmpPort() || !hasHostPort(compose);
+    return !hasUsbVolume() || !hasQmpArgument() || !hasQmpPort() || !hasHostPort();
 });
 
 const saveButtonDisabled = computed(() => {

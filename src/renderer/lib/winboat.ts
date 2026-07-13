@@ -100,7 +100,7 @@ const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string
  * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
  */
 const customAppCallbacks: CustomAppCallbacks = {
-    [CustomAppCommands.NOVNC_COMMAND]: (_ctx: Winboat) => {
+    [CustomAppCommands.NOVNC_COMMAND]: () => {
         openLink(NOVNC_URL);
     },
 };
@@ -636,8 +636,6 @@ export class Winboat {
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         const freeRDPInstallation = await getFreeRDP();
-
-        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
