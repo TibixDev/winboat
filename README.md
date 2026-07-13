@@ -16,9 +16,9 @@
 ## Screenshots
 
 <div align="center">
-  <img src="gh-assets/features/feat_dash.png" alt="WinBoat Dashboard" width="45%">
-  <img src="gh-assets/features/feat_apps.png" alt="WinBoat Apps" width="45%">
-  <img src="gh-assets/features/feat_native.png" alt="Native Windows" width="45%">
+  <img src="gh_assets/features/feat_dash.png" alt="WinBoat Dashboard" width="45%">
+  <img src="gh_assets/features/feat_apps.png" alt="WinBoat Apps" width="45%">
+  <img src="gh_assets/features/feat_native.png" alt="Native Windows" width="45%">
 </div>
 
 ## ⚠️ Work in Progress ⚠️
