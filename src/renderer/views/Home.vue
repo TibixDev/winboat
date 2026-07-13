@@ -55,9 +55,14 @@
                         </p>
                     </div>
 
-                    <p v-if="winboat.lastContainerError.value" class="!my-2 text-sm text-red-400 max-w-md">
+                    <button
+                        v-if="winboat.lastContainerError.value"
+                        @click="openContainerLogFile()"
+                        class="!my-2 text-sm text-red-400 max-w-md text-left hover:text-red-300 hover:underline cursor-pointer bg-transparent border-none p-0 font-inherit transition"
+                    >
                         {{ winboat.lastContainerError.value }}
-                    </p>
+                        <Icon icon="lucide:external-link" class="inline size-3.5 ml-0.5 translate-y-[-1px]" />
+                    </button>
                 </div>
             </div>
 
@@ -197,7 +202,7 @@ import { type ComposeConfig } from "../../types";
 import { WINDOWS_VERSIONS } from "../lib/constants";
 import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
-import { openAnchorLink } from "../utils/openLink";
+import { openAnchorLink, openContainerLogFile } from "../utils/openLink";
 
 const winboat = Winboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
