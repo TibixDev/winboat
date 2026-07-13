@@ -8,6 +8,8 @@ export const WINBOAT_DIR = process.env.XDG_DATA_HOME ?
     path.join(os.homedir(), ".local", "share", "winboat-app");
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
+export const CONTAINER_LOG_FILE = path.join(WINBOAT_DIR, "container.log");
+
 export const WINDOWS_VERSIONS = {
     "11": "Windows 11 Pro",
     "11l": "Windows 11 LTSC 2024",

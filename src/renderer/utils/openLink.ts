@@ -1,6 +1,5 @@
 const { shell }: typeof import("@electron/remote") = require("@electron/remote");
-const path: typeof import("path") = require("node:path");
-import { WINBOAT_DIR } from "../lib/constants";
+import { CONTAINER_LOG_FILE } from "../lib/constants";
 
 export function openLink(link: string) {
     if (link.startsWith("http")) {
@@ -20,6 +19,5 @@ export function openAnchorLink(e: MouseEvent) {
 }
 
 export function openContainerLogFile() {
-    const logPath = path.join(path.join(WINBOAT_DIR, "container.log"));
-    shell.openPath(logPath);
+    shell.openPath(CONTAINER_LOG_FILE);
 }
