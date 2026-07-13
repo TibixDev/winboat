@@ -30,7 +30,7 @@
                             <a
                                 v-if="!winboat.isOnline.value"
                                 title="Get Help"
-                                href="https://rentry.org/winboat_guest_server_borked"
+                                href="https://winboat.app/guest-server-borked"
                                 @click="openAnchorLink"
                                 class="text-red-400 hover:text-red-500 hover:underline inline-flex translate-y-1 transition"
                             >
