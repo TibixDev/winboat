@@ -69,7 +69,7 @@ export class InstallManager {
 
         // Ensure the .winboat directory exists
         if (!fs.existsSync(WINBOAT_DIR)) {
-            fs.mkdirSync(WINBOAT_DIR);
+            fs.mkdirSync(WINBOAT_DIR, { recursive: true });
             logger.info(`Created WinBoat directory: ${WINBOAT_DIR}`);
         }
 
