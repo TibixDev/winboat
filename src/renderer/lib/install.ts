@@ -1,11 +1,11 @@
 import { type InstallConfiguration } from "../../types";
-import { WINBOAT_DIR } from "./constants";
+import { NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
-import { CommonPorts, createContainer, getActiveHostPort } from "./containers/common";
+import { createContainer } from "./containers/common";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
@@ -29,7 +29,6 @@ interface InstallEvents {
     stateChanged: (state: InstallStates) => void;
     preinstallMsg: (msg: string) => void;
     error: (error: Error) => void;
-    vncPortChanged: (port: number) => void;
 }
 
 export class InstallManager {
@@ -211,12 +210,6 @@ export class InstallManager {
         // Start the container
         await this.container.compose("up");
 
-        // Cache ports
-        await this.container.port();
-
-        // emit vnc port event
-        this.emitter.emit("vncPortChanged", getActiveHostPort(this.container, CommonPorts.NOVNC)!);
-
         logger.info("Container started successfully.");
     }
 
@@ -230,8 +223,7 @@ export class InstallManager {
         const re = new RegExp(/>([^<]+)</);
         while (true) {
             try {
-                const vncHostPort = getActiveHostPort(this.container, CommonPorts.NOVNC)!;
-                const response = await nodeFetch(`http://127.0.0.1:${vncHostPort}/msg.html`, {
+                const response = await nodeFetch(`${NOVNC_URL}/msg.html`, {
                     signal: AbortSignal.timeout(500),
                 });
 
@@ -268,8 +260,7 @@ export class InstallManager {
             const start = performance.now();
 
             try {
-                const apiHostPort = getActiveHostPort(this.container, CommonPorts.API)!;
-                const res = await nodeFetch(`http://127.0.0.1:${apiHostPort}/health`, {
+                const res = await nodeFetch(`${WINBOAT_API_URL}/health`, {
                     signal: AbortSignal.timeout(5000),
                 });
 

@@ -37,18 +37,6 @@ export type CustomAppCallbacks = {
     [key: string]: null | ((context: Winboat) => void);
 };
 
-export type PortEntryProtocol = "tcp" | "udp";
-
-export type LongPortMapping = {
-    target: number;
-    published?: string;
-    host_ip?: string;
-    protocol?: PortEntryProtocol;
-    app_protocol?: string;
-    mode?: "host" | "ingress";
-    name?: string;
-};
-
 export type ComposeConfig = {
     name: string;
     volumes: {
@@ -77,7 +65,7 @@ export type ComposeConfig = {
                 [key: string]: string; // Allow additional env vars
             };
             privileged?: boolean;
-            ports: Array<string | LongPortMapping>;
+            ports: string[];
             network_mode?: string;
             cap_add: string[];
             stop_grace_period: string;

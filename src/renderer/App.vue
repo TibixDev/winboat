@@ -39,8 +39,8 @@
                     <ol class="mt-2 list-decimal list-inside">
                         <li>
                             Use VNC over at
-                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">
-                                {{ novncURL }}
+                            <a @click="openAnchorLink" :href="NOVNC_URL" target="_blank" rel="noopener noreferrer">
+                                {{ NOVNC_URL }}
                             </a>
                             to access Windows
                         </li>
@@ -164,7 +164,7 @@ import { Winboat } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
-import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
+import { NOVNC_URL } from "./lib/constants";
 import { performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
@@ -180,7 +180,6 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
-const novncURL = ref("");
 
 const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
 
@@ -208,7 +207,6 @@ onMounted(async () => {
         () => winboat?.isUpdatingGuestServer.value,
         isUpdating => {
             if (isUpdating === true) {
-                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}`;
                 updateDialog.value!.showModal();
                 // Prepare the timeout to show manual update required after 45 seconds
                 updateTimeout = setTimeout(() => {
