@@ -240,7 +240,6 @@ export class Winboat {
     isUpdatingGuestServer: Ref<boolean> = ref(false);
     containerStatus: Ref<ContainerStatus> = ref(ContainerStatus.EXITED);
     containerActionLoading: Ref<boolean> = ref(false);
-    lastContainerError: Ref<string | null> = ref(null);
     rdpConnected: Ref<boolean> = ref(false);
     metrics: Ref<Metrics> = ref<Metrics>({
         cpu: {
@@ -277,13 +276,17 @@ export class Winboat {
             const _containerStatus = await this.containerMgr!.getStatus();
 
             if (_containerStatus !== this.containerStatus.value) {
-                this.containerStatus.value = _containerStatus;
-                logger.info(`Winboat Container state changed to ${_containerStatus}`);
+                // ERROR is explicitly set, so don't overwrite it from periodic polling.
+                // Keep it until the next user action.
+                if (this.containerStatus.value !== ContainerStatus.ERROR) {
+                    this.containerStatus.value = _containerStatus;
+                    logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
-                if (_containerStatus === ContainerStatus.RUNNING) {
-                    await this.createAPIIntervals();
-                } else {
-                    await this.destroyAPIIntervals();
+                    if (_containerStatus === ContainerStatus.RUNNING) {
+                        await this.createAPIIntervals();
+                    } else {
+                        await this.destroyAPIIntervals();
+                    }
                 }
             }
         }, 1000);
@@ -503,7 +506,6 @@ export class Winboat {
     async startContainer() {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
-        this.lastContainerError.value = null;
 
         try {
             // Start the container if it exists and recreate it if starting it runs into an error
@@ -543,8 +545,7 @@ export class Winboat {
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
-            this.lastContainerError.value =
-                "Failed to start the WinBoat container. Check the container logs for more details.";
+            this.containerStatus.value = ContainerStatus.ERROR;
             throw e;
         } finally {
             this.containerActionLoading.value = false;
@@ -565,7 +566,6 @@ export class Winboat {
     async restartContainer() {
         logger.info("Restarting WinBoat container...");
         this.containerActionLoading.value = true;
-        this.lastContainerError.value = null;
         try {
             try {
                 await this.containerMgr!.container("restart");
@@ -583,8 +583,7 @@ export class Winboat {
         } catch (e) {
             logger.error("There was an error restarting the container.");
             logger.error(e);
-            this.lastContainerError.value =
-                "Failed to restart the WinBoat container. Check the container logs for more details.";
+            this.containerStatus.value = ContainerStatus.ERROR;
             throw e;
         } finally {
             this.containerActionLoading.value = false;

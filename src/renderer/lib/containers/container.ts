@@ -36,6 +36,7 @@ export enum ContainerStatus {
     PAUSED = "Paused",
     EXITED = "Exited",
     UNKNOWN = "Unknown",
+    ERROR = "ERROR",
 }
 
 // Errors which usually indicate that the container is in a stale/broken state,
