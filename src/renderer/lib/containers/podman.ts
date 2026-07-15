@@ -11,7 +11,6 @@ import {
 } from "./container";
 import YAML from "yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
-import { ComposePortEntry } from "../../utils/port";
 import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper";
 
 const path: typeof import("node:path") = require("node:path");
@@ -51,14 +50,16 @@ export class PodmanContainer extends ContainerManager {
     composeFilePath = path.join(WINBOAT_DIR, "podman-compose.yml");
     executableAlias = "podman";
 
-    cachedPortMappings: ComposePortEntry[] | null = null;
-
     constructor() {
         super();
     }
 
     writeCompose(compose: ComposeConfig): void {
-        const composeContent = YAML.stringify(compose, { nullStr: "" });
+        const composeContent = YAML.stringify(compose, {
+            nullStr: "",
+            defaultStringType: "QUOTE_DOUBLE",
+            defaultKeyType: "PLAIN",
+        });
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
@@ -97,31 +98,6 @@ export class PodmanContainer extends ContainerManager {
             containerLogger.error(e);
             throw e;
         }
-    }
-
-    async port(): Promise<ComposePortEntry[]> {
-        const args = ["port", this.containerName];
-        const ret = [];
-
-        try {
-            const { stdout } = await execFileAsync(this.executableAlias, args);
-
-            for (const line of stdout.trim().split("\n")) {
-                const parts = line.split("->").map(part => part.trim());
-                const hostPart = parts[1];
-                const containerPart = parts[0];
-
-                ret.push(new ComposePortEntry(`${hostPart}:${containerPart}`));
-            }
-        } catch (e) {
-            containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
-            containerLogger.error(e);
-            throw e;
-        }
-
-        containerLogger.info("Podman container active port mappings: ", JSON.stringify(ret));
-        this.cachedPortMappings = ret;
-        return ret;
     }
 
     async remove(): Promise<void> {

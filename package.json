@@ -58,5 +58,8 @@
         "vue3-apexcharts": "^1.10.0",
         "xel": "^0.40.3",
         "yaml": "^2.8.2"
+    },
+    "patchedDependencies": {
+        "usb@2.17.0": "patches/usb@2.17.0.patch"
     }
 }

@@ -1,5 +1,6 @@
+import { assert } from "@vueuse/core";
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR } from "./constants";
+import YAML from "yaml";
 import type {
     ComposeConfig,
     CustomAppCallbacks,
@@ -8,19 +9,18 @@ import type {
     Metrics,
     WinApp,
 } from "../../types";
-import { createLogger } from "../utils/log";
 import { AppIcons } from "../data/appicons";
-import YAML from "yaml";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { setIntervalImmediately } from "../utils/interval";
+import { createLogger } from "../utils/log";
 import { openLink } from "../utils/openLink";
 import { MultiMonitorMode, WinboatConfig } from "./config";
-import { QMPManager } from "./qmp";
-import { assert } from "@vueuse/core";
-import { setIntervalImmediately } from "../utils/interval";
-import { ExecFileAsyncError } from "./exec-helper";
+import { HOST_QMP_PORT, HOST_RDP_PORT, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
+import { ContainerRuntimes, createContainer } from "./containers/common";
 import { ContainerManager, ContainerStatus } from "./containers/container";
-import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { ExecFileAsyncError } from "./exec-helper";
+import { QMPManager } from "./qmp";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
@@ -58,6 +58,14 @@ const presetApps: WinApp[] = [
         Usage: 0,
     },
     {
+        Name: "⚙️ Windows Settings",
+        Icon: AppIcons[InternalApps.WINDOWS_SETTINGS],
+        Source: "internal",
+        Path: "%windir%\\explorer.exe",
+        Args: "ms-settings:",
+        Usage: 0,
+    },
+    {
         Name: "🖥️ Browser Display",
         Icon: AppIcons[InternalApps.NOVNC_BROWSER],
         Source: "internal",
@@ -92,9 +100,8 @@ const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string
  * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
  */
 const customAppCallbacks: CustomAppCallbacks = {
-    [CustomAppCommands.NOVNC_COMMAND]: (ctx: Winboat) => {
-        const novncHostPort = getActiveHostPort(ctx.containerMgr!, CommonPorts.NOVNC);
-        openLink(`http://127.0.0.1:${novncHostPort}`);
+    [CustomAppCommands.NOVNC_COMMAND]: () => {
+        openLink(NOVNC_URL);
     },
 };
 
@@ -114,12 +121,12 @@ class AppManager {
         this.#wbConfig = WinboatConfig.getInstance();
     }
 
-    async updateAppCache(apiURL: string, options: { forceRead?: boolean } = {}) {
-        const res = await nodeFetch(`${apiURL}/apps`);
+    async updateAppCache(options: { forceRead?: boolean } = {}) {
+        const res = await nodeFetch(`${WINBOAT_API_URL}/apps`);
         const newApps = (await res.json()) as WinApp[];
         newApps.push(...presetApps, ...this.#wbConfig!.config.customApps);
 
-        if (this.appCache.values.length == newApps.length && !options.forceRead) return;
+        if (this.appCache.length == newApps.length && !options.forceRead) return;
 
         for (const appIdx in newApps) {
             newApps[appIdx].Usage = this.appCache.find(app => app.Name == newApps[appIdx].Name)?.Usage || 0;
@@ -129,7 +136,7 @@ class AppManager {
         this.appCache = newApps;
     }
 
-    async getApps(apiURL: string): Promise<WinApp[]> {
+    async getApps(): Promise<WinApp[]> {
         if (this.appCache.length > 0) {
             return this.appCache;
         }
@@ -147,7 +154,7 @@ class AppManager {
             });
         }
 
-        await this.updateAppCache(apiURL, { forceRead: true });
+        await this.updateAppCache({ forceRead: true });
 
         const appCacheHumanReadable = this.appCache.map(obj => {
             const res = { ...obj } as any;
@@ -273,7 +280,6 @@ export class Winboat {
                 logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
                 if (_containerStatus === ContainerStatus.RUNNING) {
-                    await this.containerMgr!.port(); // Cache active port mappings
                     await this.createAPIIntervals();
                 } else {
                     await this.destroyAPIIntervals();
@@ -304,7 +310,7 @@ export class Winboat {
             const _isOnline = await this.getHealth();
             if (_isOnline !== this.isOnline.value) {
                 this.isOnline.value = _isOnline;
-                logger.info(`Winboat Guest API went ${this.isOnline ? "online" : "offline"}`);
+                logger.info(`Winboat Guest API went ${this.isOnline.value ? "online" : "offline"}`);
 
                 if (this.isOnline.value) {
                     await this.checkVersionAndUpdateGuestServer();
@@ -409,7 +415,7 @@ export class Winboat {
     async getHealth() {
         // If /health returns 200, then the guest is ready
         try {
-            const res = await nodeFetch(`${this.apiUrl}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+            const res = await nodeFetch(`${WINBOAT_API_URL}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
             return res.status === 200;
         } catch {
             return false;
@@ -417,13 +423,13 @@ export class Winboat {
     }
 
     async getMetrics() {
-        const res = await nodeFetch(`${this.apiUrl}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+        const res = await nodeFetch(`${WINBOAT_API_URL}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const metrics = (await res.json()) as Metrics;
         return metrics;
     }
 
     async getRDPConnectedStatus() {
-        const res = await nodeFetch(`${this.apiUrl}/rdp/status`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+        const res = await nodeFetch(`${WINBOAT_API_URL}/rdp/status`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
         const status = (await res.json()) as { rdpConnected: boolean };
         return status.rdpConnected;
     }
@@ -444,10 +450,7 @@ export class Winboat {
 
     async #connectQMPManager() {
         try {
-            this.qmpMgr = await QMPManager.createConnection(
-                "127.0.0.1",
-                getActiveHostPort(this.containerMgr!, CommonPorts.QMP)!,
-            ).catch(e => {
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", HOST_QMP_PORT).catch(e => {
                 logger.error(e);
                 throw e;
             });
@@ -617,7 +620,7 @@ export class Winboat {
     }
 
     async launchApp(app: WinApp) {
-        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
+        if (!this.isOnline.value) throw new Error("Cannot launch app, Winboat is offline");
 
         if (customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
@@ -630,13 +633,9 @@ export class Winboat {
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
 
-        const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
-
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         const freeRDPInstallation = await getFreeRDP();
-
-        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -648,7 +647,7 @@ export class Winboat {
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs);
-        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
+        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${HOST_RDP_PORT}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             args = args.concat([
@@ -706,7 +705,7 @@ export class Winboat {
 
     async checkVersionAndUpdateGuestServer() {
         // 1. Get the version of the guest server and compare it to the current version
-        const versionRes = await nodeFetch(`${this.apiUrl}/version`);
+        const versionRes = await nodeFetch(`${WINBOAT_API_URL}/version`);
         const version = (await versionRes.json()) as GuestServerVersion;
 
         const appVersion = import.meta.env.VITE_APP_VERSION;
@@ -737,7 +736,7 @@ export class Winboat {
         formData.append("password", password);
 
         try {
-            const res = await nodeFetch(`${this.apiUrl}/update`, {
+            const res = await nodeFetch(`${WINBOAT_API_URL}/update`, {
                 method: "POST",
                 body: formData as any,
             });
@@ -773,7 +772,7 @@ export class Winboat {
             const authFormData = new FormData();
             authFormData.append("authHash", hash);
 
-            const authRes = await nodeFetch(`${this.apiUrl}/auth/set-hash`, {
+            const authRes = await nodeFetch(`${WINBOAT_API_URL}/auth/set-hash`, {
                 method: "POST",
                 body: authFormData as any,
             });
@@ -801,13 +800,5 @@ export class Winboat {
      */
     get hasQMPInterval() {
         return this.#qmpInterval !== null;
-    }
-
-    get apiUrl(): string | undefined {
-        const apiPort = getActiveHostPort(this.containerMgr!, CommonPorts.API);
-
-        if (!apiPort) return undefined;
-
-        return `http://127.0.0.1:${apiPort}`;
     }
 }
