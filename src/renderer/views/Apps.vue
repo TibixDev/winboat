@@ -264,6 +264,7 @@ import { AppIcons, DEFAULT_ICON } from "../data/appicons";
 import { debounce } from "../utils/debounce";
 import { Jimp, JimpMime } from "jimp";
 import { WinboatConfig } from "../lib/config";
+import { WINBOAT_API_URL } from "../lib/constants";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const FormData: typeof import("form-data") = require("form-data");
 
@@ -348,13 +349,13 @@ onMounted(async () => {
 
 async function refreshApps() {
     if (winboat.isOnline.value) {
-        const loadedApps = await winboat.appMgr!.getApps(winboat.apiUrl!);
+        const loadedApps = await winboat.appMgr!.getApps();
         apps.value = loadedApps.map(app => ({
             ...app,
             id: crypto.randomUUID(),
         }));
         // Run in background, won't impact UX
-        await winboat.appMgr!.updateAppCache(winboat.apiUrl!);
+        await winboat.appMgr!.updateAppCache();
     }
 }
 
@@ -362,7 +363,7 @@ const debouncedFetchIcon = debounce(async (newVal: string, oldVal: string) => {
     if (newVal !== oldVal && newVal !== "") {
         const formData = new FormData();
         formData.append("path", newVal);
-        const iconRes = await nodeFetch(`${winboat.apiUrl!}/get-icon`, {
+        const iconRes = await nodeFetch(`${WINBOAT_API_URL}/get-icon`, {
             method: "POST",
             body: formData as any,
         });

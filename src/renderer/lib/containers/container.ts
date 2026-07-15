@@ -1,7 +1,6 @@
 import { ComposeConfig } from "../../../types";
 import { WINBOAT_DIR } from "../constants";
 import { createLogger } from "../../utils/log";
-import { ComposePortEntry } from "../../utils/port";
 
 const path: typeof import("node:path") = require("node:path");
 
@@ -16,12 +15,9 @@ export abstract class ContainerManager {
     abstract readonly composeFilePath: string;
     abstract readonly executableAlias: string;
 
-    abstract cachedPortMappings: ComposePortEntry[] | null;
-
     abstract writeCompose(compose: ComposeConfig): void;
     abstract compose(direction: ComposeDirection, extraArgs?: ComposeArguments[]): Promise<void>;
     abstract container(action: ContainerAction): Promise<void>;
-    abstract port(): Promise<ComposePortEntry[]>;
     abstract remove(): Promise<void>;
     abstract getStatus(): Promise<ContainerStatus>;
     abstract exists(): Promise<boolean>;

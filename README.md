@@ -16,9 +16,9 @@
 ## Screenshots
 
 <div align="center">
-  <img src="gh-assets/features/feat_dash.png" alt="WinBoat Dashboard" width="45%">
-  <img src="gh-assets/features/feat_apps.png" alt="WinBoat Apps" width="45%">
-  <img src="gh-assets/features/feat_native.png" alt="Native Windows" width="45%">
+  <img src="gh_assets/features/feat_dash.png" alt="WinBoat Dashboard" width="45%">
+  <img src="gh_assets/features/feat_apps.png" alt="WinBoat Apps" width="45%">
+  <img src="gh_assets/features/feat_native.png" alt="Native Windows" width="45%">
 </div>
 
 ## ⚠️ Work in Progress ⚠️
@@ -145,10 +145,10 @@ They're awesome and you should check them out:
 
 ## Star History
 
-<a href="https://www.star-history.com/#tibixdev/winboat&Date">
+<a href="https://www.star-history.com/?repos=tibixdev%2Fwinboat&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tibixdev/winboat&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=tibixdev/winboat&type=date&theme=dark&legend=top-left&sealed_token=zAULDxizn0P-jCXSLfkaIJCa-OhtmdFRKaZ3CfYqpk2L4um_02jxxY0_CVY_IrvpAJk8hph0kK0oyrlD0exFSrs4VDF86zOvTw3K0FVjggjuVR_v2gre9koLhhy8vTSR3UrY1xcINMWrbDurLh9Uiej8ZD2tsDDeksYZKnJMtaDSDp0zh2zJDGGrXBx4" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=tibixdev/winboat&type=date&legend=top-left&sealed_token=zAULDxizn0P-jCXSLfkaIJCa-OhtmdFRKaZ3CfYqpk2L4um_02jxxY0_CVY_IrvpAJk8hph0kK0oyrlD0exFSrs4VDF86zOvTw3K0FVjggjuVR_v2gre9koLhhy8vTSR3UrY1xcINMWrbDurLh9Uiej8ZD2tsDDeksYZKnJMtaDSDp0zh2zJDGGrXBx4" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=tibixdev/winboat&type=date&legend=top-left&sealed_token=zAULDxizn0P-jCXSLfkaIJCa-OhtmdFRKaZ3CfYqpk2L4um_02jxxY0_CVY_IrvpAJk8hph0kK0oyrlD0exFSrs4VDF86zOvTw3K0FVjggjuVR_v2gre9koLhhy8vTSR3UrY1xcINMWrbDurLh9Uiej8ZD2tsDDeksYZKnJMtaDSDp0zh2zJDGGrXBx4" />
  </picture>
 </a>
