@@ -42,8 +42,10 @@
                     <div
                         class="flex flex-row items-center gap-1.5"
                         :class="{
+                            'text-red-500':
+                                winboat.containerStatus.value === ContainerStatus.EXITED ||
+                                winboat.containerStatus.value === ContainerStatus.ERROR,
                             'text-green-500': winboat.containerStatus.value === ContainerStatus.RUNNING,
-                            'text-red-500': winboat.containerStatus.value === ContainerStatus.EXITED,
                             'text-yellow-500': winboat.containerStatus.value === ContainerStatus.PAUSED,
                             'text-orange-500': winboat.containerStatus.value === ContainerStatus.UNKNOWN,
                             'text-gray-500': winboat.containerStatus.value === ContainerStatus.CREATED,
@@ -51,7 +53,21 @@
                     >
                         <Icon class="size-7 scale-90" icon="octicon:container-16"></Icon>
                         <p class="!my-0 font-semibold text-lg">
-                            Container - {{ capitalizeFirstLetter(winboat.containerStatus.value) }}
+                            Container -
+                            {{
+                                winboat.containerStatus.value === ContainerStatus.ERROR
+                                    ? "Failed to Start"
+                                    : capitalizeFirstLetter(winboat.containerStatus.value)
+                            }}
+                            <button
+                                v-if="winboat.containerStatus.value === ContainerStatus.ERROR"
+                                @click="openContainerLogFile()"
+                                class="text-sm"
+                            >
+                                (check logs
+                                <Icon icon="lucide:external-link" class="inline size-3.5 ml-0.5 translate-y-[-1px]" />
+                                )
+                            </button>
                         </p>
                     </div>
                 </div>
@@ -65,7 +81,8 @@
                     v-if="
                         winboat.containerStatus.value === ContainerStatus.EXITED ||
                         winboat.containerStatus.value === ContainerStatus.CREATED ||
-                        winboat.containerStatus.value === ContainerStatus.UNKNOWN
+                        winboat.containerStatus.value === ContainerStatus.UNKNOWN ||
+                        winboat.containerStatus.value === ContainerStatus.ERROR
                     "
                     @click="winboat.startContainer()"
                 >
@@ -193,7 +210,7 @@ import { type ComposeConfig } from "../../types";
 import { WINDOWS_VERSIONS } from "../lib/constants";
 import { Icon } from "@iconify/vue";
 import { capitalizeFirstLetter } from "../utils/capitalize";
-import { openAnchorLink } from "../utils/openLink";
+import { openAnchorLink, openContainerLogFile } from "../utils/openLink";
 
 const winboat = Winboat.getInstance();
 const compose = ref<ComposeConfig | null>(null);
