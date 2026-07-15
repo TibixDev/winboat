@@ -25,7 +25,6 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 PASSWORD: "MyWindowsPassword",
                 HOME: "${HOME}",
                 LANGUAGE: "English",
-                NETWORK: "user",
                 USER_PORTS: `${GUEST_API_PORT}`,
                 HOST_PORTS: `${GUEST_QMP_PORT}`,
                 ARGUMENTS: QMP_ARGUMENT,
