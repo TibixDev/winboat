@@ -38,6 +38,8 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 "data:/storage",
                 "${HOME}:/shared",
                 "./oem:/oem",
+                "/dev:/dev:rslave",
+                "/dev/pts:/dev/pts"
             ],
             devices: ["/dev/kvm", "/dev/bus/usb"],
         },
