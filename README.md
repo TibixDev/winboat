@@ -64,7 +64,7 @@ Before running WinBoat, ensure your system meets the following requirements:
 - **FreeRDP**: Required for remote desktop connection (Please make sure you have **Version 3.x.x** with sound support included)
     - [Installation Guide](https://github.com/FreeRDP/FreeRDP/wiki/PreBuilds)
 - [OPTIONAL] **Kernel Modules**: The `iptables` / `nftables` kernel modules can be loaded for better network performance, but this is not obligatory in newer versions of WinBoat
-    - [Module loading instructions](https://winboat.app/docs/help/firewall-config/)
+    - [Module loading instructions](https://winboat.app/docs/help/network-improvement/)
 
 ## Downloading
 
