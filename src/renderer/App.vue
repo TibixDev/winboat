@@ -21,9 +21,14 @@
         <x-titlebar
             @minimize="handleMinimize()"
             @buttonclick="handleTitleBarEvent"
-            class="backdrop-blur-xl bg-neutral-900/50"
+            class="backdrop-blur-xl bg-neutral-900/50 gap-6"
         >
             <x-label>WinBoat</x-label>
+            <x-label
+                class="return-button bg-indigo-500 rounded-md px-1 py-1 cursor-pointer"
+                :class="{ 'return-button-visible': showReturnButton }"
+                @click="closeDocs">Return to WinBoat
+            </x-label>
         </x-titlebar>
 
         <!-- Updater -->
@@ -90,6 +95,19 @@
             </footer>
         </dialog>
 
+        <div
+            v-if="showingDocs"
+            class="docs-panel absolute top-[2rem] left-0 right-0 bottom-0 z-50"
+            :class="{ 'docs-panel-ready': !loadingDocs && !closingDocs }"
+        >
+            <webview
+                ref="docsWebview"
+                src="https://winboat.app/docs"
+                class="w-full h-full"
+                @did-finish-load="loadingDocs = false"
+            />
+        </div>
+
         <!-- UI / SetupUI -->
         <div
             v-if="!['SetupUI', 'Migration'].includes($route.name?.toString() || '')"
@@ -121,12 +139,22 @@
                     :to="route.path"
                     :key="route.path"
                 >
-                    <x-navitem>
+                    <x-navitem
+                        :toggled="!showingDocs && $route.path === route.path"
+                    >
                         <Icon class="mr-4 w-5 h-5" :icon="(route.meta!.icon as string)" />
                         <x-label>{{ route.name }}</x-label>
                     </x-navitem>
                 </RouterLink>
+                <x-navitem
+                    :toggled="showingDocs"
+                    @click="openDocs"
+                >
+                    <Icon class="mr-4 w-5 h-5" icon="fluent:book-globe-24-filled" />
+                    <x-label>Documentation</x-label>
+                </x-navitem>
                 <div class="flex flex-col justify-end items-center p-4 h-full">
+                    <a href="https://discord.com/invite/MEwmpWm4tN/" @click="openAnchorLink"><Icon class="w-5 h-5 text-neutral-500 pointer-events-none" icon="simple-icons:discord" /></a>   
                     <p class="text-xs text-neutral-500">WinBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
                 </div>
             </x-nav>
@@ -182,6 +210,29 @@ const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
 
 const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
+
+const showingDocs = ref(false);
+const showReturnButton = ref(false);
+const loadingDocs = ref(false);
+const closingDocs = ref(false);
+
+function openDocs() {
+    closingDocs.value = false;
+    loadingDocs.value = true;
+    showingDocs.value = true;
+    showReturnButton.value = true;
+}
+
+function closeDocs() {
+    closingDocs.value = true;
+    showReturnButton.value = false;
+
+    setTimeout(() => {
+        showingDocs.value = false;
+        closingDocs.value = false;
+        $router.push("/home");
+    }, 250);
+}
 
 onMounted(async () => {
     const winboatInstalled = await isInstalled();
@@ -344,5 +395,34 @@ body.disable-animations .bouncedown-in {
 /* Disable keyframe animations */
 body.disable-animations .blob-anim {
     animation: none !important;
+}
+
+.return-button {
+    -webkit-app-region: no-drag;
+    cursor: pointer;
+}
+
+.return-button {
+    -webkit-app-region: no-drag;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 250ms ease;
+}
+
+.return-button-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.docs-panel {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 250ms ease;
+}
+
+.docs-panel-ready {
+    opacity: 1;
+    pointer-events: auto;
 }
 </style>
