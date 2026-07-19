@@ -39,8 +39,10 @@ Validated in the exact-commit ARM64 CI build on `ubuntu-24.04-arm`:
 - Podman fail-closed checks that reject an x86_64 container image or
   unverifiable custom Windows media on an ARM64 host.
 
-A Fedora Asahi Remix smoke test of the packaged app, KVM-backed Windows VM,
-noVNC, Guest API, and RDP TCP/UDP forwarding is still pending.
+The ARM64 CI artifact from implementation commit `abfbcc1` was smoke-tested on
+Fedora Asahi Remix. The native AppImage UI, KVM-backed Windows ARM VM, rootless
+Podman forwarding recovery, noVNC, Guest API, and RDP TCP/UDP forwarding all
+passed while the existing container remained running with zero restarts.
 
 The automatic media path installs Windows on ARM. Existing x86/x64 Windows
 applications then depend on Windows on ARM's own compatibility layer. The
@@ -48,10 +50,10 @@ bundled WinBoat Guest Server is still built for Windows amd64 and likewise
 depends on that compatibility layer. Custom ISO media is intentionally rejected
 on ARM64 until its architecture can be verified safely.
 
-The Docker path has architecture-preflight test coverage. Neither Docker nor
-rootless Podman has an exact-commit live ARM64 sign-off yet. GPU passthrough,
-Podman USB passthrough, and arbitrary x86 kernel drivers are not provided by
-this port.
+The Docker path has architecture-preflight test coverage but no live ARM64
+sign-off. Rootless Podman has the Fedora Asahi Remix sign-off described above.
+GPU passthrough, Podman USB passthrough, and arbitrary x86 kernel drivers are
+not provided by this port.
 
 ## Features
 
