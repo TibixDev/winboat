@@ -12,9 +12,11 @@ import {
 } from "./container";
 import YAML from "yaml";
 import { execFileAsync, stringifyExecFile } from "../exec-helper";
+import { validatePodmanComposeArchitecture } from "./podman-architecture-preflight";
 
 const path: typeof import("node:path") = require("node:path");
 const fs: typeof import("node:fs") = require("node:fs");
+const process: typeof import("node:process") = require("node:process");
 
 export type DockerSpecs = {
     dockerInstalled: boolean;
@@ -28,7 +30,7 @@ export class DockerContainer extends ContainerManager {
     composeFilePath = path.join(WINBOAT_DIR, "docker-compose.yml"); // TODO: If/when we support multiple VM's we need to put this in the constructor
     executableAlias = "docker";
 
-    constructor() {
+    constructor(private readonly nodeArch = process.arch) {
         super();
     }
 
@@ -37,7 +39,11 @@ export class DockerContainer extends ContainerManager {
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
-        containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
+    }
+
+    async preflight(compose?: ComposeConfig, _includeExistingContainer = false): Promise<void> {
+        const config = compose ?? (YAML.parse(fs.readFileSync(this.composeFilePath, "utf8")) as ComposeConfig);
+        validatePodmanComposeArchitecture(config, this.nodeArch);
     }
 
     async compose(direction: ComposeDirection, extraArgs: ComposeArguments[] = []): Promise<void> {
@@ -49,6 +55,7 @@ export class DockerContainer extends ContainerManager {
         }
 
         try {
+            if (direction === "up") await this.preflight();
             const { stderr } = await execFileAsync(this.executableAlias, args);
             if (stderr) {
                 containerLogger.error(stderr);
@@ -63,6 +70,9 @@ export class DockerContainer extends ContainerManager {
     async container(action: ContainerAction): Promise<void> {
         const args = ["container", action, this.containerName];
         try {
+            if (action === "start" || action === "restart" || action === "unpause") {
+                await this.preflight();
+            }
             const { stdout } = await execFileAsync(this.executableAlias, args);
             containerLogger.info(`Container action '${action}' response: '${stdout}'`);
         } catch (e) {

@@ -19,6 +19,11 @@ import { MultiMonitorMode, WinboatConfig } from "./config";
 import { HOST_QMP_PORT, HOST_RDP_PORT, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
 import { ContainerRuntimes, createContainer } from "./containers/common";
 import { ContainerManager, ContainerStatus, isStaleContainerError } from "./containers/container";
+import {
+    mutateAfterComposePreflight,
+    recreateContainerAfterPreflight,
+} from "./containers/container-mutation-boundary";
+import { startMissingContainer } from "./containers/start-missing-container";
 import { ExecFileAsyncError } from "./exec-helper";
 import { QMPManager } from "./qmp";
 
@@ -234,6 +239,8 @@ export class Winboat {
     #metricsInverval: NodeJS.Timeout | null = null;
     #rdpConnectionStatusInterval: NodeJS.Timeout | null = null;
     #qmpInterval: NodeJS.Timeout | null = null;
+    #lastRootlessForwardRecoveryAt = 0;
+    #rootlessForwardRecoveryInFlight = false;
 
     // Variables
     isOnline: Ref<boolean> = ref(false);
@@ -273,20 +280,61 @@ export class Winboat {
 
         // This is a special interval which will never be destroyed
         setInterval(async () => {
-            const _containerStatus = await this.containerMgr!.getStatus();
+            const containerManager = this.containerMgr;
+            const config = this.#wbConfig;
+            if (containerManager === null || config === null) return;
+
+            const _containerStatus = await containerManager.getStatus();
+            const runtime = config.config.containerRuntime;
+            const {
+                recoverRootlessForwardsOnAppRunning,
+                shouldAttemptPeriodicRootlessRecovery,
+                shouldRecoverForwardsOnAppRunning,
+            } = await import("./containers/rootless-port-forward");
+
+            if (
+                shouldAttemptPeriodicRootlessRecovery(
+                    runtime,
+                    _containerStatus,
+                    Date.now(),
+                    this.#lastRootlessForwardRecoveryAt,
+                    this.#rootlessForwardRecoveryInFlight,
+                )
+            ) {
+                this.#rootlessForwardRecoveryInFlight = true;
+                this.#lastRootlessForwardRecoveryAt = Date.now();
+                try {
+                    await recoverRootlessForwardsOnAppRunning(runtime, containerManager.containerName);
+                    if (this.containerStatus.value !== ContainerStatus.RUNNING) {
+                        this.containerStatus.value = ContainerStatus.RUNNING;
+                        logger.info("Winboat rootless forwarding recovered; container state restored to Running");
+                        await this.createAPIIntervals();
+                    }
+                } catch (e) {
+                    logger.error(
+                        "Rootless guest port forward recovery failed (container left running). Retrying automatically.",
+                    );
+                    logger.error(e instanceof Error ? e : String(e));
+                    this.containerStatus.value = ContainerStatus.ERROR;
+                    this.isOnline.value = false;
+                    await this.destroyAPIIntervals();
+                    return;
+                } finally {
+                    this.#rootlessForwardRecoveryInFlight = false;
+                }
+            }
 
             if (_containerStatus !== this.containerStatus.value) {
-                // ERROR is explicitly set, so don't overwrite it from periodic polling.
-                // Keep it until the next user action.
-                if (this.containerStatus.value !== ContainerStatus.ERROR) {
-                    this.containerStatus.value = _containerStatus;
-                    logger.info(`Winboat Container state changed to ${_containerStatus}`);
+                if (_containerStatus === ContainerStatus.RUNNING && shouldRecoverForwardsOnAppRunning(runtime)) {
+                    return;
+                }
+                this.containerStatus.value = _containerStatus;
+                logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
-                    if (_containerStatus === ContainerStatus.RUNNING) {
-                        await this.createAPIIntervals();
-                    } else {
-                        await this.destroyAPIIntervals();
-                    }
+                if (_containerStatus === ContainerStatus.RUNNING) {
+                    await this.createAPIIntervals();
+                } else {
+                    await this.destroyAPIIntervals();
                 }
             }
         }, 1000);
@@ -498,9 +546,14 @@ export class Winboat {
      */
     async recreateContainer() {
         logger.warn("[recreateContainer] Recreating WinBoat container from its compose file...");
-        await this.containerMgr!.remove();
-        await this.containerMgr!.compose("up");
+        await recreateContainerAfterPreflight(this.containerMgr!);
         logger.info("[recreateContainer] Successfully recreated WinBoat container");
+    }
+
+    async #markContainerActionRunning() {
+        this.containerStatus.value = ContainerStatus.RUNNING;
+        this.#lastRootlessForwardRecoveryAt = Date.now();
+        await this.createAPIIntervals();
     }
 
     async startContainer() {
@@ -508,11 +561,14 @@ export class Winboat {
         this.containerActionLoading.value = true;
 
         try {
+            const containerManager = this.containerMgr;
+            if (containerManager === null) throw new TypeError("WinBoat container manager is not initialized");
+
             // Start the container if it exists and recreate it if starting it runs into an error
             // If there is no container, create it from the compose file
-            if (await this.containerMgr!.exists()) {
+            if (await containerManager.exists()) {
                 try {
-                    await this.containerMgr!.container("start");
+                    await containerManager.container("start");
                 } catch (e) {
                     if (isStaleContainerError(e)) {
                         logger.warn(
@@ -526,22 +582,15 @@ export class Winboat {
                 logger.info("Successfully started WinBoat container");
             } else {
                 try {
-                    await this.containerMgr!.compose("up");
-                    const recreated = await this.containerMgr!.exists();
-
-                    if (recreated) {
-                        logger.info("Successfully recreated the WinBoat container from the existing compose file");
-                    } else {
-                        logger.error(
-                            "Failed to recreate the WinBoat container: it still doesn't exist after 'compose up'",
-                        );
-                    }
+                    await startMissingContainer(containerManager);
+                    logger.info("Successfully recreated the WinBoat container from the existing compose file");
                 } catch (e) {
                     logger.error("Failed to recreate the WinBoat container from the existing compose file");
                     logger.error(e);
                     throw e;
                 }
             }
+            await this.#markContainerActionRunning();
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
@@ -580,6 +629,7 @@ export class Winboat {
                 }
             }
             logger.info("Successfully restarted WinBoat container");
+            await this.#markContainerActionRunning();
         } catch (e) {
             logger.error("There was an error restarting the container.");
             logger.error(e);
@@ -618,42 +668,34 @@ export class Winboat {
         @note Use {@link ContainerManager.writeCompose} in case only disk write is needed
     */
     async replaceCompose(composeConfig: ComposeConfig) {
-        logger.info("Going to replace compose config");
-        this.containerActionLoading.value = true;
+        await mutateAfterComposePreflight(this.containerMgr!, composeConfig, async () => {
+            logger.info("Going to replace compose config");
+            this.containerActionLoading.value = true;
+            try {
+                const composeFilePath = this.containerMgr!.composeFilePath;
+                if (this.containerStatus.value === ContainerStatus.RUNNING) {
+                    await this.stopContainer();
+                }
+                await this.containerMgr!.compose("down");
 
-        const composeFilePath = this.containerMgr!.composeFilePath;
+                const backupDir = path.join(WINBOAT_DIR, "backup");
+                if (!fs.existsSync(backupDir)) {
+                    fs.mkdirSync(backupDir);
+                    logger.info(`Created compose backup dir: ${backupDir}`);
+                }
 
-        // 0. Stop the current container if it's online
-        if (this.containerStatus.value === ContainerStatus.RUNNING) {
-            await this.stopContainer();
-        }
+                const backupFile = `${Date.now()}-${path.basename(composeFilePath)}`;
+                fs.renameSync(composeFilePath, path.join(backupDir, backupFile));
+                logger.info(`Backed up current compose at: ${path.join(backupDir, backupFile)}`);
 
-        // 1. Compose down the current container
-        await this.containerMgr!.compose("down");
-
-        // 2. Create a backup directory if it doesn't exist
-        const backupDir = path.join(WINBOAT_DIR, "backup");
-
-        if (!fs.existsSync(backupDir)) {
-            fs.mkdirSync(backupDir);
-            logger.info(`Created compose backup dir: ${backupDir}`);
-        }
-
-        // 3. Move the current compose file to backup
-        const backupFile = `${Date.now()}-${path.basename(this.containerMgr!.composeFilePath)}`;
-        fs.renameSync(composeFilePath, path.join(backupDir, backupFile));
-        logger.info(`Backed up current compose at: ${path.join(backupDir, backupFile)}`);
-
-        // 4. Write new compose file
-        this.containerMgr!.writeCompose(composeConfig);
-        logger.info(`Wrote new compose file to: ${composeFilePath}`);
-
-        // 5. Deploy the container with the new compose file
-        await this.containerMgr!.compose("up");
-
-        logger.info("Replace compose config completed, successfully deployed new container");
-
-        this.containerActionLoading.value = false;
+                this.containerMgr!.writeCompose(composeConfig);
+                logger.info(`Wrote new compose file to: ${composeFilePath}`);
+                await this.containerMgr!.compose("up");
+                logger.info("Replace compose config completed, successfully deployed new container");
+            } finally {
+                this.containerActionLoading.value = false;
+            }
+        });
     }
 
     async resetWinboat() {

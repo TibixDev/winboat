@@ -25,6 +25,34 @@
 
 WinBoat is currently in beta, so expect to occasionally run into hiccups and bugs. You should be comfortable with some level of troubleshooting if you decide to try it, however we encourage you to give it a shot anyway.
 
+## ARM64 / Asahi Linux port status
+
+This branch extends WinBoat to native ARM64 Linux hosts. It keeps the upstream
+x86_64 path and adds architecture checks, ARM64 packaging, automatic Windows
+ARM media policy, and a small container-side userspace forwarder for rootless
+Podman networks.
+
+Validated in the exact-commit ARM64 CI build on `ubuntu-24.04-arm`:
+
+- native ARM64 Electron packages and bundled ARM64 forwarding helper;
+- architecture and rootless forwarding lifecycle tests; and
+- Podman fail-closed checks that reject an x86_64 container image or
+  unverifiable custom Windows media on an ARM64 host.
+
+A Fedora Asahi Remix smoke test of the packaged app, KVM-backed Windows VM,
+noVNC, Guest API, and RDP TCP/UDP forwarding is still pending.
+
+The automatic media path installs Windows on ARM. Existing x86/x64 Windows
+applications then depend on Windows on ARM's own compatibility layer. The
+bundled WinBoat Guest Server is still built for Windows amd64 and likewise
+depends on that compatibility layer. Custom ISO media is intentionally rejected
+on ARM64 until its architecture can be verified safely.
+
+The Docker path has architecture-preflight test coverage. Neither Docker nor
+rootless Podman has an exact-commit live ARM64 sign-off yet. GPU passthrough,
+Podman USB passthrough, and arbitrary x86 kernel drivers are not provided by
+this port.
+
 ## Features
 
 - **🎨 Elegant Interface**: Sleek and intuitive interface that seamlessly integrates Windows into your Linux desktop environment, making it feel like a native experience
@@ -92,8 +120,19 @@ You can download the latest Linux builds under the [Releases](https://github.com
 - For building you need to have Bun and Go installed on your system
 - Clone the repo (`git clone https://github.com/TibixDev/WinBoat`)
 - Install the dependencies (`bun i`)
+- Run the release gate (`bun run verify`)
 - Build the app and the guest server using `bun run build:linux-gs`
-- You can now find the built app under `dist` with an AppImage and an Unpacked variant
+- You can now find AppImage, DEB, RPM, tar.bz2, and unpacked outputs under `dist`
+
+Linux package builds also need the native USB/udev headers and FPM's legacy
+crypt compatibility library. On Debian/Ubuntu install `libcrypt1`,
+`libudev-dev`, and `libusb-1.0-0-dev`; on Fedora install
+`libxcrypt-compat`, `systemd-devel`, and `libusb1-devel`.
+
+On ARM64, build natively on an ARM64 Linux host (or the ARM64 GitHub-hosted
+runner used by this branch). The package includes both ARM64 and amd64 variants
+of the rootless port-forward helper so the same source tree still builds on
+x86_64.
 
 ## Running WinBoat in development mode
 

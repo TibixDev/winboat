@@ -1,7 +1,12 @@
 name: Build WinBoat
+
 permissions:
-    contents: write
+    contents: read
+
 on:
+    pull_request:
+        branches:
+            - main
     push:
         branches:
             - main
@@ -18,185 +23,126 @@ on:
                     - all
                     - linux-only
                     - guest-server-only
+
 jobs:
     build:
-        runs-on: ubuntu-22.04
         if: >-
-            (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) ||
+            github.event_name == 'push' ||
+            github.event_name == 'pull_request' ||
             (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'guest-server-only')
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - runner: ubuntu-22.04
+                      arch: x86_64
+                      unpacked_dir: linux-unpacked
+                    - runner: ubuntu-24.04-arm
+                      arch: arm64
+                      unpacked_dir: linux-arm64-unpacked
+        runs-on: ${{ matrix.runner }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
             - name: Update USB IDs database
-              run: |
-                  echo "Removing old usb.ids file..."
-                  rm -f data/usb.ids
-                  echo "Downloading latest usb.ids from linux-usb.org..."
-                  curl -o data/usb.ids http://www.linux-usb.org/usb.ids
-                  echo "USB IDs database updated successfully"
-            - name: Show build type
-              run: |
-                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-                    echo "Manual workflow triggered with build type: ${{ github.event.inputs.build_type }}"
-                  else
-                    echo "Automatic workflow triggered by ${{ github.event_name }}"
-                  fi
-            - name: Install system dependencies
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y libudev-dev libusb-1.0-0-dev
-            - name: Set up Bun
-              uses: oven-sh/setup-bun@v2
-            - name: Set up Go
-              uses: actions/setup-go@v6
-              with:
-                  go-version: "stable"
-                  cache-dependency-path: "guest_server/go.sum"
-            - name: Install dependencies
-              run: bun ci
-            - name: Build guest server and app
-              run: bun run build:linux-gs
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
-            - name: Derive artifact naming
-              id: meta
               shell: bash
               run: |
-                  bun -e "const p=require('./package.json'); console.log('NAME='+p.name)" >> "$GITHUB_OUTPUT"
-                  bun -e "const p=require('./package.json'); console.log('VERSION='+p.version)" >> "$GITHUB_OUTPUT"
-                  ARCH_FROM_FILE=$(ls dist/*.{AppImage,deb,rpm,tar.bz2} 2>/dev/null | head -n1 | xargs -I{} basename {} | sed -E 's/.*-([A-Za-z0-9_]+)\.[^.]+$/\1/')
-                  if [ -n "$ARCH_FROM_FILE" ]; then
-                    echo "ARCH=$ARCH_FROM_FILE" >> "$GITHUB_OUTPUT"
+                  usb_ids_tmp="${RUNNER_TEMP}/usb.ids"
+                  if curl --fail --location --show-error --silent --retry 3 \
+                      --output "${usb_ids_tmp}" https://www.linux-usb.org/usb.ids &&
+                      grep -Fq "List of USB ID's" "${usb_ids_tmp}"; then
+                      mv "${usb_ids_tmp}" data/usb.ids
                   else
-                    BUN_ARCH=$(bun -p "process.arch")
-                    case "$BUN_ARCH" in
-                      x64)   echo "ARCH=x86_64" >> "$GITHUB_OUTPUT" ;;
-                      arm64) echo "ARCH=arm64"  >> "$GITHUB_OUTPUT" ;;
-                      arm)   echo "ARCH=armv7l" >> "$GITHUB_OUTPUT" ;;
-                      *)     echo "ARCH=$BUN_ARCH" >> "$GITHUB_OUTPUT" ;;
-                    esac
+                      echo "::warning::Could not refresh usb.ids; using tracked fallback."
                   fi
-            - name: Upload AppImage
-              uses: actions/upload-artifact@v7
-              with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.appimage
-                  path: dist/*.AppImage
-                  if-no-files-found: ignore
-            - name: Upload DEB
-              uses: actions/upload-artifact@v7
-              with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.deb
-                  path: dist/*.deb
-                  if-no-files-found: ignore
-            - name: Upload RPM
-              uses: actions/upload-artifact@v7
-              with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.rpm
-                  path: dist/*.rpm
-                  if-no-files-found: ignore
-            - name: Upload TAR.BZ2
-              uses: actions/upload-artifact@v7
-              with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}.tar.bz2
-                  path: dist/*.tar.bz2
-                  if-no-files-found: ignore
-            - name: Upload unpacked directory
-              uses: actions/upload-artifact@v7
-              with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-unpacked.zip
-                  path: dist/linux-unpacked/**
-                  if-no-files-found: ignore
-            - name: Upload guest server zip
-              uses: actions/upload-artifact@v7
-              with:
-                  name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-guest_server.zip
-                  path: dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
-                  if-no-files-found: ignore
-            # - name: Upload metadata
-            #   uses: actions/upload-artifact@v7
-            #   with:
-            #     name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-metadata
-            #     path: |
-            #       dist/latest-linux.yml
-            #       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
-            #     if-no-files-found: ignore
-    guest-server-only:
-        runs-on: ubuntu-22.04
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v6
-            - name: Show build type
-              run: |
-                  echo "Manual workflow triggered with build type: guest-server-only"
-            - name: Set up Go
-              uses: actions/setup-go@v6
-              with:
-                  go-version: "stable"
-                  cache-dependency-path: "guest_server/go.sum"
-            - name: Build guest server only
-              run: bash build-guest-server.sh
-            - name: Upload guest server artifacts
-              uses: actions/upload-artifact@v7
-              with:
-                  name: guest-server-artifacts
-                  path: guest_server/
-    release:
-        runs-on: ubuntu-22.04
-        if: >-
-            startsWith(github.ref, 'refs/tags/') ||
-            (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'all')
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v6
-            - name: Update USB IDs database
-              run: |
-                  echo "Removing old usb.ids file..."
-                  rm -f data/usb.ids
-                  echo "Downloading latest usb.ids from linux-usb.org..."
-                  curl -o data/usb.ids http://www.linux-usb.org/usb.ids
-                  echo "USB IDs database updated successfully"
-            - name: Show build type
-              run: |
-                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-                    echo "Manual workflow triggered with build type: ${{ github.event.inputs.build_type }}"
-                  else
-                    echo "Release workflow triggered by tag: ${{ github.ref_name }}"
-                  fi
+                  test -s data/usb.ids
             - name: Install system dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+                  sudo apt-get install -y libcrypt1 libudev-dev libusb-1.0-0-dev
             - name: Set up Bun
               uses: oven-sh/setup-bun@v2
             - name: Set up Go
               uses: actions/setup-go@v6
               with:
                   go-version: "stable"
-                  cache-dependency-path: "guest_server/go.sum"
+                  cache-dependency-path: |
+                      guest_server/go.sum
+                      tools/guest-port-forward/go.mod
             - name: Install dependencies
               run: bun ci
+            - name: Verify source and dependencies
+              run: |
+                  bash -n build-guest-server.sh scripts/*.sh
+                  bun run verify
             - name: Build guest server and app
               run: bun run build:linux-gs
               env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   ELECTRON_BUILDER_COMPRESSION_LEVEL: 5
-            - name: Zip unpacked variant
-              run: cd dist && zip -r winboat-linux-unpacked.zip linux-unpacked/
-            - name: Create GitHub Release
-              uses: softprops/action-gh-release@v3
+            - name: Prepare architecture artifacts
+              run: |
+                  test -d "dist/${{ matrix.unpacked_dir }}"
+                  cd dist
+                  zip -r "winboat-${{ matrix.arch }}-linux-unpacked.zip" "${{ matrix.unpacked_dir }}"
+                  cp "${{ matrix.unpacked_dir }}/resources/guest_server/winboat_guest_server.zip" "winboat-${{ matrix.arch }}-guest_server.zip"
+            - name: Upload architecture bundle
+              uses: actions/upload-artifact@v7
               with:
-                  files: |
+                  name: winboat-${{ matrix.arch }}
+                  path: |
                       dist/*.AppImage
                       dist/*.deb
                       dist/*.rpm
                       dist/*.tar.bz2
-                      dist/winboat-linux-unpacked.zip
-                      dist/latest-linux.yml
-                      dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
+                      dist/latest-linux*.yml
+                      dist/winboat-${{ matrix.arch }}-linux-unpacked.zip
+                      dist/winboat-${{ matrix.arch }}-guest_server.zip
+                  if-no-files-found: error
+
+    guest-server-only:
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'guest-server-only'
+        runs-on: ubuntu-22.04
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+            - name: Set up Bun
+              uses: oven-sh/setup-bun@v2
+            - name: Set up Go
+              uses: actions/setup-go@v6
+              with:
+                  go-version: "stable"
+                  cache-dependency-path: guest_server/go.sum
+            - name: Verify guest server
+              working-directory: guest_server
+              run: GOOS=windows GOARCH=amd64 go vet ./...
+            - name: Build guest server
+              run: bash build-guest-server.sh
+            - name: Upload guest server artifacts
+              uses: actions/upload-artifact@v7
+              with:
+                  name: guest-server-amd64
+                  path: |
+                      guest_server/winboat_guest_server.exe
+                      guest_server/winboat_guest_server.zip
+                  if-no-files-found: error
+
+    release:
+        if: startsWith(github.ref, 'refs/tags/')
+        needs: build
+        runs-on: ubuntu-22.04
+        permissions:
+            contents: write
+        steps:
+            - name: Download architecture bundles
+              uses: actions/download-artifact@v7
+              with:
+                  pattern: winboat-*
+                  path: release-assets
+                  merge-multiple: true
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v3
+              with:
+                  files: release-assets/*
                   draft: false
                   prerelease: false
                   generate_release_notes: true
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

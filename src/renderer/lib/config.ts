@@ -73,7 +73,11 @@ export type WinboatConfigObj = {
     appsSortOrder: string;
 };
 
-const currentVersion = new WinboatVersion(import.meta.env.VITE_APP_VERSION);
+const appVersion = import.meta.env.VITE_APP_VERSION;
+if (!appVersion) {
+    throw new Error("VITE_APP_VERSION is required");
+}
+const currentVersion = new WinboatVersion(appVersion);
 
 const defaultConfig: WinboatConfigObj = {
     scale: 100,

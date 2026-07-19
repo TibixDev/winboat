@@ -21,6 +21,8 @@
         "artifactName": "${name}-${version}-${arch}.${ext}"
     },
     "files": [
+        "package.json",
+        "LICENSE",
         {
             "from": "build/main",
             "to": "main",
@@ -35,10 +37,7 @@
             "from": "src/main/static",
             "to": "static",
             "filter": ["**/*"]
-        },
-        "!build",
-        "!dist",
-        "!scripts"
+        }
     ],
     "extraResources": [
         {
@@ -50,6 +49,11 @@
             "from": "./data",
             "to": "data",
             "filter": ["**/*"]
+        },
+        {
+            "from": "./tools/guest-port-forward/dist",
+            "to": "guest-port-forward",
+            "filter": ["guest-port-forward-linux-arm64", "guest-port-forward-linux-amd64"]
         }
     ]
 }
