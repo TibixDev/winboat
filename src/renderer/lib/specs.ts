@@ -46,7 +46,19 @@ export async function getSpecs() {
     // KVM check
     try {
         const cpuInfo = fs.readFileSync("/proc/cpuinfo", "utf8");
-        if ((cpuInfo.includes("vmx") || cpuInfo.includes("svm")) && fs.existsSync("/dev/kvm")) {
+
+        // ARM EL2 Check
+        try {
+            const elLevel = (await execAsync("journalctl -k | grep -i 'EL2'")).stdout.trim();
+        } catch(e) {
+            console.warn("Device not booted in EL2 or arch is x86");
+            const elLevel = "None";
+        }
+
+        if (
+            (cpuInfo.includes("vmx") || cpuInfo.includes("svm") || elLevel.includes("EL2")) &&
+            fs.existsSync("/dev/kvm")
+        ) {
             specs.kvmEnabled = true;
         }
     } catch (e) {
