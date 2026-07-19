@@ -91,9 +91,9 @@
                             <li class="flex items-center gap-2">
                                 <span v-if="specs.kvmEnabled" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                Virtualization (KVM) enabled
+                                Virtualization (KVM) device accessible
                                 <a
-                                    href="https://duckduckgo.com/?t=h_&q=how+to+enable+virtualization+in+%3Cmotherboard+brand%3E+bios&ia=web"
+                                    href="https://duckduckgo.com/?q=Linux+KVM+%2Fdev%2Fkvm+missing+permission+denied+kvm+group+BIOS+virtualization&ia=web"
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
@@ -170,7 +170,7 @@
                                     <span v-else class="text-red-500">✘</span>
                                     User added to the
                                     <span class="font-mono bg-neutral-700 rounded-md px-0.5">docker</span> group
-                                    <span class="text-gray-600"> (Relog required) </span>
+                                    <span class="text-gray-400"> (Relog required) </span>
                                     <a
                                         href="https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user"
                                         @click="openAnchorLink"
@@ -192,7 +192,7 @@
                                     >
                                     <span v-else class="text-red-500">✘</span>
                                     Docker daemon is running
-                                    <span class="text-gray-600"> (Also enable on boot) </span>
+                                    <span class="text-gray-400"> (Also enable on boot) </span>
                                     <a
                                         href="https://docs.docker.com/config/daemon/start/"
                                         @click="openAnchorLink"

@@ -6,6 +6,7 @@ import { Winboat } from "./winboat";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { createContainer } from "./containers/common";
+import { assertGuestImagePolicy, composePlatformForNode } from "./containers/architecture";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
@@ -65,6 +66,7 @@ export class InstallManager {
 
     async createComposeFile() {
         this.changeState(InstallStates.CREATING_COMPOSE_FILE);
+        assertGuestImagePolicy(process.arch, this.conf.customIsoPath);
 
         // Ensure the .winboat directory exists
         if (!fs.existsSync(WINBOAT_DIR)) {
@@ -80,6 +82,7 @@ export class InstallManager {
 
         // Configure the compose file
         const composeContent = this.container.defaultCompose;
+        composeContent.services.windows.platform = composePlatformForNode(process.arch);
 
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
@@ -125,6 +128,8 @@ export class InstallManager {
                 logger.info(`Updated shared folder to: ${this.conf.sharedFolderPath}`);
             }
         }
+
+        await this.container.preflight(composeContent);
 
         // Write the compose file
         this.container.writeCompose(composeContent);

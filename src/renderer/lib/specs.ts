@@ -1,5 +1,6 @@
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { ContainerSpecs } from "./containers/common";
+import { evaluateKvmEnabled, probeKvmDeviceAccess } from "./kvm";
 const fs: typeof import("fs") = require("node:fs");
 const { exec }: typeof import("child_process") = require("node:child_process");
 const { promisify }: typeof import("util") = require("node:util");
@@ -43,14 +44,14 @@ export async function getSpecs() {
         console.error("Error reading /proc/meminfo:", e);
     }
 
-    // KVM check
+    // KVM check: /dev/kvm must exist and open O_RDWR for this user.
+    // open fd is closed inside probeKvmDeviceAccess. No vmx/svm / arch-name gates.
+    // Preflight is openability only — not a full KVM ioctl capability check.
     try {
-        const cpuInfo = fs.readFileSync("/proc/cpuinfo", "utf8");
-        if ((cpuInfo.includes("vmx") || cpuInfo.includes("svm")) && fs.existsSync("/dev/kvm")) {
-            specs.kvmEnabled = true;
-        }
+        const probe = probeKvmDeviceAccess();
+        specs.kvmEnabled = evaluateKvmEnabled(probe);
     } catch (e) {
-        console.error("Error reading /proc/cpuinfo or checking /dev/kvm:", e);
+        console.error("Error checking /dev/kvm:", e);
     }
 
     // FreeRDP 3.x.x check (including Flatpak)

@@ -50,6 +50,7 @@ export type ComposeConfig = {
     services: {
         windows: {
             image: string;
+            platform?: "linux/arm64" | "linux/amd64";
             container_name: string;
             environment: {
                 VERSION: WindowsVersionKey;

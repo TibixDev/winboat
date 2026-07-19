@@ -2,6 +2,8 @@
     "name": "winboat",
     "version": "0.9.0",
     "description": "Windows for Penguins",
+    "license": "MIT",
+    "desktopName": "com.teabox.winboat.desktop",
     "type": "module",
     "main": "main/main.js",
     "engines": {
@@ -9,9 +11,15 @@
         "bun": ">=1.3.0"
     },
     "scripts": {
-        "dev": "bun scripts/dev-server.ts",
+        "dev": "bun run build:gpf && bun scripts/dev-server.ts",
+        "build:gpf": "bash scripts/build-guest-port-forward.sh",
         "build:gs": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux"
+        "build:linux-gs": "bun run build:gpf && bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux",
+        "test": "bun test src/renderer/lib src/main && bun run test:gpf",
+        "test:gpf": "cd tools/guest-port-forward && go test -race -shuffle=on -count=1 ./...",
+        "typecheck": "tsc --noEmit -p src/main/tsconfig.json && vue-tsc --noEmit -p src/renderer/tsconfig.json --skipLibCheck && tsc --noEmit -p src/renderer/tsconfig.test.json --skipLibCheck",
+        "vet:go": "cd guest_server && GOOS=windows GOARCH=amd64 go vet ./... && cd ../tools/guest-port-forward && go vet ./...",
+        "verify": "bun run typecheck && bun run test && bun run vet:go"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
@@ -20,6 +28,7 @@
         "email": "staff@winboat.app"
     },
     "devDependencies": {
+        "@types/bun": "^1.3.14",
         "@types/node-fetch": "^2.6.13",
         "@types/turndown": "^5.0.6",
         "@vitejs/plugin-vue": "^6.0.4",

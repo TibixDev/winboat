@@ -12,6 +12,11 @@ import {
 import YAML from "yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
 import { concatEnv, execFileAsync, stringifyExecFile } from "../exec-helper";
+import {
+    preflightExistingPodmanContainer,
+    preflightPodmanArchitecture,
+    type PodmanExec,
+} from "./podman-architecture-preflight";
 
 const path: typeof import("node:path") = require("node:path");
 const fs: typeof import("node:fs") = require("node:fs");
@@ -45,12 +50,28 @@ type PodmanInfo = {
 
 const COMPOSE_ENV_VARS = { PODMAN_COMPOSE_PROVIDER: "podman-compose", PODMAN_COMPOSE_WARNING_LOGS: "false" };
 
+export type PodmanCommand = (
+    args: string[],
+    options?: { env?: Record<string, string> },
+) => Promise<{ stdout: string; stderr: string }>;
+
+const defaultPodmanCommand: PodmanCommand = async (args, options) => {
+    const { stdout, stderr } = await execFileAsync("podman", args, options);
+    return {
+        stdout: typeof stdout === "string" ? stdout : (stdout?.toString("utf8") ?? ""),
+        stderr: typeof stderr === "string" ? stderr : (stderr?.toString("utf8") ?? ""),
+    };
+};
+
 export class PodmanContainer extends ContainerManager {
     defaultCompose = PODMAN_DEFAULT_COMPOSE;
     composeFilePath = path.join(WINBOAT_DIR, "podman-compose.yml");
     executableAlias = "podman";
 
-    constructor() {
+    constructor(
+        private readonly runCommand: PodmanCommand = defaultPodmanCommand,
+        private readonly nodeArchitecture: NodeJS.Architecture = process.arch,
+    ) {
         super();
     }
 
@@ -63,26 +84,48 @@ export class PodmanContainer extends ContainerManager {
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
-        containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
+    }
+
+    async preflight(compose?: ComposeConfig, includeExistingContainer = false): Promise<void> {
+        const config =
+            compose ?? (YAML.parse(fs.readFileSync(this.composeFilePath, "utf8")) as ComposeConfig);
+        const run: PodmanExec = async args => (await this.runCommand([...args])).stdout;
+        await preflightPodmanArchitecture(config, this.nodeArchitecture, run);
+        if (includeExistingContainer) {
+            await preflightExistingPodmanContainer(this.containerName, this.nodeArchitecture, run);
+        }
     }
 
     async compose(direction: ComposeDirection, extraArgs: ComposeArguments[] = []): Promise<void> {
-        const args = ["compose", "-f", this.composeFilePath, direction, ...extraArgs];
-
-        if (direction === "up") {
-            // Run compose in detached mode if we are running compose up
-            args.push("-d");
-        }
+        let args = ["compose", "-f", this.composeFilePath, direction, ...extraArgs];
+        let composeSucceeded = false;
 
         try {
-            const { stderr } = await execFileAsync(this.executableAlias, args, {
+            if (direction === "up") {
+                await this.preflight();
+                if (!extraArgs.includes("--no-start")) args.push("-d");
+            }
+            const { stderr } = await this.runCommand(args, {
                 env: concatEnv(process.env as { [key: string]: string }, COMPOSE_ENV_VARS),
             });
+            composeSucceeded = true;
             if (stderr) {
                 containerLogger.error(stderr);
             }
+            // Rootless Podman host port publish never hits dockur QEMU_DNAT PREROUTING.
+            // Ensure userspace TCP/UDP listeners forward API/RDP into the guest.
+            // Failures throw RootlessPortForwardError (container is left running).
+            const { ensureRootlessForwardsIfNeeded, shouldRecoverForwardsOnCompose } =
+                await import("./rootless-port-forward");
+            if (shouldRecoverForwardsOnCompose(direction) && !extraArgs.includes("--no-start")) {
+                await ensureRootlessForwardsIfNeeded(this.containerName, { fatalOnError: true });
+            }
         } catch (e) {
-            containerLogger.error(`Failed to run compose command '${stringifyExecFile(this.executableAlias, args)}'`);
+            if (composeSucceeded) {
+                containerLogger.error("Compose completed, but rootless guest port forward recovery failed");
+            } else {
+                containerLogger.error(`Failed to run compose command '${stringifyExecFile(this.executableAlias, args)}'`);
+            }
             containerLogger.error(e);
             throw e;
         }
@@ -91,8 +134,17 @@ export class PodmanContainer extends ContainerManager {
     async container(action: ContainerAction): Promise<void> {
         const args = ["container", action, this.containerName];
         try {
-            const { stdout } = await execFileAsync(this.executableAlias, args);
+            if (action === "start" || action === "restart" || action === "unpause") {
+                await this.preflight(undefined, true);
+            }
+            const { stdout } = await this.runCommand(args);
             containerLogger.info(`Container action '${action}' response: '${stdout}'`);
+            // Children inside the container die on stop/restart/reboot; re-arm forwarders.
+            const { ensureRootlessForwardsIfNeeded, shouldRecoverForwardsOnContainerAction } =
+                await import("./rootless-port-forward");
+            if (shouldRecoverForwardsOnContainerAction(action)) {
+                await ensureRootlessForwardsIfNeeded(this.containerName, { fatalOnError: true });
+            }
         } catch (e) {
             containerLogger.error(`Failed to run container action '${stringifyExecFile(this.executableAlias, args)}'`);
             containerLogger.error(e);
@@ -104,7 +156,7 @@ export class PodmanContainer extends ContainerManager {
         const args = ["rm", this.containerName];
 
         try {
-            await execFileAsync(this.executableAlias, args);
+            await this.runCommand(args);
         } catch (e) {
             containerLogger.error(`Failed to remove container '${this.containerName}'`);
             containerLogger.error(e);
@@ -127,7 +179,7 @@ export class PodmanContainer extends ContainerManager {
         const args = ["inspect", "--format={{.State.Status}}", this.containerName];
 
         try {
-            const { stdout } = await execFileAsync(this.executableAlias, args);
+            const { stdout } = await this.runCommand(args);
             const status = stdout.trim() as keyof typeof statusMap;
             return statusMap[status];
         } catch (e) {
@@ -137,9 +189,16 @@ export class PodmanContainer extends ContainerManager {
     }
 
     async exists(): Promise<boolean> {
-        const args = ["ps", "-a", "--filter", `name=${this.containerName}`, "--format", "{{.Names}}"];
+        const args = [
+            "ps",
+            "-a",
+            "--filter",
+            `name=${this.containerName}`,
+            "--format",
+            "{{.Names}}",
+        ];
         try {
-            const { stdout: exists } = await execFileAsync(this.executableAlias, args);
+            const { stdout: exists } = await this.runCommand(args);
             return exists.includes(this.containerName);
         } catch (e) {
             containerLogger.error(

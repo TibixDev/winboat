@@ -29,8 +29,5 @@ FileSystem.rmSync(Path.join(__dirname, "..", "build"), {
 
 console.log(Chalk.blueBright("Transpiling renderer & main..."));
 
-Promise.allSettled([buildRenderer(), buildMain()]).then(() => {
-    console.log(
-        Chalk.greenBright("Renderer & main successfully transpiled! (ready to be built with electron-builder)"),
-    );
-});
+await Promise.all([buildRenderer(), buildMain()]);
+console.log(Chalk.greenBright("Renderer & main successfully transpiled! (ready to be built with electron-builder)"));

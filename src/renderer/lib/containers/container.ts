@@ -16,6 +16,7 @@ export abstract class ContainerManager {
     abstract readonly executableAlias: string;
 
     abstract writeCompose(compose: ComposeConfig): void;
+    abstract preflight(compose?: ComposeConfig, includeExistingContainer?: boolean): Promise<void>;
     abstract compose(direction: ComposeDirection, extraArgs?: ComposeArguments[]): Promise<void>;
     abstract container(action: ContainerAction): Promise<void>;
     abstract remove(): Promise<void>;
