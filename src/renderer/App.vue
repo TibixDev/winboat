@@ -5,10 +5,11 @@
     >
         <!-- Decoration -->
         <div
-            class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15 blob-anim"
+            class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15"
         ></div>
         <div
-            class="gradient-ball absolute -z-10 right-0 top-0 translate-x-[50%] translate-y-[-50%] w-[90vw] aspect-square opacity-15 blob-anim"
+            class="gradient-ball absolute -z-10 right-0 top-0 translate-x-[50%] translate-y-[-50%] w-[90vw] aspect-square opacity-15"
+            style="filter: hue-rotate(45deg) blur(200px)"
         ></div>
 
         <!-- Stripes for experimental -->
@@ -271,20 +272,6 @@ dialog::backdrop {
     filter: blur(200px);
 }
 
-@keyframes blob {
-    from {
-        filter: hue-rotate(0deg) blur(200px);
-    }
-    to {
-        filter: hue-rotate(45deg) blur(200px);
-    }
-}
-
-.blob-anim {
-    animation: blob 5s linear infinite;
-    animation-direction: alternate-reverse;
-}
-
 .fade-enter-active,
 .fade-leave-active {
     transition: all 0.2s ease;
@@ -338,11 +325,6 @@ body.disable-animations .bouncedown-leave-active,
 body.disable-animations .bounce-in,
 body.disable-animations .bouncedown-in {
     transition: none !important;
-    animation: none !important;
-}
-
-/* Disable keyframe animations */
-body.disable-animations .blob-anim {
     animation: none !important;
 }
 </style>
