@@ -1,9 +1,7 @@
 diff --git a/binding.gyp b/binding.gyp
-index db98bb83b50ecc75aea7ccddd9a20c99d3494c13..7f86dfd5c5511f5c331a14e47119e5f9a34f5cbe 100644
 --- a/binding.gyp
 +++ b/binding.gyp
-@@ -32,7 +32,7 @@
-         'src/thread_name.cc'
+@@ -34,6 +34,6 @@
        ],
        'cflags_cc': [
 -        '-std=c++14'
