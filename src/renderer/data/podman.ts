@@ -3,6 +3,7 @@ import {
     COMPOSE_PORT_MAPPINGS,
     GUEST_API_PORT,
     GUEST_QMP_PORT,
+    GUEST_UPDATE_PORT,
     QMP_ARGUMENT,
     RESTART_ON_FAILURE,
 } from "../lib/constants";
@@ -25,7 +26,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 PASSWORD: "MyWindowsPassword",
                 HOME: "${HOME}",
                 LANGUAGE: "English",
-                USER_PORTS: `${GUEST_API_PORT}`,
+                USER_PORTS: `${GUEST_API_PORT},${GUEST_UPDATE_PORT}`,
                 HOST_PORTS: `${GUEST_QMP_PORT}`,
                 ARGUMENTS: QMP_ARGUMENT,
             },

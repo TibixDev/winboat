@@ -10,6 +10,10 @@ export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linux
 
 export const CONTAINER_LOG_FILE = path.join(WINBOAT_DIR, "container.log");
 
+// Shared secret used to authenticate the host to the guest services. Generated
+// once at install time and seeded into the guest via the OEM mount.
+export const GUEST_TOKEN_PATH = path.join(WINBOAT_DIR, "guest_token");
+
 export const WINDOWS_VERSIONS = {
     "11": "Windows 11 Pro",
     "11l": "Windows 11 LTSC 2024",
@@ -60,19 +64,22 @@ export const WINDOWS_LANGUAGES = {
 
 // Ports
 // WinBoat claims host ports 47270-47279 on 127.0.0.1 for its services.
-// The range is unassigned by IANA; 47274-47279 are reserved for future services.
+// The range is unassigned by IANA; 47275-47279 are reserved for future services.
 export const GUEST_NOVNC_PORT = 8006;
 export const GUEST_API_PORT = 7148;
 export const GUEST_QMP_PORT = 7149;
+export const GUEST_UPDATE_PORT = 7150;
 export const GUEST_RDP_PORT = 3389;
 
 export const HOST_NOVNC_PORT = 47270;
 export const HOST_API_PORT = 47271;
 export const HOST_QMP_PORT = 47272;
 export const HOST_RDP_PORT = 47273;
+export const HOST_UPDATE_PORT = 47274;
 
 export const NOVNC_URL = `http://127.0.0.1:${HOST_NOVNC_PORT}`;
 export const WINBOAT_API_URL = `http://127.0.0.1:${HOST_API_PORT}`;
+export const WINBOAT_UPDATE_URL = `http://127.0.0.1:${HOST_UPDATE_PORT}`;
 
 export const QMP_ARGUMENT = `-qmp tcp:0.0.0.0:${GUEST_QMP_PORT},server,wait=off`;
 export const QMP_PORT_MAPPING = `127.0.0.1:${HOST_QMP_PORT}:${GUEST_QMP_PORT}`;
@@ -80,6 +87,7 @@ export const QMP_PORT_MAPPING = `127.0.0.1:${HOST_QMP_PORT}:${GUEST_QMP_PORT}`;
 export const COMPOSE_PORT_MAPPINGS = [
     `127.0.0.1:${HOST_NOVNC_PORT}:${GUEST_NOVNC_PORT}`, // noVNC Web Interface
     `127.0.0.1:${HOST_API_PORT}:${GUEST_API_PORT}`, // WinBoat Guest Server API
+    `127.0.0.1:${HOST_UPDATE_PORT}:${GUEST_UPDATE_PORT}`, // WinBoat Guest Server Updater
     QMP_PORT_MAPPING, // QEMU QMP
     `127.0.0.1:${HOST_RDP_PORT}:${GUEST_RDP_PORT}/tcp`, // RDP
     `127.0.0.1:${HOST_RDP_PORT}:${GUEST_RDP_PORT}/udp`, // RDP

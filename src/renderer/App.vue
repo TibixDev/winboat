@@ -58,7 +58,7 @@
                             </a>
                             , you should pick version <strong>{{ appVer }}</strong>
                         </li>
-                        <li>Navigate to <code>C:\Program Files\WinBoat</code> and delete the contents</li>
+                        <li>Navigate to <code>C:\Program Files\WinBoat\server</code> and delete the contents</li>
                         <li>Extract the freshly downloaded zip into the same folder</li>
                         <li>
                             Start the <code>WinBoatGuestServer</code> service by right clicking and pressing "Start"

@@ -1,6 +1,7 @@
 import { type InstallConfiguration } from "../../types";
-import { NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
+import { GUEST_TOKEN_PATH, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
 import { createLogger } from "../utils/log";
+import { guestServerOemDir } from "../utils/guestServer";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
 import { ContainerManager } from "./containers/container";
@@ -9,9 +10,8 @@ import { createContainer } from "./containers/common";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
+const crypto: typeof import("crypto") = require("node:crypto");
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
-const argon2: typeof import("argon2") = require("argon2");
 const logger = createLogger(path.join(WINBOAT_DIR, "install.log"));
 
 export enum InstallStates {
@@ -134,7 +134,7 @@ export class InstallManager {
         this.changeState(InstallStates.CREATING_OEM);
         logger.info("Creating OEM assets");
 
-        const oemPath = path.join(WINBOAT_DIR, "oem"); // Fixed the path separator
+        const oemPath = path.join(WINBOAT_DIR, "oem");
 
         // Create OEM directory if it doesn’t exist
         if (!fs.existsSync(oemPath)) {
@@ -142,10 +142,9 @@ export class InstallManager {
             logger.info(`Created OEM directory: ${oemPath}`);
         }
 
-        // Determine the source path based on whether the app is bundled
-        const appPath = remote.app.isPackaged
-            ? path.join(process.resourcesPath, "guest_server") // For packaged app
-            : path.join(remote.app.getAppPath(), "..", "..", "guest_server"); // For dev mode
+        // The OEM payload (server\, updater\, install.bat, nssm.exe, ...) is built
+        // into the guest server resource's `oem` directory.
+        const appPath = guestServerOemDir();
 
         logger.info(`Guest server source path: ${appPath}`);
 
@@ -193,12 +192,13 @@ export class InstallManager {
             throw error;
         }
 
-        // Create password hash file in oemPath
+        // Generate the guest authentication token, will be placed in OEM
         try {
-            const hash = await argon2.hash(this.conf.password);
-            fs.writeFileSync(path.join(oemPath, "auth.hash"), hash, { encoding: "utf8" });
+            const token = crypto.randomUUID();
+            fs.writeFileSync(GUEST_TOKEN_PATH, token, { encoding: "utf8" });
+            fs.writeFileSync(path.join(oemPath, "guest_token"), token, { encoding: "utf8" });
         } catch (error) {
-            logger.error(`Failed to create password hash: ${error}`);
+            logger.error(`Failed to create guest token: ${error}`);
             throw error;
         }
     }
@@ -260,9 +260,7 @@ export class InstallManager {
             const start = performance.now();
 
             try {
-                const res = await nodeFetch(`${WINBOAT_API_URL}/health`, {
-                    signal: AbortSignal.timeout(5000),
-                });
+                const res = await nodeFetch(`${WINBOAT_API_URL}/health`, { signal: AbortSignal.timeout(5000) });
 
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
