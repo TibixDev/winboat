@@ -111,7 +111,7 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-guest_server.zip
-                  path: dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
+                  path: dist/linux-unpacked/resources/guest_server/update/winboat_guest_server.zip
                   if-no-files-found: ignore
             # - name: Upload metadata
             #   uses: actions/upload-artifact@v7
@@ -119,7 +119,7 @@ jobs:
             #     name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ steps.meta.outputs.ARCH }}-metadata
             #     path: |
             #       dist/latest-linux.yml
-            #       dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
+            #       dist/linux-unpacked/resources/guest_server/update/winboat_guest_server.zip
             #     if-no-files-found: ignore
     guest-server-only:
         runs-on: ubuntu-22.04
@@ -141,7 +141,7 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: guest-server-artifacts
-                  path: guest_server/
+                  path: guest_server/dist/
     release:
         runs-on: ubuntu-22.04
         if: >-
@@ -194,7 +194,7 @@ jobs:
                       dist/*.tar.bz2
                       dist/winboat-linux-unpacked.zip
                       dist/latest-linux.yml
-                      dist/linux-unpacked/resources/guest_server/winboat_guest_server.zip
+                      dist/linux-unpacked/resources/guest_server/update/winboat_guest_server.zip
                   draft: false
                   prerelease: false
                   generate_release_notes: true

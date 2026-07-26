@@ -99,12 +99,6 @@ export type GuestServerVersion = {
     build_time: string;
 };
 
-export type GuestServerUpdateResponse = {
-    filename: string;
-    status: string;
-    temp_path: string;
-};
-
 export type USBDevice = {
     vendorID: string;
     productID: string;

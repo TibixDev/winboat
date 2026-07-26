@@ -1,22 +1,16 @@
 import { assert } from "@vueuse/core";
 import { ref, type Ref } from "vue";
 import YAML from "yaml";
-import type {
-    ComposeConfig,
-    CustomAppCallbacks,
-    GuestServerUpdateResponse,
-    GuestServerVersion,
-    Metrics,
-    WinApp,
-} from "../../types";
+import type { ComposeConfig, CustomAppCallbacks, GuestServerVersion, Metrics, WinApp } from "../../types";
 import { AppIcons } from "../data/appicons";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { guestServerUpdateZipPath, guestUpdaterAuthHeaders } from "../utils/guestServer";
 import { setIntervalImmediately } from "../utils/interval";
 import { createLogger } from "../utils/log";
 import { openLink } from "../utils/openLink";
 import { MultiMonitorMode, WinboatConfig } from "./config";
-import { HOST_QMP_PORT, HOST_RDP_PORT, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
+import { HOST_QMP_PORT, HOST_RDP_PORT, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR, WINBOAT_UPDATE_URL } from "./constants";
 import { ContainerRuntimes, createContainer } from "./containers/common";
 import { ContainerManager, ContainerStatus, isStaleContainerError } from "./containers/container";
 import { ExecFileAsyncError } from "./exec-helper";
@@ -25,12 +19,8 @@ import { QMPManager } from "./qmp";
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
-const process: typeof import("process") = require("node:process");
 const { promisify }: typeof import("util") = require("node:util");
 const { exec }: typeof import("child_process") = require("node:child_process");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
-const FormData: typeof import("form-data") = require("form-data");
-const argon2: typeof import("argon2") = require("argon2");
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");
@@ -107,6 +97,7 @@ const customAppCallbacks: CustomAppCallbacks = {
 
 const QMP_WAIT_MS = 2000;
 const FETCH_TIMEOUT = 1000;
+const GUEST_ONLINE_TIMEOUT_MS = 60_000;
 
 class AppManager {
     appCache: WinApp[] = [];
@@ -779,94 +770,61 @@ export class Winboat {
     }
 
     async checkVersionAndUpdateGuestServer() {
-        // 1. Get the version of the guest server and compare it to the current version
+        // 1. Compare the running Guest Server version with the bundled app version.
         const versionRes = await nodeFetch(`${WINBOAT_API_URL}/version`);
         const version = (await versionRes.json()) as GuestServerVersion;
-
         const appVersion = import.meta.env.VITE_APP_VERSION;
 
-        if (version.version !== appVersion) {
-            logger.info(`New local version of WinBoat Guest Server found: ${appVersion}`);
-            logger.info(`Current version of WinBoat Guest Server: ${version.version}`);
-        }
-
-        // 2. Return early if the version is the same
+        // Any mismatch triggers an update. This is intentionally not semver-aware:
+        // installing an older WinBoat deliberately rolls the guest back to match.
         if (version.version === appVersion) {
             return;
         }
+        logger.info(`Guest Server update needed: ${version.version} -> ${appVersion}`);
 
-        // 3. Set update flag & grab winboat_guest_server.zip from Electron assets
+        // 2. Push the bundled update payload to the Guest Server Updater, which
+        //    applies it atomically and rolls back if the new server fails to come
+        //    up. Auth is the shared token; the raw zip is the request body.
         this.isUpdatingGuestServer.value = true;
-        const zipPath = remote.app.isPackaged
-            ? path.join(process.resourcesPath, "guest_server", "winboat_guest_server.zip")
-            : path.join(remote.app.getAppPath(), "..", "..", "guest_server", "winboat_guest_server.zip");
-
-        logger.info("ZIP Path", zipPath);
-
-        // 4. Send the payload to the guest server
-        // as a multipart/form-data with updateFile and password
-        const formData = new FormData();
-        formData.append("updateFile", fs.createReadStream(zipPath));
-        const { password } = this.getCredentials();
-        formData.append("password", password);
+        const zipPath = guestServerUpdateZipPath();
+        logger.info(`Sending update payload to the Guest Server Updater: ${zipPath}`);
 
         try {
-            const res = await nodeFetch(`${WINBOAT_API_URL}/update`, {
+            const res = await nodeFetch(`${WINBOAT_UPDATE_URL}/update`, {
                 method: "POST",
-                body: formData as any,
+                headers: {
+                    ...guestUpdaterAuthHeaders(),
+                    "Content-Type": "application/octet-stream",
+                },
+                body: fs.createReadStream(zipPath),
             });
             if (res.status !== 200) {
-                const resBody = await res.text();
-                throw new Error(resBody);
+                throw new Error(`Updater returned ${res.status}: ${await res.text()}`);
             }
-            const resJson = (await res.json()) as GuestServerUpdateResponse;
-            logger.info(`Update params: ${JSON.stringify(resJson, null, 4)}`);
-            logger.info("Successfully sent update payload to guest server");
+            logger.info("Guest Server Updater applied the update successfully");
         } catch (e) {
-            logger.error("Failed to send update payload to guest server");
+            logger.error("Failed to apply Guest Server update");
             logger.error(e);
             this.isUpdatingGuestServer.value = false;
             throw e;
         }
 
-        // 5. Wait about ~3 seconds, then start scanning for health
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        let _isOnline = await this.getHealth();
-        while (!_isOnline) {
+        // 3. The updater already health-gated the new server before responding;
+        //    this just re-syncs the host's own online view, bounded by a
+        //    wall-clock deadline (getHealth itself can block up to FETCH_TIMEOUT).
+        let online = await this.getHealth();
+        const deadline = Date.now() + GUEST_ONLINE_TIMEOUT_MS;
+        while (!online && Date.now() < deadline) {
             await new Promise(resolve => setTimeout(resolve, 1000));
-            _isOnline = await this.getHealth();
-        }
-        logger.info("Update completed, Winboat Guest Server is online");
-
-        // 6. [OPTIONAL] Apply authentication hash in case it's not set yet, because
-        // it will be required during future updates
-        try {
-            const { password } = this.getCredentials();
-            const hash = await argon2.hash(password);
-
-            const authFormData = new FormData();
-            authFormData.append("authHash", hash);
-
-            const authRes = await nodeFetch(`${WINBOAT_API_URL}/auth/set-hash`, {
-                method: "POST",
-                body: authFormData as any,
-            });
-
-            if (authRes.status === 200) {
-                logger.info("Successfully set auth hash for existing installation");
-            } else if (authRes.status === 400) {
-                // Hash already set, this is expected for existing installations that already have it
-                logger.info("Auth hash already set, skipping enrollment");
-            } else {
-                const errorText = await authRes.text();
-                logger.warn(`Unexpected response when setting auth hash: ${authRes.status} - ${errorText}`);
-            }
-        } catch (e) {
-            logger.error("Failed to set auth hash (non-critical error)");
-            logger.error(e);
+            online = await this.getHealth();
         }
 
-        // Done!
+        if (online) {
+            logger.info("Update completed, Winboat Guest Server is online");
+        } else {
+            logger.error("Guest Server did not report healthy within the timeout after update");
+        }
+
         this.isUpdatingGuestServer.value = false;
     }
 

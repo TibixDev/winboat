@@ -42,7 +42,7 @@
     ],
     "extraResources": [
         {
-            "from": "./guest_server",
+            "from": "./guest_server/dist",
             "to": "guest_server",
             "filter": ["**/*"]
         },
