@@ -784,7 +784,7 @@
                             </x-label>
                             <x-label class="text-lg text-gray-400 text-center">
                                 To reset and try again, follow
-                                <a href="https://rentry.org/winboat_retry_install" @click="openAnchorLink">these</a>
+                                <a href="https://winboat.app/docs/help/install-failure/" @click="openAnchorLink">these</a>
                                 instructions.
                             </x-label>
                         </div>
