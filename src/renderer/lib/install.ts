@@ -188,7 +188,7 @@ export class InstallManager {
             });
             logger.info("OEM assets created successfully");
         } catch (error) {
-            logger.error(`Failed to copy OEM assets: ${error}`);
+            logger.error(`Failed to copy OEM assets: ${String(error)}`);
             throw error;
         }
 
@@ -198,7 +198,7 @@ export class InstallManager {
             fs.writeFileSync(GUEST_TOKEN_PATH, token, { encoding: "utf8" });
             fs.writeFileSync(path.join(oemPath, "guest_token"), token, { encoding: "utf8" });
         } catch (error) {
-            logger.error(`Failed to create guest token: ${error}`);
+            logger.error(`Failed to create guest token: ${String(error)}`);
             throw error;
         }
     }
@@ -241,7 +241,7 @@ export class InstallManager {
                     return; // Exit the method when fetch throws 404
                 }
 
-                logger.error(`Error monitoring container: ${error}`);
+                logger.error(`Error monitoring container: ${String(error)}`);
                 throw error;
             }
 

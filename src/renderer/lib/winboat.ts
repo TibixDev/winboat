@@ -133,7 +133,14 @@ class AppManager {
         }
 
         // Get the usage object that's on the disk
-        const fsUsage = Object.entries(JSON.parse(fs.readFileSync(USAGE_PATH, "utf-8"))) as any[];
+        let fsUsage: [string, number][] = [];
+        try {
+            const fileContent = fs.readFileSync(USAGE_PATH, "utf-8");
+            fsUsage = Object.entries(JSON.parse(fileContent)) as [string, number][];
+        } catch {
+            // If file doesn't exist or contains invalid JSON, start with empty usage
+            fsUsage = [];
+        }
         this.appCache = [];
 
         // Populate appCache with dummy WinApp object containing data from the disk

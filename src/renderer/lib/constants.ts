@@ -3,9 +3,9 @@ const process: typeof import("process") = require("node:process");
 const path: typeof import("path") = require("node:path");
 
 // Should be {XDG_DATA_HOME}/winboat-app or {home}/.local/share/winboat-app if missing
-export const WINBOAT_DIR = process.env.XDG_DATA_HOME ?
-    path.join(process.env.XDG_DATA_HOME, "winboat-app") :
-    path.join(os.homedir(), ".local", "share", "winboat-app");
+export const WINBOAT_DIR = process.env.XDG_DATA_HOME
+    ? path.join(process.env.XDG_DATA_HOME, "winboat-app")
+    : path.join(os.homedir(), ".local", "share", "winboat-app");
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const CONTAINER_LOG_FILE = path.join(WINBOAT_DIR, "container.log");

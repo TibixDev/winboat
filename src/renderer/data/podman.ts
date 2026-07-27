@@ -35,11 +35,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
             stop_grace_period: "120s",
             restart: RESTART_ON_FAILURE,
             privileged: true,
-            volumes: [
-                "data:/storage",
-                "${HOME}:/shared",
-                "./oem:/oem",
-            ],
+            volumes: ["data:/storage", "${HOME}:/shared", "./oem:/oem"],
             devices: ["/dev/kvm", "/dev/bus/usb"],
         },
     },

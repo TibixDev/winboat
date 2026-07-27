@@ -1,20 +1,20 @@
 <template>
-    <div class="flex flex-col gap-2 justify-center items-center mt-12">
-        <div id="stepIcon" class="flex items-center justify-center relative size-[30rem]">
-            <Icon key="icon1" class="size-[60%] text-violet-400 z-30 relative" :icon="currentIcon" />
+    <div class="mt-12 flex flex-col items-center justify-center gap-2">
+        <div id="stepIcon" class="relative flex size-[30rem] items-center justify-center">
+            <Icon key="icon1" class="relative z-30 size-[60%] text-violet-400" :icon="currentIcon" />
             <Icon
                 key="icon-gradient"
-                class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[50%] translate-y-[-50%] blur-2xl"
+                class="absolute top-[50%] z-20 size-[60%] translate-y-[-50%] text-violet-400 blur-2xl brightness-75"
                 :icon="currentIcon"
             />
             <Icon
                 key="icon2"
-                class="size-[60%] text-violet-400 brightness-75 z-20 absolute top-[51.5%] translate-y-[-50%] translate-x-[1.5%]"
+                class="absolute top-[51.5%] z-20 size-[60%] translate-x-[1.5%] translate-y-[-50%] text-violet-400 brightness-75"
                 :icon="currentIcon"
             />
             <Icon
                 key="icon3"
-                class="size-[60%] text-violet-400 brightness-50 z-10 absolute top-[53%] translate-y-[-50%] translate-x-[3%]"
+                class="absolute top-[53%] z-10 size-[60%] translate-x-[3%] translate-y-[-50%] text-violet-400 brightness-50"
                 :icon="currentIcon"
             />
         </div>
@@ -22,7 +22,7 @@
             Performing Migrations
             <div class="loader inline-block translate-y-1"></div>
         </h3>
-        <p class="text-gray-400 max-w-[40vw] text-center">
+        <p class="max-w-[40vw] text-center text-gray-400">
             Please wait while we migrate your existing WinBoat configuration to ensure compatibility with the latest
             version.
         </p>

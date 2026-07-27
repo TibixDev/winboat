@@ -1,0 +1,33 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["typescript", "unicorn", "oxc", "vue"],
+    "categories": {
+        "correctness": "error",
+        "suspicious": "off",
+        "pedantic": "off",
+        "perf": "off",
+        "style": "off",
+        "restriction": "off"
+    },
+    "rules": {
+        "typescript/no-floating-promises": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-for-in-array": "off",
+        "oxc/no-async-await": "off",
+        "oxc/no-optional-chaining": "off",
+        "oxc/no-rest-spread-properties": "off",
+        "eslint/no-console": "off",
+        "eslint/no-plusplus": "off",
+        "eslint/no-useless-constructor": "off",
+        "eslint/no-underscore-dangle": "off",
+        "eslint/no-await-in-loop": "off"
+    },
+    "env": {
+        "builtin": true
+    },
+    "ignorePatterns": ["/src/renderer/public/xel", "/scripts/dev-server.ts"],
+    "options": {
+        "typeAware": true,
+        "typeCheck": true
+    }
+}

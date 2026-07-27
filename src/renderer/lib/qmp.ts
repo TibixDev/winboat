@@ -7,8 +7,6 @@ const { createConnection }: typeof import("net") = require("node:net");
 
 const logger = createLogger(path.join(WINBOAT_DIR, "qmp.log"));
 
-type QMPStatus = "Connected" | "Closed";
-
 type QMPGreeting = {
     QMP: {
         version: {
@@ -34,7 +32,7 @@ type QMPStatusInfo = {
 
 type QMPObjectPropertyInfo = {
     name: string;
-    type: "u8" | "u16" | "bool" | "str" | "double" | string;
+    type: string;
     description?: string;
     "default-value"?: string;
 };
@@ -210,7 +208,7 @@ export class QMPManager {
      *
      */
     async isAlive(): Promise<boolean> {
-        return new Promise(async (resolve, _) => {
+        return new Promise((resolve, _) => {
             if (this.qmpSocket.closed || this.qmpSocket.destroyed) {
                 return resolve(false);
             }
@@ -237,5 +235,5 @@ export class QMPManager {
         });
     }
 
-    private static handleError(e: unknown, msg?: string) {}
+    private static handleError(_e: unknown, _msg?: string) {}
 }

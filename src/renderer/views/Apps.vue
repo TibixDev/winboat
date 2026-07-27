@@ -2,8 +2,8 @@
     <div>
         <dialog ref="addCustomAppDialog">
             <h3 class="mb-2">{{ currentAppForm.Source === "custom" ? "Edit App" : "Add App" }}</h3>
-            <div class="flex flex-row gap-5 mt-4 w-[35vw]">
-                <div class="flex flex-col flex-none gap-2 justify-center items-center">
+            <div class="mt-4 flex w-[35vw] flex-row gap-5">
+                <div class="flex flex-none flex-col items-center justify-center gap-2">
                     <div class="relative">
                         <img
                             alt="Icon for current app"
@@ -14,14 +14,14 @@
                         <Icon v-else class="size-24 text-neutral-400" icon="mdi:image"></Icon>
                         <button
                             @click="pickCustomAppIcon"
-                            class="flex absolute top-0 left-0 flex-col gap-1 justify-center items-center w-full h-full rounded-xl opacity-0 backdrop-blur-sm transition duration-200 absoute bg-black/50 hover:opacity-100"
+                            class="absoute absolute left-0 top-0 flex h-full w-full flex-col items-center justify-center gap-1 rounded-xl bg-black/50 opacity-0 backdrop-blur-sm transition duration-200 hover:opacity-100"
                         >
                             <Icon icon="mdi:pencil" class="size-10"></Icon>
                             <x-label>Change Icon</x-label>
                         </button>
                     </div>
                 </div>
-                <div class="flex flex-col gap-0.5 justify-center w-full">
+                <div class="flex w-full flex-col justify-center gap-0.5">
                     <!-- Name field -->
                     <x-label>Name</x-label>
                     <x-input
@@ -46,22 +46,22 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-1 mt-2">
-                <div class="flex flex-row gap-2 items-center my-0 font-semibold text-blue-400">
+            <div class="mt-2 flex flex-col gap-1">
+                <div class="my-0 flex flex-row items-center gap-2 font-semibold text-blue-400">
                     <Icon icon="fluent:info-32-filled" class="inline size-4"></Icon>
-                    <p class="!my-0 break-normal max-w-[30vw]">
+                    <p class="!my-0 max-w-[30vw] break-normal">
                         Please make sure the path you enter is a valid path to an executable file, otherwise the app
                         will not work.
                     </p>
                 </div>
-                <div class="flex flex-row gap-2 items-center my-0 font-semibold text-blue-400">
+                <div class="my-0 flex flex-row items-center gap-2 font-semibold text-blue-400">
                     <Icon icon="fluent:info-32-filled" class="inline size-4"></Icon>
-                    <p class="!my-0 break-normal max-w-[30vw]">
+                    <p class="!my-0 max-w-[30vw] break-normal">
                         Custom apps can be removed by right clicking on them and selecting "Remove Custom App".
                     </p>
                 </div>
                 <div
-                    class="flex flex-row gap-2 items-center my-0 font-semibold text-red-500"
+                    class="my-0 flex flex-row items-center gap-2 font-semibold text-red-500"
                     v-for="(error, k) of customAppAddErrors"
                     :key="k"
                 >
@@ -98,22 +98,22 @@
         </dialog>
 
         <div
-            class="flex justify-between items-center mb-6"
+            class="mb-6 flex items-center justify-between"
             :class="{
-                'opacity-50 pointer-events-none':
+                'pointer-events-none opacity-50':
                     winboat.containerStatus.value !== ContainerStatus.RUNNING || !winboat.isOnline.value,
             }"
         >
             <x-label class="text-neutral-300">Apps</x-label>
-            <div class="flex flex-row gap-2 justify-center items-center">
+            <div class="flex flex-row items-center justify-center gap-2">
                 <!-- Refresh button -->
-                <x-button class="flex flex-row gap-1 items-center" @click="refreshApps">
+                <x-button class="flex flex-row items-center gap-1" @click="refreshApps">
                     <Icon icon="mdi:refresh" class="size-4"></Icon>
                     <x-label>Refresh</x-label>
                 </x-button>
 
                 <!-- Custom App Add Button -->
-                <x-button class="flex flex-row gap-1 items-center" @click="openAddAppDialog()">
+                <x-button class="flex flex-row items-center gap-1" @click="openAddAppDialog()">
                     <x-icon href="#add" class="qualifier"></x-icon>
                     <x-label class="qualifier">Add Custom</x-label>
                 </x-button>
@@ -146,7 +146,7 @@
                 <x-select
                     @change="(e: any) => (filterBy = e.detail.newValue)"
                     :disabled="!winboat.isOnline.value"
-                    class="flex flex-row-reverse gap-1 items-center justify-center"
+                    class="flex flex-row-reverse items-center justify-center gap-1"
                 >
                     <Icon icon="mdi:filter-outline" style="width: 17; height: 17"></Icon>
                     <x-menu class="">
@@ -186,22 +186,22 @@
                 v-if="apps.length"
                 name="apps"
                 tag="x-card"
-                class="grid gap-4 bg-transparent border-none app-grid"
+                class="app-grid grid gap-4 border-none bg-transparent"
             >
                 <x-card
                     v-for="app of computedApps"
                     :key="app.id"
-                    class="flex relative flex-row gap-2 justify-between items-center p-2 my-0 backdrop-blur-xl backdrop-brightness-150 cursor-pointer generic-hover bg-neutral-800/20"
+                    class="generic-hover relative my-0 flex cursor-pointer flex-row items-center justify-between gap-2 bg-neutral-800/20 p-2 backdrop-blur-xl backdrop-brightness-150"
                     :class="{
-                        'bg-gradient-to-r from-yellow-600/20 bg-neutral-800/20': app.Source === 'custom',
+                        'bg-neutral-800/20 bg-gradient-to-r from-yellow-600/20': app.Source === 'custom',
                         'app-launching': launchingAppId === app.id,
                     }"
                     @click="handleLaunchApp(app)"
                     @contextmenu="openContextMenu($event, app)"
                 >
-                    <div class="flex flex-row items-center gap-2 w-[85%]">
+                    <div class="flex w-[85%] flex-row items-center gap-2">
                         <img
-                            class="rounded-md size-10"
+                            class="size-10 rounded-md"
                             :src="`data:image/png;charset=utf-8;base64,${app.Icon}`"
                             alt="App Icon"
                         />
@@ -210,8 +210,8 @@
                     <Icon icon="cuida:caret-right-outline"></Icon>
                 </x-card>
             </TransitionGroup>
-            <div v-else class="flex justify-center items-center mt-40">
-                <x-throbber class="w-16 h-16"></x-throbber>
+            <div v-else class="mt-40 flex items-center justify-center">
+                <x-throbber class="h-16 w-16"></x-throbber>
             </div>
             <WBContextMenu key="contextMenu" ref="contextMenuRef" @hide="onContextMenuHide">
                 <WBMenuItem @click="launchApp">
@@ -230,10 +230,10 @@
                 </WBMenuItem>
             </WBContextMenu>
         </div>
-        <div v-else class="px-2 mt-32">
-            <div class="flex flex-col gap-4 justify-center items-center">
-                <Icon class="text-violet-400 size-32" icon="fluent-mdl2:plug-disconnected"></Icon>
-                <h1 class="text-xl font-semibold w-[30vw] text-center leading-16">
+        <div v-else class="mt-32 px-2">
+            <div class="flex flex-col items-center justify-center gap-4">
+                <Icon class="size-32 text-violet-400" icon="fluent-mdl2:plug-disconnected"></Icon>
+                <h1 class="leading-16 w-[30vw] text-center text-xl font-semibold">
                     <span
                         v-if="
                             winboat.containerStatus.value === ContainerStatus.EXITED ||
