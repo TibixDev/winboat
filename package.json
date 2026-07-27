@@ -1,5 +1,6 @@
 {
     "name": "winboat",
+    "desktopName": "com.teabox.winboat",
     "version": "0.9.0",
     "description": "Windows for Penguins",
     "type": "module",
@@ -11,7 +12,13 @@
     "scripts": {
         "dev": "bun scripts/dev-server.ts",
         "build:gs": "bash build-guest-server.sh",
-        "build:linux-gs": "bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux"
+        "build:linux-gs": "bash build-guest-server.sh && bun scripts/build.ts && electron-builder --linux",
+        "lint": "oxlint",
+        "lint:fix": "oxlint --fix",
+        "lint:ci": "oxlint --format=github",
+        "lint:agent": "oxlint --format=agent",
+        "fmt": "prettier . --write",
+        "fmt:check": "prettier . --check"
     },
     "repository": "https://github.com/TibixDev/winboat",
     "author": {
@@ -27,12 +34,16 @@
         "chalk": "^5.6.2",
         "chokidar": "^5.0.0",
         "electron": "^40.2.1",
-        "electron-builder": "^26.7.0",
+        "electron-builder": "^26.15.3",
+        "oxlint": "^1.76.0",
+        "oxlint-tsgolint": "^7.0.2001",
         "postcss": "^8.5.6",
-        "prettier": "3.8.1",
+        "prettier": "3.9.6",
+        "prettier-plugin-tailwindcss": "^0.8.1",
         "tailwindcss": "^3.4.17",
         "typescript": "~5.9.3",
         "vite": "^7.3.1",
+        "vite-plugin-electron-renderer": "^0.14.7",
         "vue-tsc": "^3.2.4"
     },
     "dependencies": {

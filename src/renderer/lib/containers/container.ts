@@ -2,8 +2,6 @@ import { ComposeConfig } from "../../../types";
 import { CONTAINER_LOG_FILE } from "../constants";
 import { createLogger } from "../../utils/log";
 
-const path: typeof import("node:path") = require("node:path");
-
 export const containerLogger = createLogger(CONTAINER_LOG_FILE);
 
 export type ComposeDirection = "up" | "down";
@@ -58,7 +56,7 @@ function getErrorText(error: unknown): string {
         return [anyError.message, anyError.stderr, anyError.stdout].filter(Boolean).join("\n");
     }
 
-    return String(error);
+    return JSON.stringify(error);
 }
 
 /**

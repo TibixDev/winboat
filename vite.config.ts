@@ -1,6 +1,7 @@
 import path from "path";
 import vuePlugin from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
+import electronRenderer from "vite-plugin-electron-renderer";
 import * as packageJson from "./package.json";
 
 const config = defineConfig({
@@ -26,6 +27,7 @@ const config = defineConfig({
                 },
             },
         }),
+        electronRenderer(),
     ],
     resolve: {
         alias: {

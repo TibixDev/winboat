@@ -23,7 +23,7 @@ export class WinboatVersion {
         const versionNumbers = versionTags[0].split(".").map(value => {
             const parsedValue = parseInt(value);
 
-            if(Number.isNaN(parsedValue)) {
+            if (Number.isNaN(parsedValue)) {
                 throw new Error(`Invalid winboat version format: '${versionToken}'`);
             }
 
@@ -46,15 +46,15 @@ export class WinboatVersion {
 }
 
 type WinboatVersionData = {
-    previous: WinboatVersion,
-    current: WinboatVersion
-}
+    previous: WinboatVersion;
+    current: WinboatVersion;
+};
 
 export enum MultiMonitorMode {
     None = "None",
     MultiMon = "MultiMon",
-    Span = "Span"
-};
+    Span = "Span",
+}
 
 export type WinboatConfigObj = {
     scale: number;
@@ -91,15 +91,15 @@ const defaultConfig: WinboatConfigObj = {
     containerRuntime: ContainerRuntimes.DOCKER,
     versionData: {
         previous: currentVersion, // As of 0.9.0 this won't exist on the filesystem, so we just set it to the current version
-        current: currentVersion
+        current: currentVersion,
     },
-    appsSortOrder: 'name',
+    appsSortOrder: "name",
 };
 
 export class WinboatConfig {
     private static readonly configPath: string = path.join(WINBOAT_DIR, "winboat.config.json");
     private static instance: WinboatConfig | null = null;
-    
+
     // Due to us wrapping WinboatConfig in reactive, this can't be private
     configData: WinboatConfigObj = { ...defaultConfig };
 
@@ -112,11 +112,13 @@ export class WinboatConfig {
         this.configData = WinboatConfig.readConfigObject()!;
 
         // Set correct versionData
-        if(this.config.versionData.current.versionToken !== currentVersion.versionToken) {
+        if (this.config.versionData.current.versionToken !== currentVersion.versionToken) {
             this.config.versionData.previous = this.config.versionData.current;
             this.config.versionData.current = currentVersion;
 
-            logger.info(`Updated version data from '${this.config.versionData.previous.toString()}' to '${currentVersion.toString()}'`);
+            logger.info(
+                `Updated version data from '${this.config.versionData.previous.toString()}' to '${currentVersion.toString()}'`,
+            );
         }
 
         console.log("Reading current config", this.configData);
@@ -165,7 +167,7 @@ export class WinboatConfig {
             const configObjRaw = JSON.parse(rawConfig);
 
             // Parse winboat version data
-            if(configObjRaw.versionData) {
+            if (configObjRaw.versionData) {
                 configObjRaw.versionData.current = new WinboatVersion(configObjRaw.versionData.current);
                 configObjRaw.versionData.previous = new WinboatVersion(configObjRaw.versionData.previous);
             }
@@ -182,9 +184,9 @@ export class WinboatConfig {
                     configObj[key] = defaultConfig[key];
                     hasMissing = true;
                     console.log(
-                        `Added missing config key: ${key} with default value: ${
-                            JSON.stringify(defaultConfig[key as keyof WinboatConfigObj])
-                        }`,
+                        `Added missing config key: ${key} with default value: ${JSON.stringify(
+                            defaultConfig[key as keyof WinboatConfigObj],
+                        )}`,
                     );
                 }
             }

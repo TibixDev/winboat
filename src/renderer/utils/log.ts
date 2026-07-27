@@ -1,6 +1,6 @@
 import { createConsola } from "consola";
-const { writeFileSync, appendFileSync, mkdirSync }: typeof import("fs") = require("node:fs");
-const { dirname }: typeof import("path") = require("node:path");
+import { writeFileSync, appendFileSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
 export function createLogger(filePath: string) {
     const logger = createConsola({
