@@ -107,10 +107,7 @@
                                 <span v-else class="text-red-500">✘</span>
 
                                 <div>
-                                    <x-select
-                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
-                                        class="w-fit"
-                                    >
+                                    <x-select @change="handleContainerRuntimeChange" class="w-fit">
                                         <x-menu>
                                             <x-menuitem
                                                 v-for="(runtime, key) in Object.values(ContainerRuntimes)"
@@ -240,12 +237,26 @@
                                 </a>
                             </li>
                         </ul>
+                        <div class="flex items-center gap-2 text-xs text-neutral-500">
+                            <Icon
+                                icon="mdi:refresh"
+                                class="size-3.5"
+                                :class="{ 'animate-spin': checkingPrerequisites }"
+                            />
+                            <span>Next check</span>
+                            <div class="h-0.5 flex-1 overflow-hidden rounded-full bg-neutral-700">
+                                <div
+                                    :key="prerequisiteRefreshSequence"
+                                    class="prerequisite-refresh-progress size-full bg-violet-400/60"
+                                ></div>
+                            </div>
+                        </div>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
+                                @click="continueFromPrerequisites"
                                 :disabled="!satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
@@ -832,13 +843,9 @@ import {
 } from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
+import { setIntervalImmediately } from "../utils/interval";
 import license from "../assets/LICENSE.txt?raw";
-import {
-    ContainerRuntimes,
-    DockerSpecs,
-    PodmanSpecs,
-    getContainerSpecs,
-} from "../lib/containers/common";
+import { ContainerRuntimes, getContainerSpecs, type ContainerSpecs } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
 
 const path: typeof import("path") = require("node:path");
@@ -927,6 +934,7 @@ const steps: Step[] = [
 
 const MIN_CPU_CORES = 1;
 const MIN_DISK_GB = 32;
+const PREREQUISITE_REFRESH_INTERVAL_MS = 5000;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
@@ -949,15 +957,17 @@ const sharedFolderPath = ref("");
 const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
+const containerSpecs = ref<ContainerSpecs>();
+const checkingPrerequisites = ref(false);
+const prerequisiteRefreshSequence = ref(0);
+let prerequisiteInterval: NodeJS.Timeout | null = null;
+let prerequisiteRefreshQueued = false;
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
 
 let installManager: InstallManager | null;
 
 onMounted(async () => {
-    specs.value = await getSpecs();
-    console.log("Specs", specs.value);
-
     memoryInfo.value = await getMemoryInfo();
     memoryInterval.value = setInterval(async () => {
         memoryInfo.value = await getMemoryInfo();
@@ -975,6 +985,19 @@ onUnmounted(() => {
     if (memoryInterval.value) {
         clearInterval(memoryInterval.value);
     }
+
+    stopPrerequisitePolling();
+});
+
+watch(currentStep, step => {
+    stopPrerequisitePolling();
+
+    if (step.id === StepID.PREREQUISITES) {
+        prerequisiteInterval = setIntervalImmediately(() => {
+            prerequisiteRefreshSequence.value++;
+            void refreshPrerequisites();
+        }, PREREQUISITE_REFRESH_INTERVAL_MS);
+    }
 });
 
 // Watch for when folder sharing is enabled and set default path
@@ -984,11 +1007,54 @@ watch(folderSharing, (newValue) => {
     }
 });
 
-const containerSpecs = computedAsync(async () => {
-    return await getContainerSpecs(containerRuntime.value);
-});
+async function refreshPrerequisites() {
+    if (checkingPrerequisites.value) {
+        prerequisiteRefreshQueued = true;
+        return;
+    }
 
-function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
+    checkingPrerequisites.value = true;
+
+    try {
+        do {
+            prerequisiteRefreshQueued = false;
+            const runtime = containerRuntime.value;
+            const [newSpecs, newContainerSpecs] = await Promise.all([getSpecs(), getContainerSpecs(runtime)]);
+
+            if (runtime === containerRuntime.value) {
+                specs.value = newSpecs;
+                containerSpecs.value = newContainerSpecs;
+            } else {
+                prerequisiteRefreshQueued = true;
+            }
+        } while (prerequisiteRefreshQueued);
+    } catch (e) {
+        console.error("Error checking prerequisites:", e);
+    } finally {
+        checkingPrerequisites.value = false;
+    }
+}
+
+function stopPrerequisitePolling() {
+    prerequisiteRefreshQueued = false;
+    if (!prerequisiteInterval) return;
+
+    clearInterval(prerequisiteInterval);
+    prerequisiteInterval = null;
+}
+
+function handleContainerRuntimeChange(e: CustomEvent<{ newValue: ContainerRuntimes }>) {
+    containerSpecs.value = undefined;
+    containerRuntime.value = e.detail.newValue;
+    void refreshPrerequisites();
+}
+
+function continueFromPrerequisites() {
+    if (!satisfiesPrequisites(specs.value, containerSpecs.value)) return;
+    currentStepIdx.value++;
+}
+
+function containerInstalled(containerSpecs: ContainerSpecs | undefined) {
     if (!containerSpecs) return false;
     if ("dockerInstalled" in containerSpecs) return containerSpecs.dockerInstalled;
     if ("podmanInstalled" in containerSpecs) return containerSpecs.podmanInstalled;
@@ -1189,6 +1255,20 @@ function install() {
 
 .step-block {
     @apply flex flex-col gap-4 h-full justify-center;
+}
+
+.prerequisite-refresh-progress {
+    transform-origin: left;
+    animation: prerequisite-refresh 5s linear forwards;
+}
+
+@keyframes prerequisite-refresh {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
 }
 
 .flex p {
