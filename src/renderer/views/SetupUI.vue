@@ -1003,9 +1003,9 @@ const usernameErrors = computed(() => {
         errors.push("Must be at least 2 characters long");
     }
 
-    // Only alphanumeric characters are allowed
-    if (!/^[a-zA-Z0-9]+$/.test(username.value)) {
-        errors.push("Must only contain alphanumeric characters");
+    // Only ASCII letters, numbers, and dashes are allowed
+    if (!/^[a-zA-Z0-9-]+$/.test(username.value)) {
+        errors.push("Must only contain ASCII letters, numbers, and dashes");
     }
 
     return errors;
