@@ -26,6 +26,11 @@ export const WINDOWS_VERSIONS = {
 
 export type WindowsVersionKey = keyof typeof WINDOWS_VERSIONS;
 
+// RAM requirements and allocation defaults
+export const MIN_HOST_RAM_GB = 4;
+export const MIN_VM_RAM_GB = 2;
+export const RECOMMENDED_VM_RAM_GB = 4;
+
 export const WINDOWS_LANGUAGES = {
     "🇦🇪 Arabic": "Arabic",
     "🇧🇬 Bulgarian": "Bulgarian",

@@ -1,5 +1,6 @@
 import { getFreeRDP } from "../utils/getFreeRDP";
 import { ContainerSpecs } from "./containers/common";
+import { MIN_HOST_RAM_GB } from "./constants";
 const fs: typeof import("fs") = require("node:fs");
 const { exec }: typeof import("child_process") = require("node:child_process");
 const { promisify }: typeof import("util") = require("node:util");
@@ -11,7 +12,7 @@ export function satisfiesPrequisites(specs: Specs, containerSpecs?: ContainerSpe
         Object.values(containerSpecs).every(x => x) &&
         specs.freeRDP3Installed &&
         specs.kvmEnabled &&
-        specs.ramGB >= 4 &&
+        specs.ramGB >= MIN_HOST_RAM_GB &&
         specs.cpuCores >= 2
     );
 }

@@ -77,9 +77,9 @@
                         </p>
                         <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 rounded-lg">
                             <li class="flex items-center gap-2">
-                                <span v-if="specs.ramGB >= 4" class="text-green-500">✔</span>
+                                <span v-if="specs.ramGB >= MIN_HOST_RAM_GB" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                At least 4 GB of RAM (Detected: {{ specs.ramGB }} GB)
+                                At least {{ MIN_HOST_RAM_GB }} GB of RAM (Detected: {{ specs.ramGB }} GB)
                             </li>
 
                             <li class="flex items-center gap-2">
@@ -538,7 +538,7 @@
                                 <label for="select-ram" class="text-sm text-neutral-400">
                                     Select RAM
                                     <span
-                                        v-if="memoryInfo.availableGB < ramGB"
+                                        v-if="ramGB < RECOMMENDED_VM_RAM_GB || memoryInfo.availableGB < ramGB"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5" />
@@ -546,10 +546,16 @@
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            You don't have enough unused memory available to allocate the requested
-                                            amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of unused
-                                            memory available. If you continue with this amount of RAM, the container
-                                            will likely crash.
+                                            <span v-if="ramGB < RECOMMENDED_VM_RAM_GB" class="block">
+                                                Allocating less than the recommended {{ RECOMMENDED_VM_RAM_GB }} GB of
+                                                RAM may limit Windows performance.
+                                            </span>
+                                            <span v-if="memoryInfo.availableGB < ramGB" class="block">
+                                                You don't have enough unused memory available to allocate the requested
+                                                amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of
+                                                unused memory available. If you continue with this amount of RAM, the
+                                                container will likely crash.
+                                            </span>
                                         </span>
                                     </span>
                                 </label>
@@ -559,7 +565,7 @@
                                         @change="(e: any) => (ramGB = Number(e.target.value))"
                                         class="w-[50%]"
                                         :value="ramGB"
-                                        :min="MIN_RAM_GB"
+                                        :min="MIN_VM_RAM_GB"
                                         :max="specs.ramGB"
                                         step="1"
                                     />
@@ -815,7 +821,15 @@ import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { NOVNC_URL, WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
+import {
+    MIN_HOST_RAM_GB,
+    MIN_VM_RAM_GB,
+    NOVNC_URL,
+    RECOMMENDED_VM_RAM_GB,
+    WINDOWS_VERSIONS,
+    WINDOWS_LANGUAGES,
+    type WindowsVersionKey,
+} from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
 import license from "../assets/LICENSE.txt?raw";
@@ -912,7 +926,6 @@ const steps: Step[] = [
 ];
 
 const MIN_CPU_CORES = 1;
-const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
@@ -924,7 +937,7 @@ const windowsLanguage = ref("English");
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
 const cpuCores = ref(2);
-const ramGB = ref(4);
+const ramGB = ref(RECOMMENDED_VM_RAM_GB);
 const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
