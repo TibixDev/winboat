@@ -5,7 +5,7 @@ import {
     GUEST_QMP_PORT,
     GUEST_UPDATE_PORT,
     QMP_ARGUMENT,
-    RESTART_ON_FAILURE,
+    RESTART_NO,
 } from "../lib/constants";
 
 export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
@@ -34,7 +34,7 @@ export const DOCKER_DEFAULT_COMPOSE: ComposeConfig = {
             privileged: true,
             ports: [...COMPOSE_PORT_MAPPINGS],
             stop_grace_period: "120s",
-            restart: RESTART_ON_FAILURE,
+            restart: RESTART_NO,
             volumes: [
                 "data:/storage",
                 "${HOME}:/shared",

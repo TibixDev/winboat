@@ -448,7 +448,7 @@ import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
 import { type Device } from "usb";
 import {
     USB_VID_BLACKLIST,
-    RESTART_ON_FAILURE,
+    RESTART_UNLESS_STOPPED,
     RESTART_NO,
     GUEST_QMP_PORT,
     MIN_VM_RAM_GB,
@@ -521,7 +521,7 @@ async function assignValues() {
     origShareFolder.value = shareFolder.value;
     origSharedFolderPath.value = sharedFolderPath.value;
 
-    autoStartContainer.value = compose.value.services.windows.restart === RESTART_ON_FAILURE;
+    autoStartContainer.value = compose.value.services.windows.restart === RESTART_UNLESS_STOPPED;
     origAutoStartContainer.value = autoStartContainer.value;
 
     const specs = await getSpecs();
@@ -553,7 +553,7 @@ async function saveCompose() {
         compose.value!.services.windows.volumes.push(volumeStr);
     }
 
-    compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_ON_FAILURE : RESTART_NO;
+    compose.value!.services.windows.restart = autoStartContainer.value ? RESTART_UNLESS_STOPPED : RESTART_NO;
 
     isApplyingChanges.value = true;
     try {
