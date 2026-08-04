@@ -14,6 +14,27 @@ export type ExecFileAsyncError = {
 
 export const execFileAsync = promisify(execFile);
 
+export function execFileWithStdin(
+    file: string,
+    args: string[],
+    stdin: string,
+): Promise<{
+    stdout: string;
+    stderr: string;
+}> {
+    return new Promise((resolve, reject) => {
+        const child = execFile(file, args, (error, stdout, stderr) => {
+            if (error) {
+                Object.assign(error, { stdout, stderr });
+                reject(error);
+                return;
+            }
+            resolve({ stdout, stderr });
+        });
+        child.stdin?.end(stdin);
+    });
+}
+
 export function stringifyExecFile(file: string, args: string[]): string {
     let result = `${file}`;
     for (const arg of args) {

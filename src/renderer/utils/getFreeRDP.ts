@@ -1,4 +1,4 @@
-import { execFileAsync, stringifyExecFile } from "../lib/exec-helper";
+import { execFileAsync, execFileWithStdin, stringifyExecFile } from "../lib/exec-helper";
 
 export class FreeRDPInstallation {
     file: string;
@@ -16,9 +16,23 @@ export class FreeRDPInstallation {
         return execFileAsync(this.file, this.defaultArgs.concat(args));
     }
 
+    execWithStdin(
+        args: string[],
+        stdin: string,
+    ): Promise<{
+        stdout: string;
+        stderr: string;
+    }> {
+        return execFileWithStdin(this.file, this.defaultArgs.concat(args), stdin);
+    }
+
     stringifyExec(args: string[]): string {
         return stringifyExecFile(this.file, this.defaultArgs.concat(args));
     }
+}
+
+export function buildFreeRDPConnectionArgs(username: string, port: number): string[] {
+    return [`/u:${username}`, "/from-stdin:force", "/v:127.0.0.1", `/port:${port}`];
 }
 
 const freeRDPInstallations = [
