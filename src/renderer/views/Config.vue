@@ -27,6 +27,49 @@
                     v-model:value="numCores"
                 />
 
+                <!-- GPU Render Device -->
+                <ConfigCard
+                    v-if="gpuEnabled"
+                    icon="mdi:gpu"
+                    title="GPU Render Device"
+                    desc="The host GPU used to render accelerated graphics for Windows"
+                    type="custom"
+                >
+                    <x-select
+                        :key="renderDevice"
+                        :value="renderDevice"
+                        class="w-80 max-w-[40vw]"
+                        @change="(e: any) => (renderDevice = e.detail.newValue)"
+                    >
+                        <x-menu>
+                            <x-menuitem
+                                v-for="device in renderDevices"
+                                :key="device.path"
+                                :value="device.path"
+                                :toggled="renderDevice === device.path"
+                            >
+                                <x-label class="block max-w-72 truncate" :title="device.name">
+                                    {{ device.name }} —
+                                    {{ device.vramGB ? `${device.vramGB} GB` : "shared memory" }}
+                                </x-label>
+                            </x-menuitem>
+                        </x-menu>
+                    </x-select>
+                </ConfigCard>
+
+                <!-- GPU Video Memory -->
+                <ConfigCard
+                    v-if="gpuEnabled"
+                    icon="mdi:memory"
+                    title="GPU Video Memory"
+                    desc="The maximum amount of video memory made available to Windows"
+                    type="number"
+                    unit="GB"
+                    :min="1"
+                    :max="gpuVramMaxGB"
+                    v-model:value="gpuVramGB"
+                />
+
                 <!-- Shared Folder -->
                 <ConfigCard
                     icon="fluent:folder-link-32-filled"
@@ -442,6 +485,7 @@ import { Winboat } from "../lib/winboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
+import { getRenderDevices, type RenderDevice } from "../lib/gpu";
 import { Icon } from "@iconify/vue";
 import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
@@ -455,6 +499,8 @@ import {
     QMP_ARGUMENT,
     QMP_PORT_MAPPING,
     RECOMMENDED_VM_RAM_GB,
+    DEFAULT_GPU_VRAM_GB,
+    MAX_GPU_VRAM_GB,
 } from "../lib/constants";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -468,6 +514,16 @@ const maxNumCores = ref(0);
 const ramGB = ref(0);
 const origRamGB = ref(0);
 const maxRamGB = ref(0);
+const gpuEnabled = ref(false);
+const gpuVramGB = ref(DEFAULT_GPU_VRAM_GB);
+const origGpuVramGB = ref(DEFAULT_GPU_VRAM_GB);
+const renderDevices = ref<RenderDevice[]>([]);
+const renderDevice = ref("");
+const origRenderDevice = ref("");
+const selectedGpu = computed(() => renderDevices.value.find(device => device.path === renderDevice.value));
+const gpuVramMaxGB = computed(() =>
+    Math.min(MAX_GPU_VRAM_GB, selectedGpu.value?.vramGB || DEFAULT_GPU_VRAM_GB),
+);
 const shareFolder = ref(false);
 const origShareFolder = ref(false);
 const sharedFolderPath = ref("");
@@ -489,6 +545,7 @@ const usbManager = USBManager.getInstance();
 
 // Constants
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
+const RENDER_DEVICE_MAPPING = /^\/dev\/dri\/renderD\d+(?::|$)/;
 
 onMounted(async () => {
     await assignValues();
@@ -500,12 +557,29 @@ onMounted(async () => {
  */
 async function assignValues() {
     compose.value = Winboat.readCompose(winboat.containerMgr!.composeFilePath);
+    const environment = compose.value.services.windows.environment;
 
-    numCores.value = Number(compose.value.services.windows.environment.CPU_CORES);
+    numCores.value = Number(environment.CPU_CORES);
     origNumCores.value = numCores.value;
 
-    ramGB.value = Number(compose.value.services.windows.environment.RAM_SIZE.split("G")[0]);
+    ramGB.value = Number(environment.RAM_SIZE.split("G")[0]);
     origRamGB.value = ramGB.value;
+
+    gpuEnabled.value = environment.HELIOS?.toUpperCase() === "Y";
+    if (gpuEnabled.value) {
+        try {
+            renderDevices.value = await getRenderDevices();
+        } catch (error) {
+            console.error("Failed to detect GPU render devices", error);
+            renderDevices.value = [];
+        }
+
+        renderDevice.value = environment.RENDERNODE || findConfiguredRenderDevice();
+        origRenderDevice.value = renderDevice.value;
+        gpuVramGB.value = parseGpuVramGB(environment.HELIOS_HOSTMEM);
+        gpuVramGB.value = Math.min(gpuVramGB.value, gpuVramMaxGB.value);
+        origGpuVramGB.value = gpuVramGB.value;
+    }
 
     // Find any volume that ends with /shared
     const sharedVolume = compose.value.services.windows.volumes.find(v => v.includes("/shared"));
@@ -531,13 +605,40 @@ async function assignValues() {
     refreshAvailableDevices();
 }
 
+function isRenderDeviceMapping(device: string) {
+    return RENDER_DEVICE_MAPPING.test(device);
+}
+
+function findConfiguredRenderDevice() {
+    return compose.value?.services.windows.devices.find(isRenderDeviceMapping)?.split(":")[0] || "";
+}
+
+function parseGpuVramGB(value?: string) {
+    const parsed = Number.parseInt(value || "", 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_GPU_VRAM_GB;
+}
+
 /**
  * Saves the currently specified values to the Compose file
  * and then re-assigns the initial values to the reactive refs
  */
 async function saveCompose() {
-    compose.value!.services.windows.environment.RAM_SIZE = `${ramGB.value}G`;
-    compose.value!.services.windows.environment.CPU_CORES = `${numCores.value}`;
+    const windows = compose.value!.services.windows;
+    windows.environment.RAM_SIZE = `${ramGB.value}G`;
+    windows.environment.CPU_CORES = `${numCores.value}`;
+
+    if (gpuEnabled.value) {
+        const vramBytes = gpuVramGB.value * 1024 ** 3;
+        Object.assign(windows.environment, {
+            HELIOS_HOSTMEM: `${gpuVramGB.value}G`,
+            HELIOS_BLOB_LIMIT: `${gpuVramGB.value}G`,
+            RENDERNODE: renderDevice.value,
+            VKR_DEVICE_MEMORY_LIMIT_BYTES: `${vramBytes}`,
+            override_vram_size: `${gpuVramGB.value * 1024}`,
+        });
+        windows.devices = windows.devices.filter(device => !isRenderDeviceMapping(device));
+        windows.devices.push(renderDevice.value);
+    }
 
     // Remove any existing shared volume
     const existingSharedVolume = compose.value!.services.windows.volumes.find(v => v.includes("/shared"));
@@ -642,6 +743,17 @@ const errors = computed(() => {
         errCollection.push("You cannot allocate more RAM to Windows than you have available");
     }
 
+    if (gpuEnabled.value && !selectedGpu.value) {
+        errCollection.push("You must select an available GPU render device");
+    }
+
+    if (
+        gpuEnabled.value &&
+        (!Number.isInteger(gpuVramGB.value) || gpuVramGB.value < 1 || gpuVramGB.value > gpuVramMaxGB.value)
+    ) {
+        errCollection.push(`GPU video memory must be between 1 and ${gpuVramMaxGB.value} GB`);
+    }
+
     return errCollection;
 });
 
@@ -669,6 +781,8 @@ const saveButtonDisabled = computed(() => {
     const hasResourceChanges =
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
+        (gpuEnabled.value &&
+            (origGpuVramGB.value !== gpuVramGB.value || origRenderDevice.value !== renderDevice.value)) ||
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
         autoStartContainer.value !== origAutoStartContainer.value;
@@ -740,6 +854,10 @@ watch(shareFolder, (newValue) => {
     if (newValue && !sharedFolderPath.value) {
         sharedFolderPath.value = os.homedir();
     }
+});
+
+watch(renderDevice, () => {
+    gpuVramGB.value = Math.min(gpuVramGB.value, gpuVramMaxGB.value);
 });
 </script>
 

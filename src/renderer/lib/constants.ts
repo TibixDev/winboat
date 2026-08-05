@@ -3,9 +3,9 @@ const process: typeof import("process") = require("node:process");
 const path: typeof import("path") = require("node:path");
 
 // Should be {XDG_DATA_HOME}/winboat-app or {home}/.local/share/winboat-app if missing
-export const WINBOAT_DIR = process.env.XDG_DATA_HOME ?
-    path.join(process.env.XDG_DATA_HOME, "winboat-app") :
-    path.join(os.homedir(), ".local", "share", "winboat-app");
+export const WINBOAT_DIR = process.env.XDG_DATA_HOME
+    ? path.join(process.env.XDG_DATA_HOME, "winboat-app")
+    : path.join(os.homedir(), ".local", "share", "winboat-app");
 export const DEFAULT_HOMEBREW_DIR = path.join(os.homedir(), "../linuxbrew/.linuxbrew/bin");
 
 export const CONTAINER_LOG_FILE = path.join(WINBOAT_DIR, "container.log");
@@ -76,6 +76,10 @@ export const GUEST_QMP_PORT = 7149;
 export const GUEST_UPDATE_PORT = 7150;
 export const GUEST_RDP_PORT = 3389;
 
+export const HELIOS_DOCKUR_IMAGE = "ghcr.io/winboat-org/helios-windows:latest";
+export const DEFAULT_GPU_VRAM_GB = 4;
+export const MAX_GPU_VRAM_GB = 16;
+
 export const HOST_NOVNC_PORT = 47270;
 export const HOST_API_PORT = 47271;
 export const HOST_QMP_PORT = 47272;
@@ -85,6 +89,7 @@ export const HOST_UPDATE_PORT = 47274;
 export const NOVNC_URL = `http://127.0.0.1:${HOST_NOVNC_PORT}`;
 export const WINBOAT_API_URL = `http://127.0.0.1:${HOST_API_PORT}`;
 export const WINBOAT_UPDATE_URL = `http://127.0.0.1:${HOST_UPDATE_PORT}`;
+export const GRAPHICS_PROVISIONING_URL = `${WINBOAT_API_URL}/provisioning/graphics/status`;
 
 export const QMP_ARGUMENT = `-qmp tcp:0.0.0.0:${GUEST_QMP_PORT},server,wait=off`;
 export const QMP_PORT_MAPPING = `127.0.0.1:${HOST_QMP_PORT}:${GUEST_QMP_PORT}`;

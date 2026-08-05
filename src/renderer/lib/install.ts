@@ -1,12 +1,20 @@
 import { type InstallConfiguration } from "../../types";
-import { GUEST_TOKEN_PATH, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR } from "./constants";
+import {
+    GRAPHICS_PROVISIONING_URL,
+    GUEST_TOKEN_PATH,
+    HELIOS_DOCKUR_IMAGE,
+    MAX_GPU_VRAM_GB,
+    NOVNC_URL,
+    WINBOAT_API_URL,
+    WINBOAT_DIR,
+} from "./constants";
 import { createLogger } from "../utils/log";
 import { guestServerOemDir } from "../utils/guestServer";
 import { createNanoEvents, type Emitter } from "nanoevents";
 import { Winboat } from "./winboat";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
-import { createContainer } from "./containers/common";
+import { ContainerRuntimes, createContainer } from "./containers/common";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
@@ -21,6 +29,10 @@ export enum InstallStates {
     STARTING_CONTAINER = "Starting Container",
     MONITORING_PREINSTALL = "Monitoring Preinstall",
     INSTALLING_WINDOWS = "Installing Windows",
+    PROVISIONING_GPU_DRIVERS = "Provisioning GPU Drivers",
+    RESTARTING_FOR_TEST_SIGNING = "Restarting to enable test-signing",
+    INSTALLING_GPU_DRIVERS = "Installing GPU Drivers",
+    RESTARTING_FOR_GPU_ADAPTER = "Restarting to enable GPU Adapter",
     COMPLETED = "Completed",
     INSTALL_ERROR = "Install Error",
 }
@@ -31,17 +43,26 @@ interface InstallEvents {
     error: (error: Error) => void;
 }
 
+enum GraphicsProvisioningStatus {
+    TEST_SIGNING_RESTART_REQUIRED = "test-signing-restart-required",
+    DRIVER_RESTART_REQUIRED = "driver-restart-required",
+    FINISHED = "finished",
+    FAILED = "failed",
+}
+
 export class InstallManager {
     conf: InstallConfiguration;
     emitter: Emitter<InstallEvents>;
     state: InstallStates;
     preinstallMsg: string;
+    graphicsStatus: string;
     container: ContainerManager;
 
     constructor(conf: InstallConfiguration) {
         this.conf = conf;
         this.state = InstallStates.IDLE;
         this.preinstallMsg = "";
+        this.graphicsStatus = "";
         this.emitter = createNanoEvents<InstallEvents>();
         this.container = createContainer(conf.container);
     }
@@ -79,7 +100,7 @@ export class InstallManager {
         }
 
         // Configure the compose file
-        const composeContent = this.container.defaultCompose;
+        const composeContent = structuredClone(this.container.defaultCompose);
 
         composeContent.services.windows.environment.RAM_SIZE = `${this.conf.ramGB}G`;
         composeContent.services.windows.environment.CPU_CORES = `${this.conf.cpuCores}`;
@@ -88,6 +109,37 @@ export class InstallManager {
         composeContent.services.windows.environment.LANGUAGE = this.conf.windowsLanguage;
         composeContent.services.windows.environment.USERNAME = this.conf.username;
         composeContent.services.windows.environment.PASSWORD = this.conf.password;
+
+        if (this.conf.gpuEnabled) {
+            if (this.conf.container !== ContainerRuntimes.DOCKER) {
+                throw new Error("Helios GPU acceleration currently requires Docker.");
+            }
+            if (!/^\/dev\/dri\/renderD\d+$/.test(this.conf.renderDevice) || !fs.existsSync(this.conf.renderDevice)) {
+                throw new Error(`The selected GPU render device is unavailable: ${this.conf.renderDevice}`);
+            }
+            if (
+                !Number.isInteger(this.conf.gpuVramGB) ||
+                this.conf.gpuVramGB < 1 ||
+                this.conf.gpuVramGB > MAX_GPU_VRAM_GB
+            ) {
+                throw new Error(`GPU video memory must be between 1 and ${MAX_GPU_VRAM_GB} GB.`);
+            }
+
+            const vramBytes = this.conf.gpuVramGB * 1024 ** 3;
+            composeContent.services.windows.image = HELIOS_DOCKUR_IMAGE;
+            Object.assign(composeContent.services.windows.environment, {
+                HELIOS: "Y",
+                HELIOS_BOOTSTRAP: "Y",
+                HELIOS_HOSTMEM: `${this.conf.gpuVramGB}G`,
+                HELIOS_BLOB_LIMIT: `${this.conf.gpuVramGB}G`,
+                RENDERNODE: this.conf.renderDevice,
+                VKR_DEVICE_MEMORY_LIMIT_BYTES: `${vramBytes}`,
+                override_vram_size: `${this.conf.gpuVramGB * 1024}`,
+            });
+            if (!composeContent.services.windows.devices.includes(this.conf.renderDevice)) {
+                composeContent.services.windows.devices.push(this.conf.renderDevice);
+            }
+        }
 
         // Boot image mapping
         if (this.conf.customIsoPath) {
@@ -136,11 +188,10 @@ export class InstallManager {
 
         const oemPath = path.join(WINBOAT_DIR, "oem");
 
-        // Create OEM directory if it doesn’t exist
-        if (!fs.existsSync(oemPath)) {
-            fs.mkdirSync(oemPath, { recursive: true });
-            logger.info(`Created OEM directory: ${oemPath}`);
-        }
+        // OEM assets are generated from scratch so an earlier setup cannot leak
+        // optional payloads (notably Helios) into this installation.
+        fs.rmSync(oemPath, { recursive: true, force: true });
+        fs.mkdirSync(oemPath, { recursive: true });
 
         // The OEM payload (server\, updater\, install.bat, nssm.exe, ...) is built
         // into the guest server resource's `oem` directory.
@@ -153,6 +204,9 @@ export class InstallManager {
             const error = new Error(`Guest server directory not found at: ${appPath}`);
             logger.error(error.message);
             throw error;
+        }
+        if (this.conf.gpuEnabled && !fs.existsSync(path.join(appPath, "helios", "Install-Helios.ps1"))) {
+            throw new Error("The WinBoat build does not contain the Helios Windows bundle.");
         }
 
         const copyRecursive = (src: string, dest: string) => {
@@ -182,6 +236,7 @@ export class InstallManager {
         // Copy all files from guest_server to oemPath
         try {
             fs.readdirSync(appPath).forEach(entry => {
+                if (entry === "helios" && !this.conf.gpuEnabled) return;
                 const srcPath = path.join(appPath, entry);
                 const destPath = path.join(oemPath, entry);
                 copyRecursive(srcPath, destPath);
@@ -264,7 +319,6 @@ export class InstallManager {
 
                 if (res.status === 200) {
                     logger.info("WinBoat Guest Server is up and healthy!");
-                    this.changeState(InstallStates.COMPLETED);
 
                     const compose = Winboat.readCompose(this.container.composeFilePath);
                     const filteredVolumes = compose.services.windows.volumes.filter(
@@ -280,11 +334,8 @@ export class InstallManager {
                 }
 
                 logger.log(`API request status: ${res.status}`);
-            } catch (error) {
-                // We can ignore the AbortError resulting from the timeout
-                if (!(error instanceof nodeFetch.AbortError)) {
-                    logger.error(error);
-                }
+            } catch {
+                // Connection failures are expected until Windows finishes installing.
             }
 
             if (++attempts % 12 === 0) {
@@ -293,6 +344,62 @@ export class InstallManager {
 
             await this.sleep(5000 - (performance.now() - start));
         }
+    }
+
+    async waitForGraphicsStatus(expected: GraphicsProvisioningStatus) {
+        while (true) {
+            let response;
+            try {
+                response = await nodeFetch(GRAPHICS_PROVISIONING_URL, {
+                    signal: AbortSignal.timeout(5000),
+                });
+            } catch {
+                // The guest API is expected to disappear while Windows restarts.
+                await this.sleep(2000);
+                continue;
+            }
+
+            if (response.ok) {
+                const state = (await response.json()) as { status?: string; message?: string };
+                const status = state.status || "waiting";
+                if (status !== this.graphicsStatus) {
+                    const detail = status === expected ? "" : `; waiting for ${expected}`;
+                    logger.info(`Graphics provisioning: ${status}${detail}`);
+                    this.graphicsStatus = status;
+                }
+                if (status === expected) return;
+                if (status === GraphicsProvisioningStatus.FAILED) {
+                    throw new Error(state.message || "Helios graphics provisioning failed.");
+                }
+            }
+
+            await this.sleep(2000);
+        }
+    }
+
+    async restartContainer() {
+        await this.container.compose("down");
+        await this.container.compose("up");
+    }
+
+    async installGraphics() {
+        this.changeState(InstallStates.PROVISIONING_GPU_DRIVERS);
+        await this.waitForGraphicsStatus(GraphicsProvisioningStatus.TEST_SIGNING_RESTART_REQUIRED);
+
+        this.changeState(InstallStates.RESTARTING_FOR_TEST_SIGNING);
+        await this.restartContainer();
+
+        this.changeState(InstallStates.INSTALLING_GPU_DRIVERS);
+        await this.waitForGraphicsStatus(GraphicsProvisioningStatus.DRIVER_RESTART_REQUIRED);
+
+        this.changeState(InstallStates.RESTARTING_FOR_GPU_ADAPTER);
+        await this.container.compose("down");
+        const compose = Winboat.readCompose(this.container.composeFilePath);
+        compose.services.windows.environment.HELIOS_BOOTSTRAP = "N";
+        this.container.writeCompose(compose);
+        await this.container.compose("up");
+
+        await this.waitForGraphicsStatus(GraphicsProvisioningStatus.FINISHED);
     }
 
     async install() {
@@ -304,6 +411,7 @@ export class InstallManager {
             await this.startContainer();
             await this.monitorContainerPreinstall();
             await this.monitorAPIHealth();
+            if (this.conf.gpuEnabled) await this.installGraphics();
         } catch (e) {
             this.changeState(InstallStates.INSTALL_ERROR);
             logger.error("Errors encountered, could not complete the installation steps.");

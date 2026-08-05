@@ -625,6 +625,102 @@
                         </div>
                     </div>
 
+                    <!-- GPU Acceleration -->
+                    <div v-if="currentStep.id === StepID.GPU_CONFIG" class="step-block">
+                        <h1 class="text-3xl font-semibold">GPU Acceleration</h1>
+                        <p class="text-lg text-gray-400">
+                            Enable the experimental Helios graphics driver to accelerate Windows with your GPU.
+                            Helios currently supports Vulkan, DirectX 11, OpenGL and OpenCL. This currently requires Docker.
+                        </p>
+
+                        <x-checkbox
+                            class="my-4"
+                            :disabled="
+                                containerRuntime !== ContainerRuntimes.DOCKER ||
+                                !renderDevices.length ||
+                                !heliosAvailable
+                            "
+                            :toggled="gpuEnabled"
+                            @toggle="gpuEnabled = !gpuEnabled"
+                        >
+                            <x-label><strong>Enable GPU acceleration</strong></x-label>
+                            <x-label class="text-gray-400">
+                                Uses an experimental test-signed Windows display driver
+                            </x-label>
+                        </x-checkbox>
+
+                        <p v-if="!renderDevices.length" class="text-sm text-red-400">
+                            No accessible DRM render devices were found in <span class="font-mono">/dev/dri</span>.
+                        </p>
+                        <p v-else-if="!heliosAvailable" class="text-sm text-red-400">
+                            This WinBoat build does not include the Helios driver bundle.
+                        </p>
+
+                        <div v-if="gpuEnabled" class="flex flex-col gap-6 mt-4">
+                            <div>
+                                <label for="select-render-device" class="text-sm text-neutral-400">Render Device</label>
+                                <x-select
+                                    :key="renderDevice"
+                                    :value="renderDevice"
+                                    id="select-render-device"
+                                    class="w-full max-w-2xl"
+                                    @change="(e: any) => (renderDevice = e.detail.newValue)"
+                                >
+                                    <x-menu>
+                                        <x-menuitem
+                                            v-for="device in renderDevices"
+                                            :key="device.path"
+                                            :value="device.path"
+                                            :toggled="renderDevice === device.path"
+                                        >
+                                            <x-label>
+                                                {{ device.name }} —
+                                                {{ device.vramGB ? `${device.vramGB} GB` : "shared memory" }}
+                                            </x-label>
+                                        </x-menuitem>
+                                    </x-menu>
+                                </x-select>
+                                <p v-if="selectedGpu" class="text-sm text-gray-400 mt-2">
+                                    {{ selectedGpu.path }} · {{ selectedGpu.driver }} ·
+                                    {{
+                                        selectedGpu.vramGB
+                                            ? `${selectedGpu.vramGB} GB VRAM detected`
+                                            : "shared GPU memory"
+                                    }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label for="select-gpu-vram" class="text-sm text-neutral-400">Video Memory Limit</label>
+                                <div class="flex flex-row gap-4 items-center">
+                                    <x-slider
+                                        id="select-gpu-vram"
+                                        class="w-[50%]"
+                                        :value="gpuVramGB"
+                                        min="1"
+                                        :max="gpuVramMaxGB"
+                                        step="1"
+                                        ticks
+                                        @change="(e: any) => (gpuVramGB = Number(e.target.value))"
+                                    />
+                                    <x-label>{{ gpuVramGB }} GB</x-label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-row gap-4 mt-6">
+                            <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
+                            <x-button
+                                toggled
+                                class="px-6"
+                                :disabled="gpuEnabled && !renderDevice"
+                                @click="currentStepIdx++"
+                            >
+                                Next
+                            </x-button>
+                        </div>
+                    </div>
+
                     <!-- Folder Sharing -->
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
                         <h1 class="text-3xl font-semibold">Folder Sharing</h1>
@@ -683,7 +779,7 @@
                     </div>
 
                     <!-- Review -->
-                    <div v-if="currentStep.id === StepID.REVIEW" class="step-block">
+                    <div v-if="currentStep.id === StepID.REVIEW" class="step-block review-step">
                         <h1 class="text-3xl font-semibold">{{ currentStep.title }}</h1>
                         <p class="text-lg text-gray-400">
                             Please review the settings you've chosen for your WinBoat installation. If everything looks
@@ -719,13 +815,28 @@
                                     <span class="text-base text-white">{{ diskSpaceGB }} GB</span>
                                 </div>
                                 <div class="flex flex-col">
+                                    <span class="text-sm text-gray-400">GPU Acceleration</span>
+                                    <span class="text-base text-white">{{ gpuEnabled ? "Enabled" : "Disabled" }}</span>
+                                </div>
+                                <div v-if="gpuEnabled" class="flex flex-col">
+                                    <span class="text-sm text-gray-400">GPU Video Memory</span>
+                                    <span class="text-base text-white">{{ gpuVramGB }} GB</span>
+                                </div>
+                                <div class="flex flex-col">
                                     <span class="text-sm text-gray-400">Username</span>
                                     <span class="text-base text-white">{{ username }}</span>
                                 </div>
-                                <div class="flex flex-col">
-                                    <span class="text-sm text-gray-400">Install Location</span>
-                                    <span class="text-base text-white">{{ installFolder }}</span>
-                                </div>
+                            </div>
+
+                            <div v-if="gpuEnabled" class="flex flex-col min-w-0">
+                                <span class="text-sm text-gray-400">Render Device</span>
+                                <span class="text-base text-white truncate" :title="selectedGpu?.name || renderDevice">
+                                    {{ selectedGpu?.name || renderDevice }}
+                                </span>
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <span class="text-sm text-gray-400">Install Location</span>
+                                <span class="text-base text-white truncate" :title="installFolder">{{ installFolder }}</span>
                             </div>
                         </div>
 
@@ -835,6 +946,8 @@ import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type Memor
 import {
     MIN_HOST_RAM_GB,
     MIN_VM_RAM_GB,
+    DEFAULT_GPU_VRAM_GB,
+    MAX_GPU_VRAM_GB,
     NOVNC_URL,
     RECOMMENDED_VM_RAM_GB,
     WINDOWS_VERSIONS,
@@ -847,6 +960,8 @@ import { setIntervalImmediately } from "../utils/interval";
 import license from "../assets/LICENSE.txt?raw";
 import { ContainerRuntimes, getContainerSpecs, type ContainerSpecs } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
+import { guestServerOemDir } from "../utils/guestServer";
+import { getRenderDevices, type RenderDevice } from "../lib/gpu";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -867,6 +982,7 @@ enum StepID {
     INSTALL_LOCATION = "STEP_INSTALL_LOCATION",
     WINDOWS_CONFIG = "STEP_WINDOWS_CONFIG",
     HARDWARE_CONFIG = "STEP_HARDWARE_CONFIG",
+    GPU_CONFIG = "STEP_GPU_CONFIG",
     USER_CONFIG = "STEP_USER_CONFIG",
     SHOULD_SHARE_HOME_FOLDER = "STEP_SHOULD_SHARE_HOME_FOLDER",
     REVIEW = "STEP_OVERVIEW",
@@ -911,6 +1027,11 @@ const steps: Step[] = [
         icon: "famicons:hardware-chip-outline",
     },
     {
+        id: StepID.GPU_CONFIG,
+        title: "GPU Acceleration",
+        icon: "mdi:gpu",
+    },
+    {
         id: StepID.SHOULD_SHARE_HOME_FOLDER,
         title: "Folder Sharing",
         icon: "line-md:link",
@@ -949,6 +1070,13 @@ const ramGB = ref(RECOMMENDED_VM_RAM_GB);
 const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
+const gpuEnabled = ref(false);
+const gpuVramGB = ref(DEFAULT_GPU_VRAM_GB);
+const renderDevices = ref<RenderDevice[]>([]);
+const renderDevice = ref("");
+const heliosAvailable = ref(false);
+const selectedGpu = computed(() => renderDevices.value.find(device => device.path === renderDevice.value));
+const gpuVramMaxGB = computed(() => Math.min(MAX_GPU_VRAM_GB, selectedGpu.value?.vramGB || DEFAULT_GPU_VRAM_GB));
 const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");
@@ -963,7 +1091,13 @@ const prerequisiteRefreshSequence = ref(0);
 let prerequisiteInterval: NodeJS.Timeout | null = null;
 let prerequisiteRefreshQueued = false;
 // These are the install steps where the container is actually up and running
-const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
+const linkableInstallSteps = [
+    InstallStates.MONITORING_PREINSTALL,
+    InstallStates.INSTALLING_WINDOWS,
+    InstallStates.PROVISIONING_GPU_DRIVERS,
+    InstallStates.INSTALLING_GPU_DRIVERS,
+    InstallStates.COMPLETED,
+];
 
 let installManager: InstallManager | null;
 
@@ -979,6 +1113,11 @@ onMounted(async () => {
 
     // Set default shared folder path to home directory
     sharedFolderPath.value = os.homedir();
+    heliosAvailable.value = fs.existsSync(path.join(guestServerOemDir(), "helios", "Install-Helios.ps1"));
+
+    renderDevices.value = await getRenderDevices();
+    renderDevice.value = renderDevices.value[0]?.path || "";
+    gpuVramGB.value = Math.min(gpuVramGB.value, gpuVramMaxGB.value);
 });
 
 onUnmounted(() => {
@@ -1046,8 +1185,13 @@ function stopPrerequisitePolling() {
 function handleContainerRuntimeChange(e: CustomEvent<{ newValue: ContainerRuntimes }>) {
     containerSpecs.value = undefined;
     containerRuntime.value = e.detail.newValue;
+    if (containerRuntime.value !== ContainerRuntimes.DOCKER) gpuEnabled.value = false;
     void refreshPrerequisites();
 }
+
+watch(renderDevice, () => {
+    gpuVramGB.value = Math.min(gpuVramGB.value, gpuVramMaxGB.value);
+});
 
 function continueFromPrerequisites() {
     if (!satisfiesPrequisites(specs.value, containerSpecs.value)) return;
@@ -1212,6 +1356,9 @@ function install() {
         sharedFolderPath: folderSharing.value ? sharedFolderPath.value : undefined,
         ...(customIsoPath.value ? { customIsoPath: customIsoPath.value } : {}),
         container: containerRuntime.value, // Hardcdde for now
+        gpuEnabled: gpuEnabled.value,
+        gpuVramGB: gpuVramGB.value,
+        renderDevice: renderDevice.value,
     };
 
     const wbConfig = WinboatConfig.getInstance(); // Create winboat config.
@@ -1255,6 +1402,18 @@ function install() {
 
 .step-block {
     @apply flex flex-col gap-4 h-full justify-center;
+}
+
+.review-step {
+    @apply h-auto min-h-full justify-start;
+}
+
+.review-step > :first-child {
+    margin-top: auto;
+}
+
+.review-step > :last-child {
+    margin-bottom: auto;
 }
 
 .prerequisite-refresh-progress {

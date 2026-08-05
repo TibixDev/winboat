@@ -21,6 +21,9 @@ export type InstallConfiguration = {
     customIsoPath?: string;
     sharedFolderPath?: string;
     container: ContainerRuntimes;
+    gpuEnabled: boolean;
+    gpuVramGB: number;
+    renderDevice: string;
 };
 
 export type WinApp = {

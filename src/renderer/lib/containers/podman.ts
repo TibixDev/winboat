@@ -8,6 +8,7 @@ import {
     containerLogger,
     ContainerManager,
     ContainerStatus,
+    redactComposeSecrets,
 } from "./container";
 import YAML from "yaml";
 import { capitalizeFirstLetter } from "../../utils/capitalize";
@@ -63,7 +64,7 @@ export class PodmanContainer extends ContainerManager {
         fs.writeFileSync(this.composeFilePath, composeContent, { encoding: "utf-8" });
 
         containerLogger.info(`Wrote to compose file at: ${this.composeFilePath}`);
-        containerLogger.info(`Compose file content: ${JSON.stringify(composeContent, null, 2)}`);
+        containerLogger.info(`Compose file content:\n${redactComposeSecrets(composeContent)}`);
     }
 
     async compose(direction: ComposeDirection, extraArgs: ComposeArguments[] = []): Promise<void> {
@@ -79,7 +80,7 @@ export class PodmanContainer extends ContainerManager {
                 env: concatEnv(process.env as { [key: string]: string }, COMPOSE_ENV_VARS),
             });
             if (stderr) {
-                containerLogger.error(stderr);
+                containerLogger.info(stderr.trim());
             }
         } catch (e) {
             containerLogger.error(`Failed to run compose command '${stringifyExecFile(this.executableAlias, args)}'`);
