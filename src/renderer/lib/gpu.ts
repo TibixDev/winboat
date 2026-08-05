@@ -19,6 +19,43 @@ function readProperties(text: string): Record<string, string> {
     );
 }
 
+function readSysfsVramBytes(sysfsPath: string): number {
+    const vramPath = path.join(sysfsPath, "mem_info_vram_total");
+    if (!fs.existsSync(vramPath)) return 0;
+
+    try {
+        const vramBytes = Number(fs.readFileSync(vramPath, "utf8").trim());
+        return Number.isFinite(vramBytes) && vramBytes > 0 ? vramBytes : 0;
+    } catch {
+        return 0;
+    }
+}
+
+async function readNvidiaVramBytes(sysfsPath: string, properties: Record<string, string>): Promise<number> {
+    let pciAddress = properties.PCI_SLOT_NAME;
+
+    if (!pciAddress) {
+        try {
+            pciAddress = path.basename(fs.realpathSync(sysfsPath));
+        } catch {
+            return 0;
+        }
+    }
+
+    try {
+        const { stdout } = await execFileAsync("nvidia-smi", [
+            `--id=${pciAddress}`,
+            "--query-gpu=memory.total",
+            "--format=csv,noheader,nounits",
+        ]);
+        const vramMiB = Number(stdout.trim());
+
+        return Number.isFinite(vramMiB) && vramMiB > 0 ? vramMiB * 1024 ** 2 : 0;
+    } catch {
+        return 0;
+    }
+}
+
 async function inspectRenderDevice(devicePath: string): Promise<RenderDevice> {
     const sysfsPath = path.join("/sys/class/drm", path.basename(devicePath), "device");
     let properties: Record<string, string> = {};
@@ -38,8 +75,11 @@ async function inspectRenderDevice(devicePath: string): Promise<RenderDevice> {
     const model = properties.ID_MODEL_FROM_DATABASE;
     const pciId = properties.PCI_ID;
     const name = [vendor, model].filter(Boolean).join(" ") || (pciId ? `PCI GPU ${pciId}` : path.basename(devicePath));
-    const vramPath = path.join(sysfsPath, "mem_info_vram_total");
-    const vramBytes = fs.existsSync(vramPath) ? Number(fs.readFileSync(vramPath, "utf8").trim()) : 0;
+    let vramBytes = readSysfsVramBytes(sysfsPath);
+
+    if (vramBytes <= 0 && (properties.DRIVER === "nvidia" || pciId?.toUpperCase().startsWith("10DE:"))) {
+        vramBytes = await readNvidiaVramBytes(sysfsPath, properties);
+    }
 
     return {
         path: devicePath,
