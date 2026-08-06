@@ -947,7 +947,6 @@ import {
     MIN_HOST_RAM_GB,
     MIN_VM_RAM_GB,
     DEFAULT_GPU_VRAM_GB,
-    MAX_GPU_VRAM_GB,
     NOVNC_URL,
     RECOMMENDED_VM_RAM_GB,
     WINDOWS_VERSIONS,
@@ -961,7 +960,7 @@ import license from "../assets/LICENSE.txt?raw";
 import { ContainerRuntimes, getContainerSpecs, type ContainerSpecs } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
 import { guestServerOemDir } from "../utils/guestServer";
-import { getRenderDevices, type RenderDevice } from "../lib/gpu";
+import { getGpuVramMaxGB, getRenderDevices, type RenderDevice } from "../lib/gpu";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -1076,7 +1075,7 @@ const renderDevices = ref<RenderDevice[]>([]);
 const renderDevice = ref("");
 const heliosAvailable = ref(false);
 const selectedGpu = computed(() => renderDevices.value.find(device => device.path === renderDevice.value));
-const gpuVramMaxGB = computed(() => Math.min(MAX_GPU_VRAM_GB, selectedGpu.value?.vramGB || DEFAULT_GPU_VRAM_GB));
+const gpuVramMaxGB = computed(() => getGpuVramMaxGB(selectedGpu.value?.vramGB));
 const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");

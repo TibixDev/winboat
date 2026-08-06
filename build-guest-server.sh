@@ -10,10 +10,10 @@ export VERSION="$(bun -p "require('./package.json').version")"
 export COMMIT_HASH="$(git rev-parse --short HEAD)"
 export BUILD_TIMESTAMP=$(date '+%Y-%m-%dT%H:%M:%S')
 
-# Tidy automatic provisioning task lifecycle (c7d19007)
+# kmd: derive VidMm VRAM from virtio hostmem (2b4d7911)
 HELIOS_REPOSITORY="winboat-org/helios"
-HELIOS_RUN_ID="31036676529"
-HELIOS_ARTIFACT="helios-windows-x64-22.22.255.0"
+HELIOS_RUN_ID="31115404416"
+HELIOS_ARTIFACT="helios-windows-x64-22.22.256.0"
 HELIOS_DOWNLOAD_DIR=""
 
 cleanup() {

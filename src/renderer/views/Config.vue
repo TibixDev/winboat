@@ -485,7 +485,7 @@ import { Winboat } from "../lib/winboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
-import { getRenderDevices, type RenderDevice } from "../lib/gpu";
+import { getGpuVramMaxGB, getRenderDevices, type RenderDevice } from "../lib/gpu";
 import { Icon } from "@iconify/vue";
 import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
@@ -500,7 +500,6 @@ import {
     QMP_PORT_MAPPING,
     RECOMMENDED_VM_RAM_GB,
     DEFAULT_GPU_VRAM_GB,
-    MAX_GPU_VRAM_GB,
 } from "../lib/constants";
 const { app }: typeof import("@electron/remote") = require("@electron/remote");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -521,9 +520,7 @@ const renderDevices = ref<RenderDevice[]>([]);
 const renderDevice = ref("");
 const origRenderDevice = ref("");
 const selectedGpu = computed(() => renderDevices.value.find(device => device.path === renderDevice.value));
-const gpuVramMaxGB = computed(() =>
-    Math.min(MAX_GPU_VRAM_GB, selectedGpu.value?.vramGB || DEFAULT_GPU_VRAM_GB),
-);
+const gpuVramMaxGB = computed(() => getGpuVramMaxGB(selectedGpu.value?.vramGB));
 const shareFolder = ref(false);
 const origShareFolder = ref(false);
 const sharedFolderPath = ref("");

@@ -1,4 +1,5 @@
 import { execFileAsync } from "./exec-helper";
+import { GPU_VRAM_RESERVE_GB, MAX_GPU_VRAM_GB, UNKNOWN_GPU_VRAM_MAX_GB } from "./constants";
 
 const fs: typeof import("node:fs") = require("node:fs");
 const path: typeof import("node:path") = require("node:path");
@@ -9,6 +10,14 @@ export type RenderDevice = {
     driver: string;
     vramGB?: number;
 };
+
+export function getGpuVramMaxGB(hostVramGB?: number): number {
+    if (hostVramGB === undefined) return UNKNOWN_GPU_VRAM_MAX_GB;
+
+    const reservableVramGB = hostVramGB > GPU_VRAM_RESERVE_GB ? hostVramGB - GPU_VRAM_RESERVE_GB : hostVramGB;
+
+    return Math.max(1, Math.min(MAX_GPU_VRAM_GB, Math.floor(reservableVramGB)));
+}
 
 function readProperties(text: string): Record<string, string> {
     return Object.fromEntries(
