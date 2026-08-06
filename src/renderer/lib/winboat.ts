@@ -4,7 +4,7 @@ import YAML from "yaml";
 import type { ComposeConfig, CustomAppCallbacks, GuestServerVersion, Metrics, WinApp } from "../../types";
 import { AppIcons } from "../data/appicons";
 import { InternalApps } from "../data/internalapps";
-import { getFreeRDP } from "../utils/getFreeRDP";
+import { buildFreeRDPConnectionArgs, getFreeRDP } from "../utils/getFreeRDP";
 import { guestServerUpdateZipPath, guestUpdaterAuthHeaders } from "../utils/guestServer";
 import { setIntervalImmediately } from "../utils/interval";
 import { createLogger } from "../utils/log";
@@ -713,7 +713,7 @@ export class Winboat {
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs);
-        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${HOST_RDP_PORT}`, ...combinedArgs];
+        let args = [...buildFreeRDPConnectionArgs(username, HOST_RDP_PORT), ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             args = args.concat([
@@ -745,7 +745,7 @@ export class Winboat {
         try {
             const safeToLogArgs = freeRDPInstallation.stringifyExec(args).replace(/\/p:[^ ]+/g, "/p:********");
             logger.info(`Launch FreeRDP with command:\n${safeToLogArgs}`);
-            await freeRDPInstallation.exec(args);
+            await freeRDPInstallation.execWithStdin(args, `${password}\n`);
         } catch (e) {
             const execError = e as ExecFileAsyncError;
             const ERRINFO_RPC_INITIATED_DISCONNECT = 0x00000001;
