@@ -15,6 +15,8 @@ import { Winboat } from "./winboat";
 import { ContainerManager } from "./containers/container";
 import { WinboatConfig } from "./config";
 import { ContainerRuntimes, createContainer } from "./containers/common";
+import { configureGpuContainer } from "./gpu-container";
+import { getRenderDevices, hasNvidiaContainerSupport, shouldCheckNvidiaContainerSupport } from "./gpu";
 
 const fs: typeof import("fs") = require("fs");
 const path: typeof import("path") = require("path");
@@ -125,6 +127,21 @@ export class InstallManager {
                 throw new Error(`GPU video memory must be between 1 and ${MAX_GPU_VRAM_GB} GB.`);
             }
 
+            const renderDevice = (await getRenderDevices()).find(device => device.path === this.conf.renderDevice);
+            if (!renderDevice) {
+                throw new Error(`Could not inspect the selected GPU render device: ${this.conf.renderDevice}`);
+            }
+            if (shouldCheckNvidiaContainerSupport(this.conf.gpuEnabled, renderDevice)) {
+                if (!renderDevice.nvidiaUuid) {
+                    throw new Error(`Could not map ${renderDevice.path} to an NVIDIA GPU UUID through nvidia-smi.`);
+                }
+                if (!(await hasNvidiaContainerSupport(renderDevice.nvidiaUuid))) {
+                    throw new Error(
+                        "NVIDIA Container Toolkit is not exposing this GPU to Docker. Configure the NVIDIA runtime or CDI support before enabling Helios on this GPU.",
+                    );
+                }
+            }
+
             const vramBytes = this.conf.gpuVramGB * 1024 ** 3;
             composeContent.services.windows.image = HELIOS_DOCKUR_IMAGE;
             Object.assign(composeContent.services.windows.environment, {
@@ -139,6 +156,7 @@ export class InstallManager {
             if (!composeContent.services.windows.devices.includes(this.conf.renderDevice)) {
                 composeContent.services.windows.devices.push(this.conf.renderDevice);
             }
+            configureGpuContainer(composeContent.services.windows, renderDevice);
         }
 
         // Boot image mapping

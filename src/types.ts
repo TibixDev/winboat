@@ -75,6 +75,19 @@ export type ComposeConfig = {
             restart: string;
             volumes: string[];
             devices: string[];
+            deploy?: {
+                resources?: {
+                    reservations?: {
+                        devices?: {
+                            driver?: string;
+                            device_ids?: string[];
+                            count?: number | "all";
+                            capabilities: string[];
+                            options?: Record<string, string>;
+                        }[];
+                    };
+                };
+            };
         };
     };
 };

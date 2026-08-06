@@ -122,13 +122,16 @@
                                 </div>
                                 installed
                                 <a
-                                    :href="containerRuntime === ContainerRuntimes.PODMAN
-                                        ? 'https://podman.io/getting-started/installation'
-                                        : 'https://docs.docker.com/engine/install/'"
+                                    :href="
+                                        containerRuntime === ContainerRuntimes.PODMAN
+                                            ? 'https://podman.io/getting-started/installation'
+                                            : 'https://docs.docker.com/engine/install/'
+                                    "
                                     @click="openAnchorLink"
                                     target="_blank"
                                     class="text-violet-400 hover:underline ml-1"
-                                >How?</a>
+                                    >How?</a
+                                >
                             </li>
 
                             <!-- Docker Specific Requirements -->
@@ -629,8 +632,8 @@
                     <div v-if="currentStep.id === StepID.GPU_CONFIG" class="step-block">
                         <h1 class="text-3xl font-semibold">GPU Acceleration</h1>
                         <p class="text-lg text-gray-400">
-                            Enable the experimental Helios graphics driver to accelerate Windows with your GPU.
-                            Helios currently supports Vulkan, DirectX 11, OpenGL and OpenCL. This currently requires Docker.
+                            Enable the experimental Helios graphics driver to accelerate Windows with your GPU. Helios
+                            currently supports Vulkan, DirectX 11, OpenGL and OpenCL. This currently requires Docker.
                         </p>
 
                         <x-checkbox
@@ -688,6 +691,9 @@
                                             : "shared GPU memory"
                                     }}
                                 </p>
+                                <p v-if="nvidiaGpuError" class="text-sm text-red-400 mt-2">
+                                    {{ nvidiaGpuError }}
+                                </p>
                             </div>
 
                             <div>
@@ -713,7 +719,7 @@
                             <x-button
                                 toggled
                                 class="px-6"
-                                :disabled="gpuEnabled && !renderDevice"
+                                :disabled="gpuEnabled && (!renderDevice || !!nvidiaGpuError)"
                                 @click="currentStepIdx++"
                             >
                                 Next
@@ -725,21 +731,17 @@
                     <div v-if="currentStep.id === StepID.SHOULD_SHARE_HOME_FOLDER" class="step-block">
                         <h1 class="text-3xl font-semibold">Folder Sharing</h1>
                         <p class="text-lg text-gray-400">
-                            WinBoat allows you to share a folder from your Linux system with the Windows virtual machine.
-                            You can choose whether to enable this feature and select which folder to share.
+                            WinBoat allows you to share a folder from your Linux system with the Windows virtual
+                            machine. You can choose whether to enable this feature and select which folder to share.
                         </p>
                         <p class="text-lg text-gray-400">
                             <b>⚠️ WARNING:</b>
-                            Sharing a folder exposes your Linux files to Windows-specific malware and viruses.
-                            Only enable this feature if you understand the risks involved. Always be careful with the
-                            files you download and open in Windows.
+                            Sharing a folder exposes your Linux files to Windows-specific malware and viruses. Only
+                            enable this feature if you understand the risks involved. Always be careful with the files
+                            you download and open in Windows.
                         </p>
 
-                        <x-checkbox
-                            class="my-4"
-                            @toggle="folderSharing = !folderSharing"
-                            :toggled="folderSharing"
-                        >
+                        <x-checkbox class="my-4" @toggle="folderSharing = !folderSharing" :toggled="folderSharing">
                             <x-label><strong>Enable folder sharing</strong></x-label>
                             <x-label class="text-gray-400">
                                 By checking this box, you acknowledge the risks mentioned above
@@ -836,7 +838,9 @@
                             </div>
                             <div class="flex flex-col min-w-0">
                                 <span class="text-sm text-gray-400">Install Location</span>
-                                <span class="text-base text-white truncate" :title="installFolder">{{ installFolder }}</span>
+                                <span class="text-base text-white truncate" :title="installFolder">{{
+                                    installFolder
+                                }}</span>
                             </div>
                         </div>
 
@@ -867,11 +871,14 @@
                             <span v-else>
                                 over at
                                 <div
-                                    style="animation-duration: 3s!important;"
+                                    style="animation-duration: 3s !important"
                                     class="ml-1 inline-block relative text-transparent rounded-md bg-neutral-700 animate-pulse select-none"
                                 >
                                     in your browser
-                                    <Icon icon="eos-icons:three-dots-loading" class="pointer-events-none absolute top-0 left-[50%] size-16 text-violet-400 -translate-x-[50%] -translate-y-[27.5%]"></Icon>
+                                    <Icon
+                                        icon="eos-icons:three-dots-loading"
+                                        class="pointer-events-none absolute top-0 left-[50%] size-16 text-violet-400 -translate-x-[50%] -translate-y-[27.5%]"
+                                    ></Icon>
                                 </div>
                             </span>
                         </p>
@@ -960,7 +967,13 @@ import license from "../assets/LICENSE.txt?raw";
 import { ContainerRuntimes, getContainerSpecs, type ContainerSpecs } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
 import { guestServerOemDir } from "../utils/guestServer";
-import { getGpuVramMaxGB, getRenderDevices, type RenderDevice } from "../lib/gpu";
+import {
+    getGpuVramMaxGB,
+    getRenderDevices,
+    hasNvidiaContainerSupport,
+    shouldCheckNvidiaContainerSupport,
+    type RenderDevice,
+} from "../lib/gpu";
 
 const path: typeof import("path") = require("node:path");
 const electron: typeof import("electron") = require("electron").remote || require("@electron/remote");
@@ -1074,8 +1087,19 @@ const gpuVramGB = ref(DEFAULT_GPU_VRAM_GB);
 const renderDevices = ref<RenderDevice[]>([]);
 const renderDevice = ref("");
 const heliosAvailable = ref(false);
+const nvidiaContainerSupportAvailable = ref(false);
 const selectedGpu = computed(() => renderDevices.value.find(device => device.path === renderDevice.value));
 const gpuVramMaxGB = computed(() => getGpuVramMaxGB(selectedGpu.value?.vramGB));
+const nvidiaGpuError = computed(() => {
+    if (!shouldCheckNvidiaContainerSupport(gpuEnabled.value, selectedGpu.value)) return "";
+    if (!selectedGpu.value?.nvidiaUuid) {
+        return "WinBoat could not map this render node to an NVIDIA GPU through nvidia-smi.";
+    }
+    if (!nvidiaContainerSupportAvailable.value) {
+        return "NVIDIA Container Toolkit is not exposing this GPU to Docker through a runtime or CDI.";
+    }
+    return "";
+});
 const username = ref("winboat");
 const password = ref("");
 const confirmPassword = ref("");
@@ -1089,6 +1113,7 @@ const checkingPrerequisites = ref(false);
 const prerequisiteRefreshSequence = ref(0);
 let prerequisiteInterval: NodeJS.Timeout | null = null;
 let prerequisiteRefreshQueued = false;
+let nvidiaSupportCheckSequence = 0;
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [
     InstallStates.MONITORING_PREINSTALL,
@@ -1139,7 +1164,7 @@ watch(currentStep, step => {
 });
 
 // Watch for when folder sharing is enabled and set default path
-watch(folderSharing, (newValue) => {
+watch(folderSharing, newValue => {
     if (newValue && !sharedFolderPath.value) {
         sharedFolderPath.value = os.homedir();
     }
@@ -1188,8 +1213,25 @@ function handleContainerRuntimeChange(e: CustomEvent<{ newValue: ContainerRuntim
     void refreshPrerequisites();
 }
 
+async function refreshNvidiaContainerSupport() {
+    const sequence = ++nvidiaSupportCheckSequence;
+    const device = selectedGpu.value;
+    nvidiaContainerSupportAvailable.value = false;
+
+    if (!shouldCheckNvidiaContainerSupport(gpuEnabled.value, device) || !device?.nvidiaUuid) {
+        return;
+    }
+
+    const available = await hasNvidiaContainerSupport(device.nvidiaUuid);
+    if (sequence === nvidiaSupportCheckSequence) nvidiaContainerSupportAvailable.value = available;
+}
+
 watch(renderDevice, () => {
     gpuVramGB.value = Math.min(gpuVramGB.value, gpuVramMaxGB.value);
+});
+
+watch([gpuEnabled, selectedGpu], () => {
+    void refreshNvidiaContainerSupport();
 });
 
 function continueFromPrerequisites() {
