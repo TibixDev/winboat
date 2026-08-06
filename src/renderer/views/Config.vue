@@ -84,23 +84,15 @@
                 </ConfigCard>
 
                 <!-- Shared Folder Location -->
-                <ConfigCard
-                    v-if="shareFolder"
-                    icon="mdi:folder-cog"
-                    title="Shared Folder Location"
-                    type="custom"
-                >
+                <ConfigCard v-if="shareFolder" icon="mdi:folder-cog" title="Shared Folder Location" type="custom">
                     <template v-slot:desc>
                         <span v-if="sharedFolderPath">
-                            Currently sharing: <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
+                            Currently sharing:
+                            <span class="font-mono bg-neutral-700 rounded-md px-1 py-0.5">{{ sharedFolderPath }}</span>
                         </span>
-                        <span v-else>
-                            Select a folder to share with Windows
-                        </span>
+                        <span v-else> Select a folder to share with Windows </span>
                     </template>
-                    <x-button @click="selectSharedFolder">
-                        Browse
-                    </x-button>
+                    <x-button @click="selectSharedFolder"> Browse </x-button>
                 </ConfigCard>
 
                 <!-- Auto Start Container -->
@@ -391,9 +383,9 @@
                     v-model:value="wbConfig.config.multiMonitor"
                 >
                     <template v-slot:desc>
-                        Controls how multiple monitors are handled. MultiMon creates separate displays for each
-                        monitor, while Span stretches the display across all monitors. Note: Span or MultiMon may
-                        work better depending on your setup.
+                        Controls how multiple monitors are handled. MultiMon creates separate displays for each monitor,
+                        while Span stretches the display across all monitors. Note: Span or MultiMon may work better
+                        depending on your setup.
                     </template>
                 </ConfigCard>
 
@@ -485,7 +477,14 @@ import { Winboat } from "../lib/winboat";
 import { ContainerRuntimes, ContainerStatus } from "../lib/containers/common";
 import type { ComposeConfig } from "../../types";
 import { getSpecs } from "../lib/specs";
-import { getGpuVramMaxGB, getRenderDevices, type RenderDevice } from "../lib/gpu";
+import {
+    getGpuVramMaxGB,
+    getRenderDevices,
+    hasNvidiaContainerSupport,
+    shouldCheckNvidiaContainerSupport,
+    type RenderDevice,
+} from "../lib/gpu";
+import { configureGpuContainer, gpuContainerConfigNeedsUpdate } from "../lib/gpu-container";
 import { Icon } from "@iconify/vue";
 import { MultiMonitorMode, RdpArg, WinboatConfig } from "../lib/config";
 import { USBManager, type PTSerializableDeviceInfo } from "../lib/usbmanager";
@@ -519,8 +518,19 @@ const origGpuVramGB = ref(DEFAULT_GPU_VRAM_GB);
 const renderDevices = ref<RenderDevice[]>([]);
 const renderDevice = ref("");
 const origRenderDevice = ref("");
+const nvidiaContainerSupportAvailable = ref(false);
 const selectedGpu = computed(() => renderDevices.value.find(device => device.path === renderDevice.value));
 const gpuVramMaxGB = computed(() => getGpuVramMaxGB(selectedGpu.value?.vramGB));
+const nvidiaGpuError = computed(() => {
+    if (!shouldCheckNvidiaContainerSupport(gpuEnabled.value, selectedGpu.value)) return "";
+    if (!selectedGpu.value?.nvidiaUuid) {
+        return "WinBoat could not map this render node to an NVIDIA GPU through nvidia-smi";
+    }
+    if (!nvidiaContainerSupportAvailable.value) {
+        return "NVIDIA Container Toolkit is not exposing this GPU to Docker through a runtime or CDI";
+    }
+    return "";
+});
 const shareFolder = ref(false);
 const origShareFolder = ref(false);
 const sharedFolderPath = ref("");
@@ -543,6 +553,7 @@ const usbManager = USBManager.getInstance();
 // Constants
 const USB_BUS_PATH = "/dev/bus/usb:/dev/bus/usb";
 const RENDER_DEVICE_MAPPING = /^\/dev\/dri\/renderD\d+(?::|$)/;
+let nvidiaSupportCheckSequence = 0;
 
 onMounted(async () => {
     await assignValues();
@@ -569,6 +580,7 @@ async function assignValues() {
         } catch (error) {
             console.error("Failed to detect GPU render devices", error);
             renderDevices.value = [];
+            nvidiaContainerSupportAvailable.value = false;
         }
 
         renderDevice.value = environment.RENDERNODE || findConfiguredRenderDevice();
@@ -635,6 +647,7 @@ async function saveCompose() {
         });
         windows.devices = windows.devices.filter(device => !isRenderDeviceMapping(device));
         windows.devices.push(renderDevice.value);
+        configureGpuContainer(windows, selectedGpu.value!);
     }
 
     // Remove any existing shared volume
@@ -751,6 +764,10 @@ const errors = computed(() => {
         errCollection.push(`GPU video memory must be between 1 and ${gpuVramMaxGB.value} GB`);
     }
 
+    if (gpuEnabled.value && nvidiaGpuError.value) {
+        errCollection.push(nvidiaGpuError.value);
+    }
+
     return errCollection;
 });
 
@@ -775,11 +792,16 @@ const usbPassthroughDisabled = computed(() => {
 });
 
 const saveButtonDisabled = computed(() => {
+    const gpuContainerConfigChanged =
+        gpuEnabled.value &&
+        !!compose.value &&
+        gpuContainerConfigNeedsUpdate(compose.value.services.windows, selectedGpu.value);
     const hasResourceChanges =
         origNumCores.value !== numCores.value ||
         origRamGB.value !== ramGB.value ||
         (gpuEnabled.value &&
             (origGpuVramGB.value !== gpuVramGB.value || origRenderDevice.value !== renderDevice.value)) ||
+        gpuContainerConfigChanged ||
         shareFolder.value !== origShareFolder.value ||
         sharedFolderPath.value !== origSharedFolderPath.value ||
         autoStartContainer.value !== origAutoStartContainer.value;
@@ -847,14 +869,31 @@ async function toggleExperimentalFeatures() {
 }
 
 // Watch for when shared folder is enabled and set default path
-watch(shareFolder, (newValue) => {
+watch(shareFolder, newValue => {
     if (newValue && !sharedFolderPath.value) {
         sharedFolderPath.value = os.homedir();
     }
 });
 
+async function refreshNvidiaContainerSupport() {
+    const sequence = ++nvidiaSupportCheckSequence;
+    const device = selectedGpu.value;
+    nvidiaContainerSupportAvailable.value = false;
+
+    if (!shouldCheckNvidiaContainerSupport(gpuEnabled.value, device) || !device?.nvidiaUuid) {
+        return;
+    }
+
+    const available = await hasNvidiaContainerSupport(device.nvidiaUuid);
+    if (sequence === nvidiaSupportCheckSequence) nvidiaContainerSupportAvailable.value = available;
+}
+
 watch(renderDevice, () => {
     gpuVramGB.value = Math.min(gpuVramGB.value, gpuVramMaxGB.value);
+});
+
+watch([gpuEnabled, selectedGpu], () => {
+    void refreshNvidiaContainerSupport();
 });
 </script>
 
