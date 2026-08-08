@@ -49,6 +49,7 @@ export enum ContainerStatus {
 // needs to be recreated from the compose file
 const STALE_CONTAINER_ERROR_PATTERNS = [
     /cannot stat `[^`]*`:?\s*no such file or directory/i,
+    /failed to fulfil mount request:.*\bopen\b.*\bno such file or directory\b/i,
     /oci runtime attempted to invoke a command that was not found/i,
     /no such device or address/i,
 ];

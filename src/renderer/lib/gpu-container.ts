@@ -15,10 +15,14 @@ const NVIDIA_RENDER_ENVIRONMENT = {
     __VK_LAYER_NV_optimus: "NVIDIA_only",
     VK_ICD_FILENAMES: "/etc/vulkan/icd.d/nvidia_icd.json",
     GBM_BACKEND: "nvidia-drm",
-    GBM_BACKENDS_PATH: "/usr/lib/gbm:/usr/lib/x86_64-linux-gnu/gbm",
 } as const;
 
-const NVIDIA_ENVIRONMENT_KEYS = ["NVIDIA_DRIVER_CAPABILITIES", ...Object.keys(NVIDIA_RENDER_ENVIRONMENT)];
+const NVIDIA_OBSOLETE_ENVIRONMENT_KEYS = ["GBM_BACKENDS_PATH"] as const;
+const NVIDIA_ENVIRONMENT_KEYS = [
+    "NVIDIA_DRIVER_CAPABILITIES",
+    ...Object.keys(NVIDIA_RENDER_ENVIRONMENT),
+    ...NVIDIA_OBSOLETE_ENVIRONMENT_KEYS,
+];
 
 function getNvidiaReservations(service: WindowsService): DeviceReservation[] {
     return (service.deploy?.resources?.reservations?.devices || []).filter(
@@ -32,7 +36,10 @@ function hasNvidiaGraphicsCapability(value?: string): boolean {
 }
 
 function nvidiaRenderEnvironmentNeedsUpdate(service: WindowsService): boolean {
-    return Object.entries(NVIDIA_RENDER_ENVIRONMENT).some(([key, value]) => service.environment[key] !== value);
+    return (
+        Object.entries(NVIDIA_RENDER_ENVIRONMENT).some(([key, value]) => service.environment[key] !== value) ||
+        NVIDIA_OBSOLETE_ENVIRONMENT_KEYS.some(key => service.environment[key] !== undefined)
+    );
 }
 
 export function gpuContainerConfigNeedsUpdate(service: WindowsService, device?: RenderDevice): boolean {
@@ -95,6 +102,7 @@ export function configureGpuContainer(service: WindowsService, device: RenderDev
         capabilities.add(NVIDIA_GRAPHICS_CAPABILITY);
         service.environment.NVIDIA_DRIVER_CAPABILITIES = [...capabilities].join(",");
     }
+    for (const key of NVIDIA_OBSOLETE_ENVIRONMENT_KEYS) delete service.environment[key];
     Object.assign(service.environment, NVIDIA_RENDER_ENVIRONMENT);
 
     service.deploy ??= {};

@@ -48,6 +48,9 @@ const intelDevice: RenderDevice = {
 describe("GPU container configuration", () => {
     it("requests the exact NVIDIA GPU and graphics driver libraries", () => {
         const service = makeService();
+        service.environment.GBM_BACKENDS_PATH = "/host/distro/specific/gbm";
+
+        expect(gpuContainerConfigNeedsUpdate(service, nvidiaDevice)).toBe(true);
 
         configureGpuContainer(service, nvidiaDevice);
 
@@ -59,8 +62,8 @@ describe("GPU container configuration", () => {
             __VK_LAYER_NV_optimus: "NVIDIA_only",
             VK_ICD_FILENAMES: "/etc/vulkan/icd.d/nvidia_icd.json",
             GBM_BACKEND: "nvidia-drm",
-            GBM_BACKENDS_PATH: "/usr/lib/gbm:/usr/lib/x86_64-linux-gnu/gbm",
         });
+        expect(service.environment.GBM_BACKENDS_PATH).toBeUndefined();
         expect(service.deploy?.resources?.reservations?.devices).toEqual([
             {
                 driver: "nvidia",
