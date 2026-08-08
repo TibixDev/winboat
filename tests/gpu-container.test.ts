@@ -60,9 +60,9 @@ describe("GPU container configuration", () => {
             __EGL_VENDOR_LIBRARY_FILENAMES: "/usr/share/glvnd/egl_vendor.d/10_nvidia.json",
             __GLX_VENDOR_LIBRARY_NAME: "nvidia",
             __VK_LAYER_NV_optimus: "NVIDIA_only",
-            VK_ICD_FILENAMES: "/etc/vulkan/icd.d/nvidia_icd.json",
             GBM_BACKEND: "nvidia-drm",
         });
+        expect(service.environment.VK_ICD_FILENAMES).toBeUndefined();
         expect(service.environment.GBM_BACKENDS_PATH).toBeUndefined();
         expect(service.deploy?.resources?.reservations?.devices).toEqual([
             {
@@ -90,7 +90,6 @@ describe("GPU container configuration", () => {
         expect(service.environment.NVIDIA_DRIVER_CAPABILITIES).toBeUndefined();
         expect(service.environment.GBM_BACKEND).toBeUndefined();
         expect(service.environment.__EGL_VENDOR_LIBRARY_FILENAMES).toBeUndefined();
-        expect(service.environment.VK_ICD_FILENAMES).toBeUndefined();
         expect(service.deploy?.resources?.reservations?.devices).toEqual([
             { driver: "example", count: 1, capabilities: ["gpu"] },
         ]);

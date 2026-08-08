@@ -13,7 +13,6 @@ const NVIDIA_RENDER_ENVIRONMENT = {
     __EGL_VENDOR_LIBRARY_FILENAMES: "/usr/share/glvnd/egl_vendor.d/10_nvidia.json",
     __GLX_VENDOR_LIBRARY_NAME: "nvidia",
     __VK_LAYER_NV_optimus: "NVIDIA_only",
-    VK_ICD_FILENAMES: "/etc/vulkan/icd.d/nvidia_icd.json",
     GBM_BACKEND: "nvidia-drm",
 } as const;
 
