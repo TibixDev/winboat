@@ -3,7 +3,7 @@
         <img class="w-48" src="/img/winboat_logo.svg" alt="The WinBoat Logo" />
         <h2 class="mb-0">WinBoat</h2>
         <p class="text-sm text-gray-500">Windows for 🐧 penguins</p>
-        <p class="text-gray-400 !mt-4">WinBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
+        <p class="text-gray-400 !mt-4">WinBoat GPU Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
         <div></div>
         <p class="text-gray-400 !mt-16">
             WinBoat is

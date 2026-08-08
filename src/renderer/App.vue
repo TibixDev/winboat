@@ -128,7 +128,7 @@
                     </x-navitem>
                 </RouterLink>
                 <div class="flex flex-col justify-end items-center p-4 h-full">
-                    <p class="text-xs text-neutral-500">WinBoat Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
+                    <p class="text-xs text-neutral-500">WinBoat GPU Beta v{{ appVer }} {{ isDev ? "Dev" : "Prod" }}</p>
                 </div>
             </x-nav>
             <div class="px-5 flex-grow max-h-[calc(100vh-2rem)] overflow-y-auto py-4">

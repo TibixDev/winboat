@@ -10,9 +10,9 @@ export VERSION="$(bun -p "require('./package.json').version")"
 export COMMIT_HASH="$(git rev-parse --short HEAD)"
 export BUILD_TIMESTAMP=$(date '+%Y-%m-%dT%H:%M:%S')
 
-# kmd: derive VidMm VRAM from virtio hostmem (2b4d7911)
+# Helios wddm bundle at 11f22067 (WGL alpha composition fix)
 HELIOS_REPOSITORY="winboat-org/helios"
-HELIOS_RUN_ID="31115404416"
+HELIOS_RUN_ID="31228496660"
 HELIOS_ARTIFACT="helios-windows-x64-22.22.256.0"
 HELIOS_DOWNLOAD_DIR=""
 
