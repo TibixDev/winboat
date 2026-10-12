@@ -2,8 +2,8 @@ import { type Device } from "usb";
 import { type Ref, ref, watch } from "vue";
 import { logger, Winboat } from "./winboat";
 import { WinboatConfig } from "./config";
-import { assert } from "@vueuse/core";
 
+const assert: typeof import("node:assert/strict") = require("node:assert/strict");
 const { usb, getDeviceList }: typeof import("usb") = require("usb");
 const fs: typeof import("node:fs") = require("node:fs");
 const { execFileSync }: typeof import("node:child_process") = require("node:child_process");
@@ -32,6 +32,12 @@ type VidPidHex = {
     // USB Product ID in hex
     productIdHex: string;
 };
+
+// Keep QEMU IDs distinct from display/configuration VID:PID keys. QEMU qdev
+// IDs must start with a letter and cannot contain a colon.
+function getQMPDeviceId(vendorId: number, productId: number): string {
+    return `usb-${vendorId}-${productId}`;
+}
 
 export class USBManager {
     private static instance: USBManager | null = null;
@@ -73,7 +79,7 @@ export class USBManager {
             if (
                 this.#winboat.isOnline.value &&
                 this.isDeviceInPassthroughList(device) &&
-                !(await this.#QMPCheckIfDeviceExists(
+                !(await this.#QMPGetAttachedDeviceId(
                     device.deviceDescriptor.idVendor,
                     device.deviceDescriptor.idProduct,
                 ))
@@ -92,14 +98,7 @@ export class USBManager {
             this.#mtpDeviceCache.delete(cacheKey);
 
             logger.info(`USB device detached: ${this.stringifyDevice(device)}`);
-            if (
-                this.#winboat.isOnline.value &&
-                this.isDeviceInPassthroughList(device) &&
-                (await this.#QMPCheckIfDeviceExists(
-                    device.deviceDescriptor.idVendor,
-                    device.deviceDescriptor.idProduct,
-                ))
-            ) {
+            if (this.#winboat.isOnline.value && this.isDeviceInPassthroughList(device)) {
                 logger.info(`Device is in passthrough list, removing from VM: ${this.stringifyDevice(device)}`);
                 await this.#QMPRemoveDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct);
             }
@@ -120,7 +119,7 @@ export class USBManager {
             for (const ptDevice of this.#wbConfig.config.passedThroughDevices) {
                 if (
                     this.isPTDeviceConnected(ptDevice) &&
-                    !(await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))
+                    !(await this.#QMPGetAttachedDeviceId(ptDevice.vendorId, ptDevice.productId))
                 ) {
                     logger.info(
                         `Pass-through device ${this.stringifyPTSerializableDevice(ptDevice)} is connected, adding to VM`,
@@ -246,7 +245,7 @@ export class USBManager {
 
         if (
             this.#winboat.isOnline.value &&
-            !(await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))
+            !(await this.#QMPGetAttachedDeviceId(ptDevice.vendorId, ptDevice.productId))
         ) {
             await this.#QMPAddDevice(device);
         }
@@ -264,10 +263,7 @@ export class USBManager {
         );
         this.ptDevices.value = this.#wbConfig.config.passedThroughDevices;
 
-        if (
-            this.#winboat.isOnline.value &&
-            (await this.#QMPCheckIfDeviceExists(ptDevice.vendorId, ptDevice.productId))
-        ) {
+        if (this.#winboat.isOnline.value) {
             await this.#QMPRemoveDevice(ptDevice.vendorId, ptDevice.productId);
         }
 
@@ -358,22 +354,28 @@ export class USBManager {
         return ret;
     }
 
-    async #QMPCheckIfDeviceExists(vendorId: number, productId: number): Promise<boolean> {
+    async #QMPGetAttachedDeviceId(vendorId: number, productId: number): Promise<string | null> {
         let response = null;
         try {
             response = await this.#winboat.qmpMgr!.executeCommand("human-monitor-command", {
                 "command-line": "info qtree",
             });
-            assert("result" in response);
+            assert("return" in response, JSON.stringify(response));
+            const qtree = response.return;
 
-            // @ts-ignore property "result" already exists due to assert
-            return response.return.includes(`usb-host, id "${vendorId}:${productId}"`);
+            // Older QEMU versions accepted the legacy VID:PID IDs. Recognize
+            // them until removed so upgrading WinBoat does not attach twice.
+            return (
+                [getQMPDeviceId(vendorId, productId), `${vendorId}:${productId}`].find(id =>
+                    qtree.includes(`usb-host, id "${id}"`),
+                ) ?? null
+            );
         } catch (e) {
             logger.error(`There was an error checking whether USB device '${vendorId}:${productId}' exists`);
             logger.error(e);
             logger.error(`QMP response: ${JSON.stringify(response)}`);
         }
-        return false;
+        return null;
     }
 
     // TODO: handle hostaddr/hostbus in case of duplicate VID/PID
@@ -392,32 +394,36 @@ export class USBManager {
         try {
             response = await this.#winboat.qmpMgr!.executeCommand("device_add", {
                 driver: "usb-host",
-                id: `${vendorid}:${productid}`, // TODO: get rid of this when we support multiple devices of the same kind
+                id: getQMPDeviceId(vendorid, productid),
                 vendorid,
                 productid,
                 hostdevice: deviceBusPath,
             });
 
-            assert("result" in response);
+            assert("return" in response, JSON.stringify(response));
+            logger.info("QMPAddDevice", vendorid, productid);
         } catch (e) {
             logger.error(`There was an error adding USB device '${vendorid}:${productid}'`);
             logger.error(e);
             logger.error(`QMP response: ${JSON.stringify(response)}`);
         }
-        logger.info("QMPAddDevice", vendorid, productid);
     }
 
     async #QMPRemoveDevice(vendorId: number, productId: number) {
         let response = null;
         try {
-            response = await this.#winboat.qmpMgr!.executeCommand("device_del", { id: `${vendorId}:${productId}` });
-            assert("result" in response);
+            const id = await this.#QMPGetAttachedDeviceId(vendorId, productId);
+            if (!id) return;
+            response = await this.#winboat.qmpMgr!.executeCommand("device_del", {
+                id,
+            });
+            assert("return" in response, JSON.stringify(response));
+            logger.info("QMPRemoveDevice", vendorId, productId);
         } catch (e) {
             logger.error(`There was an error removing USB device '${vendorId}:${productId}'`);
             logger.error(e);
             logger.error(`QMP response: ${JSON.stringify(response)}`);
         }
-        logger.info("QMPRemoveDevice", vendorId, productId);
     }
 }
 
