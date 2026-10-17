@@ -1,5 +1,12 @@
 import { ComposeConfig } from "../../types";
-import { RESTART_ON_FAILURE } from "../lib/constants";
+import {
+    COMPOSE_PORT_MAPPINGS,
+    GUEST_API_PORT,
+    GUEST_QMP_PORT,
+    GUEST_UPDATE_PORT,
+    QMP_ARGUMENT,
+    RESTART_NO,
+} from "../lib/constants";
 
 export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     name: "winboat",
@@ -8,7 +15,7 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
     },
     services: {
         windows: {
-            image: "ghcr.io/dockur/windows:5.14",
+            image: "ghcr.io/dockur/windows:6.03",
             container_name: "WinBoat",
             environment: {
                 VERSION: "11",
@@ -19,21 +26,14 @@ export const PODMAN_DEFAULT_COMPOSE: ComposeConfig = {
                 PASSWORD: "MyWindowsPassword",
                 HOME: "${HOME}",
                 LANGUAGE: "English",
-                NETWORK: "user",
-                USER_PORTS: "7148",
-                HOST_PORTS: "7149",
-                ARGUMENTS: "-qmp tcp:0.0.0.0:7149,server,wait=off",
+                USER_PORTS: `${GUEST_API_PORT},${GUEST_UPDATE_PORT}`,
+                HOST_PORTS: `${GUEST_QMP_PORT}`,
+                ARGUMENTS: QMP_ARGUMENT,
             },
             cap_add: ["NET_ADMIN"],
-            ports: [
-                "127.0.0.1::8006", // VNC Web Interface
-                "127.0.0.1::7148", // Winboat Guest Server API
-                "127.0.0.1::7149", // QEMU QMP Port
-                "127.0.0.1::3389/tcp", // RDP
-                "127.0.0.1::3389/udp", // RDP
-            ],
+            ports: [...COMPOSE_PORT_MAPPINGS],
             stop_grace_period: "120s",
-            restart: RESTART_ON_FAILURE,
+            restart: RESTART_NO,
             privileged: true,
             volumes: [
                 "data:/storage",

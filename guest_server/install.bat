@@ -1,31 +1,43 @@
 @echo off
-set INSTALL_DIR=C:\Program Files\WinBoat
-set EXE_PATH=%INSTALL_DIR%\winboat_guest_server.exe
-set TIME_SYNC_SCRIPT_PATH=%INSTALL_DIR%\scripts\time-sync.bat
-set NSSM_PATH=%INSTALL_DIR%\nssm.exe
+set WB_DIR=C:\Program Files\WinBoat
 set OEM_DIR=C:\OEM
+set NSSM=%WB_DIR%\nssm.exe
 
-:: Registry tweaks
+:: Registry tweaks (imported once at install time)
 reg import "%OEM_DIR%\RDPApps.reg"
 
-:: Create install directory if it doesn't exist
-if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+:: Create the install directory and exclude it from Windows Defender before
+:: copying anything in, so the guest binaries aren't scanned on write.
+if not exist "%WB_DIR%" mkdir "%WB_DIR%"
+powershell -ExecutionPolicy Bypass -Command "Add-MpPreference -ExclusionPath '%WB_DIR%'"
 
-:: Copy files from OEM to install directory
-xcopy "%OEM_DIR%\*" "%INSTALL_DIR%\" /Y /E
+:: Copy the OEM payload into the install directory. This lays down:
+::   server\   - the Guest Server (updatable)
+::   updater\  - the Guest Server Updater (never updated)
+::   guest_token, nssm.exe, RDPApps.reg, install.bat
+xcopy "%OEM_DIR%\*" "%WB_DIR%\" /Y /E
 
-:: Install the service with NSSM
-"%NSSM_PATH%" install WinBoatGuestServer "%EXE_PATH%"
-"%NSSM_PATH%" set WinBoatGuestServer Start SERVICE_AUTO_START
-"%NSSM_PATH%" set WinBoatGuestServer AppDirectory "%INSTALL_DIR%"
-"%NSSM_PATH%" set WinBoatGuestServer Description "WinBoat Guest Server API on port 7148"
-"%NSSM_PATH%" set WinBoatGuestServer ObjectName "NT AUTHORITY\SYSTEM"
+:: --- Guest Server service ---
+"%NSSM%" install WinBoatGuestServer "%WB_DIR%\server\winboat_guest_server.exe"
+"%NSSM%" set WinBoatGuestServer Start SERVICE_AUTO_START
+"%NSSM%" set WinBoatGuestServer AppDirectory "%WB_DIR%\server"
+"%NSSM%" set WinBoatGuestServer Description "WinBoat Guest Server API on port 7148"
+"%NSSM%" set WinBoatGuestServer ObjectName "NT AUTHORITY\SYSTEM"
 
-:: Add firewall rule for port 7148
+:: --- Guest Server Updater service ---
+"%NSSM%" install WinBoatGuestServerUpdater "%WB_DIR%\updater\winboat_guest_server_updater.exe"
+"%NSSM%" set WinBoatGuestServerUpdater Start SERVICE_AUTO_START
+"%NSSM%" set WinBoatGuestServerUpdater AppDirectory "%WB_DIR%\updater"
+"%NSSM%" set WinBoatGuestServerUpdater Description "WinBoat Guest Server Updater on port 7150"
+"%NSSM%" set WinBoatGuestServerUpdater ObjectName "NT AUTHORITY\SYSTEM"
+
+:: Firewall rules for both services
 netsh advfirewall firewall add rule name="Allow WinBoat API 7148" dir=in action=allow protocol=TCP localport=7148
+netsh advfirewall firewall add rule name="Allow WinBoat Updater 7150" dir=in action=allow protocol=TCP localport=7150
 
-:: Start the service
-"%NSSM_PATH%" start WinBoatGuestServer
+:: Start both services
+"%NSSM%" start WinBoatGuestServer
+"%NSSM%" start WinBoatGuestServerUpdater
 
 :: Startup Tasks
-schtasks /create /tn "TimeSyncTask" /sc ONSTART /RL HIGHEST /tr "\"%TIME_SYNC_SCRIPT_PATH%\"" /RU SYSTEM
+schtasks /create /tn "TimeSyncTask" /sc ONSTART /RL HIGHEST /tr "\"%WB_DIR%\server\scripts\time-sync.bat\"" /RU SYSTEM

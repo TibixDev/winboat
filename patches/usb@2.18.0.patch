@@ -1,0 +1,11 @@
+diff --git a/binding.gyp b/binding.gyp
+--- a/binding.gyp
++++ b/binding.gyp
+@@ -34,6 +34,6 @@
+       ],
+       'cflags_cc': [
+-        '-std=c++14'
++        '-std=c++17'
+       ],
+       'defines': [
+         '_FILE_OFFSET_BITS=64',

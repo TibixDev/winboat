@@ -1,4 +1,5 @@
 const { shell }: typeof import("@electron/remote") = require("@electron/remote");
+import { CONTAINER_LOG_FILE } from "../lib/constants";
 
 export function openLink(link: string) {
     if (link.startsWith("http")) {
@@ -15,4 +16,8 @@ export function openAnchorLink(e: MouseEvent) {
     if (href) {
         openLink(href);
     }
+}
+
+export function openContainerLogFile() {
+    shell.openPath(CONTAINER_LOG_FILE);
 }

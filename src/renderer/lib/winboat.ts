@@ -1,36 +1,26 @@
+import { assert } from "@vueuse/core";
 import { ref, type Ref } from "vue";
-import { WINBOAT_DIR } from "./constants";
-import type {
-    ComposeConfig,
-    CustomAppCallbacks,
-    GuestServerUpdateResponse,
-    GuestServerVersion,
-    Metrics,
-    WinApp,
-} from "../../types";
-import { createLogger } from "../utils/log";
-import { AppIcons } from "../data/appicons";
 import YAML from "yaml";
+import type { ComposeConfig, CustomAppCallbacks, GuestServerVersion, Metrics, WinApp } from "../../types";
+import { AppIcons } from "../data/appicons";
 import { InternalApps } from "../data/internalapps";
 import { getFreeRDP } from "../utils/getFreeRDP";
+import { guestAuthHeaders, guestServerUpdateZipPath } from "../utils/guestServer";
+import { setIntervalImmediately } from "../utils/interval";
+import { createLogger } from "../utils/log";
 import { openLink } from "../utils/openLink";
 import { MultiMonitorMode, WinboatConfig } from "./config";
-import { QMPManager } from "./qmp";
-import { assert } from "@vueuse/core";
-import { setIntervalImmediately } from "../utils/interval";
+import { HOST_QMP_PORT, HOST_RDP_PORT, NOVNC_URL, WINBOAT_API_URL, WINBOAT_DIR, WINBOAT_UPDATE_URL } from "./constants";
+import { ContainerRuntimes, createContainer } from "./containers/common";
+import { ContainerManager, ContainerStatus, isStaleContainerError } from "./containers/container";
 import { ExecFileAsyncError } from "./exec-helper";
-import { ContainerManager, ContainerStatus } from "./containers/container";
-import { CommonPorts, ContainerRuntimes, createContainer, getActiveHostPort } from "./containers/common";
+import { QMPManager } from "./qmp";
 
 const nodeFetch: typeof import("node-fetch").default = require("node-fetch");
 const fs: typeof import("fs") = require("node:fs");
 const path: typeof import("path") = require("node:path");
-const process: typeof import("process") = require("node:process");
 const { promisify }: typeof import("util") = require("node:util");
 const { exec }: typeof import("child_process") = require("node:child_process");
-const remote: typeof import("@electron/remote") = require("@electron/remote");
-const FormData: typeof import("form-data") = require("form-data");
-const argon2: typeof import("argon2") = require("argon2");
 
 const execAsync = promisify(exec);
 const USAGE_PATH = path.join(WINBOAT_DIR, "appUsage.json");
@@ -55,6 +45,14 @@ const presetApps: WinApp[] = [
         Source: "internal",
         Path: "%windir%\\explorer.exe",
         Args: "",
+        Usage: 0,
+    },
+    {
+        Name: "⚙️ Windows Settings",
+        Icon: AppIcons[InternalApps.WINDOWS_SETTINGS],
+        Source: "internal",
+        Path: "%windir%\\explorer.exe",
+        Args: "ms-settings:",
         Usage: 0,
     },
     {
@@ -92,14 +90,14 @@ const useOriginalIfUndefinedOrNull = (test: string | undefined, original: string
  * Maps a {@link WinApp.Path} to a callback, which is called in {@link Winboat.launchApp} if specified
  */
 const customAppCallbacks: CustomAppCallbacks = {
-    [CustomAppCommands.NOVNC_COMMAND]: (ctx: Winboat) => {
-        const novncHostPort = getActiveHostPort(ctx.containerMgr!, CommonPorts.NOVNC);
-        openLink(`http://127.0.0.1:${novncHostPort}`);
+    [CustomAppCommands.NOVNC_COMMAND]: () => {
+        openLink(NOVNC_URL);
     },
 };
 
 const QMP_WAIT_MS = 2000;
 const FETCH_TIMEOUT = 1000;
+const GUEST_ONLINE_TIMEOUT_MS = 60_000;
 
 class AppManager {
     appCache: WinApp[] = [];
@@ -114,12 +112,12 @@ class AppManager {
         this.#wbConfig = WinboatConfig.getInstance();
     }
 
-    async updateAppCache(apiURL: string, options: { forceRead?: boolean } = {}) {
-        const res = await nodeFetch(`${apiURL}/apps`);
+    async updateAppCache(options: { forceRead?: boolean } = {}) {
+        const res = await nodeFetch(`${WINBOAT_API_URL}/apps`, { headers: guestAuthHeaders() });
         const newApps = (await res.json()) as WinApp[];
         newApps.push(...presetApps, ...this.#wbConfig!.config.customApps);
 
-        if (this.appCache.values.length == newApps.length && !options.forceRead) return;
+        if (this.appCache.length == newApps.length && !options.forceRead) return;
 
         for (const appIdx in newApps) {
             newApps[appIdx].Usage = this.appCache.find(app => app.Name == newApps[appIdx].Name)?.Usage || 0;
@@ -129,7 +127,7 @@ class AppManager {
         this.appCache = newApps;
     }
 
-    async getApps(apiURL: string): Promise<WinApp[]> {
+    async getApps(): Promise<WinApp[]> {
         if (this.appCache.length > 0) {
             return this.appCache;
         }
@@ -147,7 +145,7 @@ class AppManager {
             });
         }
 
-        await this.updateAppCache(apiURL, { forceRead: true });
+        await this.updateAppCache({ forceRead: true });
 
         const appCacheHumanReadable = this.appCache.map(obj => {
             const res = { ...obj } as any;
@@ -269,14 +267,17 @@ export class Winboat {
             const _containerStatus = await this.containerMgr!.getStatus();
 
             if (_containerStatus !== this.containerStatus.value) {
-                this.containerStatus.value = _containerStatus;
-                logger.info(`Winboat Container state changed to ${_containerStatus}`);
+                // ERROR is explicitly set, so don't overwrite it from periodic polling.
+                // Keep it until the next user action.
+                if (this.containerStatus.value !== ContainerStatus.ERROR) {
+                    this.containerStatus.value = _containerStatus;
+                    logger.info(`Winboat Container state changed to ${_containerStatus}`);
 
-                if (_containerStatus === ContainerStatus.RUNNING) {
-                    await this.containerMgr!.port(); // Cache active port mappings
-                    await this.createAPIIntervals();
-                } else {
-                    await this.destroyAPIIntervals();
+                    if (_containerStatus === ContainerStatus.RUNNING) {
+                        await this.createAPIIntervals();
+                    } else {
+                        await this.destroyAPIIntervals();
+                    }
                 }
             }
         }, 1000);
@@ -304,7 +305,7 @@ export class Winboat {
             const _isOnline = await this.getHealth();
             if (_isOnline !== this.isOnline.value) {
                 this.isOnline.value = _isOnline;
-                logger.info(`Winboat Guest API went ${this.isOnline ? "online" : "offline"}`);
+                logger.info(`Winboat Guest API went ${this.isOnline.value ? "online" : "offline"}`);
 
                 if (this.isOnline.value) {
                     await this.checkVersionAndUpdateGuestServer();
@@ -409,7 +410,7 @@ export class Winboat {
     async getHealth() {
         // If /health returns 200, then the guest is ready
         try {
-            const res = await nodeFetch(`${this.apiUrl}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+            const res = await nodeFetch(`${WINBOAT_API_URL}/health`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
             return res.status === 200;
         } catch {
             return false;
@@ -417,13 +418,19 @@ export class Winboat {
     }
 
     async getMetrics() {
-        const res = await nodeFetch(`${this.apiUrl}/metrics`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+        const res = await nodeFetch(`${WINBOAT_API_URL}/metrics`, {
+            headers: guestAuthHeaders(),
+            signal: AbortSignal.timeout(FETCH_TIMEOUT),
+        });
         const metrics = (await res.json()) as Metrics;
         return metrics;
     }
 
     async getRDPConnectedStatus() {
-        const res = await nodeFetch(`${this.apiUrl}/rdp/status`, { signal: AbortSignal.timeout(FETCH_TIMEOUT) });
+        const res = await nodeFetch(`${WINBOAT_API_URL}/rdp/status`, {
+            headers: guestAuthHeaders(),
+            signal: AbortSignal.timeout(FETCH_TIMEOUT),
+        });
         const status = (await res.json()) as { rdpConnected: boolean };
         return status.rdpConnected;
     }
@@ -444,10 +451,7 @@ export class Winboat {
 
     async #connectQMPManager() {
         try {
-            this.qmpMgr = await QMPManager.createConnection(
-                "127.0.0.1",
-                getActiveHostPort(this.containerMgr!, CommonPorts.QMP)!,
-            ).catch(e => {
+            this.qmpMgr = await QMPManager.createConnection("127.0.0.1", HOST_QMP_PORT).catch(e => {
                 logger.error(e);
                 throw e;
             });
@@ -482,60 +486,131 @@ export class Winboat {
         }, QMP_WAIT_MS);
     }
 
+    /**
+     * Recreates the WinBoat container from its existing compose file.
+     * This is used to recover from a stale/malfunctioning container, e.g. one
+     * that references a passed-through USB device that no longer exists on
+     * the host, which prevents it from being started normally.
+     * @note Mirrors the manual workaround of `container rm` + `compose up`.
+     */
+    async recreateContainer() {
+        logger.warn("[recreateContainer] Recreating WinBoat container from its compose file...");
+        await this.containerMgr!.remove();
+        await this.containerMgr!.compose("up");
+        logger.info("[recreateContainer] Successfully recreated WinBoat container");
+    }
+
     async startContainer() {
         logger.info("Starting WinBoat container...");
         this.containerActionLoading.value = true;
+
         try {
-            await this.containerMgr!.container("start");
+            // Start the container if it exists and recreate it if starting it runs into an error
+            // If there is no container, create it from the compose file
+            if (await this.containerMgr!.exists()) {
+                try {
+                    await this.containerMgr!.container("start");
+                } catch (e) {
+                    if (isStaleContainerError(e)) {
+                        logger.warn(
+                            "[startContainer] Container appears to be stale/malfunctioning (e.g. a stale USB passthrough reference). Attempting to recreate it...",
+                        );
+                        await this.recreateContainer();
+                    } else {
+                        throw e;
+                    }
+                }
+                logger.info("Successfully started WinBoat container");
+            } else {
+                try {
+                    await this.containerMgr!.compose("up");
+                    const recreated = await this.containerMgr!.exists();
+
+                    if (recreated) {
+                        logger.info("Successfully recreated the WinBoat container from the existing compose file");
+                    } else {
+                        logger.error(
+                            "Failed to recreate the WinBoat container: it still doesn't exist after 'compose up'",
+                        );
+                    }
+                } catch (e) {
+                    logger.error("Failed to recreate the WinBoat container from the existing compose file");
+                    logger.error(e);
+                    throw e;
+                }
+            }
         } catch (e) {
             logger.error("There was an error performing the container action.");
             logger.error(e);
+            this.containerStatus.value = ContainerStatus.ERROR;
             throw e;
+        } finally {
+            this.containerActionLoading.value = false;
         }
-        logger.info("Successfully started WinBoat container");
-        this.containerActionLoading.value = false;
     }
 
     async stopContainer() {
         logger.info("Stopping WinBoat container...");
         this.containerActionLoading.value = true;
-        await this.containerMgr!.container("stop");
-        logger.info("Successfully stopped WinBoat container");
-        this.containerActionLoading.value = false;
+        try {
+            await this.containerMgr!.container("stop");
+            logger.info("Successfully stopped WinBoat container");
+        } finally {
+            this.containerActionLoading.value = false;
+        }
     }
 
     async restartContainer() {
         logger.info("Restarting WinBoat container...");
         this.containerActionLoading.value = true;
         try {
-            await this.containerMgr!.container("restart");
+            try {
+                await this.containerMgr!.container("restart");
+            } catch (e) {
+                if (isStaleContainerError(e)) {
+                    logger.warn(
+                        "[restartContainer] Container appears to be stale/malfunctioning (e.g. a stale USB passthrough reference). Attempting to recreate it...",
+                    );
+                    await this.recreateContainer();
+                } else {
+                    throw e;
+                }
+            }
+            logger.info("Successfully restarted WinBoat container");
         } catch (e) {
             logger.error("There was an error restarting the container.");
             logger.error(e);
+            this.containerStatus.value = ContainerStatus.ERROR;
             throw e;
+        } finally {
+            this.containerActionLoading.value = false;
         }
-        logger.info("Successfully restarted WinBoat container");
-        this.containerActionLoading.value = false;
     }
 
     async pauseContainer() {
         logger.info("Pausing WinBoat container...");
         this.containerActionLoading.value = true;
-        await this.containerMgr!.container("pause");
-        logger.info("Successfully paused WinBoat container");
-        this.containerActionLoading.value = false;
+        try {
+            await this.containerMgr!.container("pause");
+            logger.info("Successfully paused WinBoat container");
+        } finally {
+            this.containerActionLoading.value = false;
+        }
     }
 
     async unpauseContainer() {
         logger.info("Unpausing WinBoat container...");
         this.containerActionLoading.value = true;
-        await this.containerMgr!.container("unpause");
-        logger.info("Successfully unpaused WinBoat container");
-        this.containerActionLoading.value = false;
+        try {
+            await this.containerMgr!.container("unpause");
+            logger.info("Successfully unpaused WinBoat container");
+        } finally {
+            this.containerActionLoading.value = false;
+        }
     }
 
     // TODO: refactor / possibly remove this
-    /** 
+    /**
         Replaces the compose file, and and updates the container.
         @note Use {@link ContainerManager.writeCompose} in case only disk write is needed
     */
@@ -617,7 +692,7 @@ export class Winboat {
     }
 
     async launchApp(app: WinApp) {
-        if (!this.isOnline) throw new Error("Cannot launch app, Winboat is offline");
+        if (!this.isOnline.value) throw new Error("Cannot launch app, Winboat is offline");
 
         if (customAppCallbacks[app.Path]) {
             logger.info(`Found custom app command for '${app.Name}'`);
@@ -630,13 +705,9 @@ export class Winboat {
         const cleanAppName = app.Name.replaceAll(/[,.'"]/g, "");
         const { username, password } = this.getCredentials();
 
-        const rdpHostPort = getActiveHostPort(this.containerMgr!, CommonPorts.RDP)!;
-
         logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         const freeRDPInstallation = await getFreeRDP();
-
-        logger.info(`Launching app: ${app.Name} at path ${app.Path}`);
 
         // Arguments specified by user to override stock arguments
         const replacementArgs = this.#wbConfig?.config.rdpArgs.filter(a => a.isReplacement);
@@ -648,7 +719,7 @@ export class Winboat {
                 useOriginalIfUndefinedOrNull(replacementArgs?.find(r => argStr === r.original?.trim())?.newArg, argStr),
             )
             .concat(newArgs);
-        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${rdpHostPort}`, ...combinedArgs];
+        let args = [`/u:${username}`, `/p:${password}`, `/v:127.0.0.1`, `/port:${HOST_RDP_PORT}`, ...combinedArgs];
 
         if (app.Path == InternalApps.WINDOWS_DESKTOP) {
             args = args.concat([
@@ -680,7 +751,8 @@ export class Winboat {
         }
 
         try {
-            logger.info(`Launch FreeRDP with command:\n${freeRDPInstallation.stringifyExec(args)}`);
+            const safeToLogArgs = freeRDPInstallation.stringifyExec(args).replace(/\/p:[^ ]+/g, "/p:********");
+            logger.info(`Launch FreeRDP with command:\n${safeToLogArgs}`);
             await freeRDPInstallation.exec(args);
         } catch (e) {
             const execError = e as ExecFileAsyncError;
@@ -707,94 +779,61 @@ export class Winboat {
     }
 
     async checkVersionAndUpdateGuestServer() {
-        // 1. Get the version of the guest server and compare it to the current version
-        const versionRes = await nodeFetch(`${this.apiUrl}/version`);
+        // 1. Compare the running Guest Server version with the bundled app version.
+        const versionRes = await nodeFetch(`${WINBOAT_API_URL}/version`, { headers: guestAuthHeaders() });
         const version = (await versionRes.json()) as GuestServerVersion;
-
         const appVersion = import.meta.env.VITE_APP_VERSION;
 
-        if (version.version !== appVersion) {
-            logger.info(`New local version of WinBoat Guest Server found: ${appVersion}`);
-            logger.info(`Current version of WinBoat Guest Server: ${version.version}`);
-        }
-
-        // 2. Return early if the version is the same
+        // Any mismatch triggers an update. This is intentionally not semver-aware:
+        // installing an older WinBoat deliberately rolls the guest back to match.
         if (version.version === appVersion) {
             return;
         }
+        logger.info(`Guest Server update needed: ${version.version} -> ${appVersion}`);
 
-        // 3. Set update flag & grab winboat_guest_server.zip from Electron assets
+        // 2. Push the bundled update payload to the Guest Server Updater, which
+        //    applies it atomically and rolls back if the new server fails to come
+        //    up. Auth is the shared token; the raw zip is the request body.
         this.isUpdatingGuestServer.value = true;
-        const zipPath = remote.app.isPackaged
-            ? path.join(process.resourcesPath, "guest_server", "winboat_guest_server.zip")
-            : path.join(remote.app.getAppPath(), "..", "..", "guest_server", "winboat_guest_server.zip");
-
-        logger.info("ZIP Path", zipPath);
-
-        // 4. Send the payload to the guest server
-        // as a multipart/form-data with updateFile and password
-        const formData = new FormData();
-        formData.append("updateFile", fs.createReadStream(zipPath));
-        const { password } = this.getCredentials();
-        formData.append("password", password);
+        const zipPath = guestServerUpdateZipPath();
+        logger.info(`Sending update payload to the Guest Server Updater: ${zipPath}`);
 
         try {
-            const res = await nodeFetch(`${this.apiUrl}/update`, {
+            const res = await nodeFetch(`${WINBOAT_UPDATE_URL}/update`, {
                 method: "POST",
-                body: formData as any,
+                headers: {
+                    ...guestAuthHeaders(),
+                    "Content-Type": "application/octet-stream",
+                },
+                body: fs.createReadStream(zipPath),
             });
             if (res.status !== 200) {
-                const resBody = await res.text();
-                throw new Error(resBody);
+                throw new Error(`Updater returned ${res.status}: ${await res.text()}`);
             }
-            const resJson = (await res.json()) as GuestServerUpdateResponse;
-            logger.info(`Update params: ${JSON.stringify(resJson, null, 4)}`);
-            logger.info("Successfully sent update payload to guest server");
+            logger.info("Guest Server Updater applied the update successfully");
         } catch (e) {
-            logger.error("Failed to send update payload to guest server");
+            logger.error("Failed to apply Guest Server update");
             logger.error(e);
             this.isUpdatingGuestServer.value = false;
             throw e;
         }
 
-        // 5. Wait about ~3 seconds, then start scanning for health
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        let _isOnline = await this.getHealth();
-        while (!_isOnline) {
+        // 3. The updater already health-gated the new server before responding;
+        //    this just re-syncs the host's own online view, bounded by a
+        //    wall-clock deadline (getHealth itself can block up to FETCH_TIMEOUT).
+        let online = await this.getHealth();
+        const deadline = Date.now() + GUEST_ONLINE_TIMEOUT_MS;
+        while (!online && Date.now() < deadline) {
             await new Promise(resolve => setTimeout(resolve, 1000));
-            _isOnline = await this.getHealth();
-        }
-        logger.info("Update completed, Winboat Guest Server is online");
-
-        // 6. [OPTIONAL] Apply authentication hash in case it's not set yet, because
-        // it will be required during future updates
-        try {
-            const { password } = this.getCredentials();
-            const hash = await argon2.hash(password);
-
-            const authFormData = new FormData();
-            authFormData.append("authHash", hash);
-
-            const authRes = await nodeFetch(`${this.apiUrl}/auth/set-hash`, {
-                method: "POST",
-                body: authFormData as any,
-            });
-
-            if (authRes.status === 200) {
-                logger.info("Successfully set auth hash for existing installation");
-            } else if (authRes.status === 400) {
-                // Hash already set, this is expected for existing installations that already have it
-                logger.info("Auth hash already set, skipping enrollment");
-            } else {
-                const errorText = await authRes.text();
-                logger.warn(`Unexpected response when setting auth hash: ${authRes.status} - ${errorText}`);
-            }
-        } catch (e) {
-            logger.error("Failed to set auth hash (non-critical error)");
-            logger.error(e);
+            online = await this.getHealth();
         }
 
-        // Done!
+        if (online) {
+            logger.info("Update completed, Winboat Guest Server is online");
+        } else {
+            logger.error("Guest Server did not report healthy within the timeout after update");
+        }
+
         this.isUpdatingGuestServer.value = false;
     }
 
@@ -803,13 +842,5 @@ export class Winboat {
      */
     get hasQMPInterval() {
         return this.#qmpInterval !== null;
-    }
-
-    get apiUrl(): string | undefined {
-        const apiPort = getActiveHostPort(this.containerMgr!, CommonPorts.API);
-
-        if (!apiPort) return undefined;
-
-        return `http://127.0.0.1:${apiPort}`;
     }
 }

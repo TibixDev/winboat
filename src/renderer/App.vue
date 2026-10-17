@@ -5,10 +5,11 @@
     >
         <!-- Decoration -->
         <div
-            class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15 blob-anim"
+            class="gradient-ball absolute -z-10 left-0 bottom-0 translate-x-[-50%] translate-y-[50%] w-[90vw] aspect-square opacity-15"
         ></div>
         <div
-            class="gradient-ball absolute -z-10 right-0 top-0 translate-x-[50%] translate-y-[-50%] w-[90vw] aspect-square opacity-15 blob-anim"
+            class="gradient-ball absolute -z-10 right-0 top-0 translate-x-[50%] translate-y-[-50%] w-[90vw] aspect-square opacity-15"
+            style="filter: hue-rotate(45deg) blur(200px)"
         ></div>
 
         <!-- Stripes for experimental -->
@@ -39,8 +40,8 @@
                     <ol class="mt-2 list-decimal list-inside">
                         <li>
                             Use VNC over at
-                            <a @click="openAnchorLink" :href="novncURL" target="_blank" rel="noopener noreferrer">
-                                {{ novncURL }}
+                            <a @click="openAnchorLink" :href="NOVNC_URL" target="_blank" rel="noopener noreferrer">
+                                {{ NOVNC_URL }}
                             </a>
                             to access Windows
                         </li>
@@ -58,7 +59,7 @@
                             </a>
                             , you should pick version <strong>{{ appVer }}</strong>
                         </li>
-                        <li>Navigate to <code>C:\Program Files\WinBoat</code> and delete the contents</li>
+                        <li>Navigate to <code>C:\Program Files\WinBoat\server</code> and delete the contents</li>
                         <li>Extract the freshly downloaded zip into the same folder</li>
                         <li>
                             Start the <code>WinBoatGuestServer</code> service by right clicking and pressing "Start"
@@ -106,7 +107,7 @@
                 <div class="flex flex-row gap-4 items-center p-4">
                     <img
                         class="w-16 rounded-full"
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Windows_10_Default_Profile_Picture.svg/2048px-Windows_10_Default_Profile_Picture.svg.png"
+                        src="/img/pfp.svg"
                         alt="Profile"
                     />
                     <div>
@@ -164,7 +165,7 @@ import { Winboat } from "./lib/winboat";
 import { openAnchorLink } from "./utils/openLink";
 import { WinboatConfig } from "./lib/config";
 import { USBManager } from "./lib/usbmanager";
-import { CommonPorts, getActiveHostPort } from "./lib/containers/common";
+import { NOVNC_URL } from "./lib/constants";
 import { performAutoMigrations } from "./lib/migrate";
 const { BrowserWindow }: typeof import("@electron/remote") = require("@electron/remote");
 const os: typeof import("os") = require("node:os");
@@ -180,7 +181,6 @@ let updateTimeout: NodeJS.Timeout | null = null;
 const manualUpdateRequired = ref(false);
 const MANUAL_UPDATE_TIMEOUT = 60000; // 60 seconds
 const updateDialog = useTemplateRef("updateDialog");
-const novncURL = ref("");
 
 const animationsDisabled = computed(() => wbConfig?.config.disableAnimations);
 
@@ -208,7 +208,6 @@ onMounted(async () => {
         () => winboat?.isUpdatingGuestServer.value,
         isUpdating => {
             if (isUpdating === true) {
-                novncURL.value = `http://127.0.0.1:${getActiveHostPort(winboat?.containerMgr!, CommonPorts.NOVNC)}`;
                 updateDialog.value!.showModal();
                 // Prepare the timeout to show manual update required after 45 seconds
                 updateTimeout = setTimeout(() => {
@@ -273,20 +272,6 @@ dialog::backdrop {
     filter: blur(200px);
 }
 
-@keyframes blob {
-    from {
-        filter: hue-rotate(0deg) blur(200px);
-    }
-    to {
-        filter: hue-rotate(45deg) blur(200px);
-    }
-}
-
-.blob-anim {
-    animation: blob 5s linear infinite;
-    animation-direction: alternate-reverse;
-}
-
 .fade-enter-active,
 .fade-leave-active {
     transition: all 0.2s ease;
@@ -340,11 +325,6 @@ body.disable-animations .bouncedown-leave-active,
 body.disable-animations .bounce-in,
 body.disable-animations .bouncedown-in {
     transition: none !important;
-    animation: none !important;
-}
-
-/* Disable keyframe animations */
-body.disable-animations .blob-anim {
     animation: none !important;
 }
 </style>

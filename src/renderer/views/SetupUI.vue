@@ -77,9 +77,9 @@
                         </p>
                         <ul class="text-lg text-gray-400 list-none space-y-1.5 bg-neutral-800 py-3 rounded-lg">
                             <li class="flex items-center gap-2">
-                                <span v-if="specs.ramGB >= 4" class="text-green-500">✔</span>
+                                <span v-if="specs.ramGB >= MIN_HOST_RAM_GB" class="text-green-500">✔</span>
                                 <span v-else class="text-red-500">✘</span>
-                                At least 4 GB of RAM (Detected: {{ specs.ramGB }} GB)
+                                At least {{ MIN_HOST_RAM_GB }} GB of RAM (Detected: {{ specs.ramGB }} GB)
                             </li>
 
                             <li class="flex items-center gap-2">
@@ -107,10 +107,7 @@
                                 <span v-else class="text-red-500">✘</span>
 
                                 <div>
-                                    <x-select
-                                        @change="(e: any) => (containerRuntime = e.detail.newValue)"
-                                        class="w-fit"
-                                    >
+                                    <x-select @change="handleContainerRuntimeChange" class="w-fit">
                                         <x-menu>
                                             <x-menuitem
                                                 v-for="(runtime, key) in Object.values(ContainerRuntimes)"
@@ -240,12 +237,26 @@
                                 </a>
                             </li>
                         </ul>
+                        <div class="flex items-center gap-2 text-xs text-neutral-500">
+                            <Icon
+                                icon="mdi:refresh"
+                                class="size-3.5"
+                                :class="{ 'animate-spin': checkingPrerequisites }"
+                            />
+                            <span>Next check</span>
+                            <div class="h-0.5 flex-1 overflow-hidden rounded-full bg-neutral-700">
+                                <div
+                                    :key="prerequisiteRefreshSequence"
+                                    class="prerequisite-refresh-progress size-full bg-violet-400/60"
+                                ></div>
+                            </div>
+                        </div>
                         <div class="flex flex-row gap-4 mt-6">
                             <x-button class="px-6" @click="currentStepIdx--">Back</x-button>
                             <x-button
                                 toggled
                                 class="px-6"
-                                @click="currentStepIdx++"
+                                @click="continueFromPrerequisites"
                                 :disabled="!satisfiesPrequisites(specs, containerSpecs)"
                             >
                                 Next
@@ -538,7 +549,7 @@
                                 <label for="select-ram" class="text-sm text-neutral-400">
                                     Select RAM
                                     <span
-                                        v-if="memoryInfo.availableGB < ramGB"
+                                        v-if="ramGB < RECOMMENDED_VM_RAM_GB || memoryInfo.availableGB < ramGB"
                                         class="relative group text-white font-bold text-xs rounded-full bg-red-600 px-2 pb-0.5 ml-2 hover:bg-red-700 transition"
                                     >
                                         <Icon icon="line-md:alert" class="inline size-4 -translate-y-0.5" />
@@ -546,10 +557,16 @@
                                         <span
                                             class="absolute bottom-5 right-[-160px] z-50 w-[320px] bg-neutral-900 text-xs text-gray-300 rounded-lg shadow-lg px-3 py-2 hidden group-hover:block transition-opacity duration-200 pointer-events-none"
                                         >
-                                            You don't have enough unused memory available to allocate the requested
-                                            amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of unused
-                                            memory available. If you continue with this amount of RAM, the container
-                                            will likely crash.
+                                            <span v-if="ramGB < RECOMMENDED_VM_RAM_GB" class="block">
+                                                Allocating less than the recommended {{ RECOMMENDED_VM_RAM_GB }} GB of
+                                                RAM may limit Windows performance.
+                                            </span>
+                                            <span v-if="memoryInfo.availableGB < ramGB" class="block">
+                                                You don't have enough unused memory available to allocate the requested
+                                                amount of RAM. You currently have ~{{ memoryInfo.availableGB }} GB of
+                                                unused memory available. If you continue with this amount of RAM, the
+                                                container will likely crash.
+                                            </span>
                                         </span>
                                     </span>
                                 </label>
@@ -559,7 +576,7 @@
                                         @change="(e: any) => (ramGB = Number(e.target.value))"
                                         class="w-[50%]"
                                         :value="ramGB"
-                                        :min="MIN_RAM_GB"
+                                        :min="MIN_VM_RAM_GB"
                                         :max="specs.ramGB"
                                         step="1"
                                     />
@@ -734,7 +751,7 @@
                             WinBoat is now installing Windows. Please be patient as this may take up to an hour. In the
                             meantime, you can grab a coffee and check the installation status
                             <span v-if="linkableInstallSteps.includes(installState)">
-                                <a :href="`http://127.0.0.1:${vncPort}`" @click="openAnchorLink">in your browser</a>.
+                                <a :href="NOVNC_URL" @click="openAnchorLink">in your browser</a>.
                             </span>
                             <span v-else>
                                 over at
@@ -815,16 +832,20 @@ import { useRouter } from "vue-router";
 import { computedAsync } from "@vueuse/core";
 import { InstallConfiguration, Specs } from "../../types";
 import { getSpecs, getMemoryInfo, defaultSpecs, satisfiesPrequisites, type MemoryInfo } from "../lib/specs";
-import { WINDOWS_VERSIONS, WINDOWS_LANGUAGES, type WindowsVersionKey } from "../lib/constants";
+import {
+    MIN_HOST_RAM_GB,
+    MIN_VM_RAM_GB,
+    NOVNC_URL,
+    RECOMMENDED_VM_RAM_GB,
+    WINDOWS_VERSIONS,
+    WINDOWS_LANGUAGES,
+    type WindowsVersionKey,
+} from "../lib/constants";
 import { InstallManager, InstallStates } from "../lib/install";
 import { openAnchorLink } from "../utils/openLink";
+import { setIntervalImmediately } from "../utils/interval";
 import license from "../assets/LICENSE.txt?raw";
-import {
-    ContainerRuntimes,
-    DockerSpecs,
-    PodmanSpecs,
-    getContainerSpecs,
-} from "../lib/containers/common";
+import { ContainerRuntimes, getContainerSpecs, type ContainerSpecs } from "../lib/containers/common";
 import { WinboatConfig } from "../lib/config";
 
 const path: typeof import("path") = require("node:path");
@@ -912,8 +933,8 @@ const steps: Step[] = [
 ];
 
 const MIN_CPU_CORES = 1;
-const MIN_RAM_GB = 2;
 const MIN_DISK_GB = 32;
+const PREREQUISITE_REFRESH_INTERVAL_MS = 5000;
 const $router = useRouter();
 const specs = ref<Specs>({ ...defaultSpecs });
 const currentStepIdx = ref(0);
@@ -924,7 +945,7 @@ const windowsLanguage = ref("English");
 const customIsoPath = ref("");
 const customIsoFileName = ref("");
 const cpuCores = ref(2);
-const ramGB = ref(4);
+const ramGB = ref(RECOMMENDED_VM_RAM_GB);
 const memoryInfo = ref<MemoryInfo>({ totalGB: 0, availableGB: 0 });
 const memoryInterval = ref<NodeJS.Timeout | null>(null);
 const diskSpaceGB = ref(32);
@@ -936,16 +957,17 @@ const sharedFolderPath = ref("");
 const installState = ref<InstallStates>(InstallStates.IDLE);
 const preinstallMsg = ref("");
 const containerRuntime = ref(ContainerRuntimes.DOCKER);
-const vncPort = ref(8006);
+const containerSpecs = ref<ContainerSpecs>();
+const checkingPrerequisites = ref(false);
+const prerequisiteRefreshSequence = ref(0);
+let prerequisiteInterval: NodeJS.Timeout | null = null;
+let prerequisiteRefreshQueued = false;
 // These are the install steps where the container is actually up and running
 const linkableInstallSteps = [ InstallStates.MONITORING_PREINSTALL, InstallStates.INSTALLING_WINDOWS, InstallStates.COMPLETED ];
 
 let installManager: InstallManager | null;
 
 onMounted(async () => {
-    specs.value = await getSpecs();
-    console.log("Specs", specs.value);
-
     memoryInfo.value = await getMemoryInfo();
     memoryInterval.value = setInterval(async () => {
         memoryInfo.value = await getMemoryInfo();
@@ -963,6 +985,19 @@ onUnmounted(() => {
     if (memoryInterval.value) {
         clearInterval(memoryInterval.value);
     }
+
+    stopPrerequisitePolling();
+});
+
+watch(currentStep, step => {
+    stopPrerequisitePolling();
+
+    if (step.id === StepID.PREREQUISITES) {
+        prerequisiteInterval = setIntervalImmediately(() => {
+            prerequisiteRefreshSequence.value++;
+            void refreshPrerequisites();
+        }, PREREQUISITE_REFRESH_INTERVAL_MS);
+    }
 });
 
 // Watch for when folder sharing is enabled and set default path
@@ -972,11 +1007,54 @@ watch(folderSharing, (newValue) => {
     }
 });
 
-const containerSpecs = computedAsync(async () => {
-    return await getContainerSpecs(containerRuntime.value);
-});
+async function refreshPrerequisites() {
+    if (checkingPrerequisites.value) {
+        prerequisiteRefreshQueued = true;
+        return;
+    }
 
-function containerInstalled(containerSpecs: DockerSpecs | PodmanSpecs | undefined) {
+    checkingPrerequisites.value = true;
+
+    try {
+        do {
+            prerequisiteRefreshQueued = false;
+            const runtime = containerRuntime.value;
+            const [newSpecs, newContainerSpecs] = await Promise.all([getSpecs(), getContainerSpecs(runtime)]);
+
+            if (runtime === containerRuntime.value) {
+                specs.value = newSpecs;
+                containerSpecs.value = newContainerSpecs;
+            } else {
+                prerequisiteRefreshQueued = true;
+            }
+        } while (prerequisiteRefreshQueued);
+    } catch (e) {
+        console.error("Error checking prerequisites:", e);
+    } finally {
+        checkingPrerequisites.value = false;
+    }
+}
+
+function stopPrerequisitePolling() {
+    prerequisiteRefreshQueued = false;
+    if (!prerequisiteInterval) return;
+
+    clearInterval(prerequisiteInterval);
+    prerequisiteInterval = null;
+}
+
+function handleContainerRuntimeChange(e: CustomEvent<{ newValue: ContainerRuntimes }>) {
+    containerSpecs.value = undefined;
+    containerRuntime.value = e.detail.newValue;
+    void refreshPrerequisites();
+}
+
+function continueFromPrerequisites() {
+    if (!satisfiesPrequisites(specs.value, containerSpecs.value)) return;
+    currentStepIdx.value++;
+}
+
+function containerInstalled(containerSpecs: ContainerSpecs | undefined) {
     if (!containerSpecs) return false;
     if ("dockerInstalled" in containerSpecs) return containerSpecs.dockerInstalled;
     if ("podmanInstalled" in containerSpecs) return containerSpecs.podmanInstalled;
@@ -991,9 +1069,9 @@ const usernameErrors = computed(() => {
         errors.push("Must be at least 2 characters long");
     }
 
-    // Only alphanumeric characters are allowed
-    if (!/^[a-zA-Z0-9]+$/.test(username.value)) {
-        errors.push("Must only contain alphanumeric characters");
+    // Only ASCII letters, numbers, and dashes are allowed
+    if (!/^[a-zA-Z0-9-]+$/.test(username.value)) {
+        errors.push("Must only contain ASCII letters, numbers, and dashes");
     }
 
     return errors;
@@ -1152,10 +1230,6 @@ function install() {
         console.log("Preinstall msg", msg);
     });
 
-    installManager.emitter.on("vncPortChanged", port => {
-        vncPort.value = port;
-    });
-
     installManager.install();
 }
 </script>
@@ -1181,6 +1255,20 @@ function install() {
 
 .step-block {
     @apply flex flex-col gap-4 h-full justify-center;
+}
+
+.prerequisite-refresh-progress {
+    transform-origin: left;
+    animation: prerequisite-refresh 5s linear forwards;
+}
+
+@keyframes prerequisite-refresh {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
 }
 
 .flex p {

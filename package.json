@@ -26,7 +26,7 @@
         "autoprefixer": "^10.4.24",
         "chalk": "^5.6.2",
         "chokidar": "^5.0.0",
-        "electron": "^40.2.1",
+        "electron": "^43.2.0",
         "electron-builder": "^26.7.0",
         "postcss": "^8.5.6",
         "prettier": "3.8.1",
@@ -41,22 +41,24 @@
         "@vueuse/core": "^14.2.0",
         "@vueuse/motion": "^3.0.3",
         "apexcharts": "^5.3.6",
-        "argon2": "^0.44.0",
         "check-disk-space": "^3.4.0",
         "consola": "^3.4.2",
         "electron-store": "^11.0.2",
         "form-data": "^4.0.5",
-        "jimp": "^1.6.0",
+        "jimp": "1.6.0",
         "marked": "^17.0.1",
         "nanoevents": "^9.1.0",
         "node-fetch": "2",
         "path-browserify": "^1.0.1",
         "turndown": "^7.2.2",
-        "usb": "^2.17.0",
+        "usb": "2.18.0",
         "vue": "^3.5.27",
         "vue-router": "^5.0.2",
         "vue3-apexcharts": "^1.10.0",
         "xel": "^0.40.3",
         "yaml": "^2.8.2"
+    },
+    "patchedDependencies": {
+        "usb@2.18.0": "patches/usb@2.18.0.patch"
     }
 }
