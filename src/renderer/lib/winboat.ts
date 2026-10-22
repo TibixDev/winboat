@@ -734,7 +734,7 @@ export class Winboat {
                 this.#wbConfig?.config.multiMonitor === MultiMonitorMode.MultiMon ? "/multimon" : "",
                 `/scale-desktop:${this.#wbConfig?.config.scaleDesktop ?? 100}`,
                 `/wm-class:winboat-${cleanAppName}`,
-                `/app:program:${app.Path},name:${cleanAppName},cmd:"${app.Args}"`,
+                `/app:program:${app.Path},name:${cleanAppName},cmd:${app.Args ? app.Args : '""'}`,
             ]);
         }
 
